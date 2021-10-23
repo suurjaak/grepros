@@ -1,0 +1,947 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Searches through messages in ROS bag files, prints matching results."""
+import argparse
+import copy
+import collections
+import contextlib
+import datetime
+import glob
+import math
+import os
+import random
+import re
+import shutil
+import sys
+import textwrap
+try: import curses
+except ImportError: curses = None
+
+import genpy
+import rosbag
+import rospy
+import yaml
+
+
+ARGUMENTS = {
+    "description": "Searches through messages in ROS bag files.",
+    "epilog":      """
+PATTERNs use Python regular expression syntax, message matches if all match.
+* wildcards in other arguments use simple globbing as zero or more characters,
+target matches if any value matches.
+ 
+
+Example usage:
+
+Search for "my text" in all bags under current directory and subdirectories:
+    {PROGRAM} -r "my text"
+
+Print 30 lines of the first message from each topic in my.bag:
+    {PROGRAM} ".*" --messages-per-topic 1 --lines-per-message 30 -n my.bag
+
+Find first message containing "future" (case-insensitive) in my.bag:
+    {PROGRAM} future -I -m 1 -n my.bag
+
+Find 10 messages, from geometry_msgs package, in "map" frame,
+from bags in current directory:
+    {PROGRAM} frame_id=map -d geometry* -m 10
+
+Find messages with field "key" containing "0xA002",
+in topics ending with "diagnostics", in bags under "/tmp":
+    {PROGRAM} key=0xA002 -t *diagnostics -p /tmp
+
+Find diagnostics_msgs messages in bags in current directory,
+containing "navigation" in fields "name" or "message",
+print only header stamp and values:
+    {PROGRAM} -d diagnostic_msgs/* -sf name message \\
+    {PINDENT} -pf header.stamp status.values -- navigation
+    """.format(PROGRAM=os.path.split(__file__)[-1],
+               PINDENT=" " * len(os.path.split(__file__)[-1])),
+
+    "arguments": [
+        dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
+             help="pattern(s) to find in message field values,\n"
+                  "can specify message field as NAME=PATTERN\n"
+                  "(name may be a nested.path)"),
+
+        dict(args=["-F", "--fixed-strings"],
+             dest="RAW", action="store_true",
+             help="PATTERNs are ordinary strings, not regular expressions"),
+
+        dict(args=["-I", "--no-ignore-case"],
+             dest="CASE", action="store_true",
+             help="use case-sensitive matching in PATTERNS"),
+    ],
+
+    "groups": {"Filtering": [
+
+        dict(args=["-t", "--topic"],
+             dest="TOPICS", metavar="TOPIC", nargs="+", default=[],
+             help="ROS topics to scan if not all (supports * wildcards)"),
+
+        dict(args=["-nt", "--no-topic"],
+             dest="SKIP_TOPICS", metavar="TOPIC", nargs="+", default=[],
+             help="ROS topics to skip (supports * wildcards)"),
+
+        dict(args=["-d", "--type"],
+             dest="TYPES", metavar="TYPE", nargs="+", default=[],
+             help="ROS message types to scan if not all (supports * wildcards)"),
+
+        dict(args=["-nd", "--no-type"],
+             dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[],
+             help="ROS message types to skip (supports * wildcards)"),
+
+        dict(args=["-t0", "--start-time"],
+             dest="START_TIME", metavar="TIME",
+             help="earliest timestamp of messages to scan\n"
+                  "as relative seconds or ISO datetime\n"
+                  "(relative to bag start time if positive\n"
+                  "or end time if negative,\n"
+                  "datetime may be partial like 2021-10-14T12)"),
+
+        dict(args=["-t1", "--end-time"],
+             dest="END_TIME", metavar="TIME",
+             help="latest timestamp of messages to scan\n"
+                  "as relative seconds or ISO datetime\n"
+                  "(relative to bag start time if positive\n"
+                  "or end time if negative,\n"
+                  "datetime may be partial like 2021-10-14T12)"),
+
+        dict(args=["-n0", "--start-index"],
+             dest="START_INDEX", metavar="INDEX", type=int,
+             help="message index within topic to start from\n"
+                  "(1-based if positive, counts back from total if negative)"),
+
+        dict(args=["-n1", "--end-index"],
+             dest="END_INDEX", metavar="INDEX", type=int,
+             help="message index within topic to stop at\n"
+                  "(1-based if positive, counts back from total if negative)"),
+
+        dict(args=["-sf", "--select-field"],
+             dest="SELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to use in scanning if not all\n"
+                  "(supports nested.paths and * wildcards)"),
+
+        dict(args=["-ns", "--noselect-field"],
+             dest="NOSELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to skip in scanning\n"
+                  "(supports nested.paths and * wildcards)"),
+
+        dict(args=["-m", "--max-count"],
+             dest="MAX_MATCHES", metavar="NUM", default=0, type=int,
+             help="number of matched messages to print from each file"),
+
+        dict(args=["--max-per-topic"],
+             dest="MAX_TOPIC_MATCHES", metavar="NUM", default=0, type=int,
+             help="number of matched messages to print from each topic"),
+
+        dict(args=["--max-topics"],
+             dest="MAX_TOPICS", metavar="NUM", default=0, type=int,
+             help="number of topics to print matches from"),
+
+    ], "Output control": [
+
+        dict(args=["-pf", "--print-field"],
+             dest="PRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to print in output if not all\n"
+                  "(supports nested.paths and * wildcards)"),
+
+        dict(args=["-np", "--noprint-field"],
+             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to skip in output\n"
+                  "(supports nested.paths and * wildcards)"),
+
+        dict(args=["-B", "--before-context"],
+             dest="BEFORE", metavar="NUM", default=0, type=int,
+             help="print NUM messages of leading context before match"),
+
+        dict(args=["-A", "--after-context"],
+             dest="AFTER", metavar="NUM", default=0, type=int,
+             help="print NUM messages of trailing context after match"),
+
+        dict(args=["-C", "--context"],
+             dest="CONTEXT", metavar="NUM", default=0, type=int,
+             help="print NUM messages of leading and trailing context\n"
+                  "around match"),
+
+        dict(args=["-mo", "--matched-fields-only"],
+             dest="MATCHED_FIELDS_ONLY", action="store_true",
+             help="print only the fields where PATTERNs find a match"),
+
+        dict(args=["-la", "--lines-around-match"],
+             metavar="NUM", dest="LINES_AROUND_MATCH", type=int,
+             help="print only matched fields and NUM message lines\n"
+                  "around match"),
+
+        dict(args=["-lf", "--lines-per-field"],
+             metavar="NUM", dest="MAX_FIELD_LINES", type=int,
+             help="maximum number of lines to print per field"),
+
+        dict(args=["-l0", "--start-line"],
+             metavar="NUM", dest="START_LINE", type=int,
+             help="message line number to start printing from\n"
+                  "(1-based if positive, counts back from total if negative)"),
+
+        dict(args=["-l1", "--end-line"],
+             metavar="NUM", dest="END_LINE", type=int,
+             help="message line number to stop printing at\n"
+                  "(1-based if positive, counts back from total if negative)"),
+
+        dict(args=["-lm", "--lines-per-message"],
+             metavar="NUM", dest="MAX_MESSAGE_LINES", type=int,
+             help="maximum number of lines to print per message"),
+
+        dict(args=["--match-wrapper"],
+             dest="MATCH_WRAPPER", metavar="STR", nargs="*",
+             help="string to wrap around matched values,\n"
+                  "both sides if one value, start and end if more than one,\n"
+                  "or no wrapping if zero values\n"
+                  "(default ** in colorless output)"),
+
+        dict(args=["--color"], dest="COLOR",
+             choices=["auto", "always", "never"], default="auto",
+             help="use color output (default auto)"),
+
+        dict(args=["--no-meta"], dest="META", action="store_false",
+             help="do not print metainfo for bags and messages"),
+
+        dict(args=["--no-filename"], dest="FILENAME", action="store_false",
+             help="do not print bag filename prefix on each line"),
+
+    ], "File selection": [
+
+        dict(args=["-n", "--filename"],
+             dest="FILES", metavar="FILE", nargs="*", default=[],
+             help="names of ROS bagfiles to scan if not all in directory\n"
+                  "(supports * wildcards)"),
+
+        dict(args=["-p", "--path"],
+             dest="PATHS", metavar="PATH", nargs="*", default=[],
+             help="paths to scan if not current directory\n"
+                  "(supports * wildcards)"),
+
+        dict(args=["-r", "--recursive"],
+             dest="RECURSE", action="store_true",
+             help="recurse into subdirectories when looking for bagfiles"),
+    ]},
+}
+
+
+class TextWrapper(textwrap.TextWrapper):
+    """
+    TextWrapper that supports custom substring widths in line width calculation
+    (useful for wrapping text with ANSI control codes and the like).
+    """
+
+    DEFAULTS = dict(break_long_words=False, break_on_hyphens=False, expand_tabs=False,
+                    replace_whitespace=False, subsequent_indent="  ")
+    REALLEN = __builtins__.len
+
+    def __init__(self, custom_widths=None, **kwargs):
+        """
+        @param   custom_widths  {substring: len} to use in line width calculation
+        """
+        super().__init__(**{**self.DEFAULTS, **kwargs})
+        self._customs = custom_widths or {}
+        self._realwidth = self.width
+
+
+    def len(self, v):
+        """
+        Returns the number of items of a sequence or collection,
+        using configured custom substring widths if string value.
+        """
+        result = self.REALLEN(v)
+        for s, l in self._customs.items() if isinstance(v, str) else ():
+            result -= v.count(s) * (self.REALLEN(s) - l)
+        return result
+
+
+    def reserve_width(self, reserved=""):
+        """Decreases the configured width by given amount (number or string)."""
+        reserved = self.len(reserved) if isinstance(reserved, str) else reserved
+        self.width = self._realwidth - reserved
+
+
+    def wrap(self, text):
+        """Returns a list of wrapped text lines, without final newlines."""
+        __builtins__.len = self.len
+        try:
+            return super().wrap(text)
+        finally:
+            __builtins__.len = self.REALLEN
+
+
+class BagSearcher:
+    """ROS bag grepper class."""
+
+    BAG_EXTENSIONS  = (".bag", ".bag.active")
+    SKIP_EXTENSIONS = (".bag.orig.active", )
+
+    NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
+                     "uint16", "uint32", "uint64", "float32", "float64", "bool"]
+    BUILTIN_TYPES = NUMERIC_TYPES + ["string"]
+
+    META_SEP    = "---"                            # Prefix of metainfo lines
+    MATCH_ID    = "%08x" % random.randint(1, 1E9)  # Unique marker for match highlight replacements
+    MATCH_START = "<%s>"  % MATCH_ID               # Temporary placeholder in front of match
+    MATCH_END   = "</%s>" % MATCH_ID               # Temporary placeholder at end of match
+    MATCH_EMPTY = MATCH_START + MATCH_END          # Temporary placeholder for empty string match
+    MATCH_EMPTY_REPL = "%s''%s" % (MATCH_START, MATCH_END)  # Replacement for empty string match
+
+    STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight
+    STYLE_HIGHLIGHT = "\x1b[31m"                # Red
+    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  # Dim gray
+    STYLE_SPECIAL   = "\x1b[35m"                # Purple
+    STYLE_ERROR     = "\x1b[31m\x1b[2m"         # Dim red
+
+    NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"  # Default highlight wrappers if not color output
+
+    HIGHLIGHT_START, HIGHLIGHT_END = STYLE_HIGHLIGHT, STYLE_RESET  # Matched value wrappers
+    LOWLIGHT_START,  LOWLIGHT_END  = STYLE_LOWLIGHT,  STYLE_RESET  # Metainfo wrappers
+    PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  # Content line prefix wrappers
+    ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  # Error message wrappers
+
+
+    def __init__(self):
+        self._args0    = None  # Original arguments
+        self._args     = None  # Current bag specific arguments
+        self._patterns = {}    # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
+
+        self._header_done = False  # Whether bagfile metainfo has been printed
+        self._sticky      = False  # Scanning a single topic until all after-context printed
+        self._use_prefix  = False  # Whether to use bagfile prefix in output
+        self._wrapper     = None   # TextWrapper instance
+        self._width       = shutil.get_terminal_size().columns
+
+        self._bag       = None  # Current bag as rosbag.Bag instance
+        self._filename  = ""  # Current bagfile path
+        self._prefix    = ""  # Printed before each message line (filename if grepping 1+ files)
+        self._msgtypes  = {}  # {topic: "pkg/MsgType"} in current bag
+        self._msgtotals = {}  # {topic: total message count} in current bag
+        self._topics    = []  # [topics searched in current bag]
+        self._messages  = collections.defaultdict(dict)  # {topic: {rospy.Time: message}}
+        # {topic: {None: count processed, True: count matched, False: count printed as context}}
+        self._counts = collections.defaultdict(lambda: collections.defaultdict(int))
+        # {topic: {rospy.Time: True if matched else False if printed else None}
+        self._statuses  = collections.defaultdict(dict)
+
+
+    def search(self, args):
+        """
+        Searches through bag files, prints results.
+
+        @param   args  argparse.Namespace or equivalent
+        @return        {filename: count matched}
+        """
+        self.configure(args)
+
+        totals = {}  # {filename: count matched}
+        files, paths = self._args.FILES, self._args.PATHS
+        exts, skip_exts = self.BAG_EXTENSIONS, self.SKIP_EXTENSIONS
+        for filename in find_files(files, paths, exts, skip_exts, recurse=self._args.RECURSE):
+            try:
+                bag = rosbag.Bag(filename, skip_index=True)
+            except Exception as e:
+                print()
+                self.print_error("Error opening %r: %s", filename, e)
+                continue  # for filename
+            self.configure_bag(filename, bag)
+            self.search_topics(self._topics, self._args.START_TIME, self._args.END_TIME)
+            totals[filename] = sum(x[True] for x in self._counts.values())
+        return totals
+
+
+    def search_topics(self, topics, start_time=None, end_time=None):
+        """Scans through current bag contents, prints matching messages."""
+        if not topics:
+            return
+        for topic, msg, stamp in self._bag.read_messages(topics, start_time, end_time):
+            if stamp in self._statuses[topic]:  # From an earlier sticky
+                self._statuses[topic].pop(stamp, None)
+                continue  # for topic
+
+            self._counts[topic][None] += 1
+            self._messages[topic][stamp] = msg
+            self._statuses[topic][stamp] = None
+
+            matched_msg = self.is_message_acceptable(topic) and self.make_matched_message(msg)
+            if matched_msg:
+                self._messages[topic][stamp] = matched_msg
+                self._statuses[topic][stamp] = True
+                self._counts[topic][True] += 1
+                self.print_bag_info()
+                self.print_context(topic, self._args.BEFORE + 1)
+                self.print_message(topic, stamp, matched=True)
+            elif self._args.AFTER and self.has_in_window(topic, self._args.AFTER + 1, status=True):
+                self.print_context(topic, self._args.AFTER)
+
+            if matched_msg and self._args.AFTER and not self._sticky and len(topics) > 1:
+                # Stick to one topic until trailing messages have been printed
+                self._sticky = True
+                self.search_topics([topic], stamp + rospy.Duration(nsecs=1), end_time)
+                self._sticky = False
+            else:
+                self.prune_data(topic)
+
+            # Stop sticky-topic scanning when all after-context has been printed
+            sticky_done = self._sticky and not self.has_in_window(topic, self._args.AFTER,
+                                                                  status=True, full=True)
+            if sticky_done or self.is_max_done(topic):
+                break  # for topic
+
+
+    def prune_data(self, topic):
+        """Drops history older than context window."""
+        WINDOW = max(self._args.BEFORE, self._args.AFTER) + 1
+        while len(self._messages[topic]) > WINDOW:
+            self._messages[topic].pop(next(iter(self._messages[topic])))
+        while not self._sticky and len(self._statuses[topic]) > WINDOW:
+            # Retain sticky topic statuses, normal flow needs to know to skip them
+            self._statuses[topic].pop(next(iter(self._statuses[topic])))
+
+
+    def reset_bag(self):
+        """Resets bag-specific data."""
+        for c in (self._messages, self._statuses,  self._counts,
+                  self._topics,   self._msgtotals, self._msgtypes):
+            c.clear()
+        self._bag         = None
+        self._filename    = ""
+        self._prefix      = ""
+        self._header_done = False
+        self._sticky      = False
+
+
+    def configure(self, args):
+        """Populates arguments."""
+        self._args = self._args0 = args
+        self.parse_patterns()
+        self._use_prefix = (args.RECURSE or len(args.FILES) != 1 or
+                            any("*" in x for x in args.FILES)) if args.FILENAME else False
+        with contextlib.suppress(Exception):
+            args.START_TIME = float(args.START_TIME)
+        with contextlib.suppress(Exception):
+            args.END_TIME = float(args.END_TIME)
+        if isinstance(args.START_TIME, str):
+            args.START_TIME = parse_datetime(args.START_TIME)
+        if isinstance(args.END_TIME, str):
+            args.END_TIME = parse_datetime(args.END_TIME)
+        if args.CONTEXT:
+            args.BEFORE = args.AFTER = args.CONTEXT
+
+        self.init_colors()
+        custom_widths = {
+            self.MATCH_START:    len(self.HIGHLIGHT_START.replace(self.STYLE_HIGHLIGHT, "")),
+            self.MATCH_END:      len(self.HIGHLIGHT_END  .replace(self.STYLE_RESET, "")),
+            self.LOWLIGHT_START: 0, self.LOWLIGHT_END: 0,
+            self.ERROR_START:    0, self.ERROR_END:    0,
+            self.PREFIX_START:   0, self.PREFIX_END:   0
+        }
+        wrapargs = dict(max_lines=self._args.MAX_FIELD_LINES, width=self._width,
+                        placeholder="%s ...%s" % (self.LOWLIGHT_START, self.LOWLIGHT_END))
+        self._wrapper = TextWrapper(custom_widths, **wrapargs)
+
+
+    def configure_bag(self, filename, bag):
+        """Populates bag-specific argument state."""
+        self.reset_bag()
+        self._bag      = bag
+        self._filename = filename
+        self._prefix   = ""
+        if self._use_prefix:
+            self._prefix = "%s%s:%s" % (self.PREFIX_START, filename, self.PREFIX_END)
+
+        topicdata = bag.get_type_and_topic_info().topics
+        self._msgtypes  = {k: v.msg_type      for k, v in topicdata.items()}
+        self._msgtotals = {k: v.message_count for k, v in topicdata.items()}
+
+        dct = filter_dict(self._msgtypes, self._args.TOPICS, self._args.TYPES)
+        dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
+        self._topics = list(dct)
+
+        args = self._args = copy.deepcopy(self._args0)
+        if args.START_TIME is not None:
+            args.START_TIME = make_bag_time(args.START_TIME, bag)
+        if args.END_TIME is not None:
+            args.END_TIME = make_bag_time(args.END_TIME, bag)
+
+
+    def init_colors(self):
+        """Initializes terminal for color output, or disables color output if unsupported."""
+        do_color = ("never" != self._args.COLOR)
+        try:
+            curses.setupterm()
+            if do_color and not sys.stdout.isatty():
+                raise Exception()
+        except Exception:
+            do_color = ("always" == self._args.COLOR)
+        with contextlib.suppress(Exception):
+            self._width = curses.initscr().getmaxyx()[1]
+            curses.endwin()
+
+        if do_color:
+            self.HIGHLIGHT_START, self.HIGHLIGHT_END = self.STYLE_HIGHLIGHT, self.STYLE_RESET
+            self.LOWLIGHT_START,  self.LOWLIGHT_END  = self.STYLE_LOWLIGHT,  self.STYLE_RESET
+            self.PREFIX_START,    self.PREFIX_END    = self.STYLE_SPECIAL,   self.STYLE_RESET
+            self.ERROR_START,     self.ERROR_END     = self.STYLE_ERROR,     self.STYLE_RESET
+        else:
+            self.HIGHLIGHT_START, self.HIGHLIGHT_END = "", ""
+            self.LOWLIGHT_START,  self.LOWLIGHT_END  = "", ""
+            self.ERROR_START,     self.ERROR_END     = "", ""
+            self.PREFIX_START,    self.PREFIX_END    = "", ""
+
+        WRAPS = self._args.MATCH_WRAPPER
+        WRAPS = self.NOCOLOR_HIGHLIGHT_WRAPPERS if WRAPS is None and not do_color else WRAPS
+        WRAPS = ((WRAPS or [""]) * 2)[:2]
+        self.HIGHLIGHT_START = self.HIGHLIGHT_START + WRAPS[0]
+        self.HIGHLIGHT_END   = WRAPS[1] + self.HIGHLIGHT_END
+
+
+    def parse_patterns(self):
+        """Parses pattern arguments into re.Patterns."""
+        contents, errors, raw, case = [], [], self._args.RAW, self._args.CASE
+        for v in self._args.PATTERNS:
+            split = v.find("=", 1, -1)
+            v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
+            # Special case if '' or "": add pattern for matching empty string
+            v = (re.escape(v) if raw else v) + ("|^$" if v in ("''", '""') else "")
+            path = tuple(path.split(".")) if path else ()
+            try:
+                contents.append((path, re.compile("(%s)" % v, 0 if case else re.I)))
+            except re.error as e:
+                errors.append("'%s': %s" % (v, e))
+        if errors:
+            print()
+            self.print_error("Invalid regular expression.")
+            for err in errors:
+                self.print_error("  %s" % err)
+            sys.exit(1)
+        self._patterns["content"] = contents
+
+        prints,  noprints  = self._args.PRINT_FIELDS,  self._args.NOPRINT_FIELDS
+        selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
+        for key, vals in [("print",  prints),  ("noprint",  noprints),
+                          ("select", selects), ("noselect", noselects)]:
+            self._patterns[key] = []
+            for v in vals:
+                self._patterns[key].append((tuple(v.split(".")), wildcard_to_regex(v)))
+
+
+    def print_context(self, topic, count):
+        """Prints leading or trailing messages for match context."""
+        count = min(count, len(self._statuses[topic]))
+        for i, stamp in enumerate(list(self._statuses[topic])[-count:]) if count else ():
+            if self._statuses[topic].get(stamp) is None:
+                self.print_message(topic, stamp, shift=i - count + 1)
+                self._counts[topic][False] += 1
+
+
+    def print_message(self, topic, stamp, shift=0, matched=False):
+        """Prints separator line and message text."""
+        kws = dict(pref=self.LOWLIGHT_START, suff=self.LOWLIGHT_END, sep=self.META_SEP,
+                   topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp),
+                   index=self._counts[topic][None] + shift, total=self._msgtotals[topic])
+        if self._args.META:
+            print("{pref}{sep} Topic {topic} message {index}/{total} "
+                  "({type}, {stamp}){suff}".format(**kws))
+        elif any(x[True] or x[False] for x in self._counts.values()):
+            print("{pref}{sep}{suff}".format(**kws))
+        msg = self._messages[topic][stamp]
+        print(self.format_message(msg, highlight=matched))
+        self._statuses[topic][stamp] = matched
+
+
+    def print_bag_info(self):
+        """Prints bagfile metainfo if not already printed."""
+        if not self._header_done and self._args.META:
+            start, end = self._bag.get_start_time(), self._bag.get_end_time()
+            kws = dict(pref=self.LOWLIGHT_START, suff=self.LOWLIGHT_END, sep=self.META_SEP,
+                       file=self._filename, size=format_bytes(self._bag.size),
+                       mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
+                       start=format_stamp(start), end=format_stamp(end),
+                       delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+            print()
+            print("{pref}{sep} File {file} ({size}), {tcount} topics, "
+                  "{mcount:,d} messages{suff}".format(**kws))
+            print("{pref}{sep} File span {delta} ({start} - {end}){suff}".format(**kws))
+            self._header_done = True
+
+
+    def print_error(self, msg, *args):
+        """Prints error to stderr, in error colors if supported."""
+        msg = str(msg)
+        with contextlib.suppress(Exception):
+            msg = msg % args if args else msg
+        print(self.ERROR_START + msg + self.ERROR_END, file=sys.stderr)
+
+
+    def is_max_done(self, topic):
+        """Returns whether max count has been reached (and topic after-context printed)."""
+        result = False
+        if self._args.MAX_MATCHES:
+            if sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES \
+            and not self.has_in_window(topic, self._args.AFTER, status=None, full=True):
+                result = True
+        return result
+
+
+    def is_message_acceptable(self, topic):
+        """
+        Returns whether topic or total maximum count has not been reached
+        and current message in topic is in configured index range, if any.
+        """
+        if self._args.MAX_MATCHES \
+        and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
+            return False
+        if self._args.MAX_TOPIC_MATCHES \
+        and self._counts[topic][True] >= self._args.MAX_TOPIC_MATCHES:
+            return False
+        if self._args.MAX_TOPICS:
+            topics_matched = [t for t, x in self._counts.items() if x[True]]
+            if topic not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
+                return False
+        if self._args.START_INDEX:
+            START = self._args.START_INDEX
+            MIN = max(0, START + (self._msgtotals[topic] if START < 0 else 0))
+            if MIN >= self._counts[topic][None]:
+                return False
+        if self._args.END_INDEX:
+            END = self._args.END_INDEX
+            MAX = END + (self._msgtotals[topic] if END < 0 else 0)
+            if MAX < self._counts[topic][None]:
+                return False
+        return True
+
+
+    def has_in_window(self, topic, length, status, full=False):
+        """Returns whether given status exists in recent message window."""
+        if not length or full and len(self._statuses[topic]) < length:
+            return False
+        return status in list(self._statuses[topic].values())[-length:]
+
+
+    def make_matched_message(self, msg):
+        """
+        Returns message with matching field values converted to strings and
+        surrounded by markers, if all patterns find a match in message, else None.
+        """
+        scalar = lambda n: n[:n.index("[")] if "[" in n else n  # Returns bool from bool[10]
+
+        def wrap_matches(v, top):
+            """Returns string with parts matching patterns wrapped in marker tags."""
+            spans = []
+            for i, (path, p) in enumerate(self._patterns["content"]):
+                if not path or any(path == top[j:j + len(path)] for j in range(len(top))):
+                    for match in p.finditer(v):
+                        matched[i] = True
+                        spans.append(match.span())
+            spans = merge_spans(spans)
+            for a, b in reversed(spans):  # Work from last to first, indices stay the same
+                v = v[:a] + self.MATCH_START + v[a:b] + self.MATCH_END + v[b:]
+            return v
+
+        def decorate_message(obj, top=()):
+            """Recursively converts field values to pattern-matched strings."""
+            selects, noselects = self._patterns["select"], self._patterns["noselect"]
+            fieldmap = get_message_fields(obj)
+            fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
+            for k, t in fieldmap.items():
+                v, path = get_message_value(obj, k, t), top + (k, )
+                is_collection = isinstance(v, (list, tuple))
+                if hasattr(v, "__slots__"):
+                    decorate_message(v, path)
+                elif is_collection and scalar(t) not in self.BUILTIN_TYPES:
+                    setattr(obj, k, [decorate_message(x, path) for x in v])
+                else:
+                    v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
+                    # Omit collection brackets from match unless empty: allow matching "[]"
+                    v2 = wrap_matches(v1[1:-1] if is_collection and v else v1, path)
+                    v2 = "[%s]" % v2 if is_collection and v else v2
+                    if len(v1) != len(v2):
+                        setattr(obj, k, v2)
+            if not hasattr(obj, "__slots__"):
+                v1 = str(list(obj) if isinstance(obj, bytes) else obj)
+                v2 = wrap_matches(v1, top)
+                obj = v2 if len(v1) != len(v2) else obj
+            return obj
+
+        yml = str(msg)
+        if not all(any(p.finditer(yml)) for _, p in self._patterns["content"]):
+            return None  # Skip detailed matching if patterns not present at all
+
+        result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
+        decorate_message(result)
+        return result if len(matched) == len(self._patterns["content"]) else None
+
+
+    def message_to_yaml(self, val, top=(), typename=None):
+        """Returns ROS message (or other value) as YAML."""
+        # Refactored from genpy.message.strify_message().
+        scalar  = lambda n: n[:n.index("[")] if "[" in n else n  # Returns bool from bool[10]
+        unquote = lambda v, t: v[1:-1] if "string" != t and v[:1] == v[-1:] == '"' else v
+
+        def retag_match_lines(lines):
+            """Adds match tags to lines where wrapping separated start and end."""
+            for i, l in enumerate(lines):
+                startpos0, endpos0 = l.find(self.MATCH_START), l.rfind(self.MATCH_END)
+                startpos1, endpos1 = l.find(self.MATCH_START), l.rfind(self.MATCH_END)
+                if endpos0 >= 0 and (startpos0 < 0 or startpos0 > endpos0):
+                    lines[i] = self.MATCH_START + l
+                if startpos1 >= 0 and endpos1 < startpos1 and i + 1 < len(lines):
+                    lines[i + 1] = self.MATCH_START + lines[i + 1]
+            return lines
+
+        indent = "  " * len(top)
+        if isinstance(val, (int, float, bool)):
+            return str(val)
+        if isinstance(val, str):
+            if val in ("", self.MATCH_EMPTY):
+                return self.MATCH_EMPTY_REPL if val else "''"
+            # default_style='"' avoids trailing "...\n"
+            return yaml.safe_dump(val, default_style='"', width=sys.maxsize).rstrip("\n")
+        if isinstance(val, (list, tuple)):
+            if not val:
+                return "[]"
+            if "string" == scalar(typename):
+                yaml_str = yaml.safe_dump(val).rstrip('\n')
+                return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
+            vals = [x for v in val for x in [self.message_to_yaml(v, top, typename)] if x]
+            if scalar(typename) in self.NUMERIC_TYPES:
+                return "[%s]" % ", ".join(unquote(str(v), typename) for v in vals)
+            return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
+        if isinstance(val, (genpy.Message, genpy.TVal)):
+            FMTS = {"secs": "%10s", "nsecs": "%9s"} if isinstance(val, genpy.TVal) else {}
+            MATCHED_ONLY = self._args.MATCHED_FIELDS_ONLY and not self._args.LINES_AROUND_MATCH
+            vals, fieldmap = [], get_message_fields(val)
+            prints, noprints = self._patterns["print"], self._patterns["noprint"]
+            fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
+            for k, t in fieldmap.items():
+                v = self.message_to_yaml(get_message_value(val, k, t), top + (k, ), t)
+                if not v or MATCHED_ONLY and self.MATCH_START not in v:
+                    continue  # for k, t
+
+                v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
+                if scalar(t) in self.BUILTIN_TYPES:
+                    extra_indent = " " * len(indent + k + ": ")
+                    self._wrapper.reserve_width(self._prefix + extra_indent)
+                    v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
+                vals.append("%s%s: %s" % (indent, k, FMTS.get(k, "%s") % v))
+            return ("\n" if indent and vals else "") + "\n".join(vals)
+
+        return str(val)
+
+
+    def format_message(self, msg, highlight=False):
+        """Returns message as formatted string, optionally highlighted for matches."""
+        text = self.message_to_yaml(msg).rstrip("\n")
+
+        if self._use_prefix or self._args.START_LINE or self._args.END_LINE \
+        or self._args.MAX_MESSAGE_LINES or (self._args.LINES_AROUND_MATCH and highlight):
+            lines = text.splitlines()
+
+            if self._args.START_LINE or self._args.END_LINE or self._args.MAX_MESSAGE_LINES:
+                start = self._args.START_LINE or 0
+                start = max(start, -len(lines)) - (start > 0)  # <0 to sanity, >0 to 0-base
+                lines = lines[start:start + (self._args.MAX_MESSAGE_LINES or len(lines))]
+                lines = lines and (lines[:-1] + [lines[-1] + self.STYLE_RESET])
+
+            if self._args.LINES_AROUND_MATCH and highlight:
+                spans, NUM = [], self._args.LINES_AROUND_MATCH
+                for i, l in enumerate(lines):
+                    if self.MATCH_START in l:
+                        spans.append([max(0, i - NUM), min(i + NUM + 1, len(lines))])
+                    if self.MATCH_END in l and spans:
+                        spans[-1][1] = min(i + NUM + 1, len(lines))
+                lines = sum((lines[a:b - 1] + [lines[b - 1] + self.STYLE_RESET]
+                             for a, b in merge_spans(spans)), [])
+
+            if self._use_prefix:
+                lines = [self._prefix + l for l in lines]
+
+            text = "\n".join(lines)
+
+        if highlight:  # Cannot use ANSI codes before YAML, they get transformed
+            text = text.replace(self.MATCH_START, self.HIGHLIGHT_START)
+            text = text.replace(self.MATCH_END,   self.HIGHLIGHT_END)
+
+        return text
+
+
+def filter_dict(dct, keys=(), values=(), reverse=False):
+    """
+    Filters string dictionary by keys and values,
+    retaining only entries that find a match (supports * wildcards).
+    If reverse, retains only entries that do not find a match.
+    """
+    result = {}
+    kpatterns = [wildcard_to_regex(x) for x in keys]
+    vpatterns = [wildcard_to_regex(x) for x in values]
+    for k, v in dct.items() if not reverse else ():
+        if  (not keys   or k in keys   or any(p.match(k) for p in kpatterns)) \
+        and (not values or v in values or any(p.match(v) for p in vpatterns)):
+            result[k] = v
+    for k, v in dct.items() if reverse else ():
+        if  (k not in keys   and not any(p.match(k) for p in kpatterns)) \
+        and (v not in values and not any(p.match(v) for p in vpatterns)):
+            result[k] = v
+    return result
+
+
+def filter_fields(fieldmap, top=(), include=(), exclude=()):
+    """
+    Returns fieldmap filtered by include and exclude patterns.
+
+    @param   fieldmap  {field name: field type name}
+    @param   top       parent path as (rootattr, ..)
+    @param   include   [((nested, path), re.Pattern())]
+    @param   exclude   [((nested, path), re.Pattern())]
+    """
+    result = {} if include or exclude else fieldmap
+    for k, v in fieldmap.items() if not result else ():
+        trail, trailstr = top + (k, ), ".".join(top + (k, ))
+        for is_exclude, patterns in enumerate((include, exclude)):
+            matches = any(p[:len(trail)] == trail[:len(p)] or r.match(trailstr)
+                          for p, r in patterns)  # Match by beginning or wildcard pattern
+            if patterns and (not matches if is_exclude else matches):
+                result[k] = v
+            elif patterns and is_exclude and matches:
+                result.pop(k, None)
+            if include and exclude and k not in result:  # Failing to include takes precedence
+                break  # for is_exclude
+    return result
+
+
+def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
+    """
+    Yields filenames from current directory or given paths.
+    Seeks only files with given extensions if names not given.
+
+    @param   names            list of specific files to return (supports * wildcards)
+    @param   paths            list of paths to look under, if not using current directory
+    @param   extensions       list of extensions to select if not using names, as (".ext1", ..)
+    @param   skip_extensions  list of extensions to skip if not using names, as (".ext1", ..)
+    @param   recurse          whether to recurse into subdirectories
+    """
+    def iter_files(path):
+        """Yields matching filenames from path."""
+        for path in glob.glob(path):  # Expand * wildcards, if any
+            for n in names:
+                p = n if not paths or n.startswith(os.sep) else os.path.join(path, n)
+                yield from (f for f in glob.glob(p) if "*" not in n
+                            or not any(map(f.endswith, skip_extensions)))
+            for root, _, files in os.walk(path) if not names else ():
+                yield from (os.path.join(root, f) for f in files
+                            if (not extensions or any(map(f.endswith, extensions)))
+                            and not any(map(f.endswith, skip_extensions)))
+                if not recurse:
+                    break  # for root
+
+    processed = {}  # {abspath: True}
+    for f in (f for p in paths or ["."] for f in iter_files(p)):
+        if os.path.abspath(f) not in processed:
+            processed[os.path.abspath(f)] = True
+            yield f
+
+
+def format_timedelta(delta):
+    """Formats the datetime.timedelta as "3d 40h 23min 23.1sec"."""
+    dd, rem = divmod(delta.total_seconds(), 24*3600)
+    hh, rem = divmod(rem, 3600)
+    mm, ss  = divmod(rem, 60)
+    items = []
+    for c, n in (dd, "d"), (hh, "h"), (mm, "min"), (ss, "sec"):
+        f = "%d" % c if "sec" != n else str(round(c, 9)).rstrip("0").rstrip(".")
+        if f != "0": items += [f + n]
+    return " ".join(items or ["0sec"])
+
+
+def format_bytes(size, precision=2, inter=" "):
+    """Returns a formatted byte size (e.g. 421.45 MB)."""
+    result = "0 bytes"
+    if size:
+        UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
+        exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
+        result = "%.*f" % (precision, size / (1024. ** exponent))
+        result += "" if precision > 0 else "."  # Do not strip integer zeroes
+        result = result.rstrip("0").rstrip(".") + inter + UNITS[exponent]
+    return result
+
+
+def format_stamp(stamp):
+    """Returns ISO datetime from rospy.Time or UNIX timestamp."""
+    stamp = stamp if isinstance(stamp, (int, float)) else stamp.to_sec()
+    return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
+
+
+def get_message_fields(msg):
+    """Returns {field name: field type name} if ROS message, else {}."""
+    names = getattr(msg, "__slots__", [])
+    if isinstance(msg, (rospy.Time, rospy.Duration)):  # Empty __slots__
+        names = genpy.TVal.__slots__
+    return dict(zip(names, getattr(msg, "_slot_types", [])))
+
+
+def get_message_value(msg, name, typename):
+    """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
+    v = getattr(msg, name)
+    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+
+
+def make_bag_time(stamp, bag):
+    """Returns timestamp as rospy.Time, adjusted to bag start/end time if numeric."""
+    shift = 0 if isinstance(stamp, datetime.datetime) else \
+            bag.get_end_time() if stamp < 0 else bag.get_start_time()
+    stamp = stamp.timestamp() if isinstance(stamp, datetime.datetime) else stamp
+    return rospy.Time(stamp + shift)
+
+
+def merge_spans(spans):
+    """Returns a sorted list of (start, end) spans with overlapping spans merged."""
+    result = sorted(spans)
+    result, rest = result[:1], result[1:]
+    for span in rest:
+        if span[0] <= result[-1][1]:
+            result[-1] = (result[-1][0], max(span[1], result[-1][1]))
+        else:
+            result.append(span)
+    return result
+
+
+def parse_datetime(text):
+    """Returns datetime object from ISO datetime string (may be partial). Raises if invalid."""
+    BASE = datetime.datetime.min.isoformat()
+    return datetime.datetime.fromisoformat(text + BASE[len(text):])
+
+
+def wildcard_to_regex(text):
+    """Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I)."""
+    return re.compile(".*".join(map(re.escape, text.split("*"))), re.I)
+
+
+def main():
+    """Parses arguments and runs search, returns {filename: count matched}."""
+    kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
+               formatter_class=argparse.RawTextHelpFormatter)
+    argparser = argparse.ArgumentParser(**kws)
+    for arg in map(dict, ARGUMENTS["arguments"]):
+        argparser.add_argument(*arg.pop("args"), **arg)
+    for group, groupargs in ARGUMENTS.get("groups", {}).items():
+        grouper = argparser.add_argument_group(group)
+        for arg in map(dict, groupargs):
+            grouper.add_argument(*arg.pop("args"), **arg)
+    args, _ = argparser.parse_known_args()
+    return BagSearcher().search(args)
+
+
+if "__main__" == __name__:
+    try:
+        results = main()  # {filename: count matched}
+    except (BrokenPipeError, KeyboardInterrupt):
+        # Redirect remaining output to devnull to avoid another BrokenPipeError
+        with contextlib.suppress(Exception):
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    else:
+        with contextlib.suppress(Exception):
+            # Piping cursed output to `more` remains paging if nothing is printed
+            not any(results.values()) and not sys.stdout.isatty() and print()

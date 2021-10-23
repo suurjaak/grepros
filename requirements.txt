@@ -1,0 +1,2 @@
+# Not pip-installable: genpy, rosbag, rospy
+pyyaml
