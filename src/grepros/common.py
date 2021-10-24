@@ -116,12 +116,12 @@ class ConsolePrinter:
 
     @classmethod
     def debug(cls, text, *args):
-        """Prints debug text to stdout if verbose."""
+        """Prints debug text to stderr if verbose."""
         if cls.VERBOSE:
             text = str(text)
             with contextlib.suppress(Exception):
                 text = text % args if args else text
-            print(cls.LOWLIGHT_START + text + cls.LOWLIGHT_END)
+            print(cls.LOWLIGHT_START + text + cls.LOWLIGHT_END, file=sys.stderr)
 
 
 class TextWrapper(textwrap.TextWrapper):

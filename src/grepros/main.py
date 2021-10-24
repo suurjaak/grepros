@@ -225,6 +225,9 @@ print only header stamp and values:
         dict(args=["--no-filename"], dest="FILENAME", action="store_false",
              help="do not print bag filename prefix on each console line"),
 
+        dict(args=["--no-console-output"], dest="SKIP_CONSOLE", action="store_true",
+             help="do not print matches to console"),
+
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during publish or bag output"),
 
@@ -316,14 +319,15 @@ def validate_args(args):
 def run():
     """Parses arguments and runs search."""
     args, _ = make_parser().parse_known_args()
+    ConsolePrinter.configure(args)
     if not validate_args(args):
         sys.exit(1)
 
-    ConsolePrinter.configure(args)
-    incls  = inputs.TopicSource if args.LIVE else inputs.BagSource
-    outcls = outputs.TopicSink if args.PUBLISH else outputs.BagSink if args.OUTBAG else \
-             outputs.ConsoleSink
-    searcher, source, sink = search.Searcher(args), incls(args), outcls(args)
+    cls = inputs.TopicSource if args.LIVE else inputs.BagSource
+    searcher, source, sink = search.Searcher(args), cls(args), outputs.MultiSink(args)
+    if not sink.sinks:
+        ConsolePrinter.error("No output configured.")
+        sys.exit(1)
 
     try:
         matched = searcher.search(source, sink)
@@ -333,7 +337,8 @@ def run():
             os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     else:
         with contextlib.suppress(Exception):
-            if outcls is outputs.ConsoleSink and not matched and not sys.stdout.isatty():
+            if any(isinstance(s, outputs.ConsoleSink) for s in sink.sinks) \
+            and not matched and not sys.stdout.isatty():
                 # Piping cursed output to `more` remains paging if nothing is printed
                 print()
 

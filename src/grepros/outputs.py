@@ -339,3 +339,32 @@ class TopicSink(SinkBase):
                                  sum(self._counts.values()), len(set(self._pubs.values())))
         for t in list(self._pubs):
             self._pubs.pop(t).unregister()
+
+
+class MultiSink(SinkBase):
+    """Combines any number of sinks."""
+
+    def __init__(self, args):
+        super().__init__(args)
+        self.sinks = []
+        if args.PUBLISH:
+            self.sinks.append(TopicSink(args))
+        if args.OUTBAG:
+            self.sinks.append(BagSink(args))
+        if not args.SKIP_CONSOLE:
+            self.sinks.append(TopicSink(args))
+
+    def emit_source(self):
+        """Outputs source metainfo in all sinks if not already emitted."""
+        for sink in self.sinks:
+            sink.emit_source()
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Outputs ROS message to all sinks."""
+        for sink in self.sinks:
+            sink.emit(topic, index, stamp, msg, match)
+
+    def close(self):
+        """Closes all sinks."""
+        for sink in self.sinks:
+            sink.close()

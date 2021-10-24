@@ -262,10 +262,10 @@ class TopicSource(SourceBase):
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
-        if args.START_TIME is not None:
-            args.START_TIME = make_live_time(args.START_TIME)
-        if args.END_TIME is not None:
-            args.END_TIME = make_live_time(args.END_TIME)
+        if self._args.START_TIME is not None:
+            self._args.START_TIME = make_live_time(self._args.START_TIME)
+        if self._args.END_TIME is not None:
+            self._args.END_TIME = make_live_time(self._args.END_TIME)
 
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS master."""
