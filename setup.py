@@ -5,7 +5,9 @@ from catkin_pkg.python_setup import generate_distutils_setup
 
 # fetch values from package.xml
 setup_args = generate_distutils_setup(
-    packages=['baggrep'],
-    scripts=["scripts/grep4ros"])
-
+    install_requires=["pyyaml"],
+    packages=["grepros"],
+    package_dir={"": "src"},
+    scripts=["scripts/grepros"]
+)
 setup(**setup_args)

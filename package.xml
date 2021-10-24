@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>grep4ros</name>
+  <name>grepros</name>
   <version>0.1.0</version>
   <description>grep for rosbags</description>
 
   <maintainer email="erki@lap.ee">Erki Suurjaak</maintainer>
   <author email="erki@lap.ee">Erki Suurjaak</author>
-  <url type="website">https://github.com/suurjaak/grep4ros</url>
+  <url type="website">https://github.com/suurjaak/grepros</url>
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>

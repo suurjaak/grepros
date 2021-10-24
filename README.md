@@ -1,5 +1,5 @@
-grep4ros
-========
+grepros
+=======
 
 grep for rosbags (ROS 1).
 
@@ -9,31 +9,31 @@ Example usage
 
 Search for "my text" in all bags under current directory and subdirectories:
 
-    grep4ros -r "my text"
+    grepros -r "my text"
 
 Print 30 lines of the first message from each topic in my.bag:
 
-    grep4ros ".*" --messages-per-topic 1 --lines-per-message 30 -n my.bag
+    grepros ".*" --messages-per-topic 1 --lines-per-message 30 -n my.bag
 
 Find first message containing "future" (case-insensitive) in my.bag:
 
-    grep4ros future -I -m 1 -n my.bag
+    grepros future -I -m 1 -n my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory:
 
-    grep4ros frame_id=map -d geometry* -m 10
+    grepros frame_id=map -d geometry* -m 10
 
 Find messages with field "key" containing "0xA002",
 in topics ending with "diagnostics", in bags under "/tmp":
 
-    grep4ros key=0xA002 -t *diagnostics -p /tmp
+    grepros key=0xA002 -t *diagnostics -p /tmp
 
 Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
 
-    grep4ros -d diagnostic_msgs/* -sf name message \
+    grepros -d diagnostic_msgs/* -sf name message \
              -pf header.stamp status.values -- navigation
 
 
