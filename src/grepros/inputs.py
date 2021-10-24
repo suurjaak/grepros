@@ -14,12 +14,17 @@ Released under the BSD License.
 import copy
 import collections
 import datetime
+import functools
+import queue
+import threading
+import time
 
 import rosbag
+import roslib
 import rospy
 
 from . common import ConsolePrinter, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, make_bag_time
+                     format_stamp, format_timedelta, make_bag_time, make_live_time
 
 
 class SourceBase:
@@ -33,7 +38,7 @@ class SourceBase:
 
         self.sink = None
 
-    def __iter__(self):
+    def read(self):
         """Yields messages from source, as (topic, msg, rospy.Time)."""
 
     def bind(self, sink):
@@ -43,13 +48,21 @@ class SourceBase:
     def close(self):
         """Shuts down input, closing any files or connections."""
 
+    def get_batch(self):
+        """Returns source batch identifier if any (e.g. bagfile name if BagSource)."""
+
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo dict, for console output."""
         return dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp), index=index)
 
-    def is_processable(self, topic, index):
-        """Returns whether current message in topic is in acceptable index range."""
+    def is_processable(self, topic, index, stamp):
+        """Returns whether specified message in topic is in acceptable range."""
+        if self._args.START_TIME and stamp < self._args.START_TIME:
+            return False
+        if self._args.END_TIME and stamp > self._args.END_TIME:
+            return False
         return True
+
 
     def notify(self, status):
         """Reports match status of last produced message."""
@@ -75,7 +88,7 @@ class BagSource(SourceBase):
         self.bag      = None   # Current rosbag.Bag instance
         self.filename = None   # Current bagfile path
 
-    def __iter__(self):
+    def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, rospy.Time)."""
         self._running = True
         files, paths = self._args.FILES, self._args.PATHS
@@ -83,31 +96,14 @@ class BagSource(SourceBase):
         for filename in find_files(files, paths, exts, skip_exts, recurse=self._args.RECURSE):
             if not self._configure(filename) or not self._topics:
                 continue  # for filename
-            yield from self._produce(self._topics, self._args.START_TIME, self._args.END_TIME)
+            yield from self._produce(self._topics)
             if not self._running:
                 break  # for filename
         self._running = False
 
-    def _produce(self, topics, start_time=None, end_time=None):
-        """Yields messages from current ROS bagfile, as (topic, msg, rospy.Time)."""
-        counts = collections.defaultdict(int)
-        for topic, msg, stamp in self.bag.read_messages(topics, start_time, end_time):
-            if not self._running:
-                break  # for topic
-
-            counts[topic], self._counts[topic] = counts[topic] + 1, self._counts[topic] + 1
-            # Skip messages already processed during sticky
-            if not self._sticky and counts[topic] != self._counts[topic]:
-                continue  # for topic
-
-            self._status = None
-            yield topic, msg, stamp
-
-            if self._status and self._args.AFTER and not self._sticky and len(self._topics) > 1:
-                # Stick to one topic until trailing messages have been emitted
-                self._sticky = True
-                yield from self._produce([topic], stamp + rospy.Duration(nsecs=1), end_time)
-                self._sticky = False
+    def get_batch(self):
+        """Returns current bagfile name."""
+        return self.filename
 
     def close(self):
         """Closes current bag, if any."""
@@ -131,8 +127,8 @@ class BagSource(SourceBase):
         """Reports match status of last produced message."""
         self._status = bool(status)
 
-    def is_processable(self, topic, index):
-        """Returns whether current message in topic is in acceptable index range."""
+    def is_processable(self, topic, index, stamp):
+        """Returns whether specified message in topic is in acceptable range."""
         if self._args.START_INDEX:
             START = self._args.START_INDEX
             MIN = max(0, START + (self._msgtotals[topic] if START < 0 else 0))
@@ -143,7 +139,28 @@ class BagSource(SourceBase):
             MAX = END + (self._msgtotals[topic] if END < 0 else 0)
             if MAX < index:
                 return False
-        return True
+        return super().is_processable(topic, index, stamp)
+
+    def _produce(self, topics):
+        """Yields messages from current ROS bagfile, as (topic, msg, rospy.Time)."""
+        counts = collections.defaultdict(int)
+        for topic, msg, stamp in self.bag.read_messages(topics):
+            if not self._running:
+                break  # for topic
+
+            counts[topic], self._counts[topic] = counts[topic] + 1, self._counts[topic] + 1
+            # Skip messages already processed during sticky
+            if not self._sticky and counts[topic] != self._counts[topic]:
+                continue  # for topic
+
+            self._status = None
+            yield topic, msg, stamp
+
+            if self._status and self._args.AFTER and not self._sticky and len(self._topics) > 1:
+                # Stick to one topic until trailing messages have been emitted
+                self._sticky = True
+                yield from self._produce([topic], stamp + rospy.Duration(nsecs=1))
+                self._sticky = False
 
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
@@ -172,3 +189,91 @@ class BagSource(SourceBase):
         if args.END_TIME is not None:
             args.END_TIME = make_bag_time(args.END_TIME, bag)
         return True
+
+
+class TopicSource(SourceBase):
+    """Produces messages from live ROS topics."""
+
+    """Seconds between refreshing available topics from ROS master."""
+    MASTER_INTERVAL = 2
+
+    def __init__(self, args):
+        super().__init__(args)
+
+        self._master  = None   # rospy.MasterProxy instance
+        self._running = False  # Whether is currently yielding messages from topics
+        self._queue   = None   # [(topic, msg, rospy.Time)]
+        self._subs    = {}     # {topic: rospy.Subscriber}
+
+        self._configure()
+
+    def read(self):
+        """
+        Yields messages from subscribed ROS topics, as (topic, msg, rospy.Time).
+        """
+        rospy.init_node("grepros", anonymous=True, disable_signals=True)
+
+        if not self._running:
+            self.refresh_master()
+            self._running = True
+            self._queue = queue.Queue()
+            self._master = rospy.client.get_master()
+            threading.Thread(target=self._run_refresh, daemon=True)
+
+        while self._running:
+            topic, msg, stamp = self._queue.get()
+            if topic:
+                yield topic, msg, stamp
+        self._queue = None
+        self._running = False
+
+    def close(self):
+        """Shuts down subscribers and stops producing messages."""
+        self._running = False
+        for t in list(self._subs):
+            self._subs.pop(t).unregister()
+        self._queue and self._queue.put((None, None, None))  # Wake up iterator
+        self._queue = None
+        self._msgtypes.clear()
+
+    def is_processable(self, topic, index, stamp):
+        """Returns whether specified message in topic is in acceptable range."""
+        if self._args.START_INDEX:
+            if max(0, self._args.START_INDEX) >= index:
+                return False
+        if self._args.END_INDEX:
+            if 0 < self._args.END_INDEX < index:
+                return False
+        return super().is_processable(topic, index, stamp)
+
+    def refresh_master(self):
+        """Refreshes topics and subscriptions from ROS master."""
+        for topic, typename in self._master.getTopicTypes()[-1]:
+            if topic in self._msgtypes:
+                continue  # for topic
+            dct = filter_dict({topic: typename}, self._args.TOPICS, self._args.TYPES)
+            dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
+            if dct:
+                cls = roslib.message.get_message_class(typename)
+                handler = functools.partial(self._on_message, topic)
+                sub = rospy.Subscriber(topic, cls, handler, queue_size=self._args.QUEUE_SIZE_IN)
+                self._subs[topic] = sub
+            self._msgtypes[topic] = typename
+
+    def _configure(self):
+        """Adjusts start/end time filter values to current time."""
+        if args.START_TIME is not None:
+            args.START_TIME = make_live_time(args.START_TIME)
+        if args.END_TIME is not None:
+            args.END_TIME = make_live_time(args.END_TIME)
+
+    def _run_refresh(self):
+        """Periodically refreshes topics and subscriptions from ROS master."""
+        time.sleep(self.MASTER_INTERVAL)
+        while self._running:
+            self.refresh_master()
+            time.sleep(self.MASTER_INTERVAL)
+
+    def _on_message(self, topic, msg):
+        """Subscription callback handler, queues message for yielding."""
+        self._queue and self._queue.put((topic, msg, rospy.get_rostime()))

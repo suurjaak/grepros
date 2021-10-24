@@ -13,6 +13,8 @@
 
   <depend>genpy</depend>
   <depend>rosbag</depend>
+  <depend>roslib</depend>
+  <depend>rosmsg</depend>
   <depend>rospy</depend>
   <depend>python3-yaml</depend>
 

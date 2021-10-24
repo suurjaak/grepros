@@ -15,6 +15,7 @@ import atexit
 import collections
 import contextlib
 import copy
+import os
 import sys
 
 import genpy
@@ -254,3 +255,87 @@ class ConsoleSink(SinkBase):
         wrapargs = dict(max_lines=args.MAX_FIELD_LINES, width=ConsolePrinter.WIDTH,
                         placeholder="%s ...%s" % (LL0, LL1))
         self._wrapper = TextWrapper(custom_widths, **wrapargs)
+
+
+
+class BagSink(SinkBase):
+    """Writes messages to bagfile."""
+
+    def __init__(self, args):
+        super().__init__(args)
+        self._bag  = None
+        self._counts = {}  # {topic: count}
+        self._close_printed = False
+
+        atexit.register(self.close)
+
+    def emit(self, topic, index, stamp, msg, match):
+        if not self._bag:
+            if os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG):
+                ConsolePrinter.debug("Appending to bag %s.", self._args.OUTBAG)
+                self._bag = rosbag.Bag(self._args.OUTBAG, "a")
+            else:
+                ConsolePrinter.debug("Creating bag %s.", self._args.OUTBAG)
+                self._bag = rosbag.Bag(self._args.OUTBAG, "w")
+
+        if topic not in self._counts:
+            ConsolePrinter.debug("Adding topic %s.", topic)
+            self._counts[topic] = 0
+
+        self._counts[topic] += 1
+        self._bag.write(topic, msg, stamp)
+
+    def close(self):
+        """Closes output bag, if any."""
+        self._bag and self._bag.close()
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
+                                 sum(self._counts.values()), len(self._counts), self._args.OUTBAG)
+
+
+
+class TopicSink(SinkBase):
+    """Publishes messages to ROS topics."""
+
+    def __init__(self, args):
+        """
+        @param   args.QUEUE_SIZE_OUT    publisher queue size
+        @param       .PUBLISH_PREFIX    output topic prefix, prepended to input topic
+        @param       .PUBLISH_SUFFIX    output topic suffix, appended to output topic
+        @param       .PUBLISH_FIXNAME   single output topic name to publish to,
+                                        overrides prefix and suffix if given
+        """
+        super().__init__(args)
+        self._pubs   = {}  # {(intopic, cls): rospy.Publisher}
+        self._counts = {}  # {topic: count}
+        self._close_printed = False
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Publishes message to output topic."""
+        rospy.init_node("grepros", anonymous=True, disable_signals=True)
+
+        key, cls = (topic, type(msg)), type(msg)
+        if key not in self._pubs:
+            topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
+            topic2 = self._args.PUBLISH_FIXNAME or topic2
+            ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
+
+            pub = None
+            if self._args.PUBLISH_FIXNAME:
+                pub = next((v for (_, c), v in self._pubs.items() if c == cls), None)
+            pub = pub or rospy.Publisher(topic2, cls, queue_size=self._args.QUEUE_SIZE_OUT)
+            self._pubs[key] = pub
+            self._counts.setdefault(topic, 0)
+
+        self._counts[topic] += 1
+        self._pubs[key].publish(msg)
+
+    def close(self):
+        """Shuts down publishers."""
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
+                                 sum(self._counts.values()), len(set(self._pubs.values())))
+        for t in list(self._pubs):
+            self._pubs.pop(t).unregister()

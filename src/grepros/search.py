@@ -47,15 +47,21 @@ class Searcher:
         """
         source.bind(sink), sink.bind(source)
 
-        counter = 0
-        for topic, msg, stamp in source:
+        counter, total, batch = 0, 0, None
+        for topic, msg, stamp in source.read():
+            if batch != source.get_batch():
+                total += sum(x[True] for x in self._counts.values())
+                for d in (self._counts, self._messages, self._stamps, self._statuses):
+                    d.clear()
+                counter, batch = 0, source.get_batch()
+
             msgid = counter = counter + 1
             self._counts[topic][None] += 1
             self._messages[topic][msgid] = msg
             self._stamps  [topic][msgid] = stamp
             self._statuses[topic][msgid] = None
 
-            matched = self._is_processable(source, topic) and self.get_match(msg)
+            matched = self._is_processable(source, topic, stamp) and self.get_match(msg)
             if matched:
                 self._statuses[topic][msgid] = True
                 self._counts[topic][True] += 1
@@ -75,14 +81,14 @@ class Searcher:
                 break  # for topic
 
         source.close(), sink.close()
-        return sum(x[True] for x in self._counts.values())
+        return total + sum(x[True] for x in self._counts.values())
 
 
-    def _is_processable(self, source, topic):
+    def _is_processable(self, source, topic, stamp):
         """
         Returns whether processing current message in topic is acceptable:
         that topic or total maximum count has not been reached,
-        and current message in topic is in configured index range, if any.
+        and current message in topic is in configured range, if any.
         """
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
@@ -94,7 +100,7 @@ class Searcher:
             topics_matched = [t for t, x in self._counts.items() if x[True]]
             if topic not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
                 return False
-        return source.is_processable(topic, self._counts[topic][None])
+        return source.is_processable(topic, self._counts[topic][None], stamp)
 
 
     def _prune_data(self, topic):

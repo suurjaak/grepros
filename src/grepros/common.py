@@ -60,6 +60,8 @@ class ConsolePrinter:
     PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  # Content line prefix wrappers
     ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  # Error message wrappers
 
+    VERBOSE = False  # Whether to print debug information
+
     WIDTH = shutil.get_terminal_size().columns
 
     @classmethod
@@ -71,7 +73,9 @@ class ConsolePrinter:
                      .MATCH_WRAPPER  string wrap around matched values,
                                      both sides if one value, start and end if more than one,
                                      or no wrapping if zero values (default ** in colorless output)
+                     .VERBOSE        whether to print debug information
         """
+        cls.VERBOSE = args.VERBOSE
         do_color = ("never" != args.COLOR)
         try:
             curses.setupterm()
@@ -108,6 +112,16 @@ class ConsolePrinter:
         with contextlib.suppress(Exception):
             text = text % args if args else text
         print(cls.ERROR_START + text + cls.ERROR_END, file=sys.stderr)
+
+
+    @classmethod
+    def debug(cls, text, *args):
+        """Prints debug text to stdout if verbose."""
+        if cls.VERBOSE:
+            text = str(text)
+            with contextlib.suppress(Exception):
+                text = text % args if args else text
+            print(cls.LOWLIGHT_START + text + cls.LOWLIGHT_END)
 
 
 class TextWrapper(textwrap.TextWrapper):
@@ -279,6 +293,13 @@ def make_bag_time(stamp, bag):
     """Returns timestamp as rospy.Time, adjusted to bag start/end time if numeric."""
     shift = 0 if isinstance(stamp, datetime.datetime) else \
             bag.get_end_time() if stamp < 0 else bag.get_start_time()
+    stamp = stamp.timestamp() if isinstance(stamp, datetime.datetime) else stamp
+    return rospy.Time(stamp + shift)
+
+
+def make_live_time(stamp):
+    """Returns timestamp as rospy.Time, adjusted to system time if numeric."""
+    shift = 0 if isinstance(stamp, datetime.datetime) else time.time()
     stamp = stamp.timestamp() if isinstance(stamp, datetime.datetime) else stamp
     return rospy.Time(stamp + shift)
 
