@@ -1,2 +1,2 @@
-# Not pip-installable: genpy, rosbag, rospy
+# Not pip-installable: genpy, rosbag, roslib, rosmsg, rospy
 pyyaml

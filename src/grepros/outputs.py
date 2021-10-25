@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Outputs for grep.
+Outputs for search results.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS message content.
+This file is part of grepros - grep for ROS1 bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
@@ -299,6 +299,9 @@ class BagSink(SinkBase):
 class TopicSink(SinkBase):
     """Publishes messages to ROS topics."""
 
+    """Node name used for subscribing to ROS topics."""
+    NODE_NAME = "grepros"
+
     def __init__(self, args):
         """
         @param   args.QUEUE_SIZE_OUT    publisher queue size
@@ -314,7 +317,7 @@ class TopicSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        rospy.init_node("grepros", anonymous=True, disable_signals=True)
+        rospy.init_node(self.NODE_NAME, anonymous=True, disable_signals=True)
 
         key, cls = (topic, type(msg)), type(msg)
         if key not in self._pubs:
@@ -366,7 +369,7 @@ class MultiSink(SinkBase):
             sink.emit(topic, index, stamp, msg, match)
 
     def bind(self, source):
-        """Attaches source to sink"""
+        """Attaches source to all sinks."""
         for sink in self.sinks:
             sink.bind(source)
 

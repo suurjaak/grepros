@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Input sources for grep.
+Input sources for search content.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS message content.
+This file is part of grepros - grep for ROS1 bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
@@ -29,7 +29,7 @@ from . common import ConsolePrinter, filter_dict, find_files, format_bytes, \
 
 
 class SourceBase(object):
-    """Producer base class."""
+    """Message producer base class."""
 
     def __init__(self, args):
         self._args = copy.deepcopy(args)
@@ -200,6 +200,9 @@ class TopicSource(SourceBase):
     """Seconds between refreshing available topics from ROS master."""
     MASTER_INTERVAL = 2
 
+    """Node name used for subscribing to ROS topics."""
+    NODE_NAME = "grepros"
+
     def __init__(self, args):
         super(TopicSource, self).__init__(args)
 
@@ -214,7 +217,7 @@ class TopicSource(SourceBase):
         """
         Yields messages from subscribed ROS topics, as (topic, msg, rospy.Time).
         """
-        rospy.init_node("grepros", anonymous=True, disable_signals=True)
+        rospy.init_node(self.NODE_NAME, anonymous=True, disable_signals=True)
 
         if not self._running:
             self.refresh_master()

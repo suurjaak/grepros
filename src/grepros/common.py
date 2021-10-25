@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Utilities.
+Common utilities.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS message content.
+This file is part of grepros - grep for ROS1 bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak

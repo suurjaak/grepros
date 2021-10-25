@@ -3,12 +3,12 @@
 Program main interface.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS message content.
+This file is part of grepros - grep for ROS1 bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.10.2021
+@modified    25.10.2021
 ------------------------------------------------------------------------------
 """
 import argparse
@@ -21,7 +21,7 @@ from . common import ConsolePrinter, parse_datetime
 
 
 ARGUMENTS = {
-    "description": "Searches through messages in ROS bag files or live topics.",
+    "description": "Searches through messages in ROS1 bag files or live topics.",
     "epilog":      """
 PATTERNs use Python regular expression syntax, message matches if all match.
 * wildcards in other arguments use simple globbing as zero or more characters,
@@ -31,32 +31,31 @@ target matches if any value matches.
 Example usage:
 
 Search for "my text" in all bags under current directory and subdirectories:
-    {PROGRAM} -r "my text"
+    grepros -r "my text"
 
 Print 30 lines of the first message from each live ROS topic:
-    {PROGRAM} ".*" --messages-per-topic 1 --lines-per-message 30 --live
+    grepros ".*" --messages-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
-    {PROGRAM} future -I -m 1 -n my.bag
+    grepros future -I -m 1 -n my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory:
-    {PROGRAM} frame_id=map -d geometry* -m 10
+    grepros frame_id=map -d geometry* -m 10
 
-Pipe all @todo from live ROS topics to my.bag
-    {PROGRAM} --write my.bag
+Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
+    grepros "CPU usage" -d *DiagnosticArray --no-console-output --write my.bag
 
 Find messages with field "key" containing "0xA002",
 in topics ending with "diagnostics", in bags under "/tmp":
-    {PROGRAM} key=0xA002 -t *diagnostics -p /tmp
+    grepros key=0xA002 -t *diagnostics -p /tmp
 
 Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
-    {PROGRAM} -d diagnostic_msgs/* -sf name message \\
-    {PINDENT} -pf header.stamp status.values -- navigation
-    """.format(PROGRAM=os.path.split(__file__)[-1],
-               PINDENT=" " * len(os.path.split(__file__)[-1])),
+    grepros -d diagnostic_msgs/* -sf name message \\
+            -pf header.stamp status.values -- navigation
+    """,
 
     "arguments": [
         dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
@@ -78,12 +77,10 @@ print only header stamp and values:
 
         dict(args=["--publish"],
              dest="PUBLISH", action="store_true",
-             help="publish matched messages to live ROS topics\n"
-                  "instead of printing to console"),
+             help="publish matched messages to live ROS topics"),
 
         dict(args=["--write"], dest="OUTBAG", default="",
-             help="write matched messages to specified bagfile\n"
-                  "instead of printing to console"),
+             help="write matched messages to specified bagfile"),
     ],
 
     "groups": {"Filtering": [
@@ -259,7 +256,8 @@ print only header stamp and values:
 
         dict(args=["--publish-fixname"],
              dest="PUBLISH_FIXNAME", metavar="TOPIC", default="",
-             help="single output topic name to publish all matches to"),
+             help="single output topic name to publish all matches to,\n"
+                  "overrides prefix and suffix"),
 
         dict(args=["--queue-size-in"],
              dest="QUEUE_SIZE_IN", metavar="SIZE", type=int, default=-1,
