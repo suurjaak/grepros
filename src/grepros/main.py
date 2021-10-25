@@ -12,7 +12,6 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 import argparse
-import contextlib
 import os
 import re
 import sys
@@ -290,10 +289,10 @@ def make_parser():
 
 def validate_args(args):
     """Validates arguments, prints errors, returns success."""
-    with contextlib.suppress(Exception):
-        args.START_TIME = float(args.START_TIME)
-    with contextlib.suppress(Exception):
-        args.END_TIME = float(args.END_TIME)
+    try: args.START_TIME = float(args.START_TIME)
+    except Exception: pass
+    try: args.END_TIME = float(args.END_TIME)
+    except Exception: pass
     if isinstance(args.START_TIME, str):
         args.START_TIME = parse_datetime(args.START_TIME)
     if isinstance(args.END_TIME, str):
@@ -329,18 +328,22 @@ def run():
         ConsolePrinter.error("No output configured.")
         sys.exit(1)
 
+    BREAK_EXS = (KeyboardInterrupt, )
+    try: BREAK_EXS += (BrokenPipeError, KeyboardInterrupt, )  # Py3
+    except NameError: pass  # Py2
     try:
         matched = searcher.search(source, sink)
-    except (BrokenPipeError, KeyboardInterrupt):
+    except BREAK_EXS:
         # Redirect remaining output to devnull to avoid another BrokenPipeError
-        with contextlib.suppress(Exception):
-            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        except Exception: pass
     else:
-        with contextlib.suppress(Exception):
+        try:
             if any(isinstance(s, outputs.ConsoleSink) for s in sink.sinks) \
             and not matched and not sys.stdout.isatty():
                 # Piping cursed output to `more` remains paging if nothing is printed
                 print()
+        except Exception: pass
 
 
 if "__main__" == __name__:

@@ -11,9 +11,9 @@ Released under the BSD License.
 @modified    23.10.2021
 ------------------------------------------------------------------------------
 """
+from __future__ import print_function
 import atexit
 import collections
-import contextlib
 import copy
 import os
 import sys
@@ -29,7 +29,7 @@ from . common import ROS_NUMERIC_TYPES, ROS_BUILTIN_TYPES, filter_fields, get_me
 from . import inputs
 
 
-class SinkBase:
+class SinkBase(object):
     """Output base class."""
 
     def __init__(self, args):
@@ -83,7 +83,7 @@ class ConsoleSink(SinkBase):
 
 
     def __init__(self, args):
-        super().__init__(args)
+        super(ConsoleSink, self).__init__(args)
         self.source = None
 
         self._use_prefix = False  # Whether to use bagfile prefix in output
@@ -226,9 +226,10 @@ class ConsoleSink(SinkBase):
 
     def _on_exit(self):
         """atexit callback, finalizes console output."""
-        with contextlib.suppress(Exception):
+        try:
             # Piping cursed output to `more` remains paging if nothing is printed
             not self._printed and not sys.stdout.isatty() and print()
+        except Exception: pass
 
 
     def _configure(self, args):
@@ -262,7 +263,7 @@ class BagSink(SinkBase):
     """Writes messages to bagfile."""
 
     def __init__(self, args):
-        super().__init__(args)
+        super(BagSink, self).__init__(args)
         self._bag  = None
         self._counts = {}  # {topic: count}
         self._close_printed = False
@@ -306,7 +307,7 @@ class TopicSink(SinkBase):
         @param       .PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
         """
-        super().__init__(args)
+        super(TopicSink, self).__init__(args)
         self._pubs   = {}  # {(intopic, cls): rospy.Publisher}
         self._counts = {}  # {topic: count}
         self._close_printed = False
@@ -345,7 +346,7 @@ class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
     def __init__(self, args):
-        super().__init__(args)
+        super(MultiSink, self).__init__(args)
         self.sinks = []
         if args.PUBLISH:
             self.sinks.append(TopicSink(args))

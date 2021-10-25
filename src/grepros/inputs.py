@@ -15,7 +15,8 @@ import copy
 import collections
 import datetime
 import functools
-import queue
+try: import queue  # Py3
+except ImportError: import Queue as queue  # Py2
 import threading
 import time
 
@@ -27,7 +28,7 @@ from . common import ConsolePrinter, filter_dict, find_files, format_bytes, \
                      format_stamp, format_timedelta, make_bag_time, make_live_time
 
 
-class SourceBase:
+class SourceBase(object):
     """Producer base class."""
 
     def __init__(self, args):
@@ -75,7 +76,7 @@ class BagSource(SourceBase):
     SKIP_EXTENSIONS = (".bag.orig.active", )
 
     def __init__(self, args):
-        super().__init__(args)
+        super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
         self._status    = None  # Match status of last produced message
         self._sticky    = False  # Scanning a single topic until all after-context emitted
@@ -96,7 +97,8 @@ class BagSource(SourceBase):
         for filename in find_files(files, paths, exts, skip_exts, recurse=self._args.RECURSE):
             if not self._configure(filename) or not self._topics:
                 continue  # for filename
-            yield from self._produce(self._topics)
+            for topic, msg, stamp in self._produce(self._topics):
+                yield topic, msg, stamp
             if not self._running:
                 break  # for filename
         self._running = False
@@ -139,12 +141,12 @@ class BagSource(SourceBase):
             MAX = END + (self._msgtotals[topic] if END < 0 else 0)
             if MAX < index:
                 return False
-        return super().is_processable(topic, index, stamp)
+        return super(BagSource, self).is_processable(topic, index, stamp)
 
-    def _produce(self, topics):
+    def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, rospy.Time)."""
         counts = collections.defaultdict(int)
-        for topic, msg, stamp in self.bag.read_messages(topics):
+        for topic, msg, stamp in self.bag.read_messages(topics, start_time):
             if not self._running:
                 break  # for topic
 
@@ -159,7 +161,8 @@ class BagSource(SourceBase):
             if self._status and self._args.AFTER and not self._sticky and len(self._topics) > 1:
                 # Stick to one topic until trailing messages have been emitted
                 self._sticky = True
-                yield from self._produce([topic], stamp + rospy.Duration(nsecs=1))
+                for entry in self._produce([topic], stamp + rospy.Duration(nsecs=1)):
+                    yield entry
                 self._sticky = False
 
     def _configure(self, filename):
@@ -198,7 +201,7 @@ class TopicSource(SourceBase):
     MASTER_INTERVAL = 2
 
     def __init__(self, args):
-        super().__init__(args)
+        super(TopicSource, self).__init__(args)
 
         self._master  = None   # rospy.MasterProxy instance
         self._running = False  # Whether is currently yielding messages from topics
@@ -218,7 +221,9 @@ class TopicSource(SourceBase):
             self._running = True
             self._queue = queue.Queue()
             self._master = rospy.client.get_master()
-            threading.Thread(target=self._run_refresh, daemon=True)
+            t = threading.Thread(target=self._run_refresh)
+            t.daemon = True
+            t.start()
 
         while self._running:
             topic, msg, stamp = self._queue.get()
@@ -244,7 +249,7 @@ class TopicSource(SourceBase):
         if self._args.END_INDEX:
             if 0 < self._args.END_INDEX < index:
                 return False
-        return super().is_processable(topic, index, stamp)
+        return super(TopicSource, self).is_processable(topic, index, stamp)
 
     def refresh_master(self):
         """Refreshes topics and subscriptions from ROS master."""

@@ -11,8 +11,9 @@ Released under the BSD License.
 @modified    23.10.2021
 ------------------------------------------------------------------------------
 """
-import builtins
-import contextlib
+from __future__ import print_function
+try: import builtins  # Py3
+except ImportError: import __builtin__ as builtins  # Py2
 import datetime
 import glob
 import math
@@ -22,6 +23,7 @@ import re
 import shutil
 import sys
 import textwrap
+import time
 try: import curses
 except ImportError: curses = None
 
@@ -62,7 +64,7 @@ class ConsolePrinter:
 
     VERBOSE = False  # Whether to print debug information
 
-    WIDTH = shutil.get_terminal_size().columns
+    WIDTH = 80
 
     @classmethod
     def configure(cls, args):
@@ -76,6 +78,8 @@ class ConsolePrinter:
                      .VERBOSE        whether to print debug information
         """
         cls.VERBOSE = args.VERBOSE
+        try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
+        except Exception: pass  # Py2
         do_color = ("never" != args.COLOR)
         try:
             curses.setupterm()
@@ -83,9 +87,10 @@ class ConsolePrinter:
                 raise Exception()
         except Exception:
             do_color = ("always" == args.COLOR)
-        with contextlib.suppress(Exception):
+        try:
             cls.WIDTH = curses.initscr().getmaxyx()[1]
             curses.endwin()
+        except Exception: pass
 
         if do_color:
             cls.HIGHLIGHT_START, cls.HIGHLIGHT_END = cls.STYLE_HIGHLIGHT, cls.STYLE_RESET
@@ -109,8 +114,8 @@ class ConsolePrinter:
     def error(cls, text, *args):
         """Prints error to stderr, in error colors if supported."""
         text = str(text)
-        with contextlib.suppress(Exception):
-            text = text % args if args else text
+        try: text = text % args if args else text
+        except Exception: pass
         print(cls.ERROR_START + text + cls.ERROR_END, file=sys.stderr)
 
 
@@ -119,8 +124,8 @@ class ConsolePrinter:
         """Prints debug text to stderr if verbose."""
         if cls.VERBOSE:
             text = str(text)
-            with contextlib.suppress(Exception):
-                text = text % args if args else text
+            try: text = text % args if args else text
+            except Exception: pass
             print(cls.LOWLIGHT_START + text + cls.LOWLIGHT_END, file=sys.stderr)
 
 
@@ -138,7 +143,7 @@ class TextWrapper(textwrap.TextWrapper):
         """
         @param   custom_widths  {substring: len} to use in line width calculation
         """
-        super().__init__(**{**self.DEFAULTS, **kwargs})
+        textwrap.TextWrapper.__init__(self, **dict(self.DEFAULTS, **kwargs))
         self._customs = custom_widths or {}
         self._realwidth = self.width
 
@@ -164,7 +169,7 @@ class TextWrapper(textwrap.TextWrapper):
         """Returns a list of wrapped text lines, without final newlines."""
         builtins.len = self.len
         try:
-            return super().wrap(text)
+            return textwrap.TextWrapper.wrap(self, text)
         finally:
             builtins.len = self.REALLEN
 
@@ -229,12 +234,14 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
         for path in glob.glob(path):  # Expand * wildcards, if any
             for n in names:
                 p = n if not paths or n.startswith(os.sep) else os.path.join(path, n)
-                yield from (f for f in glob.glob(p) if "*" not in n
-                            or not any(map(f.endswith, skip_extensions)))
+                for f in (f for f in glob.glob(p) if "*" not in n
+                          or not any(map(f.endswith, skip_extensions))):
+                    yield f
             for root, _, files in os.walk(path) if not names else ():
-                yield from (os.path.join(root, f) for f in files
-                            if (not extensions or any(map(f.endswith, extensions)))
-                            and not any(map(f.endswith, skip_extensions)))
+                for f in (os.path.join(root, f) for f in files
+                          if (not extensions or any(map(f.endswith, extensions)))
+                          and not any(map(f.endswith, skip_extensions))):
+                    yield f
                 if not recurse:
                     break  # for root
 
@@ -318,8 +325,11 @@ def merge_spans(spans):
 
 def parse_datetime(text):
     """Returns datetime object from ISO datetime string (may be partial). Raises if invalid."""
-    BASE = datetime.datetime.min.isoformat()
-    return datetime.datetime.fromisoformat(text + BASE[len(text):])
+    BASE = re.sub(r"\D", "", datetime.datetime.min.isoformat())  # "00010101000000"
+    text = re.sub(r"\D", "", text)
+    text += BASE[len(text):]
+    dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%I%S")
+    return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
 
 
 def wildcard_to_regex(text):
