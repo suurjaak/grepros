@@ -353,7 +353,7 @@ class MultiSink(SinkBase):
         if args.OUTBAG:
             self.sinks.append(BagSink(args))
         if not args.SKIP_CONSOLE:
-            self.sinks.append(TopicSink(args))
+            self.sinks.append(ConsoleSink(args))
 
     def emit_source(self):
         """Outputs source metainfo in all sinks if not already emitted."""
@@ -364,6 +364,11 @@ class MultiSink(SinkBase):
         """Outputs ROS message to all sinks."""
         for sink in self.sinks:
             sink.emit(topic, index, stamp, msg, match)
+
+    def bind(self, source):
+        """Attaches source to sink"""
+        for sink in self.sinks:
+            sink.bind(source)
 
     def close(self):
         """Closes all sinks."""
