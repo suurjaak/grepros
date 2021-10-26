@@ -111,22 +111,33 @@ class ConsolePrinter:
 
 
     @classmethod
-    def error(cls, text, *args):
-        """Prints error to stderr, in error colors if supported."""
+    def print(cls, text, *args, **kwargs):
+        """Prints text, formatted with args and kwargs."""
+        fileobj = kwargs.pop("__file", sys.stdout)
+        pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
         text = str(text)
         try: text = text % args if args else text
         except Exception: pass
-        print(cls.ERROR_START + text + cls.ERROR_END, file=sys.stderr)
+        try: text = text % kwargs if kwargs else text
+        except Exception: pass
+        try: text = text.format(*args, **kwargs) if args or kwargs else text
+        except Exception: pass
+        print(pref + text + suff, file=fileobj)
 
 
     @classmethod
-    def debug(cls, text, *args):
-        """Prints debug text to stderr if verbose."""
+    def error(cls, text, *args, **kwargs):
+        """Prints error to stderr, in error colors if supported."""
+        KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
+        cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+    @classmethod
+    def debug(cls, text, *args, **kwargs):
+        """Prints debug text to stderr if verbose, in lowlight colors if supported."""
         if cls.VERBOSE:
-            text = str(text)
-            try: text = text % args if args else text
-            except Exception: pass
-            print(cls.LOWLIGHT_START + text + cls.LOWLIGHT_END, file=sys.stderr)
+            KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
+            cls.print(text, *args, **dict(kwargs, **KWS))
 
 
 class TextWrapper(textwrap.TextWrapper):

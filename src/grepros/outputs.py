@@ -26,7 +26,6 @@ import yaml
 from . common import ConsolePrinter, MatchMarkers, TextWrapper
 from . common import ROS_NUMERIC_TYPES, ROS_BUILTIN_TYPES, filter_fields, get_message_fields, \
                      get_message_value, merge_spans, wildcard_to_regex
-from . import inputs
 
 
 class SinkBase(object):
@@ -34,13 +33,17 @@ class SinkBase(object):
 
     def __init__(self, args):
         self._args = copy.deepcopy(args)
+        self._batch_meta = {}  # {source batch: "source metadata"}
+        self._counts     = {}  # {topic: count}
 
         self.source = None
 
-    def emit_source(self):
-        """
-        Outputs source metainfo if not already emitted, e.g. bag header for console output.
-        """
+    def emit_meta(self):
+        """Prints source metainfo as debug stream if not already printed, e.g. bag header."""
+        batch = self._args.META and self.source.get_batch()
+        if self._args.META and batch not in self._batch_meta:
+            meta = self._batch_meta[batch] = self.source.get_meta()
+            meta and ConsolePrinter.debug(meta)
 
     def emit(self, topic, index, stamp, msg, match):
         """
@@ -51,9 +54,10 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with matched values tagged with markers, if matched
         """
+        self._counts[topic] = self._counts.get(topic, 0) + 1
 
     def bind(self, source):
-        """Attaches source to sink"""
+        """Attaches source to sink."""
         self.source = source
 
     def close(self):
@@ -63,72 +67,59 @@ class SinkBase(object):
 class ConsoleSink(SinkBase):
     """Prints messages to console."""
 
-    BAG_META_TEMPLATE = (
-        "\n{pref}{sep} File {file} ({size}), {tcount} topics, {mcount:,d} messages{suff}\n"
-        "{pref}{sep} File span {delta} ({start} - {end}){suff}"
-    )
+    META_LINE_TEMPLATE   = "{coloron}{sep} {line}{coloroff}"
+    MESSAGE_SEP_TEMPLATE = "{coloron}{sep}{coloroff}"
+    PREFIX_TEMPLATE      = "{coloron}{batch}{sep}{coloroff}"
+    MATCH_PREFIX_SEP     = ":"    # Printed after bag filename for matched message lines
+    CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
+    SEP                  = "---"  # Prefix of message separators and metainfo lines
 
-    MESSAGE_META_TEMPLATE = (
-        "{pref}{sep} Topic {topic} message {index} ({type}, {stamp}){suff}"
-    )
-    MESSAGE_META_TOTAL_TEMPLATE = (
-        "{pref}{sep} Topic {topic} message {index}/{total} ({type}, {stamp}){suff}"
-    )
-
-    MESSAGE_SEP_TEMPLATE = (
-        "{pref}{sep}{suff}"
-    )
-
-    META_SEP = "---"  # Prefix of metainfo lines
 
 
     def __init__(self, args):
         super(ConsoleSink, self).__init__(args)
-        self.source = None
 
         self._use_prefix = False  # Whether to use bagfile prefix in output
         self._prefix     = ""     # Printed before each message line (filename if grepping 1+ files)
         self._wrapper    = None   # TextWrapper instance
-        self._meta_done  = set()  # {bagfile path, }
         self._patterns   = {}     # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
         self._printed    = collections.defaultdict(int)  # {topic: count}
 
-        # {topic: {None: count processed, True: count matched, False: count printed as context}}
-        self._counts = collections.defaultdict(lambda: collections.defaultdict(int))
-
-        atexit.register(self._on_exit)
         self._configure(args)
 
 
-    def emit_source(self):
-        """
-        Outputs source metainfo if not already emitted: bag header if source is `BagSource`.
-        """
-        if not self._args.META or not isinstance(self.source, inputs.BagSource) \
-        or self.source.filename in self._meta_done:
-            return
-
-        kws = dict(pref=ConsolePrinter.LOWLIGHT_START, suff=ConsolePrinter.LOWLIGHT_END,
-                   sep=self.META_SEP, **self.source.get_meta())
-        print(self.BAG_META_TEMPLATE.format(**kws))
-        self._meta_done.add(self.source.filename)
+    def emit_meta(self):
+        """Prints source metainfo if not already printed, e.g. bag header."""
+        batch = self._args.META and self.source.get_batch()
+        if self._args.META and batch not in self._batch_meta:
+            meta = self._batch_meta[batch] = self.source.get_meta()
+            kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
+                       coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
+            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
+                             for x in meta.splitlines())
+            meta and ConsolePrinter.print(meta)
 
 
     def emit(self, topic, index, stamp, msg, match):
         """Prints separator line and message text."""
         self._prefix = ""
-        if self._use_prefix and isinstance(self.source, inputs.BagSource):
-            self._prefix = "%s%s:%s" % (ConsolePrinter.PREFIX_START, self.source.filename,
-                                        ConsolePrinter.PREFIX_END)
-        kws = dict(pref=ConsolePrinter.LOWLIGHT_START, suff=ConsolePrinter.LOWLIGHT_END,
-                   sep=self.META_SEP, **self.source.get_message_meta(topic, index, stamp, msg))
+        if self._use_prefix and self.source.get_batch():
+            sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
+            kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
+                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch())
+            self._prefix = self.PREFIX_TEMPLATE.format(**kws)
+        kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
+                   coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
         if self._args.META:
-            tpl = self.MESSAGE_META_TOTAL_TEMPLATE if "total" in kws else self.MESSAGE_META_TEMPLATE
-            print(tpl.format(**kws))
-        elif any(x[True] or x[False] for x in self._counts.values()):
-            # @todo see on tiba vale nüüd.
-            print(self.MESSAGE_SEP_TEMPLATE.format(**kws))
-        print(self.format_message(match or msg, highlight=bool(match)))
+            meta = self.source.get_message_meta(topic, index, stamp, msg)
+            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
+                             for x in meta.splitlines())
+            meta and ConsolePrinter.print(meta)
+        elif self._counts:
+            sep = self.MESSAGE_SEP_TEMPLATE.format(**kws)
+            sep and ConsolePrinter.print(sep)
+        ConsolePrinter.print(self.format_message(match or msg, highlight=bool(match)))
+        super(ConsoleSink, self).emit(topic, index, stamp, msg, match)
 
 
     def format_message(self, msg, highlight=False):
@@ -224,14 +215,6 @@ class ConsoleSink(SinkBase):
         return str(val)
 
 
-    def _on_exit(self):
-        """atexit callback, finalizes console output."""
-        try:
-            # Piping cursed output to `more` remains paging if nothing is printed
-            not self._printed and not sys.stdout.isatty() and print()
-        except Exception: pass
-
-
     def _configure(self, args):
         """Initializes output settings."""
         prints, noprints = args.PRINT_FIELDS, args.NOPRINT_FIELDS
@@ -271,6 +254,7 @@ class BagSink(SinkBase):
         atexit.register(self.close)
 
     def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output bagfile."""
         if not self._bag:
             if os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG):
                 ConsolePrinter.debug("Appending to bag %s.", self._args.OUTBAG)
@@ -281,13 +265,12 @@ class BagSink(SinkBase):
 
         if topic not in self._counts:
             ConsolePrinter.debug("Adding topic %s.", topic)
-            self._counts[topic] = 0
 
-        self._counts[topic] += 1
         self._bag.write(topic, msg, stamp)
+        super(BagSink, self).emit(topic, index, stamp, msg, match)
 
     def close(self):
-        """Closes output bag, if any."""
+        """Closes output bagfile, if any."""
         self._bag and self._bag.close()
         if not self._close_printed and self._counts:
             self._close_printed = True
@@ -312,7 +295,6 @@ class TopicSink(SinkBase):
         """
         super(TopicSink, self).__init__(args)
         self._pubs   = {}  # {(intopic, cls): rospy.Publisher}
-        self._counts = {}  # {topic: count}
         self._close_printed = False
 
     def emit(self, topic, index, stamp, msg, match):
@@ -348,20 +330,19 @@ class TopicSink(SinkBase):
 class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
+    CLASSES = {"PUBLISH": TopicSink, "OUTBAG": BagSink, "CONSOLE": ConsoleSink}
+
     def __init__(self, args):
         super(MultiSink, self).__init__(args)
-        self.sinks = []
-        if args.PUBLISH:
-            self.sinks.append(TopicSink(args))
-        if args.OUTBAG:
-            self.sinks.append(BagSink(args))
-        if not args.SKIP_CONSOLE:
-            self.sinks.append(ConsoleSink(args))
+        self.sinks = [cls(args) for flag, cls in self.CLASSES.items()
+                      if getattr(args, flag, False)]
 
-    def emit_source(self):
+    def emit_meta(self):
         """Outputs source metainfo in all sinks if not already emitted."""
-        for sink in self.sinks:
-            sink.emit_source()
+        sink = next((s for s in self.sinks if isinstance(s, ConsoleSink)), None)
+        # Print meta in one sink only, prefer console
+        sink = sink or self.sinks[0] if self.sinks else None
+        sink and sink.emit_meta()
 
     def emit(self, topic, index, stamp, msg, match):
         """Outputs ROS message to all sinks."""
@@ -370,6 +351,7 @@ class MultiSink(SinkBase):
 
     def bind(self, source):
         """Attaches source to all sinks."""
+        SinkBase.bind(self, source)
         for sink in self.sinks:
             sink.bind(source)
 

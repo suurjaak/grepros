@@ -31,6 +31,10 @@ from . common import ConsolePrinter, filter_dict, find_files, format_bytes, \
 class SourceBase(object):
     """Message producer base class."""
 
+    MESSAGE_META_TEMPLATE = (
+        "Topic {topic} message {index} ({type}, {stamp})"
+    )
+
     def __init__(self, args):
         self._args = copy.deepcopy(args)
         self._patterns = {}    # {key: [re.Pattern, ]}
@@ -52,18 +56,22 @@ class SourceBase(object):
     def get_batch(self):
         """Returns source batch identifier if any (e.g. bagfile name if BagSource)."""
 
+    def get_meta(self):
+        """Returns source metainfo string, for console output."""
+        return ""
+
     def get_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo dict, for console output."""
-        return dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp), index=index)
+        """Returns message metainfo string, for console output."""
+        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp), index=index)
+        return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def is_processable(self, topic, index, stamp):
-        """Returns whether specified message in topic is in acceptable range."""
+        """Returns whether specified message in topic is in acceptable time range."""
         if self._args.START_TIME and stamp < self._args.START_TIME:
             return False
         if self._args.END_TIME and stamp > self._args.END_TIME:
             return False
         return True
-
 
     def notify(self, status):
         """Reports match status of last produced message."""
@@ -71,6 +79,14 @@ class SourceBase(object):
 
 class BagSource(SourceBase):
     """Produces messages from ROS bagfiles."""
+
+    META_TEMPLATE = (
+        "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n"
+        "File span {delta} ({start} - {end})"
+    )
+    MESSAGE_META_TEMPLATE = (
+        "Topic {topic} message {index}/{total} ({type}, {stamp})"
+    )
 
     BAG_EXTENSIONS  = (".bag", ".bag.active")
     SKIP_EXTENSIONS = (".bag.orig.active", )
@@ -113,17 +129,19 @@ class BagSource(SourceBase):
         self.bag and self.bag.close()
 
     def get_meta(self):
-        """Returns bagfile metainfo dict, for console output."""
+        """Returns bagfile metainfo string, for console output."""
         start, end = self.bag.get_start_time(), self.bag.get_end_time()
-        return dict(file=self.filename, size=format_bytes(self.bag.size),
-                    mcount=self.bag.get_message_count(), tcount=len(self._msgtypes),
-                    start=format_stamp(start), end=format_stamp(end),
-                    delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+        kws = dict(file=self.filename, size=format_bytes(self.bag.size),
+                   mcount=self.bag.get_message_count(), tcount=len(self._msgtypes),
+                   start=format_stamp(start), end=format_stamp(end),
+                   delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+        return self.META_TEMPLATE.format(**kws)
 
     def get_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo dict, for console output."""
-        return dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp),
-                    index=index, total=self._msgtotals[topic])
+        """Returns message metainfo string, for console output."""
+        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp),
+                   index=index, total=self._msgtotals[topic])
+        return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def notify(self, status):
         """Reports match status of last produced message."""

@@ -7,7 +7,7 @@ from catkin_pkg.python_setup import generate_distutils_setup
 setup_args = generate_distutils_setup(
     packages=["grepros"],
     package_dir={"": "src"},
-    scripts=["scripts/grepros"]
+    scripts=["scripts/grepros"],
 
     author="Erki Suurjaak",
     author_email="erki@lap.ee",

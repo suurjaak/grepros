@@ -65,7 +65,7 @@ class Searcher:
             if matched:
                 self._statuses[topic][msgid] = True
                 self._counts[topic][True] += 1
-                sink.emit_source()
+                sink.emit_meta()
                 for i, s, m in self._get_context(topic, before=True):
                     self._counts[topic][False] += 1
                     sink.emit(topic, i, s, m, None)

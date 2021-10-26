@@ -216,12 +216,12 @@ print only header stamp and values:
              help="use color output in console (default always)"),
 
         dict(args=["--no-meta"], dest="META", action="store_false",
-             help="do not print metainfo to console"),
+             help="do not print bag and topic and message metainfo to console"),
 
         dict(args=["--no-filename"], dest="FILENAME", action="store_false",
-             help="do not print bag filename prefix on each console line"),
+             help="do not print bag filename prefix on each console message line"),
 
-        dict(args=["--no-console-output"], dest="SKIP_CONSOLE", action="store_true",
+        dict(args=["--no-console-output"], dest="CONSOLE", action="store_false",
              help="do not print matches to console"),
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
