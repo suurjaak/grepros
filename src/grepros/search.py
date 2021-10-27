@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    23.10.2021
+@modified    27.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
@@ -41,8 +41,8 @@ class Searcher:
         """
         Greps messages yielded from source and emits matched content to sink.
 
-        @param   source  `inputs.SourceBase` instance
-        @param   sink    `outputs.SinkBase` instance
+        @param   source  inputs.SourceBase instance
+        @param   sink    outputs.SinkBase instance
         @return          count matched
         """
         source.bind(sink), sink.bind(source)

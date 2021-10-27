@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.10.2021
+@modified    27.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -64,7 +64,9 @@ class ConsolePrinter:
 
     VERBOSE = False  # Whether to print debug information
 
-    WIDTH = 80
+    WIDTH = 80  # Console width in characters, updated from curses
+
+    PRINTS = {}  # {sys.stdout: number of texts printed, sys.stderr: ..}
 
     @classmethod
     def configure(cls, args):
@@ -123,6 +125,7 @@ class ConsolePrinter:
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
         print(pref + text + suff, file=fileobj)
+        cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
 
 
     @classmethod
@@ -138,6 +141,45 @@ class ConsolePrinter:
         if cls.VERBOSE:
             KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
             cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+
+class ROSNode(object):
+    """Interface to ROS master."""
+
+    """Node base name for connecting to ROS (will be anonymized)."""
+    NAME = "grepros"
+
+    """Seconds between checking whether ROS master is available."""
+    SLEEP_INTERVAL = 0.5
+
+    master = None  # rospy.MasterProxy instance
+
+    @classmethod
+    def validate(cls):
+        """Returns whether ROS environment is set, prints error if not."""
+        missing = [k for k in ("ROS_DISTRO", "ROS_MASTER_URI", "ROS_ROOT",
+                   "ROS_PACKAGE_PATH", "ROS_VERSION") if not os.getenv(k)]
+        if missing:
+            ConsolePrinter.error("ROS environment not sourced: missing %s.",
+                                 ", ".join(sorted(missing)))
+        return not missing
+
+    @classmethod
+    def init(cls):
+        """Initializes ROS node, blocks until connection established."""
+        if not cls.master:
+            cls.master = rospy.client.get_master()
+            available = None
+            while not available:
+                try: cls.master.getSystemState()
+                except Exception:
+                    if available is None:
+                        ConsolePrinter.error("Unable to register with master. Will keep trying.")
+                    available = False
+                    time.sleep(cls.SLEEP_INTERVAL)
+                else: available = True
+            rospy.init_node(cls.NAME, anonymous=True, disable_signals=True)
 
 
 class TextWrapper(textwrap.TextWrapper):
@@ -346,4 +388,3 @@ def parse_datetime(text):
 def wildcard_to_regex(text):
     """Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I)."""
     return re.compile(".*".join(map(re.escape, text.split("*"))), re.I)
-

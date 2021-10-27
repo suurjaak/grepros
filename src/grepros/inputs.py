@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.10.2021
+@modified    27.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
@@ -24,7 +24,7 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, filter_dict, find_files, format_bytes, \
+from . common import ConsolePrinter, ROSNode, filter_dict, find_files, format_bytes, \
                      format_stamp, format_timedelta, make_bag_time, make_live_time
 
 
@@ -49,6 +49,12 @@ class SourceBase(object):
     def bind(self, sink):
         """Attaches sink to source"""
         self.sink = sink
+
+    def validate(self):
+        """
+        Returns whether source prerequisites are met (e.g. ROS environment set if TopicSource).
+        """
+        return True
 
     def close(self):
         """Shuts down input, closing any files or connections."""
@@ -75,6 +81,10 @@ class SourceBase(object):
 
     def notify(self, status):
         """Reports match status of last produced message."""
+
+    def thread_excepthook(self, exc):
+        """Handles exception, used by background threads."""
+        ConsolePrinter.error(exc)
 
 
 class BagSource(SourceBase):
@@ -218,14 +228,9 @@ class TopicSource(SourceBase):
     """Seconds between refreshing available topics from ROS master."""
     MASTER_INTERVAL = 2
 
-    """Node name used for subscribing to ROS topics."""
-    NODE_NAME = "grepros"
-
     def __init__(self, args):
         super(TopicSource, self).__init__(args)
-
-        self._master  = None   # rospy.MasterProxy instance
-        self._running = False  # Whether is currently yielding messages from topics
+        self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, rospy.Time)]
         self._subs    = {}     # {topic: rospy.Subscriber}
 
@@ -235,13 +240,10 @@ class TopicSource(SourceBase):
         """
         Yields messages from subscribed ROS topics, as (topic, msg, rospy.Time).
         """
-        rospy.init_node(self.NODE_NAME, anonymous=True, disable_signals=True)
-
         if not self._running:
-            self.refresh_master()
             self._running = True
             self._queue = queue.Queue()
-            self._master = rospy.client.get_master()
+            self.refresh_master()
             t = threading.Thread(target=self._run_refresh)
             t.daemon = True
             t.start()
@@ -252,6 +254,15 @@ class TopicSource(SourceBase):
                 yield topic, msg, stamp
         self._queue = None
         self._running = False
+
+    def bind(self, sink):
+        """Attaches sink to source and blocks until connected to ROS master."""
+        SourceBase.bind(self, sink)
+        ROSNode.init()
+
+    def validate(self):
+        """Returns whether ROS environment is set."""
+        return ROSNode.validate()
 
     def close(self):
         """Shuts down subscribers and stops producing messages."""
@@ -274,7 +285,7 @@ class TopicSource(SourceBase):
 
     def refresh_master(self):
         """Refreshes topics and subscriptions from ROS master."""
-        for topic, typename in self._master.getTopicTypes()[-1]:
+        for topic, typename in ROSNode.master.getTopicTypes()[-1]:
             if topic in self._msgtypes:
                 continue  # for topic
             dct = filter_dict({topic: typename}, self._args.TOPICS, self._args.TYPES)
@@ -297,7 +308,8 @@ class TopicSource(SourceBase):
         """Periodically refreshes topics and subscriptions from ROS master."""
         time.sleep(self.MASTER_INTERVAL)
         while self._running:
-            self.refresh_master()
+            try: self.refresh_master()
+            except Exception as e: self.thread_excepthook(e)
             time.sleep(self.MASTER_INTERVAL)
 
     def _on_message(self, topic, msg):

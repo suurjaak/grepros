@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.10.2021
+@modified    27.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -23,7 +23,7 @@ import rosbag
 import rospy
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, TextWrapper
+from . common import ConsolePrinter, MatchMarkers, ROSNode, TextWrapper
 from . common import ROS_NUMERIC_TYPES, ROS_BUILTIN_TYPES, filter_fields, get_message_fields, \
                      get_message_value, merge_spans, wildcard_to_regex
 
@@ -36,6 +36,7 @@ class SinkBase(object):
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {topic: count}
 
+        self.exit_on_thread_error = False  # 
         self.source = None
 
     def emit_meta(self):
@@ -59,6 +60,10 @@ class SinkBase(object):
     def bind(self, source):
         """Attaches source to sink."""
         self.source = source
+
+    def validate(self):
+        """Returns whether sink prerequisites are met (e.g. ROS environment set if TopicSink)."""
+        return True
 
     def close(self):
         """Shuts down output, closing any files or connections."""
@@ -247,7 +252,7 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         super(BagSink, self).__init__(args)
-        self._bag  = None
+        self._bag    = None
         self._counts = {}  # {topic: count}
         self._close_printed = False
 
@@ -282,9 +287,6 @@ class BagSink(SinkBase):
 class TopicSink(SinkBase):
     """Publishes messages to ROS topics."""
 
-    """Node name used for subscribing to ROS topics."""
-    NODE_NAME = "grepros"
-
     def __init__(self, args):
         """
         @param   args.QUEUE_SIZE_OUT    publisher queue size
@@ -294,13 +296,11 @@ class TopicSink(SinkBase):
                                         overrides prefix and suffix if given
         """
         super(TopicSink, self).__init__(args)
-        self._pubs   = {}  # {(intopic, cls): rospy.Publisher}
+        self._pubs = {}  # {(intopic, cls): rospy.Publisher}
         self._close_printed = False
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        rospy.init_node(self.NODE_NAME, anonymous=True, disable_signals=True)
-
         key, cls = (topic, type(msg)), type(msg)
         if key not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
@@ -316,6 +316,15 @@ class TopicSink(SinkBase):
 
         self._counts[topic] += 1
         self._pubs[key].publish(msg)
+
+    def bind(self, source):
+        """Attaches source to sink and blocks until connected to ROS master."""
+        SinkBase.bind(self, source)
+        ROSNode.init()
+
+    def validate(self):
+        """Returns whether ROS environment is set."""
+        return ROSNode.validate()
 
     def close(self):
         """Shuts down publishers."""
@@ -354,6 +363,10 @@ class MultiSink(SinkBase):
         SinkBase.bind(self, source)
         for sink in self.sinks:
             sink.bind(source)
+
+    def validate(self):
+        """Returns whether prerequisites are met for all sinks."""
+        return all([sink.validate() for sink in self.sinks])
 
     def close(self):
         """Closes all sinks."""

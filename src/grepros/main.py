@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.10.2021
+@modified    27.10.2021
 ------------------------------------------------------------------------------
 """
 import argparse
 import os
 import re
 import sys
+import traceback
 
 from . import inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
@@ -325,23 +326,26 @@ def run():
     if not sink.sinks:
         ConsolePrinter.error("No output configured.")
         sys.exit(1)
+    if not source.validate() or not sink.validate():
+        sys.exit(1)
 
+    source.thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, KeyboardInterrupt, )  # Py3
     except NameError: pass  # Py2
-    try:
-        matched = searcher.search(source, sink)
+
+    try: searcher.search(source, sink)
     except BREAK_EXS:
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except Exception: pass
+    except Exception:
+        ConsolePrinter.error(traceback.format_exc())
+        sys.exit(1)
     else:
-        try:
-            if any(isinstance(s, outputs.ConsoleSink) for s in sink.sinks) \
-            and not matched and not sys.stdout.isatty():
-                # Piping cursed output to `more` remains paging if nothing is printed
-                print()
-        except Exception: pass
+        if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
+            try: print()  # Piping cursed output to `more` remains paging if nothing is printed
+            except Exception: pass
 
 
 if "__main__" == __name__:
