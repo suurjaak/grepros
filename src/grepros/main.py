@@ -12,10 +12,10 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 import argparse
+import atexit
 import os
 import re
 import sys
-import traceback
 
 from . import inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
@@ -314,10 +314,18 @@ def validate_args(args):
     return not errors
 
 
+def flush_stdout():
+    """Writes a linefeed to sdtout if nothing has been printed to it so far."""
+    if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
+        try: print()  # Piping cursed output to `more` remains paging if nothing is printed
+        except Exception: pass
+
+
 def run():
     """Parses arguments and runs search."""
     args, _ = make_parser().parse_known_args()
     ConsolePrinter.configure(args)
+    atexit.register(flush_stdout)
     if not validate_args(args):
         sys.exit(1)
 
@@ -339,14 +347,6 @@ def run():
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except Exception: pass
-    except Exception:
-        ConsolePrinter.error(traceback.format_exc())
-        sys.exit(1)
-    else:
-        if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
-            try: print()  # Piping cursed output to `more` remains paging if nothing is printed
-            except Exception: pass
-
 
 if "__main__" == __name__:
     run()
