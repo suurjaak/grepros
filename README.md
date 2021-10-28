@@ -11,7 +11,7 @@ By default, matches are printed to console. Additionally, matches can be written
 to a bagfile, or published to live topics.
 
 Grepping from or publishing to live topics requires ROS environment to be set
-and roscore to be running.
+and ROS master to be running.
 
 
 Example usage
@@ -23,7 +23,7 @@ Search for "my text" in all bags under current directory and subdirectories:
 
 Print 30 lines of the first message from each live ROS topic:
 
-    grepros ".*" --messages-per-topic 1 --lines-per-message 30 --live
+    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
 
@@ -49,6 +49,11 @@ print only header stamp and values:
 
     grepros -d diagnostic_msgs/* -sf name message \
             -pf header.stamp status.values -- navigation
+
+Print first message from each lidar topic on host 1.2.3.4:
+
+    ROS_MASTER_URI=http://1.2.3.4::11311 \
+    grepros ".*" --live --topic *lidar* --max-per-topic 1
 
 
 Patterns use Python regular expression syntax, message matches if all match.

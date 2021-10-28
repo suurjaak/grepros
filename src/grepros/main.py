@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.10.2021
+@modified    28.10.2021
 ------------------------------------------------------------------------------
 """
 import argparse
@@ -35,7 +35,7 @@ Search for "my text" in all bags under current directory and subdirectories:
     grepros -r "my text"
 
 Print 30 lines of the first message from each live ROS topic:
-    grepros ".*" --messages-per-topic 1 --lines-per-message 30 --live
+    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I -m 1 -n my.bag
