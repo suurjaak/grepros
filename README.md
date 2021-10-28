@@ -187,13 +187,13 @@ Live topic control:
 Installation
 ------------
 
-Requires ROS Python packages (rospy, rosmsg, roslib, rosbag, genpy).
-
 ### Using pip
 
     pip install grepros
 
-This will add the `rosgrep` command to your path.
+This will add the `grepros` command to your path.
+
+Requires ROS Python packages (rospy, roslib, rosbag, rosmsg, genpy).
 
 
 ### Using catkin
@@ -204,5 +204,4 @@ In your catkin workspace, under the source directory:
     cd grepros
     catkin build --this
 
-
-This will add the `rosgrep` command to your local catkin workspace path.
+This will add the `grepros` command to your local catkin workspace path.
