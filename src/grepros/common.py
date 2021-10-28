@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.10.2021
+@modified    28.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -275,6 +275,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
     """
     Yields filenames from current directory or given paths.
     Seeks only files with given extensions if names not given.
+    Prints errors for names and paths not found.
 
     @param   names            list of specific files to return (supports * wildcards)
     @param   paths            list of paths to look under, if not using current directory
@@ -282,13 +283,22 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
     @param   skip_extensions  list of extensions to skip if not using names, as (".ext1", ..)
     @param   recurse          whether to recurse into subdirectories
     """
-    def iter_files(path):
+    namesfound, pathsfound = set(), set()
+    def iter_files(directory):
         """Yields matching filenames from path."""
-        for path in glob.glob(path):  # Expand * wildcards, if any
+        if os.path.isfile(directory):
+            ConsolePrinter.error("%s: Is a file", directory)
+            return
+        for path in glob.glob(directory):  # Expand * wildcards, if any
+            pathsfound.add(directory)
             for n in names:
-                p = n if not paths or n.startswith(os.sep) else os.path.join(path, n)
+                p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
                 for f in (f for f in glob.glob(p) if "*" not in n
                           or not any(map(f.endswith, skip_extensions))):
+                    if os.path.isdir(f):
+                        ConsolePrinter.error("%s: Is a directory", f)
+                        continue  # for n
+                    namesfound.add(n)
                     yield f
             for root, _, files in os.walk(path) if not names else ():
                 for f in (os.path.join(root, f) for f in files
@@ -298,11 +308,16 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
                 if not recurse:
                     break  # for root
 
-    processed = {}  # {abspath: True}
+    processed = set()
     for f in (f for p in paths or ["."] for f in iter_files(p)):
         if os.path.abspath(f) not in processed:
-            processed[os.path.abspath(f)] = True
+            processed.add(os.path.abspath(f))
             yield f
+
+    for path in (p for p in paths if p not in pathsfound):
+        ConsolePrinter.error("%s: No such directory", path)
+    for name in (n for n in names if n not in namesfound):
+        ConsolePrinter.error("%s: No such file", name)
 
 
 def format_timedelta(delta):

@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.10.2021
+@modified    28.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
 import collections
 import datetime
 import functools
+import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
 import threading
@@ -118,15 +119,15 @@ class BagSource(SourceBase):
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, rospy.Time)."""
         self._running = True
-        files, paths = self._args.FILES, self._args.PATHS
+        names, paths = self._args.FILES, self._args.PATHS
         exts, skip_exts = self.BAG_EXTENSIONS, self.SKIP_EXTENSIONS
-        for filename in find_files(files, paths, exts, skip_exts, recurse=self._args.RECURSE):
+        for filename in find_files(names, paths, exts, skip_exts, recurse=self._args.RECURSE):
             if not self._configure(filename) or not self._topics:
                 continue  # for filename
             for topic, msg, stamp in self._produce(self._topics):
                 yield topic, msg, stamp
             if not self._running:
-                break  # for filename
+                return
         self._running = False
 
     def get_batch(self):
