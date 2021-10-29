@@ -248,12 +248,12 @@ print only header stamp and values:
 
         dict(args=["--publish-prefix"],
              dest="PUBLISH_PREFIX", metavar="PREFIX", default="/grepros",
-             help="prefix to prepend to input topic on publishing match\n"
+             help="prefix to prepend to input topic name on publishing match\n"
                   "(default /grepros)"),
 
         dict(args=["--publish-suffix"],
              dest="PUBLISH_SUFFIX", metavar="SUFFIX", default="",
-             help="suffix to append to input topic on publishing match"),
+             help="suffix to append to input topic name on publishing match"),
 
         dict(args=["--publish-fixname"],
              dest="PUBLISH_FIXNAME", metavar="TOPIC", default="",

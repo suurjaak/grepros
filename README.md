@@ -60,6 +60,10 @@ Patterns use Python regular expression syntax, message matches if all match.
 '*' wildcards in other arguments use simple globbing as zero or more characters,
 target matches if any value matches.
 
+When publishing matches to live topics, the published topic name will default to
+`/grepros/ORIGINALNAME`. The prefix and suffix can be changed via command-line
+parameter, or set to a single output topic name.
+
 
 Command-line arguments
 ----------------------
@@ -171,10 +175,10 @@ Bag input control:
 
 Live topic control:
   --publish-prefix PREFIX
-                        prefix to prepend to input topic on publishing match
+                        prefix to prepend to input topic name on publishing match
                         (default /grepros)
   --publish-suffix SUFFIX
-                        suffix to append to input topic on publishing match
+                        suffix to append to input topic name on publishing match
   --publish-fixname TOPIC
                         single output topic name to publish all matches to,
                         overrides prefix and suffix
