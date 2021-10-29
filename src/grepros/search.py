@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    27.10.2021
+@modified    29.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
@@ -171,7 +171,7 @@ class Searcher:
             spans = []
             for i, (path, p) in enumerate(self._patterns["content"]):
                 if not path or any(path == top[j:j + len(path)] for j in range(len(top))):
-                    for match in p.finditer(v):
+                    for match in (m for m in p.finditer(v) if not v or m.start() != m.end()):
                         matched[i] = True
                         spans.append(match.span())
             spans = merge_spans(spans)
