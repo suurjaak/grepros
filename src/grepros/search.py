@@ -27,12 +27,14 @@ class Searcher:
     def __init__(self, args):
         self._args     = copy.deepcopy(args)
         self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
-        self._messages = collections.defaultdict(dict)  # {topic: {message ID: message}}
-        self._stamps   = collections.defaultdict(dict)  # {topic: {message ID: rospy.Time}}
+        # {topic: {message ID: message}}
+        self._messages = collections.defaultdict(collections.OrderedDict)
+        # {topic: {message ID: rospy.Time}}
+        self._stamps   = collections.defaultdict(collections.OrderedDict)
         # {topic: {None: count processed, True: count matched, False: count emitted as context}}
-        self._counts = collections.defaultdict(lambda: collections.defaultdict(int))
+        self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))
         # {topic: {message ID: True if matched else False if emitted else None}
-        self._statuses = collections.defaultdict(dict)
+        self._statuses = collections.defaultdict(collections.OrderedDict)
 
         self._parse_patterns()
 
@@ -45,6 +47,7 @@ class Searcher:
         @param   sink    outputs.SinkBase instance
         @return          count matched
         """
+        for d in (self._messages, self._stamps, self._counts, self._statuses): d.clear()
         source.bind(sink), sink.bind(source)
 
         counter, total, batch = 0, 0, None
@@ -69,11 +72,13 @@ class Searcher:
                 for i, s, m in self._get_context(topic, before=True):
                     self._counts[topic][False] += 1
                     sink.emit(topic, i, s, m, None)
+                    self._statuses[topic][i] = False
                 sink.emit(topic, self._counts[topic][None], stamp, msg, matched)
             elif self._args.AFTER and self._has_in_window(topic, self._args.AFTER + 1, status=True):
                 for i, s, m in self._get_context(topic, before=False):
                     self._counts[topic][False] += 1
                     sink.emit(topic, i, s, m, None)
+                    self._statuses[topic][i] = False
             source.notify(matched)
 
             self._prune_data(topic)
