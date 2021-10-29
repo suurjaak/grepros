@@ -8,14 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.10.2021
+@modified    29.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
 import collections
 import datetime
 import functools
-import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
 import threading
@@ -286,8 +285,11 @@ class TopicSource(SourceBase):
 
     def refresh_master(self):
         """Refreshes topics and subscriptions from ROS master."""
+        myname = rospy.get_name()
+        pubs, _, _ = ROSNode.master.getSystemState()[-1]
+        mypubs = [t for t, nn in pubs if myname in nn and t not in ("/rosout", "/rosout_agg")]
         for topic, typename in ROSNode.master.getTopicTypes()[-1]:
-            if topic in self._msgtypes:
+            if topic in self._msgtypes or topic in mypubs:
                 continue  # for topic
             dct = filter_dict({topic: typename}, self._args.TOPICS, self._args.TYPES)
             dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
