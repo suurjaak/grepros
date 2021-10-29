@@ -24,15 +24,15 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, ROSNode, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, make_bag_time, make_live_time
+from . common import ConsolePrinter, ROSNode, drop_zeros, filter_dict, find_files, \
+                     format_bytes, format_stamp, format_timedelta, make_bag_time, make_live_time
 
 
 class SourceBase(object):
     """Message producer base class."""
 
     MESSAGE_META_TEMPLATE = (
-        "Topic {topic} message {index} ({type}, {stamp})"
+        "{topic} {index} ({type}  {dt}  {stamp})"
     )
 
     def __init__(self, args):
@@ -68,7 +68,8 @@ class SourceBase(object):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp), index=index)
+        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=drop_zeros(stamp),
+                   dt=drop_zeros(format_stamp(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def is_processable(self, topic, index, stamp):
@@ -92,10 +93,11 @@ class BagSource(SourceBase):
 
     META_TEMPLATE = (
         "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n"
+        "File period {startdt} - {enddt}\n"
         "File span {delta} ({start} - {end})"
     )
     MESSAGE_META_TEMPLATE = (
-        "Topic {topic} message {index}/{total} ({type}, {stamp})"
+        "{topic} {index}/{total} ({type}  {dt}  {stamp})"
     )
 
     BAG_EXTENSIONS  = (".bag", ".bag.active")
@@ -143,14 +145,15 @@ class BagSource(SourceBase):
         start, end = self.bag.get_start_time(), self.bag.get_end_time()
         kws = dict(file=self.filename, size=format_bytes(self.bag.size),
                    mcount=self.bag.get_message_count(), tcount=len(self._msgtypes),
-                   start=format_stamp(start), end=format_stamp(end),
+                   start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
+                   end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
                    delta=format_timedelta(datetime.timedelta(seconds=end - start)))
         return self.META_TEMPLATE.format(**kws)
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=format_stamp(stamp),
-                   index=index, total=self._msgtotals[topic])
+        kws = dict(topic=topic, type=self._msgtypes[topic], dt=drop_zeros(format_stamp(stamp)),
+                   stamp=drop_zeros(stamp), index=index, total=self._msgtotals[topic])
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def notify(self, status):
