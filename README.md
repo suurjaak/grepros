@@ -93,14 +93,16 @@ Filtering:
                         ROS message types to skip (supports * wildcards)
   -t0 TIME, --start-time TIME
                         earliest timestamp of messages to scan
-                        as relative seconds or ISO datetime
+                        as relative seconds if signed,
+                        or epoch timestamp or ISO datetime
                         (for bag input, relative to bag start time
                         if positive or end time if negative,
                         for live input relative to system time,
                         datetime may be partial like 2021-10-14T12)
   -t1 TIME, --end-time TIME
                         latest timestamp of messages to scan
-                        as relative seconds or ISO datetime
+                        as relative seconds if signed,
+                        or epoch timestamp or ISO datetime
                         (for bag input, relative to bag start time
                         if positive or end time if negative,
                         for live input relative to system time,

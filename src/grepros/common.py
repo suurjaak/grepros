@@ -231,6 +231,12 @@ class TextWrapper(textwrap.TextWrapper):
             builtins.len = self.REALLEN
 
 
+def drop_zeros(v):
+    """Drops trailing zeros and empty decimal separator, if any."""
+    v = v.to_sec() if isinstance(v, genpy.TVal) else v
+    return re.sub(r"\.?0+$", "", str(v))
+
+
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
     Filters string dictionary by keys and values,
@@ -331,7 +337,7 @@ def format_timedelta(delta):
     mm, ss  = divmod(rem, 60)
     items = []
     for c, n in (dd, "d"), (hh, "h"), (mm, "min"), (ss, "sec"):
-        f = "%d" % c if "sec" != n else str(round(c, 9)).rstrip("0").rstrip(".")
+        f = "%d" % c if "sec" != n else drop_zeros(round(c, 9))
         if f != "0": items += [f + n]
     return " ".join(items or ["0sec"])
 
@@ -344,7 +350,7 @@ def format_bytes(size, precision=2, inter=" "):
         exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
         result = "%.*f" % (precision, size / (1024. ** exponent))
         result += "" if precision > 0 else "."  # Do not strip integer zeroes
-        result = result.rstrip("0").rstrip(".") + inter + UNITS[exponent]
+        result = drop_zeros(result) + inter + UNITS[exponent]
     return result
 
 
@@ -369,17 +375,26 @@ def get_message_value(msg, name, typename):
 
 
 def make_bag_time(stamp, bag):
-    """Returns timestamp as rospy.Time, adjusted to bag start/end time if numeric."""
-    shift = 0 if isinstance(stamp, datetime.datetime) else \
-            bag.get_end_time() if stamp < 0 else bag.get_start_time()
-    stamp = stamp.timestamp() if isinstance(stamp, datetime.datetime) else stamp
+    """
+    Returns timestamp string or datetime instance as rospy.Time,
+    taken as delta from bag start/end time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
     return rospy.Time(stamp + shift)
 
 
 def make_live_time(stamp):
-    """Returns timestamp as rospy.Time, adjusted to system time if numeric."""
-    shift = 0 if isinstance(stamp, datetime.datetime) else time.time()
-    stamp = stamp.timestamp() if isinstance(stamp, datetime.datetime) else stamp
+    """
+    Returns timestamp string or datetime instance as rospy.Time,
+    taken as delta from system time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else time.time()
     return rospy.Time(stamp + shift)
 
 
@@ -399,7 +414,7 @@ def parse_datetime(text):
     """Returns datetime object from ISO datetime string (may be partial). Raises if invalid."""
     BASE = re.sub(r"\D", "", datetime.datetime.min.isoformat())  # "00010101000000"
     text = re.sub(r"\D", "", text)
-    text += BASE[len(text):]
+    text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
 

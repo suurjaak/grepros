@@ -105,7 +105,8 @@ print only header stamp and values:
         dict(args=["-t0", "--start-time"],
              dest="START_TIME", metavar="TIME",
              help="earliest timestamp of messages to scan\n"
-                  "as relative seconds or ISO datetime\n"
+                  "as relative seconds if signed,\n"
+                  "or epoch timestamp or ISO datetime\n"
                   "(for bag input, relative to bag start time\n"
                   "if positive or end time if negative,\n"
                   "for live input relative to system time,\n"
@@ -114,7 +115,8 @@ print only header stamp and values:
         dict(args=["-t1", "--end-time"],
              dest="END_TIME", metavar="TIME",
              help="latest timestamp of messages to scan\n"
-                  "as relative seconds or ISO datetime\n"
+                  "as relative seconds if signed,\n"
+                  "or epoch timestamp or ISO datetime\n"
                   "(for bag input, relative to bag start time\n"
                   "if positive or end time if negative,\n"
                   "for live input relative to system time,\n"
@@ -288,30 +290,32 @@ def make_parser():
 
 def validate_args(args):
     """Validates arguments, prints errors, returns success."""
-    try: args.START_TIME = float(args.START_TIME)
-    except Exception: pass
-    try: args.END_TIME = float(args.END_TIME)
-    except Exception: pass
-    if isinstance(args.START_TIME, str):
-        args.START_TIME = parse_datetime(args.START_TIME)
-    if isinstance(args.END_TIME, str):
-        args.END_TIME = parse_datetime(args.END_TIME)
+    errors, re_errors = [], []
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
-    errors = []
+    for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+        if v is None: continue  # for v, n
+        try: v = float(v)
+        except Exception: pass
+        try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+        except Exception: errors.append("Invalid ISO datetime for %s: %s" % 
+                                        (n.lower().replace("_", " "), v))
+
     for v in args.PATTERNS:
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
-        try:
-            re.compile(re.escape(v) if args.RAW else v)
+        try: re.compile(re.escape(v) if args.RAW else v)
         except Exception as e:
-            errors.append("'%s': %s" % (v, e))
-    if errors:
-        ConsolePrinter.error("\nInvalid regular expression.")
-        for err in errors:
+            re_errors.append("'%s': %s" % (v, e))
+
+    for err in errors:
+        ConsolePrinter.error(err)
+    if re_errors:
+        ConsolePrinter.error("Invalid regular expression")
+        for err in re_errors:
             ConsolePrinter.error("  %s" % err)
-    return not errors
+    return not errors and not re_errors
 
 
 def flush_stdout():
