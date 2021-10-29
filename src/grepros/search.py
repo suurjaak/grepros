@@ -16,7 +16,7 @@ import copy
 import collections
 import re
 
-from . common import ROS_BUILTIN_TYPES, MatchMarkers, filter_fields, get_message_fields, \
+from . common import ROS_NUMERIC_TYPES, MatchMarkers, filter_fields, get_message_fields, \
                      get_message_value, merge_spans, wildcard_to_regex
 
 
@@ -189,7 +189,7 @@ class Searcher:
                 is_collection = isinstance(v, (list, tuple))
                 if hasattr(v, "__slots__"):
                     decorate_message(v, path)
-                elif is_collection and scalar(t) not in ROS_BUILTIN_TYPES:
+                elif is_collection and scalar(t) not in ROS_NUMERIC_TYPES:
                     setattr(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
