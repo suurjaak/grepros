@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.10.2021
+@modified    29.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -53,6 +53,7 @@ class ConsolePrinter:
     STYLE_HIGHLIGHT = "\x1b[31m"                # Red
     STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  # Dim gray
     STYLE_SPECIAL   = "\x1b[35m"                # Purple
+    STYLE_SPECIAL2  = "\x1b[36m"                # Cyan
     STYLE_ERROR     = "\x1b[31m\x1b[2m"         # Dim red
 
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"  # Default highlight wrappers if not color output
@@ -61,6 +62,7 @@ class ConsolePrinter:
     LOWLIGHT_START,  LOWLIGHT_END  = STYLE_LOWLIGHT,  STYLE_RESET  # Metainfo wrappers
     PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  # Content line prefix wrappers
     ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  # Error message wrappers
+    SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  # Filename prefix separator wrappers
 
     VERBOSE = False  # Whether to print debug information
 
@@ -98,11 +100,13 @@ class ConsolePrinter:
             cls.HIGHLIGHT_START, cls.HIGHLIGHT_END = cls.STYLE_HIGHLIGHT, cls.STYLE_RESET
             cls.LOWLIGHT_START,  cls.LOWLIGHT_END  = cls.STYLE_LOWLIGHT,  cls.STYLE_RESET
             cls.PREFIX_START,    cls.PREFIX_END    = cls.STYLE_SPECIAL,   cls.STYLE_RESET
+            cls.SEP_START,       cls.SEP_END       = cls.STYLE_SPECIAL2,  cls.STYLE_RESET
             cls.ERROR_START,     cls.ERROR_END     = cls.STYLE_ERROR,     cls.STYLE_RESET
         else:
             cls.HIGHLIGHT_START, cls.HIGHLIGHT_END = "", ""
             cls.LOWLIGHT_START,  cls.LOWLIGHT_END  = "", ""
             cls.ERROR_START,     cls.ERROR_END     = "", ""
+            cls.SEP_START,       cls.SEP_END       = "", ""
             cls.PREFIX_START,    cls.PREFIX_END    = "", ""
 
         WRAPS = args.MATCH_WRAPPER

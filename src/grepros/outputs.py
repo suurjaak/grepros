@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.10.2021
+@modified    29.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -74,7 +74,7 @@ class ConsoleSink(SinkBase):
 
     META_LINE_TEMPLATE   = "{coloron}{sep} {line}{coloroff}"
     MESSAGE_SEP_TEMPLATE = "{coloron}{sep}{coloroff}"
-    PREFIX_TEMPLATE      = "{coloron}{batch}{sep}{coloroff}"
+    PREFIX_TEMPLATE      = "{coloron}{batch}{coloroff}{sepcoloron}{sep}{sepcoloroff}"
     MATCH_PREFIX_SEP     = ":"    # Printed after bag filename for matched message lines
     CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
     SEP                  = "---"  # Prefix of message separators and metainfo lines
@@ -111,7 +111,8 @@ class ConsoleSink(SinkBase):
         if self._use_prefix and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
             kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
-                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch())
+                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch(),
+                       sepcoloron=ConsolePrinter.SEP_START, sepcoloroff=ConsolePrinter.SEP_END)
             self._prefix = self.PREFIX_TEMPLATE.format(**kws)
         kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
                    coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
