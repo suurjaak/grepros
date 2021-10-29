@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.10.2021
+@modified    29.10.2021
 ------------------------------------------------------------------------------
 """
 import argparse
@@ -347,6 +347,7 @@ def run():
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except Exception: pass
+        sys.exit()
 
 if "__main__" == __name__:
     run()
