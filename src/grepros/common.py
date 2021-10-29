@@ -400,7 +400,7 @@ def parse_datetime(text):
     BASE = re.sub(r"\D", "", datetime.datetime.min.isoformat())  # "00010101000000"
     text = re.sub(r"\D", "", text)
     text += BASE[len(text):]
-    dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%I%S")
+    dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
 
 
