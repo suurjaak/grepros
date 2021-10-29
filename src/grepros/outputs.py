@@ -263,10 +263,10 @@ class BagSink(SinkBase):
         """Writes message to output bagfile."""
         if not self._bag:
             if os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG):
-                ConsolePrinter.debug("Appending to bag %s.", self._args.OUTBAG)
+                self._args.META and ConsolePrinter.debug("Appending to bag %s.", self._args.OUTBAG)
                 self._bag = rosbag.Bag(self._args.OUTBAG, "a")
             else:
-                ConsolePrinter.debug("Creating bag %s.", self._args.OUTBAG)
+                self._args.META and ConsolePrinter.debug("Creating bag %s.", self._args.OUTBAG)
                 self._bag = rosbag.Bag(self._args.OUTBAG, "w")
 
         if topic not in self._counts:
@@ -278,7 +278,7 @@ class BagSink(SinkBase):
     def close(self):
         """Closes output bagfile, if any."""
         self._bag and self._bag.close()
-        if not self._close_printed and self._counts:
+        if not self._close_printed and self._counts and self._args.META:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._args.OUTBAG)
@@ -306,7 +306,7 @@ class TopicSink(SinkBase):
         if key not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
-            ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
+            self._args.META and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
 
             pub = None
             if self._args.PUBLISH_FIXNAME:
@@ -329,7 +329,7 @@ class TopicSink(SinkBase):
 
     def close(self):
         """Shuts down publishers."""
-        if not self._close_printed and self._counts:
+        if not self._close_printed and self._counts and self._args.META:
             self._close_printed = True
             ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
                                  sum(self._counts.values()), len(set(self._pubs.values())))

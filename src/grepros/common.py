@@ -66,7 +66,7 @@ class ConsolePrinter:
 
     VERBOSE = False  # Whether to print debug information
 
-    WIDTH = 80  # Console width in characters, updated from curses
+    WIDTH = 80  # Console width in characters, updated from shutil and curses
 
     PRINTS = {}  # {sys.stdout: number of texts printed, sys.stderr: ..}
 
@@ -92,7 +92,8 @@ class ConsolePrinter:
         except Exception:
             do_color = ("always" == args.COLOR)
         try:
-            cls.WIDTH = curses.initscr().getmaxyx()[1]
+            if sys.stdout.isatty():
+                cls.WIDTH = curses.initscr().getmaxyx()[1]
             curses.endwin()
         except Exception: pass
 

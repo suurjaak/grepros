@@ -228,7 +228,8 @@ print only header stamp and values:
              help="do not print matches to console"),
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
-             help="print status messages during publish or bag output"),
+             help="print status messages during console output\n"
+                  "for publishing and bag writing"),
 
     ], "Bag input control": [
 
@@ -294,6 +295,10 @@ def validate_args(args):
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
+    # Default to printing metadata for publish/write if no console output
+    if not args.CONSOLE:
+        args.VERBOSE = True
+
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
         if v is None: continue  # for v, n
         try: v = float(v)
@@ -301,6 +306,9 @@ def validate_args(args):
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
         except Exception: errors.append("Invalid ISO datetime for %s: %s" % 
                                         (n.lower().replace("_", " "), v))
+
+    if not any(getattr(args, n, None) for n in outputs.MultiSink.CLASSES):
+        errors.append("No output configured.")
 
     for v in args.PATTERNS:
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
@@ -327,17 +335,14 @@ def flush_stdout():
 
 def run():
     """Parses arguments and runs search."""
+    atexit.register(flush_stdout)
     args, _ = make_parser().parse_known_args()
     ConsolePrinter.configure(args)
-    atexit.register(flush_stdout)
     if not validate_args(args):
         sys.exit(1)
 
     cls = inputs.TopicSource if args.LIVE else inputs.BagSource
     searcher, source, sink = search.Searcher(args), cls(args), outputs.MultiSink(args)
-    if not sink.sinks:
-        ConsolePrinter.error("No output configured.")
-        sys.exit(1)
     if not source.validate() or not sink.validate():
         sys.exit(1)
 

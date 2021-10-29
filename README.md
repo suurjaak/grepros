@@ -164,7 +164,8 @@ Output control:
   --no-meta             do not print metainfo to console
   --no-filename         do not print bag filename prefix on each console line
   --no-console-output   do not print matches to console
-  --verbose             print status messages during publish or bag output
+  --verbose             print status messages during console output
+                        for publishing and bag writing
 
 Bag input control:
   -n [FILE [FILE ...]], --filename [FILE [FILE ...]]
