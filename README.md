@@ -27,28 +27,28 @@ Print 30 lines of the first message from each live ROS topic:
 
 Find first message containing "future" (case-insensitive) in my.bag:
 
-    grepros future -I -m 1 -n my.bag
+    grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory:
 
-    grepros frame_id=map -d geometry* -m 10
+    grepros frame_id=map --type geometry_msgs/* --max-count 10
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
-    
-    grepros "CPU usage" -d *DiagnosticArray --no-console-output --write my.bag
+
+    grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
 
 Find messages with field "key" containing "0xA002",
 in topics ending with "diagnostics", in bags under "/tmp":
 
-    grepros key=0xA002 -t *diagnostics -p /tmp
+    grepros key=0xA002 --topic *diagnostics --path /tmp
 
 Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
 
-    grepros -d diagnostic_msgs/* -sf name message \
-            -pf header.stamp status.values -- navigation
+    grepros --type diagnostic_msgs/* --select-field name message \
+            --print-field header.stamp status.values -- navigation
 
 Print first message from each lidar topic on host 1.2.3.4:
 
@@ -61,8 +61,8 @@ Patterns use Python regular expression syntax, message matches if all match.
 target matches if any value matches.
 
 When publishing matches to live topics, the published topic name will default to
-`/grepros/ORIGINALNAME`. The prefix and suffix can be changed via command-line
-parameter, or set to a single output topic name.
+`/grepros/ORIGINALNAME`. Topic prefix and suffix can be changed via command-line
+parameter, or topic set to a single output topic name.
 
 
 Command-line arguments
@@ -160,9 +160,9 @@ Output control:
                         string to wrap around matched values,
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
-                        (default ** in colorless output)
+                        (default "**" in colorless output)
   --color {auto,always,never}
-                        use color output in console (default always)
+                        use color output in console (default "always")
   --no-meta             do not print metainfo to console
   --no-filename         do not print bag filename prefix on each console line
   --no-console-output   do not print matches to console
@@ -181,7 +181,7 @@ Bag input control:
 Live topic control:
   --publish-prefix PREFIX
                         prefix to prepend to input topic name on publishing match
-                        (default /grepros)
+                        (default "/grepros")
   --publish-suffix SUFFIX
                         suffix to append to input topic name on publishing match
   --publish-fixname TOPIC

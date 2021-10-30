@@ -40,24 +40,28 @@ Print 30 lines of the first message from each live ROS topic:
     grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
-    grepros future -I -m 1 -n my.bag
+    grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory:
-    grepros frame_id=map -d geometry* -m 10
+    grepros frame_id=map --type geometry_msgs/* --max-count 10
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
-    grepros "CPU usage" -d *DiagnosticArray --no-console-output --write my.bag
+    grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
 
 Find messages with field "key" containing "0xA002",
 in topics ending with "diagnostics", in bags under "/tmp":
-    grepros key=0xA002 -t *diagnostics -p /tmp
+    grepros key=0xA002 --topic *diagnostics --path /tmp
 
 Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
-    grepros -d diagnostic_msgs/* -sf name message \\
-            -pf header.stamp status.values -- navigation
+    grepros --type diagnostic_msgs/* --select-field name message \\
+            --print-field header.stamp status.values -- navigation
+
+Print first message from each lidar topic on host 1.2.3.4:
+    ROS_MASTER_URI=http://1.2.3.4::11311 \\
+    grepros ".*" --live --topic *lidar* --max-per-topic 1
     """,
 
     "arguments": [
@@ -218,11 +222,11 @@ print only header stamp and values:
              help="string to wrap around matched values,\n"
                   "both sides if one value, start and end if more than one,\n"
                   "or no wrapping if zero values\n"
-                  "(default ** in colorless output)"),
+                  '(default "**" in colorless output)'),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
-             help="use color output in console (default always)"),
+             help='use color output in console (default "always")'),
 
         dict(args=["--no-meta"], dest="META", action="store_false",
              help="do not print bag and topic and message metainfo to console"),
@@ -258,7 +262,7 @@ print only header stamp and values:
         dict(args=["--publish-prefix"],
              dest="PUBLISH_PREFIX", metavar="PREFIX", default="/grepros",
              help="prefix to prepend to input topic name on publishing match\n"
-                  "(default /grepros)"),
+                  '(default "/grepros")'),
 
         dict(args=["--publish-suffix"],
              dest="PUBLISH_SUFFIX", metavar="SUFFIX", default="",
