@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+## @namespace grepros.main
 """
 Program main interface.
 
@@ -21,6 +22,7 @@ from . import inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
 
 
+## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
 ARGUMENTS = {
     "description": "Searches through messages in ROS1 bag files or live topics.",
     "epilog":      """
@@ -277,6 +279,7 @@ print only header stamp and values:
 
 
 def make_parser():
+    """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
                formatter_class=argparse.RawTextHelpFormatter)
     argparser = argparse.ArgumentParser(**kws)
@@ -290,7 +293,11 @@ def make_parser():
 
 
 def validate_args(args):
-    """Validates arguments, prints errors, returns success."""
+    """
+    Validates arguments, prints errors, returns success.
+
+    @param   args  arguments object like argparse.Namespace
+    """
     errors, re_errors = [], []
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
@@ -360,6 +367,7 @@ def run():
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except Exception: pass
         sys.exit()
+
 
 if "__main__" == __name__:
     run()

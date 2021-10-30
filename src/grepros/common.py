@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+## @namespace grepros.common
 """
 Common utilities.
 
@@ -39,36 +40,36 @@ ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string"]
 class MatchMarkers(object):
     """Highlight markers for matches in message values."""
 
-    ID    = "%08x" % random.randint(1, 1E9)  # Unique marker for match highlight replacements
-    START = "<%s>"  % ID                     # Temporary placeholder in front of match
-    END   = "</%s>" % ID                     # Temporary placeholder at end of match
-    EMPTY = START + END                      # Temporary placeholder for empty string match
-    EMPTY_REPL = "%s''%s" % (START, END)     # Replacement for empty string match
+    ID    = "%08x" % random.randint(1, 1E9)  ## Unique marker for match highlight replacements
+    START = "<%s>"  % ID                     ## Temporary placeholder in front of match
+    END   = "</%s>" % ID                     ## Temporary placeholder at end of match
+    EMPTY = START + END                      ## Temporary placeholder for empty string match
+    EMPTY_REPL = "%s''%s" % (START, END)     ## Replacement for empty string match
 
 
 class ConsolePrinter(object):
     """Prints to console, supports color output."""
 
-    STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight
-    STYLE_HIGHLIGHT = "\x1b[31m"                # Red
-    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  # Dim gray
-    STYLE_SPECIAL   = "\x1b[35m"                # Purple
-    STYLE_SPECIAL2  = "\x1b[36m"                # Cyan
-    STYLE_ERROR     = "\x1b[31m\x1b[2m"         # Dim red
+    STYLE_RESET     = "\x1b(B\x1b[m"            ## Default color+weight
+    STYLE_HIGHLIGHT = "\x1b[31m"                ## Red
+    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  ## Dim gray
+    STYLE_SPECIAL   = "\x1b[35m"                ## Purple
+    STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
+    STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
 
-    NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"  # Default highlight wrappers if not color output
+    NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"  ## Default highlight wrappers if not color output
 
-    HIGHLIGHT_START, HIGHLIGHT_END = STYLE_HIGHLIGHT, STYLE_RESET  # Matched value wrappers
-    LOWLIGHT_START,  LOWLIGHT_END  = STYLE_LOWLIGHT,  STYLE_RESET  # Metainfo wrappers
-    PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  # Content line prefix wrappers
-    ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  # Error message wrappers
-    SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  # Filename prefix separator wrappers
+    HIGHLIGHT_START, HIGHLIGHT_END = STYLE_HIGHLIGHT, STYLE_RESET  ## Matched value wrappers
+    LOWLIGHT_START,  LOWLIGHT_END  = STYLE_LOWLIGHT,  STYLE_RESET  ## Metainfo wrappers
+    PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  ## Content line prefix wrappers
+    ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  ## Error message wrappers
+    SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  ## Filename prefix separator wrappers
 
-    VERBOSE = False  # Whether to print debug information
+    VERBOSE = False  ## Whether to print debug information
 
-    WIDTH = 80  # Console width in characters, updated from shutil and curses
+    WIDTH = 80       ## Console width in characters, updated from shutil and curses
 
-    PRINTS = {}  # {sys.stdout: number of texts printed, sys.stderr: ..}
+    PRINTS = {}      ## {sys.stdout: number of texts printed, sys.stderr: ..}
 
     @classmethod
     def configure(cls, args):
@@ -76,10 +77,10 @@ class ConsolePrinter(object):
         Initializes terminal for color output, or disables color output if unsupported.
 
         @param   args.COLOR          "never", "always", or "auto" for when supported by TTY
-                     .MATCH_WRAPPER  string wrap around matched values,
+        @param   args.MATCH_WRAPPER  string to wrap around matched values,
                                      both sides if one value, start and end if more than one,
                                      or no wrapping if zero values (default ** in colorless output)
-                     .VERBOSE        whether to print debug information
+        @param   args.VERBOSE        whether to print debug information
         """
         cls.VERBOSE = args.VERBOSE
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
@@ -135,14 +136,17 @@ class ConsolePrinter(object):
 
     @classmethod
     def error(cls, text, *args, **kwargs):
-        """Prints error to stderr, in error colors if supported."""
+        """Prints error to stderr, formatted with args and kwargs, in error colors if supported."""
         KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 
     @classmethod
     def debug(cls, text, *args, **kwargs):
-        """Prints debug text to stderr if verbose, in lowlight colors if supported."""
+        """
+        Prints debug text to stderr if verbose.
+        Formatted with args and kwargs, in lowlight colors if supported.
+        """
         if cls.VERBOSE:
             KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
             cls.print(text, *args, **dict(kwargs, **KWS))
@@ -152,13 +156,14 @@ class ConsolePrinter(object):
 class ROSNode(object):
     """Interface to ROS master."""
 
-    """Node base name for connecting to ROS (will be anonymized)."""
+    ## Node base name for connecting to ROS (will be anonymized).
     NAME = "grepros"
 
-    """Seconds between checking whether ROS master is available."""
+    ## Seconds between checking whether ROS master is available.
     SLEEP_INTERVAL = 0.5
 
-    master = None  # rospy.MasterProxy instance
+    ## rospy.MasterProxy instance
+    master = None
 
     @classmethod
     def validate(cls):
@@ -189,10 +194,12 @@ class ROSNode(object):
 
 class TextWrapper(textwrap.TextWrapper):
     """
-    TextWrapper that supports custom substring widths in line width calculation
-    (useful for wrapping text with ANSI control codes and the like).
+    textwrap.TextWrapper that supports custom substring widths in line width calculation.
+
+    Useful for wrapping text containing unprintable characters like ANSI control codes.
     """
 
+    ## Defaults for textwrap.TextWrapper
     DEFAULTS = dict(break_long_words=False, break_on_hyphens=False, expand_tabs=False,
                     replace_whitespace=False, subsequent_indent="  ")
     REALLEN = builtins.len
@@ -200,10 +207,11 @@ class TextWrapper(textwrap.TextWrapper):
     def __init__(self, custom_widths=None, **kwargs):
         """
         @param   custom_widths  {substring: len} to use in line width calculation
+        @param   kwargs         arguments for textwrap.TextWrapper
         """
         textwrap.TextWrapper.__init__(self, **dict(self.DEFAULTS, **kwargs))
         self._customs = custom_widths or {}
-        self._realwidth = self.width
+        self._realwidth = self.width  # Inherited textwrap.TextWrapper.width
 
 
     def len(self, v):
@@ -240,9 +248,10 @@ def drop_zeros(v):
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
-    Filters string dictionary by keys and values,
-    retaining only entries that find a match (supports * wildcards).
-    If reverse, retains only entries that do not find a match.
+    Filters string dictionary by keys and values.
+
+    Retains only entries that find a match (supports * wildcards);
+    if reverse, retains only entries that do not find a match.
     """
     result = {}
     kpatterns = [wildcard_to_regex(x) for x in keys]
@@ -285,6 +294,7 @@ def filter_fields(fieldmap, top=(), include=(), exclude=()):
 def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
     """
     Yields filenames from current directory or given paths.
+
     Seeks only files with given extensions if names not given.
     Prints errors for names and paths not found.
 
@@ -344,7 +354,7 @@ def format_timedelta(delta):
 
 
 def format_bytes(size, precision=2, inter=" "):
-    """Returns a formatted byte size (e.g. 421.45 MB)."""
+    """Returns a formatted byte size (like 421.45 MB)."""
     result = "0 bytes"
     if size:
         UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
@@ -377,8 +387,9 @@ def get_message_value(msg, name, typename):
 
 def make_bag_time(stamp, bag):
     """
-    Returns timestamp string or datetime instance as rospy.Time,
-    taken as delta from bag start/end time if numeric string with sign prefix.
+    Returns timestamp string or datetime instance as rospy.Time.
+
+    Interpreted as delta from bag start/end time if numeric string with sign prefix.
     """
     if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
     else:
@@ -389,8 +400,9 @@ def make_bag_time(stamp, bag):
 
 def make_live_time(stamp):
     """
-    Returns timestamp string or datetime instance as rospy.Time,
-    taken as delta from system time if numeric string with sign prefix.
+    Returns timestamp string or datetime instance as rospy.Time.
+
+    Interpreted as delta from system time if numeric string with sign prefix.
     """
     if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
     else:

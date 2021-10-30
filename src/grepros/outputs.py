@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+## @namespace grepros.outputs
 """
 Outputs for search results.
 
@@ -39,11 +40,11 @@ class SinkBase(object):
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {topic: count}
 
-        self.exit_on_thread_error = False  # 
+        ## inputs.SourceBase instance bound to this sink
         self.source = None
 
     def emit_meta(self):
-        """Prints source metainfo as debug stream if not already printed, e.g. bag header."""
+        """Prints source metainfo like bag header as debug stream, if not already printed."""
         batch = self._args.META and self.source.get_batch()
         if self._args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.get_meta()
@@ -56,7 +57,7 @@ class SinkBase(object):
         @param   topic  full name of ROS topic the message is from
         @param   index  message index in topic
         @param   msg    ROS message
-        @param   match  ROS message with matched values tagged with markers, if matched
+        @param   match  ROS message with values tagged with match markers if matched, else None
         """
         self._counts[topic] = self._counts.get(topic, 0) + 1
 
@@ -65,7 +66,7 @@ class SinkBase(object):
         self.source = source
 
     def validate(self):
-        """Returns whether sink prerequisites are met (e.g. ROS environment set if TopicSink)."""
+        """Returns whether sink prerequisites are met (like ROS environment set if TopicSink)."""
         return True
 
     def close(self):
@@ -103,7 +104,7 @@ class ConsoleSink(SinkBase):
 
 
     def emit_meta(self):
-        """Prints source metainfo if not already printed, e.g. bag header."""
+        """Prints source metainfo like bag header, if not already printed."""
         batch = self._args.META and self.source.get_batch()
         if self._args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.get_meta()
@@ -174,7 +175,7 @@ class ConsoleSink(SinkBase):
 
 
     def message_to_yaml(self, val, top=(), typename=None):
-        """Returns ROS message (or other value) as YAML."""
+        """Returns ROS message or other value as YAML."""
         # Refactored from genpy.message.strify_message().
         scalar  = lambda n: n[:n.index("[")] if "[" in n else n  # Returns bool from bool[10]
         unquote = lambda v, t: v[1:-1] if "string" != t and v[:1] == v[-1:] == '"' else v
@@ -335,7 +336,7 @@ class TopicSink(SinkBase):
         ROSNode.init()
 
     def validate(self):
-        """Returns whether ROS environment is set."""
+        """Returns whether ROS environment is set, prints error if not."""
         return ROSNode.validate()
 
     def close(self):
@@ -352,6 +353,7 @@ class TopicSink(SinkBase):
 class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
+    ## Autobinding between argument flags and sink classes
     CLASSES = {"PUBLISH": TopicSink, "OUTBAG": BagSink, "CONSOLE": ConsoleSink}
 
     def __init__(self, args):
@@ -361,11 +363,13 @@ class MultiSink(SinkBase):
                      .PUBLISH   publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
+
+        ## List of all combined sinks
         self.sinks = [cls(args) for flag, cls in self.CLASSES.items()
                       if getattr(args, flag, False)]
 
     def emit_meta(self):
-        """Outputs source metainfo in all sinks if not already emitted."""
+        """Outputs source metainfo in one sink, if not already emitted."""
         sink = next((s for s in self.sinks if isinstance(s, ConsoleSink)), None)
         # Print meta in one sink only, prefer console
         sink = sink or self.sinks[0] if self.sinks else None

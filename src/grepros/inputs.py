@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+## @namespace grepros.inputs
 """
 Input sources for search content.
 
@@ -31,9 +32,8 @@ from . common import ConsolePrinter, ROSNode, drop_zeros, filter_dict, find_file
 class SourceBase(object):
     """Message producer base class."""
 
-    MESSAGE_META_TEMPLATE = (
-        "{topic} {index} ({type}  {dt}  {stamp})"
-    )
+    ## Template for message metainfo line
+    MESSAGE_META_TEMPLATE = "{topic} {index} ({type}  {dt}  {stamp})"
 
     def __init__(self, args):
         """
@@ -45,6 +45,7 @@ class SourceBase(object):
         self._msgtypes = {}    # {topic: "pkg/MsgType"} in source
         self._topics   = []    # [topics searched in current source]
 
+        ## outputs.SinkBase instance bound to this source
         self.sink = None
 
     def read(self):
@@ -56,7 +57,7 @@ class SourceBase(object):
 
     def validate(self):
         """
-        Returns whether source prerequisites are met (e.g. ROS environment set if TopicSource).
+        Returns whether source prerequisites are met (like ROS environment set if TopicSource).
         """
         return True
 
@@ -64,7 +65,7 @@ class SourceBase(object):
         """Shuts down input, closing any files or connections."""
 
     def get_batch(self):
-        """Returns source batch identifier if any (e.g. bagfile name if BagSource)."""
+        """Returns source batch identifier if any (like bagfile name if BagSource)."""
 
     def get_meta(self):
         """Returns source metainfo string, for console output."""
@@ -95,32 +96,30 @@ class SourceBase(object):
 class BagSource(SourceBase):
     """Produces messages from ROS bagfiles."""
 
-    META_TEMPLATE = (
-        "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n"
-        "File period {startdt} - {enddt}\n"
-        "File span {delta} ({start} - {end})"
-    )
-    MESSAGE_META_TEMPLATE = (
-        "{topic} {index}/{total} ({type}  {dt}  {stamp})"
-    )
+    ## Template for message metainfo line
+    MESSAGE_META_TEMPLATE = "{topic} {index}/{total} ({type}  {dt}  {stamp})"
+    ## Template for bag metainfo header
+    META_TEMPLATE         = "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n" \
+                            "File period {startdt} - {enddt}\n" \
+                            "File span {delta} ({start} - {end})"
 
-    BAG_EXTENSIONS  = (".bag", ".bag.active")
-    SKIP_EXTENSIONS = (".bag.orig.active", )
+    BAG_EXTENSIONS  = (".bag", ".bag.active")  ## Bagfile extensions to seek
+    SKIP_EXTENSIONS = (".bag.orig.active", )   ## Bagfile extensions to skip
 
     def __init__(self, args):
         """
         @param   args.FILES             names of ROS bagfiles to scan if not all in directory
-                     .PATHS             paths to scan if not current directory
-                     .RECURSE           recurse into subdirectories when looking for bagfiles
-                     .TOPICS            ROS topics to scan if not all
-                     .TYPES             ROS message types to scan if not all
-                     .SKIP_TOPICS       ROS topics to skip
-                     .SKIP_TYPES        ROS message types to skip
-                     .START_TIME        earliest timestamp of messages to scan
-                     .END_TIME          latest timestamp of messages to scan
-                     .START_INDEX       message index within topic to start from
-                     .END_INDEX         message index within topic to stop at
-                     .AFTER             emit NUM messages of trailing context after match
+        @param   args.PATHS             paths to scan if not current directory
+        @param   args.RECURSE           recurse into subdirectories when looking for bagfiles
+        @param   args.TOPICS            ROS topics to scan if not all
+        @param   args.TYPES             ROS message types to scan if not all
+        @param   args.SKIP_TOPICS       ROS topics to skip
+        @param   args.SKIP_TYPES        ROS message types to skip
+        @param   args.START_TIME        earliest timestamp of messages to scan
+        @param   args.END_TIME          latest timestamp of messages to scan
+        @param   args.START_INDEX       message index within topic to start from
+        @param   args.END_INDEX         message index within topic to stop at
+        @param   args.AFTER             emit NUM messages of trailing context after match
         """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -130,10 +129,8 @@ class BagSource(SourceBase):
         self._counts    = collections.defaultdict(int)  # {topic: count processed}
         self._msgtypes  = {}  # {topic: typename}
         self._msgtotals = {}  # {topic: total count in bag}
-
-        self.sink     = None   # outputs.SinkBase child instance
-        self.bag      = None   # Current rosbag.Bag instance
-        self.filename = None   # Current bagfile path
+        self._bag       = None   # Current rosbag.Bag instance
+        self._filename  = None   # Current bagfile path
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, rospy.Time)."""
@@ -150,19 +147,19 @@ class BagSource(SourceBase):
         self._running = False
 
     def get_batch(self):
-        """Returns current bagfile name."""
-        return self.filename
+        """Returns name of current bagfile."""
+        return self._filename
 
     def close(self):
         """Closes current bag, if any."""
         self._running = False
-        self.bag and self.bag.close()
+        self._bag and self._bag.close()
 
     def get_meta(self):
         """Returns bagfile metainfo string, for console output."""
-        start, end = self.bag.get_start_time(), self.bag.get_end_time()
-        kws = dict(file=self.filename, size=format_bytes(self.bag.size),
-                   mcount=self.bag.get_message_count(), tcount=len(self._msgtypes),
+        start, end = self._bag.get_start_time(), self._bag.get_end_time()
+        kws = dict(file=self._filename, size=format_bytes(self._bag.size),
+                   mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
                    start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
                    end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
                    delta=format_timedelta(datetime.timedelta(seconds=end - start)))
@@ -195,7 +192,7 @@ class BagSource(SourceBase):
     def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, rospy.Time)."""
         counts = collections.defaultdict(int)
-        for topic, msg, stamp in self.bag.read_messages(topics, start_time):
+        for topic, msg, stamp in self._bag.read_messages(topics, start_time):
             if not self._running:
                 break  # for topic
 
@@ -222,8 +219,8 @@ class BagSource(SourceBase):
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
 
-        self.bag      = bag
-        self.filename = filename
+        self._bag      = bag
+        self._filename = filename
         self._sticky  = False
         self._counts.clear()
 
@@ -246,20 +243,20 @@ class BagSource(SourceBase):
 class TopicSource(SourceBase):
     """Produces messages from live ROS topics."""
 
-    """Seconds between refreshing available topics from ROS master."""
+    ## Seconds between refreshing available topics from ROS master.
     MASTER_INTERVAL = 2
 
     def __init__(self, args):
         """
         @param   args.TOPICS            ROS topics to scan if not all
-                     .TYPES             ROS message types to scan if not all
-                     .SKIP_TOPICS       ROS topics to skip
-                     .SKIP_TYPES        ROS message types to skip
-                     .START_TIME        earliest timestamp of messages to scan
-                     .END_TIME          latest timestamp of messages to scan
-                     .START_INDEX       message index within topic to start from
-                     .END_INDEX         message index within topic to stop at
-                     .QUEUE_SIZE_IN     subscriber queue size
+        @param   args.TYPES             ROS message types to scan if not all
+        @param   args.SKIP_TOPICS       ROS topics to skip
+        @param   args.SKIP_TYPES        ROS message types to skip
+        @param   args.START_TIME        earliest timestamp of messages to scan
+        @param   args.END_TIME          latest timestamp of messages to scan
+        @param   args.START_INDEX       message index within topic to start from
+        @param   args.END_INDEX         message index within topic to stop at
+        @param   args.QUEUE_SIZE_IN     subscriber queue size
         """
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics
@@ -269,9 +266,7 @@ class TopicSource(SourceBase):
         self._configure()
 
     def read(self):
-        """
-        Yields messages from subscribed ROS topics, as (topic, msg, rospy.Time).
-        """
+        """Yields messages from subscribed ROS topics, as (topic, msg, rospy.Time)."""
         if not self._running:
             self._running = True
             self._queue = queue.Queue()
@@ -293,7 +288,7 @@ class TopicSource(SourceBase):
         ROSNode.init()
 
     def validate(self):
-        """Returns whether ROS environment is set."""
+        """Returns whether ROS environment is set, prints error if not."""
         return ROSNode.validate()
 
     def close(self):

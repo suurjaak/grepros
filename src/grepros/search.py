@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+## @namespace grepros.search
 """
 Search core.
 
@@ -25,6 +25,18 @@ class Searcher(object):
 
 
     def __init__(self, args):
+        """
+        @param   args.PATTERNS           pattern(s) to find in message field values
+        @param   args.RAW                PATTERNS are ordinary strings, not regular expressions
+        @param   args.CASE               use case-sensitive matching in PATTERNS
+        @param   args.BEFORE             number of messages of leading context to emit before match
+        @param   args.AFTER              number of messages of trailing context to emit after match
+        @param   args.MAX_MATCHES        number of matched messages to emit (per file if bag input)
+        @param   args.MAX_TOPIC_MATCHES  number of matched messages to emit from each topic
+        @param   args.MAX_TOPICS         number of topics to print matches from
+        @param   args.SELECT_FIELDS      message fields to use in matching if not all
+        @param   args.NOSELECT_FIELDS    message fields to skip in matching
+        """
         self._args     = copy.deepcopy(args)
         self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
         # {topic: {message ID: message}}
@@ -166,8 +178,9 @@ class Searcher(object):
 
     def get_match(self, msg):
         """
-        Returns message with matching field values converted to strings and
-        surrounded by markers, if all patterns find a match in message, else None.
+        Returns transformed message if all patterns find a match in message, else None.
+
+        Matching field values are converted to strings and surrounded by markers.
         """
         scalar = lambda n: n[:n.index("[")] if "[" in n else n  # Returns type from type[..]
 
