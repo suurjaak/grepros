@@ -34,6 +34,7 @@ class SinkBase(object):
 
     def __init__(self, args):
         """
+        @param   args        arguments object like argparse.Namespace
         @param   args.META   whether to print metainfo
         """
         self._args = copy.deepcopy(args)
@@ -87,11 +88,12 @@ class ConsoleSink(SinkBase):
 
     def __init__(self, args):
         """
+        @param   args                   arguments object like argparse.Namespace
         @param   args.META              whether to print metainfo
-                     .PRINT_FIELDS      message fields to print in output if not all
-                     .NOPRINT_FIELDS    message fields to skip in output
-                     .LINE_PREFIX       print source prefix like bag filename on each message line
-                     .MAX_FIELD_LINES   maximum number of lines to print per field
+        @param   args.PRINT_FIELDS      message fields to print in output if not all
+        @param   args.NOPRINT_FIELDS    message fields to skip in output
+        @param   args.LINE_PREFIX       print source prefix like bag filename on each message line
+        @param   args.MAX_FIELD_LINES   maximum number of lines to print per field
         """
         super(ConsoleSink, self).__init__(args)
 
@@ -260,8 +262,9 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
+        @param   args          arguments object like argparse.Namespace
         @param   args.META     whether to print metainfo
-                     .OUTBAG   name of ROS bagfile to create or append to
+        @param   args.OUTBAG   name of ROS bagfile to create or append to
         """
         super(BagSink, self).__init__(args)
         self._bag    = None
@@ -301,11 +304,12 @@ class TopicSink(SinkBase):
 
     def __init__(self, args):
         """
+        @param   args                   arguments object like argparse.Namespace
         @param   args.META              whether to print metainfo
-                     .QUEUE_SIZE_OUT    publisher queue size
-                     .PUBLISH_PREFIX    output topic prefix, prepended to input topic
-                     .PUBLISH_SUFFIX    output topic suffix, appended to output topic
-                     .PUBLISH_FIXNAME   single output topic name to publish to,
+        @param   args.QUEUE_SIZE_OUT    publisher queue size
+        @param   args.PUBLISH_PREFIX    output topic prefix, prepended to input topic
+        @param   args.PUBLISH_SUFFIX    output topic suffix, appended to output topic
+        @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
         """
         super(TopicSink, self).__init__(args)
@@ -358,9 +362,10 @@ class MultiSink(SinkBase):
 
     def __init__(self, args):
         """
+        @param   args           arguments object like argparse.Namespace
         @param   args.CONSOLE   print matches to console
-                     .OUTBAG    write matches to bagfile
-                     .PUBLISH   publish matches to live topics
+        @param   args.OUTBAG    write matches to bagfile
+        @param   args.PUBLISH   publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
 

@@ -37,8 +37,9 @@ class SourceBase(object):
 
     def __init__(self, args):
         """
-        @param   args.START_TIME  earliest timestamp of messages to scan
-                     .END_TIME    latest timestamp of messages to scan
+        @param   args              arguments object like argparse.Namespace
+        @param   args.START_TIME   earliest timestamp of messages to scan
+                     .END_TIME     latest timestamp of messages to scan
         """
         self._args = copy.deepcopy(args)
         self._patterns = {}    # {key: [re.Pattern, ]}
@@ -108,18 +109,19 @@ class BagSource(SourceBase):
 
     def __init__(self, args):
         """
-        @param   args.FILES             names of ROS bagfiles to scan if not all in directory
-        @param   args.PATHS             paths to scan if not current directory
-        @param   args.RECURSE           recurse into subdirectories when looking for bagfiles
-        @param   args.TOPICS            ROS topics to scan if not all
-        @param   args.TYPES             ROS message types to scan if not all
-        @param   args.SKIP_TOPICS       ROS topics to skip
-        @param   args.SKIP_TYPES        ROS message types to skip
-        @param   args.START_TIME        earliest timestamp of messages to scan
-        @param   args.END_TIME          latest timestamp of messages to scan
-        @param   args.START_INDEX       message index within topic to start from
-        @param   args.END_INDEX         message index within topic to stop at
-        @param   args.AFTER             emit NUM messages of trailing context after match
+        @param   args               arguments object like argparse.Namespace
+        @param   args.FILES         names of ROS bagfiles to scan if not all in directory
+        @param   args.PATHS         paths to scan if not current directory
+        @param   args.RECURSE       recurse into subdirectories when looking for bagfiles
+        @param   args.TOPICS        ROS topics to scan if not all
+        @param   args.TYPES         ROS message types to scan if not all
+        @param   args.SKIP_TOPICS   ROS topics to skip
+        @param   args.SKIP_TYPES    ROS message types to skip
+        @param   args.START_TIME    earliest timestamp of messages to scan
+        @param   args.END_TIME      latest timestamp of messages to scan
+        @param   args.START_INDEX   message index within topic to start from
+        @param   args.END_INDEX     message index within topic to stop at
+        @param   args.AFTER         emit NUM messages of trailing context after match
         """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -248,15 +250,16 @@ class TopicSource(SourceBase):
 
     def __init__(self, args):
         """
-        @param   args.TOPICS            ROS topics to scan if not all
-        @param   args.TYPES             ROS message types to scan if not all
-        @param   args.SKIP_TOPICS       ROS topics to skip
-        @param   args.SKIP_TYPES        ROS message types to skip
-        @param   args.START_TIME        earliest timestamp of messages to scan
-        @param   args.END_TIME          latest timestamp of messages to scan
-        @param   args.START_INDEX       message index within topic to start from
-        @param   args.END_INDEX         message index within topic to stop at
-        @param   args.QUEUE_SIZE_IN     subscriber queue size
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.TOPICS          ROS topics to scan if not all
+        @param   args.TYPES           ROS message types to scan if not all
+        @param   args.SKIP_TOPICS     ROS topics to skip
+        @param   args.SKIP_TYPES      ROS message types to skip
+        @param   args.START_TIME      earliest timestamp of messages to scan
+        @param   args.END_TIME        latest timestamp of messages to scan
+        @param   args.START_INDEX     message index within topic to start from
+        @param   args.END_INDEX       message index within topic to stop at
+        @param   args.QUEUE_SIZE_IN   subscriber queue size
         """
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics

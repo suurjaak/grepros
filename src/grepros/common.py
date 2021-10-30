@@ -76,11 +76,12 @@ class ConsolePrinter(object):
         """
         Initializes terminal for color output, or disables color output if unsupported.
 
-        @param   args.COLOR          "never", "always", or "auto" for when supported by TTY
-        @param   args.MATCH_WRAPPER  string to wrap around matched values,
-                                     both sides if one value, start and end if more than one,
-                                     or no wrapping if zero values (default ** in colorless output)
-        @param   args.VERBOSE        whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.COLOR           "never", "always", or "auto" for when supported by TTY
+        @param   args.MATCH_WRAPPER   string to wrap around matched values,
+                                      both sides if one value, start and end if more than one,
+                                      or no wrapping if zero values (default ** in colorless output)
+        @param   args.VERBOSE         whether to print debug information
         """
         cls.VERBOSE = args.VERBOSE
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
