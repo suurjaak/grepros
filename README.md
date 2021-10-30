@@ -3,7 +3,7 @@ grepros
 
 grep for ROS1 bag files and live topics.
 
-Can search through ROS messages and match any message field value by regular
+Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
