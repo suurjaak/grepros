@@ -89,14 +89,11 @@ class ConsoleSink(SinkBase):
         @param   args.META              whether to print metainfo
                      .PRINT_FIELDS      message fields to print in output if not all
                      .NOPRINT_FIELDS    message fields to skip in output
-                     .FILENAME_PREFIX   whether to print bag filename prefix on each message line
-                     .RECURSE           recurse into subdirectories when looking for bagfiles
-                     .FILES             names of ROS bagfiles to scan if not all in directory
+                     .LINE_PREFIX       print source prefix like bag filename on each message line
                      .MAX_FIELD_LINES   maximum number of lines to print per field
         """
         super(ConsoleSink, self).__init__(args)
 
-        self._use_prefix = False  # Whether to use bagfile prefix in output
         self._prefix     = ""     # Printed before each message line (filename if grepping 1+ files)
         self._wrapper    = None   # TextWrapper instance
         self._patterns   = {}     # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
@@ -120,7 +117,7 @@ class ConsoleSink(SinkBase):
     def emit(self, topic, index, stamp, msg, match):
         """Prints separator line and message text."""
         self._prefix = ""
-        if self._use_prefix and self.source.get_batch():
+        if self._args.LINE_PREFIX and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
             kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
                        coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch(),
@@ -144,7 +141,7 @@ class ConsoleSink(SinkBase):
         """Returns message as formatted string, optionally highlighted for matches."""
         text = self.message_to_yaml(msg).rstrip("\n")
 
-        if self._use_prefix or self._args.START_LINE or self._args.END_LINE \
+        if self._prefix or self._args.START_LINE or self._args.END_LINE \
         or self._args.MAX_MESSAGE_LINES or (self._args.LINES_AROUND_MATCH and highlight):
             lines = text.splitlines()
 
@@ -164,7 +161,7 @@ class ConsoleSink(SinkBase):
                 lines = sum((lines[a:b - 1] + [lines[b - 1] + ConsolePrinter.STYLE_RESET]
                              for a, b in merge_spans(spans)), [])
 
-            if self._use_prefix:
+            if self._prefix:
                 lines = [self._prefix + l for l in lines]
 
             text = "\n".join(lines)
@@ -238,9 +235,6 @@ class ConsoleSink(SinkBase):
         prints, noprints = args.PRINT_FIELDS, args.NOPRINT_FIELDS
         for key, vals in [("print", prints), ("noprint", noprints)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
-
-        self._use_prefix = (args.RECURSE or len(args.FILES) != 1 or
-                            any("*" in x for x in args.FILES)) if args.FILENAME_PREFIX else False
 
         HL0, HL1 = ConsolePrinter.HIGHLIGHT_START, ConsolePrinter.HIGHLIGHT_END
         LL0, LL1 = ConsolePrinter.LOWLIGHT_START,  ConsolePrinter.LOWLIGHT_END

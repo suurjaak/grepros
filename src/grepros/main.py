@@ -221,7 +221,7 @@ print only header stamp and values:
         dict(args=["--no-meta"], dest="META", action="store_false",
              help="do not print bag and topic and message metainfo to console"),
 
-        dict(args=["--no-filename"], dest="FILENAME_PREFIX", action="store_false",
+        dict(args=["--no-filename"], dest="LINE_PREFIX", action="store_false",
              help="do not print bag filename prefix on each console message line"),
 
         dict(args=["--no-console-output"], dest="CONSOLE", action="store_false",
@@ -296,8 +296,11 @@ def validate_args(args):
         args.BEFORE = args.AFTER = args.CONTEXT
 
     # Default to printing metadata for publish/write if no console output
-    if not args.CONSOLE:
-        args.VERBOSE = True
+    args.VERBOSE = args.VERBOSE or not args.CONSOLE
+
+    # Print filename prefix on each console message line if not single specific file
+    args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
+                                             or args.PATHS or any("*" in x for x in args.FILES))
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
         if v is None: continue  # for v, n
