@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    29.10.2021
+@modified    30.10.2021
 ------------------------------------------------------------------------------
 """
 import copy
@@ -26,16 +26,18 @@ class Searcher(object):
 
     def __init__(self, args):
         """
-        @param   args.PATTERNS           pattern(s) to find in message field values
-        @param   args.RAW                PATTERNS are ordinary strings, not regular expressions
-        @param   args.CASE               use case-sensitive matching in PATTERNS
-        @param   args.BEFORE             number of messages of leading context to emit before match
-        @param   args.AFTER              number of messages of trailing context to emit after match
-        @param   args.MAX_MATCHES        number of matched messages to emit (per file if bag input)
-        @param   args.MAX_TOPIC_MATCHES  number of matched messages to emit from each topic
-        @param   args.MAX_TOPICS         number of topics to print matches from
-        @param   args.SELECT_FIELDS      message fields to use in matching if not all
-        @param   args.NOSELECT_FIELDS    message fields to skip in matching
+        @param   args                     arguments object like argparse.Namespace
+        @param   args.PATTERNS            pattern(s) to find in message field values
+        @param   args.RAW                 PATTERNS are ordinary strings, not regular expressions
+        @param   args.CASE                use case-sensitive matching in PATTERNS
+        @param   args.INVERT              select non-matching messages
+        @param   args.BEFORE              number of messages of leading context to emit before match
+        @param   args.AFTER               number of messages of trailing context to emit after match
+        @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
+        @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
+        @param   args.MAX_TOPICS          number of topics to print matches from
+        @param   args.SELECT_FIELDS       message fields to use in matching if not all
+        @param   args.NOSELECT_FIELDS     message fields to skip in matching
         """
         self._args     = copy.deepcopy(args)
         self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
@@ -184,18 +186,23 @@ class Searcher(object):
         """
         scalar = lambda n: n[:n.index("[")] if "[" in n else n  # Returns type from type[..]
 
-        def wrap_matches(v, top):
+        def wrap_matches(v, top, is_collection=False):
             """Returns string with parts matching patterns wrapped in marker tags."""
             spans = []
+            # Omit collection brackets from match unless empty: allow matching "[]"
+            v1 = v2 = v[1:-1] if is_collection and v != "[]" else v
             for i, (path, p) in enumerate(self._patterns["content"]):
                 if not path or any(path == top[j:j + len(path)] for j in range(len(top))):
-                    for match in (m for m in p.finditer(v) if not v or m.start() != m.end()):
+                    for match in (m for m in p.finditer(v1) if not v1 or m.start() != m.end()):
                         matched[i] = True
                         spans.append(match.span())
-            spans = merge_spans(spans)
+                        if self._args.INVERT:
+                            break  # for match
+            spans = merge_spans(spans) if not self._args.INVERT else \
+                    [] if spans else [(0, len(v1))] if v1 or not is_collection else []
             for a, b in reversed(spans):  # Work from last to first, indices stay the same
-                v = v[:a] + MatchMarkers.START + v[a:b] + MatchMarkers.END + v[b:]
-            return v
+                v2 = v2[:a] + MatchMarkers.START + v2[a:b] + MatchMarkers.END + v2[b:]
+            return "[%s]" % v2 if is_collection and v != "[]" else v2
 
         def decorate_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings."""
@@ -211,9 +218,7 @@ class Searcher(object):
                     setattr(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
-                    # Omit collection brackets from match unless empty: allow matching "[]"
-                    v2 = wrap_matches(v1[1:-1] if is_collection and v else v1, path)
-                    v2 = "[%s]" % v2 if is_collection and v else v2
+                    v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
                         setattr(obj, k, v2)
             if not hasattr(obj, "__slots__"):
@@ -222,10 +227,11 @@ class Searcher(object):
                 obj = v2 if len(v1) != len(v2) else obj
             return obj
 
-        yml = str(msg)
-        if not all(any(p.finditer(yml)) for _, p in self._patterns["content"]):
+        yml = "" if self._args.INVERT else str(msg)
+        if yml and not all(any(p.finditer(yml)) for _, p in self._patterns["content"]):
             return None  # Skip detailed matching if patterns not present at all
 
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         decorate_message(result)
-        return result if len(matched) == len(self._patterns["content"]) else None
+        yes = not matched if self._args.INVERT else len(matched) == len(self._patterns["content"])
+        return result if yes else None

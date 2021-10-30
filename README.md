@@ -78,6 +78,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
+  -v, --invert-match    select non-matching messages
+
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
   --write OUTBAG        write matched messages to specified bagfile

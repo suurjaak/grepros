@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.10.2021
+@modified    30.10.2021
 ------------------------------------------------------------------------------
 """
 import argparse
@@ -73,6 +73,10 @@ print only header stamp and values:
         dict(args=["-I", "--no-ignore-case"],
              dest="CASE", action="store_true",
              help="use case-sensitive matching in PATTERNs"),
+
+        dict(args=["-v", "--invert-match"],
+             dest="INVERT", action="store_true",
+             help="select non-matching messages"),
 
         dict(args=["--live"],
              dest="LIVE", action="store_true",
