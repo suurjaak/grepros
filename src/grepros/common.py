@@ -36,7 +36,7 @@ ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
 ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string"]
 
 
-class MatchMarkers:
+class MatchMarkers(object):
     """Highlight markers for matches in message values."""
 
     ID    = "%08x" % random.randint(1, 1E9)  # Unique marker for match highlight replacements
@@ -46,7 +46,7 @@ class MatchMarkers:
     EMPTY_REPL = "%s''%s" % (START, END)     # Replacement for empty string match
 
 
-class ConsolePrinter:
+class ConsolePrinter(object):
     """Prints to console, supports color output."""
 
     STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight

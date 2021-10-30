@@ -20,7 +20,7 @@ from . common import ROS_NUMERIC_TYPES, MatchMarkers, filter_fields, get_message
                      get_message_value, merge_spans, wildcard_to_regex
 
 
-class Searcher:
+class Searcher(object):
     """ROS message grepper."""
 
 
