@@ -212,3 +212,11 @@ In your catkin workspace, under the source directory:
     catkin build --this
 
 This will add the `grepros` command to your local catkin workspace path.
+
+
+License
+-------
+
+Copyright (c) by Erki Suurjaak.
+Released as free open source software under the BSD License,
+see [LICENSE.md](LICENSE.md) for full details.

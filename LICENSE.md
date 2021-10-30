@@ -1,3 +1,5 @@
+The 3-Clause BSD License
+
 Copyright (c) 2021 Erki Suurjaak. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
