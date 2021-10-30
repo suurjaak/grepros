@@ -36,6 +36,10 @@ class SourceBase(object):
     )
 
     def __init__(self, args):
+        """
+        @param   args.START_TIME  earliest timestamp of messages to scan
+                     .END_TIME    latest timestamp of messages to scan
+        """
         self._args = copy.deepcopy(args)
         self._patterns = {}    # {key: [re.Pattern, ]}
         self._msgtypes = {}    # {topic: "pkg/MsgType"} in source
@@ -104,6 +108,20 @@ class BagSource(SourceBase):
     SKIP_EXTENSIONS = (".bag.orig.active", )
 
     def __init__(self, args):
+        """
+        @param   args.FILES             names of ROS bagfiles to scan if not all in directory
+                     .PATHS             paths to scan if not current directory
+                     .RECURSE           recurse into subdirectories when looking for bagfiles
+                     .TOPICS            ROS topics to scan if not all
+                     .TYPES             ROS message types to scan if not all
+                     .SKIP_TOPICS       ROS topics to skip
+                     .SKIP_TYPES        ROS message types to skip
+                     .START_TIME        earliest timestamp of messages to scan
+                     .END_TIME          latest timestamp of messages to scan
+                     .START_INDEX       message index within topic to start from
+                     .END_INDEX         message index within topic to stop at
+                     .AFTER             emit NUM messages of trailing context after match
+        """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
         self._status    = None  # Match status of last produced message
@@ -232,6 +250,17 @@ class TopicSource(SourceBase):
     MASTER_INTERVAL = 2
 
     def __init__(self, args):
+        """
+        @param   args.TOPICS            ROS topics to scan if not all
+                     .TYPES             ROS message types to scan if not all
+                     .SKIP_TOPICS       ROS topics to skip
+                     .SKIP_TYPES        ROS message types to skip
+                     .START_TIME        earliest timestamp of messages to scan
+                     .END_TIME          latest timestamp of messages to scan
+                     .START_INDEX       message index within topic to start from
+                     .END_INDEX         message index within topic to stop at
+                     .QUEUE_SIZE_IN     subscriber queue size
+        """
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, rospy.Time)]

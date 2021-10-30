@@ -32,6 +32,9 @@ class SinkBase(object):
     """Output base class."""
 
     def __init__(self, args):
+        """
+        @param   args.META   whether to print metainfo
+        """
         self._args = copy.deepcopy(args)
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {topic: count}
@@ -82,6 +85,15 @@ class ConsoleSink(SinkBase):
 
 
     def __init__(self, args):
+        """
+        @param   args.META              whether to print metainfo
+                     .PRINT_FIELDS      message fields to print in output if not all
+                     .NOPRINT_FIELDS    message fields to skip in output
+                     .FILENAME_PREFIX   whether to print bag filename prefix on each message line
+                     .RECURSE           recurse into subdirectories when looking for bagfiles
+                     .FILES             names of ROS bagfiles to scan if not all in directory
+                     .MAX_FIELD_LINES   maximum number of lines to print per field
+        """
         super(ConsoleSink, self).__init__(args)
 
         self._use_prefix = False  # Whether to use bagfile prefix in output
@@ -228,7 +240,7 @@ class ConsoleSink(SinkBase):
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
         self._use_prefix = (args.RECURSE or len(args.FILES) != 1 or
-                            any("*" in x for x in args.FILES)) if args.FILENAME else False
+                            any("*" in x for x in args.FILES)) if args.FILENAME_PREFIX else False
 
         HL0, HL1 = ConsolePrinter.HIGHLIGHT_START, ConsolePrinter.HIGHLIGHT_END
         LL0, LL1 = ConsolePrinter.LOWLIGHT_START,  ConsolePrinter.LOWLIGHT_END
@@ -252,6 +264,10 @@ class BagSink(SinkBase):
     """Writes messages to bagfile."""
 
     def __init__(self, args):
+        """
+        @param   args.META     whether to print metainfo
+                     .OUTBAG   name of ROS bagfile to create or append to
+        """
         super(BagSink, self).__init__(args)
         self._bag    = None
         self._counts = {}  # {topic: count}
@@ -290,10 +306,11 @@ class TopicSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args.QUEUE_SIZE_OUT    publisher queue size
-        @param       .PUBLISH_PREFIX    output topic prefix, prepended to input topic
-        @param       .PUBLISH_SUFFIX    output topic suffix, appended to output topic
-        @param       .PUBLISH_FIXNAME   single output topic name to publish to,
+        @param   args.META              whether to print metainfo
+                     .QUEUE_SIZE_OUT    publisher queue size
+                     .PUBLISH_PREFIX    output topic prefix, prepended to input topic
+                     .PUBLISH_SUFFIX    output topic suffix, appended to output topic
+                     .PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
         """
         super(TopicSink, self).__init__(args)
@@ -337,12 +354,18 @@ class TopicSink(SinkBase):
             self._pubs.pop(t).unregister()
 
 
+
 class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
     CLASSES = {"PUBLISH": TopicSink, "OUTBAG": BagSink, "CONSOLE": ConsoleSink}
 
     def __init__(self, args):
+        """
+        @param   args.CONSOLE   print matches to console
+                     .OUTBAG    write matches to bagfile
+                     .PUBLISH   publish matches to live topics
+        """
         super(MultiSink, self).__init__(args)
         self.sinks = [cls(args) for flag, cls in self.CLASSES.items()
                       if getattr(args, flag, False)]

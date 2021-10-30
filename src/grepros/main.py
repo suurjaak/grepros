@@ -221,7 +221,7 @@ print only header stamp and values:
         dict(args=["--no-meta"], dest="META", action="store_false",
              help="do not print bag and topic and message metainfo to console"),
 
-        dict(args=["--no-filename"], dest="FILENAME", action="store_false",
+        dict(args=["--no-filename"], dest="FILENAME_PREFIX", action="store_false",
              help="do not print bag filename prefix on each console message line"),
 
         dict(args=["--no-console-output"], dest="CONSOLE", action="store_false",
