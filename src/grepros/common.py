@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.10.2021
+@modified    31.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -191,6 +191,8 @@ class ROSNode(object):
                     available = False
                     time.sleep(cls.SLEEP_INTERVAL)
                 else: available = True
+        try: rospy.get_rostime()
+        except Exception:  # Init node only if not already inited
             rospy.init_node(cls.NAME, anonymous=True, disable_signals=True)
 
 

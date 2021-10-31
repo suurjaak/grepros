@@ -2,6 +2,6 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.1.0 (2021-10-30)
+0.1.0 (2021-10-31)
 -------------------
-* fully functional grep for rosbag and live topics
+* grep for rosbag and live topics, able to print and publish and write bagfiles
