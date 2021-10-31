@@ -13,6 +13,8 @@ to a bagfile, or published to live topics.
 Grepping from or publishing to live topics requires ROS environment to be set
 and ROS master to be running.
 
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
+
 
 Example usage
 -------------
