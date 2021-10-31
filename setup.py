@@ -17,33 +17,32 @@ except ImportError: generate_distutils_setup = None
 
 
 common_args = dict(
-    packages=["grepros"],
-    install_requires=["pyyaml"],
+    install_requires = ["pyyaml"],
+    package_dir      = {"": "src"},
+    packages         = ["grepros"],
 )
 
 
 setup_args = generate_distutils_setup(  # fetch values from package.xml
-    package_dir={"": "src"},
-    scripts=["scripts/grepros"],
+    scripts      = ["scripts/grepros"],
 ) if generate_distutils_setup else dict(  # Normal pip setup
-    name="grepros",
-    version="0.1.0",
-    entry_points={"console_scripts": ["grepros = grepros.main:run"]},
+    name         = "grepros",
+    version      = "0.1.0",
+    entry_points = {"console_scripts": ["grepros = grepros.main:run"]},
 
-    description="grep for ROS1 bag files and live topics",
-    url="https://github.com/suurjaak/grepros",
-    author="Erki Suurjaak",
-    author_email="erki@lap.ee",
-    license="BSD",
-    platforms=["any"],
-    keywords="ROS rosbag grep",
+    description  = "grep for ROS1 bag files and live topics",
+    url          = "https://github.com/suurjaak/grepros",
+    author       = "Erki Suurjaak",
+    author_email = "erki@lap.ee",
+    license      = "BSD",
+    platforms    = ["any"],
+    keywords     = "ROS rosbag grep",
+    python_requires = ">=2.7",
 
-    classifiers=[
+    classifiers  = [
         "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Environment :: Console :: Curses",
-        "Framework :: Robot Operating System",
-        "Framework :: Robot Operating System :: ROS1",
         "License :: OSI Approved :: BSD License",
         "Intended Audience :: Developers",
         "Operating System :: POSIX",
@@ -54,9 +53,11 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
         "Programming Language :: Python :: 3",
     ],
 
-    long_description_content_type="text/markdown",
-    long_description=(
-"""Searches through ROS messages and matches any message field value by regular
+    long_description_content_type = "text/markdown",
+    long_description              = (
+"""grep for ROS1 bag files and live topics.
+
+Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
