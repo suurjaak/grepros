@@ -217,14 +217,6 @@ QT_AUTOBRIEF           = NO
 
 MULTILINE_CPP_IS_BRIEF = NO
 
-# By default Python docstrings are displayed as preformatted text and doxygen's
-# special commands cannot be used. By setting PYTHON_DOCSTRING to NO the
-# doxygen's special commands can be used and the contents of the docstring
-# documentation blocks is shown as doxygen documentation.
-# The default value is: YES.
-
-PYTHON_DOCSTRING       = YES
-
 # If the INHERIT_DOCS tag is set to YES then an undocumented member inherits the
 # documentation from any documented member that it re-implements.
 # The default value is: YES.
@@ -321,7 +313,7 @@ OPTIMIZE_OUTPUT_SLICE  = NO
 # Note that for custom extensions you also need to set FILE_PATTERNS otherwise
 # the files are not read by doxygen.
 
-EXTENSION_MAPPING      =
+EXTENSION_MAPPING      = rst=md
 
 # If the MARKDOWN_SUPPORT tag is enabled then doxygen pre-processes all comments
 # according to the Markdown format, which allows for more readable
@@ -331,7 +323,7 @@ EXTENSION_MAPPING      =
 # case of backward compatibilities issues.
 # The default value is: YES.
 
-MARKDOWN_SUPPORT       = YES
+MARKDOWN_SUPPORT       = NO
 
 # When the TOC_INCLUDE_HEADINGS tag is set to a non-zero value, all headings up
 # to that level are automatically included in the table of contents, even if
@@ -854,7 +846,7 @@ INPUT_ENCODING         = UTF-8
 # C comment), *.py, *.pyw, *.f90, *.f95, *.f03, *.f08, *.f, *.for, *.tcl, *.vhd,
 # *.vhdl, *.ucf, *.qsf and *.ice.
 
-FILE_PATTERNS          =
+FILE_PATTERNS          = *.md *.py *.rst
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
@@ -956,9 +948,14 @@ INPUT_FILTER           =
 # need to set EXTENSION_MAPPING for the extension otherwise the files are not
 # properly processed by doxygen.
 
-# Use doxypypy to convert Python sources to doxygen-compatible format,
-# strip project headers, strip blank lines from before param-blocks.
-FILTER_PATTERNS        = *.py="myfilter() { python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#?-{40,}$/,/^#?-{40,}$/d' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g'; }; myfilter"
+# py: Use doxypypy to convert Python sources to doxygen-compatible format; then
+# blank out project headers, strip blank lines from before param-blocks
+# as those somehow make params unparseable for doxygen,
+# add an empty comment line after param-block and shift single-line docstrings
+# for classes/functions one line higher to retain correct line numbers.
+
+# rst: replace "^^^\ntext\n^^^" with "\nCHANGELOG\n========="
+FILTER_PATTERNS        = *.py="myfilter() { python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#-{40,}$/,/^#-{40,}$/{s/.+//g}' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g' | sed -r ':r;$!{N;br};s/(# +@param [^\n]+\n *#\n)/\1\n/g' | sed -r ':r;$!{N;br};s/\n(\n( *@[^\n]+\n)? *## @brief [^\n]+\n *(def|class) [^\n]+\n)/\1\n/g'; }; myfilter" *.rst="sed -r ':r;$!{N;br};s/\^{20,}\n[^\n]+\n\^{20,}\n/\nCHANGELOG\n=========\n/g'"
 
 # If the FILTER_SOURCE_FILES tag is set to YES, the input filter (if set using
 # INPUT_FILTER) will also be used to filter the input files that are used for

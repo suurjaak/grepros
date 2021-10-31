@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.10.2021
+@modified    30.10.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -146,6 +146,7 @@ class ConsolePrinter(object):
     def debug(cls, text, *args, **kwargs):
         """
         Prints debug text to stderr if verbose.
+
         Formatted with args and kwargs, in lowlight colors if supported.
         """
         if cls.VERBOSE:
@@ -197,7 +198,7 @@ class TextWrapper(textwrap.TextWrapper):
     """
     textwrap.TextWrapper that supports custom substring widths in line width calculation.
 
-    Useful for wrapping text containing unprintable characters like ANSI control codes.
+    Intended for wrapping text containing ANSI control codes.
     """
 
     ## Defaults for textwrap.TextWrapper
@@ -217,8 +218,9 @@ class TextWrapper(textwrap.TextWrapper):
 
     def len(self, v):
         """
-        Returns the number of items of a sequence or collection,
-        using configured custom substring widths if string value.
+        Returns the number of items of a sequence or collection.
+
+        Uses configured custom substring widths if string value.
         """
         result = self.REALLEN(v)
         for s, l in self._customs.items() if isinstance(v, str) else ():
