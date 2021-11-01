@@ -424,7 +424,6 @@ def make_message_hash(msg, include=(), exclude=()):
     @param   include   message fields to include if not all, as [((nested, path), re.Pattern())]
     @param   exclude   message fields to exclude, as [((nested, path), re.Pattern())]
     """
-    scalar = lambda n: n[:n.index("[")] if "[" in n else n  # Returns type from type[..]
     hasher = hashlib.md5()
 
     def walk_message(obj, top=()):
@@ -466,6 +465,15 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def scalar(typename):
+    """
+    Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".
+
+    Returns type unchanged if already a scalar.
+    """
+    return typename[:typename.index("[")] if "[" in typename else typename
 
 
 def wildcard_to_regex(text):

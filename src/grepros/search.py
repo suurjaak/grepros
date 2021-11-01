@@ -17,7 +17,7 @@ import collections
 import re
 
 from . common import ROS_NUMERIC_TYPES, MatchMarkers, filter_fields, get_message_fields, \
-                     get_message_value, make_message_hash, merge_spans, wildcard_to_regex
+                     get_message_value, make_message_hash, merge_spans, scalar, wildcard_to_regex
 
 
 class Searcher(object):
@@ -193,7 +193,6 @@ class Searcher(object):
 
         Matching field values are converted to strings and surrounded by markers.
         """
-        scalar = lambda n: n[:n.index("[")] if "[" in n else n  # Returns type from type[..]
 
         def wrap_matches(v, top, is_collection=False):
             """Returns string with parts matching patterns wrapped in marker tags."""

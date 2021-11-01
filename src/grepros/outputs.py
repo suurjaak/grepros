@@ -26,7 +26,7 @@ import yaml
 
 from . common import ConsolePrinter, MatchMarkers, ROSNode, TextWrapper
 from . common import ROS_NUMERIC_TYPES, ROS_BUILTIN_TYPES, filter_fields, get_message_fields, \
-                     get_message_value, merge_spans, wildcard_to_regex
+                     get_message_value, merge_spans, scalar, wildcard_to_regex
 
 
 class SinkBase(object):
@@ -179,7 +179,6 @@ class ConsoleSink(SinkBase):
     def message_to_yaml(self, val, top=(), typename=None):
         """Returns ROS message or other value as YAML."""
         # Refactored from genpy.message.strify_message().
-        scalar  = lambda n: n[:n.index("[")] if "[" in n else n  # Returns bool from bool[10]
         unquote = lambda v, t: v[1:-1] if "string" != t and v[:1] == v[-1:] == '"' else v
 
         def retag_match_lines(lines):
