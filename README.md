@@ -120,7 +120,7 @@ Filtering:
   -sf [FIELD [FIELD ...]], --select-field [FIELD [FIELD ...]]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)
-  -ns [FIELD [FIELD ...]], --noselect-field [FIELD [FIELD ...]]
+  -ns [FIELD [FIELD ...]], --no-select-field [FIELD [FIELD ...]]
                         message fields to skip in matching
                         (supports nested.paths and * wildcards)
   -m NUM, --max-count NUM
@@ -133,7 +133,7 @@ Output control:
   -pf [FIELD [FIELD ...]], --print-field [FIELD [FIELD ...]]
                         message fields to print in console output if not all
                         (supports nested.paths and * wildcards)
-  -np [FIELD [FIELD ...]], --noprint-field [FIELD [FIELD ...]]
+  -np [FIELD [FIELD ...]], --no-print-field [FIELD [FIELD ...]]
                         message fields to skip in console output
                         (supports nested.paths and * wildcards)
   -B NUM, --before-context NUM

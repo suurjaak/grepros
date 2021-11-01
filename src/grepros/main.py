@@ -147,7 +147,7 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="message fields to use in matching if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
-        dict(args=["-ns", "--noselect-field"],
+        dict(args=["-ns", "--no-select-field"],
              dest="NOSELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
              help="message fields to skip in matching\n"
                   "(supports nested.paths and * wildcards)"),
@@ -172,7 +172,7 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="message fields to print in console output if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
-        dict(args=["-np", "--noprint-field"],
+        dict(args=["-np", "--no-print-field"],
              dest="NOPRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
              help="message fields to skip in console output\n"
                   "(supports nested.paths and * wildcards)"),
