@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.10.2021
+@modified    01.11.2021
 ------------------------------------------------------------------------------
 """
 import argparse
@@ -163,7 +163,13 @@ Print first message from each lidar topic on host 1.2.3.4:
 
         dict(args=["--max-topics"],
              dest="MAX_TOPICS", metavar="NUM", default=0, type=int,
-             help="number of topics to print matches from"),
+             help="number of topics to emit matches from"),
+
+        dict(args=["--unique-only"],
+             dest="UNIQUE", action="store_true",
+             help="only emit matches that are unique in topic,\n"
+                  "taking --select-field and --no-select-field into account\n"
+                  "(per file if bag input)"),
 
     ], "Output control": [
 

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    30.10.2021
+@modified    01.11.2021
 ------------------------------------------------------------------------------
 """
 import copy
@@ -17,7 +17,7 @@ import collections
 import re
 
 from . common import ROS_NUMERIC_TYPES, MatchMarkers, filter_fields, get_message_fields, \
-                     get_message_value, merge_spans, wildcard_to_regex
+                     get_message_value, make_message_hash, merge_spans, wildcard_to_regex
 
 
 class Searcher(object):
@@ -49,6 +49,8 @@ class Searcher(object):
         self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))
         # {topic: {message ID: True if matched else False if emitted else None}
         self._statuses = collections.defaultdict(collections.OrderedDict)
+        # {topic: (message hash over all fields used in matching)}
+        self._hashes = collections.defaultdict(set)
 
         self._parse_patterns()
 
@@ -61,14 +63,15 @@ class Searcher(object):
         @param   sink    outputs.SinkBase instance
         @return          count matched
         """
-        for d in (self._messages, self._stamps, self._counts, self._statuses): d.clear()
+        for d in (self._messages, self._stamps, self._counts, self._statuses, self._hashes):
+            d.clear()
         source.bind(sink), sink.bind(source)
 
         counter, total, batch = 0, 0, None
         for topic, msg, stamp in source.read():
             if batch != source.get_batch():
                 total += sum(x[True] for x in self._counts.values())
-                for d in (self._counts, self._messages, self._stamps, self._statuses):
+                for d in (self._counts, self._messages, self._stamps, self._statuses, self._hashes):
                     d.clear()
                 counter, batch = 0, source.get_batch()
 
@@ -78,7 +81,7 @@ class Searcher(object):
             self._stamps  [topic][msgid] = stamp
             self._statuses[topic][msgid] = None
 
-            matched = self._is_processable(source, topic, stamp) and self.get_match(msg)
+            matched = self._is_processable(source, topic, stamp, msg) and self.get_match(msg)
             if matched:
                 self._statuses[topic][msgid] = True
                 self._counts[topic][True] += 1
@@ -103,7 +106,7 @@ class Searcher(object):
         return total + sum(x[True] for x in self._counts.values())
 
 
-    def _is_processable(self, source, topic, stamp):
+    def _is_processable(self, source, topic, stamp, msg):
         """
         Returns whether processing current message in topic is acceptable:
         that topic or total maximum count has not been reached,
@@ -119,8 +122,14 @@ class Searcher(object):
             topics_matched = [t for t, x in self._counts.items() if x[True]]
             if topic not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
                 return False
-        return source.is_processable(topic, self._counts[topic][None], stamp)
-
+        if not source.is_processable(topic, self._counts[topic][None], stamp):
+            return False
+        if self._args.UNIQUE:
+            msghash = make_message_hash(msg, self._patterns["select"], self._patterns["noselect"])
+            if msghash in self._hashes[topic]:
+                return False
+            self._hashes[topic].add(msghash)
+        return True
 
     def _prune_data(self, topic):
         """Drops history older than context window."""
