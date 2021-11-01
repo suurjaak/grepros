@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.1.1 (2021-11-01)
 -------------------
+* flush stdout on every print, to avoid buffering in redirected output
 * add --unique-only option
 * rename options --noselect-field and --noprint-field to --no-select-field and --no-print-field
 

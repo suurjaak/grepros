@@ -133,6 +133,7 @@ class ConsolePrinter(object):
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
         print(pref + text + suff, file=fileobj)
+        fileobj is sys.stdout and not fileobj.isatty() and fileobj.flush()
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
 
 
