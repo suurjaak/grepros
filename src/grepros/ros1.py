@@ -67,7 +67,7 @@ def validate():
     """Returns whether ROS1 environment is set, prints error if not."""
     missing = [k for k in ("ROS_DISTRO", "ROS_MASTER_URI", "ROS_ROOT",
                "ROS_PACKAGE_PATH", "ROS_VERSION") if not os.getenv(k)]
-    if missing and not master:
+    if missing:
         ConsolePrinter.error("ROS environment not sourced: missing %s.",
                              ", ".join(sorted(missing)))
     return not missing
@@ -84,14 +84,14 @@ def create_bag_writer(filename):
     return rosbag.Bag(filename, mode)
 
 
-def create_publisher(topic, type, queue_size):
+def create_publisher(topic, cls, queue_size):
     """Returns a rospy.Publisher."""
-    return rospy.Publisher(topic, type, queue_size=queue_size)
+    return rospy.Publisher(topic, cls, queue_size=queue_size)
 
 
-def create_subscriber(topic, type, handler, queue_size):
+def create_subscriber(topic, cls, handler, queue_size):
     """Returns a rospy.Subscriber."""
-    return rospy.Subscriber(topic, type, handler, queue_size=queue_size)
+    return rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
 
 
 def format_message_value(msg, name, value):
@@ -115,12 +115,12 @@ def get_message_class(typename):
     return roslib.message.get_message_class(typename)
 
 
-def get_message_fields(msg):
+def get_message_fields(val):
     """Returns {field name: field type name} if ROS message, else {}."""
-    names = getattr(msg, "__slots__", [])
-    if isinstance(msg, (rospy.Time, rospy.Duration)):  # Empty __slots__
+    names = getattr(val, "__slots__", [])
+    if isinstance(val, (rospy.Time, rospy.Duration)):  # Empty __slots__
         names = genpy.TVal.__slots__
-    return dict(zip(names, getattr(msg, "_slot_types", [])))
+    return dict(zip(names, getattr(val, "_slot_types", [])))
 
 
 def get_rostime():
@@ -132,7 +132,7 @@ def get_topic_types():
     """
     Returns currently available ROS1 topics, as [(topicname, typename)].
 
-    Omits topics that the current ROS node itself has published.
+    Omits topics that the current ROS1 node itself has published.
     """
     result, myname = [], rospy.get_name()
     pubs, _, _ = master.getSystemState()[-1]
@@ -182,5 +182,5 @@ def make_live_time(stamp):
 
 
 def to_sec(val):
-    """Returns value in seconds if value is ROS time, else value."""
+    """Returns value in seconds if value is ROS1 time/duration, else value."""
     return val.to_sec() if isinstance(val, genpy.TVal) else val

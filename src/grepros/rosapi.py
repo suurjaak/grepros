@@ -80,12 +80,6 @@ def create_bag_reader(filename):
     Result is rosbag.Bag in ROS1, and something with a conforming API in ROS2.
     """
     return realapi.create_bag_reader(filename)
-    #.get_start_time()
-    #.get_end_time()
-    #.get_message_count()
-    #.read_messages(topics, start_time, end_time)
-    #.close()
-    #.size
 
 
 def create_bag_writer(filename):
@@ -95,21 +89,16 @@ def create_bag_writer(filename):
     Result is rosbag.Bag in ROS1, and something with a conforming API in ROS2.
     """
     return realapi.create_bag_writer(filename)
-    #.write(topic, msg, stamp)
-    #.close()
 
 
-def create_publisher(topic, type, queue_size):
-    """Returns a ROS publisher instance."""
-    return create_publisher(topic, type, queue_size)
-    #
-    #.publish(msg)
-    #.unregister()
+def create_publisher(topic, cls, queue_size):
+    """Returns a ROS publisher instance, with .publish() and .unregister()."""
+    return create_publisher(topic, cls, queue_size)
 
 
-def create_subscriber(topic, type, handler, queue_size):
-    """Returns a ROS subscriber instance."""
-    return realapi.create_subscriber(topic, type, handler, queue_size)
+def create_subscriber(topic, cls, handler, queue_size):
+    """Returns a ROS subscriber instance, with .unregister()."""
+    return realapi.create_subscriber(topic, cls, handler, queue_size)
     #.unregister()
 
 
@@ -128,9 +117,9 @@ def get_message_class(typename):
     return realapi.get_message_class(typename)
 
 
-def get_message_fields(msg):
+def get_message_fields(val):
     """Returns {field name: field type name} if ROS message, else {}."""
-    return realapi.get_message_fields(msg)
+    return realapi.get_message_fields(val)
 
 
 def get_rostime():
@@ -176,5 +165,5 @@ def make_live_time(stamp):
 
 
 def to_sec(val):
-    """Returns value in seconds if value is ROS time, else value."""
+    """Returns value in seconds if value is ROS time/duration, else value."""
     return realapi.to_sec(val)
