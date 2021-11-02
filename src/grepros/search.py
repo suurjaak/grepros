@@ -9,15 +9,16 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    01.11.2021
+@modified    02.11.2021
 ------------------------------------------------------------------------------
 """
 import copy
 import collections
 import re
 
-from . common import ROS_NUMERIC_TYPES, MatchMarkers, filter_fields, get_message_fields, \
-                     get_message_value, make_message_hash, merge_spans, scalar, wildcard_to_regex
+from . common import MatchMarkers, filter_fields, get_message_value, make_message_hash, \
+                     merge_spans, scalar, wildcard_to_regex
+from . rosapi import ROS_NUMERIC_TYPES, get_message_fields
 
 
 class Searcher(object):
@@ -43,7 +44,7 @@ class Searcher(object):
         self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
         # {topic: {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
-        # {topic: {message ID: rospy.Time}}
+        # {topic: {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
         # {topic: {None: count processed, True: count matched, False: count emitted as context}}
         self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.10.2021
+@modified    02.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -19,14 +19,11 @@ import copy
 import os
 import sys
 
-import genpy
-import rosbag
-import rospy
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, ROSNode, TextWrapper
-from . common import ROS_NUMERIC_TYPES, ROS_BUILTIN_TYPES, filter_fields, get_message_fields, \
-                     get_message_value, merge_spans, scalar, wildcard_to_regex
+from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
+                     filter_fields, get_message_value, merge_spans, scalar, wildcard_to_regex
+from . import rosapi
 
 
 class SinkBase(object):
@@ -207,13 +204,12 @@ class ConsoleSink(SinkBase):
                 yaml_str = yaml.safe_dump(val).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
             vals = [x for v in val for x in [self.message_to_yaml(v, top, typename)] if x]
-            if scalar(typename) in ROS_NUMERIC_TYPES:
+            if scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v), typename) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
-        if isinstance(val, (genpy.Message, genpy.TVal)):
-            FMTS = {"secs": "%10s", "nsecs": "%9s"} if isinstance(val, genpy.TVal) else {}
+        if rosapi.is_ros_message(val):
             MATCHED_ONLY = self._args.MATCHED_FIELDS_ONLY and not self._args.LINES_AROUND_MATCH
-            vals, fieldmap = [], get_message_fields(val)
+            vals, fieldmap = [], rosapi.get_message_fields(val)
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
             fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
             for k, t in fieldmap.items():
@@ -222,11 +218,11 @@ class ConsoleSink(SinkBase):
                     continue  # for k, t
 
                 v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
-                if scalar(t) in ROS_BUILTIN_TYPES:
+                if scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     extra_indent = " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
-                vals.append("%s%s: %s" % (indent, k, FMTS.get(k, "%s") % v))
+                vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
             return ("\n" if indent and vals else "") + "\n".join(vals)
 
         return str(val)
@@ -275,18 +271,21 @@ class BagSink(SinkBase):
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output bagfile."""
         if not self._bag:
-            if os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG):
-                self._args.META and ConsolePrinter.debug("Appending to bag %s.", self._args.OUTBAG)
-                self._bag = rosbag.Bag(self._args.OUTBAG, "a")
-            else:
-                self._args.META and ConsolePrinter.debug("Creating bag %s.", self._args.OUTBAG)
-                self._bag = rosbag.Bag(self._args.OUTBAG, "w")
+            if self._args.META:
+                a = os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG)
+                ConsolePrinter.debug("%s %s.", "Appending to" if a else "Creating",
+                                     self._args.OUTBAG)
+            self._bag = rosapi.create_bag_writer(self._args.OUTBAG)
 
         if topic not in self._counts:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
         self._bag.write(topic, msg, stamp)
         super(BagSink, self).emit(topic, index, stamp, msg, match)
+
+    def validate(self):
+        """Returns whether ROS environment is set, prints error if not."""
+        return rosapi.validate()
 
     def close(self):
         """Closes output bagfile, if any."""
@@ -312,7 +311,7 @@ class TopicSink(SinkBase):
                                         overrides prefix and suffix if given
         """
         super(TopicSink, self).__init__(args)
-        self._pubs = {}  # {(intopic, cls): rospy.Publisher}
+        self._pubs = {}  # {(intopic, cls): ROS publisher}
         self._close_printed = False
 
     def emit(self, topic, index, stamp, msg, match):
@@ -326,7 +325,7 @@ class TopicSink(SinkBase):
             pub = None
             if self._args.PUBLISH_FIXNAME:
                 pub = next((v for (_, c), v in self._pubs.items() if c == cls), None)
-            pub = pub or rospy.Publisher(topic2, cls, queue_size=self._args.QUEUE_SIZE_OUT)
+            pub = pub or rosapi.create_publisher(topic2, cls, queue_size=self._args.QUEUE_SIZE_OUT)
             self._pubs[key] = pub
             self._counts.setdefault(topic, 0)
 
@@ -336,11 +335,11 @@ class TopicSink(SinkBase):
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS master."""
         SinkBase.bind(self, source)
-        ROSNode.init()
+        rosapi.init_node()
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return ROSNode.validate()
+        return rosapi.validate()
 
     def close(self):
         """Shuts down publishers."""

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.11.2021
+@modified    02.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -25,17 +25,10 @@ import re
 import shutil
 import sys
 import textwrap
-import time
 try: import curses
 except ImportError: curses = None
 
-import genpy
-import rospy
-
-
-ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
-                     "uint16", "uint32", "uint64", "float32", "float64", "bool"]
-ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string"]
+from . import rosapi
 
 
 class MatchMarkers(object):
@@ -157,47 +150,6 @@ class ConsolePrinter(object):
 
 
 
-class ROSNode(object):
-    """Interface to ROS master."""
-
-    ## Node base name for connecting to ROS (will be anonymized).
-    NAME = "grepros"
-
-    ## Seconds between checking whether ROS master is available.
-    SLEEP_INTERVAL = 0.5
-
-    ## rospy.MasterProxy instance
-    master = None
-
-    @classmethod
-    def validate(cls):
-        """Returns whether ROS environment is set, prints error if not."""
-        missing = [k for k in ("ROS_DISTRO", "ROS_MASTER_URI", "ROS_ROOT",
-                   "ROS_PACKAGE_PATH", "ROS_VERSION") if not os.getenv(k)]
-        if missing:
-            ConsolePrinter.error("ROS environment not sourced: missing %s.",
-                                 ", ".join(sorted(missing)))
-        return not missing
-
-    @classmethod
-    def init(cls):
-        """Initializes ROS node, blocks until connection established."""
-        if not cls.master:
-            cls.master = rospy.client.get_master()
-            available = None
-            while not available:
-                try: cls.master.getSystemState()
-                except Exception:
-                    if available is None:
-                        ConsolePrinter.error("Unable to register with master. Will keep trying.")
-                    available = False
-                    time.sleep(cls.SLEEP_INTERVAL)
-                else: available = True
-        try: rospy.get_rostime()
-        except Exception:  # Init node only if not already inited
-            rospy.init_node(cls.NAME, anonymous=True, disable_signals=True)
-
-
 class TextWrapper(textwrap.TextWrapper):
     """
     textwrap.TextWrapper that supports custom substring widths in line width calculation.
@@ -248,9 +200,12 @@ class TextWrapper(textwrap.TextWrapper):
 
 
 def drop_zeros(v):
-    """Drops trailing zeros and empty decimal separator, if any."""
-    v = v.to_sec() if isinstance(v, genpy.TVal) else v
-    return re.sub(r"\.?0+$", "", str(v))
+    """
+    Drops trailing zeros and empty decimal separator, if any.
+
+    Converts value to seconds if ROS time.
+    """
+    return re.sub(r"\.?0+$", "", str(rosapi.to_sec(v)))
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
@@ -373,49 +328,15 @@ def format_bytes(size, precision=2, inter=" "):
 
 
 def format_stamp(stamp):
-    """Returns ISO datetime from rospy.Time or UNIX timestamp."""
-    stamp = stamp if isinstance(stamp, (int, float)) else stamp.to_sec()
+    """Returns ISO datetime from ROS time or UNIX timestamp."""
+    stamp = stamp if isinstance(stamp, (int, float)) else rosapi.to_sec(stamp)
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
-
-
-def get_message_fields(msg):
-    """Returns {field name: field type name} if ROS message, else {}."""
-    names = getattr(msg, "__slots__", [])
-    if isinstance(msg, (rospy.Time, rospy.Duration)):  # Empty __slots__
-        names = genpy.TVal.__slots__
-    return dict(zip(names, getattr(msg, "_slot_types", [])))
 
 
 def get_message_value(msg, name, typename):
     """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
     v = getattr(msg, name)
     return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
-
-
-def make_bag_time(stamp, bag):
-    """
-    Returns timestamp string or datetime instance as rospy.Time.
-
-    Interpreted as delta from bag start/end time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
-    return rospy.Time(stamp + shift)
-
-
-def make_live_time(stamp):
-    """
-    Returns timestamp string or datetime instance as rospy.Time.
-
-    Interpreted as delta from system time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime): stamp, shift = stamp.timestamp(), 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else time.time()
-    return rospy.Time(stamp + shift)
 
 
 def make_message_hash(msg, include=(), exclude=()):
@@ -428,13 +349,13 @@ def make_message_hash(msg, include=(), exclude=()):
     hasher = hashlib.md5()
 
     def walk_message(obj, top=()):
-        fieldmap = get_message_fields(obj)
+        fieldmap = rosapi.get_message_fields(obj)
         fieldmap = filter_fields(fieldmap, (), include=include, exclude=exclude)
         for k, t in fieldmap.items():
             v, path = get_message_value(obj, k, t), top + (k, )
-            if hasattr(v, "__slots__"):
+            if rosapi.is_ros_message(v):
                 walk_message(v, path)
-            elif isinstance(v, (list, tuple)) and scalar(t) not in ROS_BUILTIN_TYPES:
+            elif isinstance(v, (list, tuple)) and scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
                 for x in v: walk_message(x, path)
             else:
                 s = "%s=%s" % (path, v)
