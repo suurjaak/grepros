@@ -1,7 +1,7 @@
 grepros
 =======
 
-grep for ROS1 bag files and live topics.
+grep for ROS bag files and live topics.
 
 Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.

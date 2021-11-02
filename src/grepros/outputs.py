@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-## @namespace grepros.outputs
 """
 Outputs for search results.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS1 bag files and live topics.
+This file is part of grepros - grep for ROS bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
@@ -12,6 +11,7 @@ Released under the BSD License.
 @modified    02.11.2021
 ------------------------------------------------------------------------------
 """
+## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
 import collections

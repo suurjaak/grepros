@@ -3,12 +3,12 @@
 Setup.py for grepros. 
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS1 bag files and live topics.
+This file is part of grepros - grep for ROS bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.10.2021
+@modified    02.11.2021
 ------------------------------------------------------------------------------
 """
 from setuptools import setup
@@ -30,7 +30,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     version      = "0.1.0",
     entry_points = {"console_scripts": ["grepros = grepros.main:run"]},
 
-    description  = "grep for ROS1 bag files and live topics",
+    description  = "grep for ROS bag files and live topics",
     url          = "https://github.com/suurjaak/grepros",
     author       = "Erki Suurjaak",
     author_email = "erki@lap.ee",
@@ -55,7 +55,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
 
     long_description_content_type = "text/markdown",
     long_description              = (
-"""grep for ROS1 bag files and live topics.
+"""grep for ROS bag files and live topics.
 
 Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.

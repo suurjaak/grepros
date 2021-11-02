@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-## @namespace grepros.main
 """
 Program main interface.
 
 ------------------------------------------------------------------------------
-This file is part of grepros - grep for ROS1 bag files and live topics.
+This file is part of grepros - grep for ROS bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.11.2021
+@modified    02.11.2021
 ------------------------------------------------------------------------------
 """
+## @namespace grepros.main
 import argparse
 import atexit
 import os
@@ -24,7 +24,7 @@ from . common import ConsolePrinter, parse_datetime
 
 ## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
 ARGUMENTS = {
-    "description": "Searches through messages in ROS1 bag files or live topics.",
+    "description": "Searches through messages in ROS bag files or live topics.",
     "epilog":      """
 PATTERNs use Python regular expression syntax, message matches if all match.
 * wildcards in other arguments use simple globbing as zero or more characters,
