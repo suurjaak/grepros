@@ -216,7 +216,7 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     Retains only entries that find a match (supports * wildcards);
     if reverse, retains only entries that do not find a match.
     """
-    result = {}
+    result = type(dct)()
     kpatterns = [wildcard_to_regex(x) for x in keys]
     vpatterns = [wildcard_to_regex(x) for x in values]
     for k, v in dct.items() if not reverse else ():
@@ -239,7 +239,7 @@ def filter_fields(fieldmap, top=(), include=(), exclude=()):
     @param   include   [((nested, path), re.Pattern())]
     @param   exclude   [((nested, path), re.Pattern())]
     """
-    result = {} if include or exclude else fieldmap
+    result = type(fieldmap)() if include or exclude else fieldmap
     for k, v in fieldmap.items() if not result else ():
         trail, trailstr = top + (k, ), ".".join(top + (k, ))
         for is_exclude, patterns in enumerate((include, exclude)):

@@ -12,6 +12,7 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
+import collections
 import os
 import sqlite3
 import time
@@ -35,7 +36,7 @@ node = None
 
 
 class Bag(object):
-    """ROS2 bag interface."""
+    """ROS2 bag interface, partially mimicing rosbag.Bag."""
 
     ## ROS2 bag SQLite schema
     CREATE_SQL = """
@@ -92,6 +93,22 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             secs, nsecs = divmod(row["val"])
             return secs + nsecs / 1E9
         return None
+
+
+    def get_type_and_topic_info(self):
+        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})"""
+        self._ensure_open()
+        TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
+        ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
+        topicmap = {}
+        if self._has_table("messages") and self._has_table("topics"):
+            counts = self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
+                                      "GROUP BY topic_id").fetchall()
+            countmap = {x["topic_id"]: x["count"] for x in counts}
+            for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
+                mytype, mycount =row["type"], countmap.get(row["id"], 0)
+                topicmap[row["name"]] = TopicTuple(msg_type=mytype, message_count=mycount)
+        return ResultTuple(topics=topicmap)
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None):
@@ -268,8 +285,9 @@ def get_message_class(typename):
 
 
 def get_message_fields(val):
-    """Returns {field name: field type name} if RO2 message, else {}."""
-    return val.get_fields_and_field_types() if is_ros_message(val) else val
+    """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
+    if not is_ros_message(val): return val
+    return collections.OrderedDict(val.get_fields_and_field_types())
 
 
 def get_rostime():

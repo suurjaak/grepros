@@ -118,7 +118,7 @@ def get_message_class(typename):
 
 
 def get_message_fields(val):
-    """Returns {field name: field type name} if ROS message, else {}."""
+    """Returns OrderedDict({field name: field type name}) if ROS message, else {}."""
     return realapi.get_message_fields(val)
 
 

@@ -12,6 +12,7 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
+import collections
 import os
 import time
 
@@ -115,11 +116,11 @@ def get_message_class(typename):
 
 
 def get_message_fields(val):
-    """Returns {field name: field type name} if ROS message, else {}."""
+    """Returns OrderedDict({field name: field type name}) if RO1 message, else {}."""
     names = getattr(val, "__slots__", [])
     if isinstance(val, (rospy.Time, rospy.Duration)):  # Empty __slots__
         names = genpy.TVal.__slots__
-    return dict(zip(names, getattr(val, "_slot_types", [])))
+    return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
 
 
 def get_rostime():
