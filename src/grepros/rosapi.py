@@ -93,13 +93,12 @@ def create_bag_writer(filename):
 
 def create_publisher(topic, cls, queue_size):
     """Returns a ROS publisher instance, with .publish() and .unregister()."""
-    return create_publisher(topic, cls, queue_size)
+    return realapi.create_publisher(topic, cls, queue_size)
 
 
 def create_subscriber(topic, cls, handler, queue_size):
     """Returns a ROS subscriber instance, with .unregister()."""
     return realapi.create_subscriber(topic, cls, handler, queue_size)
-    #.unregister()
 
 
 def format_message_value(msg, name, value):
@@ -149,6 +148,11 @@ def make_duration(secs=0, nsecs=0):
 def make_time(secs=0, nsecs=0):
     """Returns a ROS time."""
     return realapi.make_time(secs=secs, nsecs=nsecs)
+
+
+def set_message_value(obj, name, value):
+    """Sets message or object attribute value."""
+    realapi.set_message_value(obj, name, value)
 
 
 def to_sec(val):

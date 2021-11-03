@@ -18,7 +18,7 @@ import re
 
 from . common import MatchMarkers, filter_fields, get_message_value, make_message_hash, \
                      merge_spans, scalar, wildcard_to_regex
-from . rosapi import ROS_NUMERIC_TYPES, get_message_fields
+from . rosapi import ROS_NUMERIC_TYPES, get_message_fields, set_message_value
 
 
 class Searcher(object):
@@ -224,12 +224,12 @@ class Searcher(object):
                 if hasattr(v, "__slots__"):
                     decorate_message(v, path)
                 elif is_collection and scalar(t) not in ROS_NUMERIC_TYPES:
-                    setattr(obj, k, [decorate_message(x, path) for x in v])
+                    set_message_value(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
                     v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
-                        setattr(obj, k, v2)
+                        set_message_value(obj, k, v2)
             if not hasattr(obj, "__slots__"):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)

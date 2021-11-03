@@ -158,6 +158,11 @@ def make_time(secs=0, nsecs=0):
     return rospy.Time(secs=secs, nsecs=nsecs)
 
 
+def set_message_value(obj, name, value):
+    """Sets message or object attribute value."""
+    setattr(obj, name, value)
+
+
 def to_sec(val):
     """Returns value in seconds if value is ROS1 time/duration, else value."""
     return val.to_sec() if isinstance(val, genpy.TVal) else val

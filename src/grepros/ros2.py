@@ -19,6 +19,9 @@ import time
 
 import builtin_interfaces.msg
 import rclpy
+import rclpy.duration
+import rclpy.serialization
+import rclpy.time
 import rosidl_runtime_py.utilities
 
 from . common import ConsolePrinter, MatchMarkers
@@ -80,7 +83,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._ensure_open()
         if self._has_table("messages"):
             row = self._db.execute("SELECT MAX(timestamp) AS val FROM messages").fetchone()
-            secs, nsecs = divmod(row["val"])
+            secs, nsecs = divmod(row["val"], 10**9)
             return secs + nsecs / 1E9
         return None
 
@@ -90,7 +93,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._ensure_open()
         if self._has_table("messages"):
             row = self._db.execute("SELECT MIN(timestamp) AS val FROM messages").fetchone()
-            secs, nsecs = divmod(row["val"])
+            secs, nsecs = divmod(row["val"], 10**9)
             return secs + nsecs / 1E9
         return None
 
@@ -127,21 +130,21 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         sql = "SELECT id, name, type FROM topics"
         self._topics = {r["name"]: r for r in self._db.execute(sql).fetchall()}
 
-        sql, args = "SELECT * FROM messages", ()
+        sql, exprs, args = "SELECT * FROM messages", [], ()
         if topics:
             topics = topics if isinstance(topics, (list, tuple)) else [topics]
-            ids = list(filter(bool, map(self._topics.get, topics)))
-            sql += (" WHERE " if args else " AND ")
-            sql += "topic_id IN (%s)" % ", ".join("%s" % x for x in ids)
+            rows   = list(filter(bool, map(self._topics.get, topics)))
+            exprs += ["topic_id IN (%s)" % ", ".join("%s" % x["id"] for x in rows)]
         if start_time is not None:
-            sql += (" WHERE " if args else " AND ") + "timestamp >= ?"
-            args += (start_time, )
+            exprs += ["timestamp >= ?"]
+            args  += (start_time, )
         if end_time is not None:
-            sql += (" WHERE " if args else " AND ") + "timestamp <= ?"
-            args += (end_time, )
+            exprs += ["timestamp <= ?"]
+            args  += (end_time, )
+        sql += ((" WHERE " + " AND ".join(exprs)) if exprs else "")
         sql += " ORDER BY timestamp"
 
-        topicmap = {v["id"]: k for k, v in self._topics.items()}
+        topicmap = {v["id"]: v for v in self._topics.values()}
         msgtypes = {}  # {typename: cls}
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
@@ -171,12 +174,13 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
         cursor = self._db.cursor()
         if topic not in self._topics:
-            typename = "%s/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
-            args = (topic, typename)
-            sql = "INSERT INTO topics (name, type) VALUES (?, ?)"
+            typename = "%s/msg/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
+            sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
+                  "VALUES (?, ?, ?, ?)"
+            args = (topic, typename, "cdr", "")
             cursor.execute(sql, args)
             tdata = {"id": cursor.lastrowid, "name": topic, "type": typename}
-            self._topics[tdata["id"]] = tdata
+            self._topics[topic] = tdata
 
         data = rclpy.serialization.serialize_message(msg)
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
@@ -201,7 +205,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Opens bag database if not open, can populate schema if not present."""
         if self._db:
             return
-        self._db = sqlite3.connect(detect_types=sqlite3.PARSE_DECLTYPES,
+        self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
                                    isolation_level=None, check_same_thread=False)
         self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         if populate:
@@ -327,9 +331,19 @@ def make_time(secs=0, nsecs=0):
     return rclpy.time.Time(seconds=secs, nanoseconds=nsecs)
 
 
+def set_message_value(obj, name, value):
+    """Sets message or object attribute value."""
+    if is_ros_message(obj):
+        # Bypass setter as it does type checking
+        fieldmap = obj.get_fields_and_field_types()
+        if name in fieldmap:
+            name = obj.__slots__[list(fieldmap).index(name)]
+    setattr(obj, name, value)
+
+
 def to_sec(val):
     """Returns value in seconds if value is ROS2 time/duration, else value."""
     if not isinstance(val, (rclpy.duration.Duration, rclpy.time.Time)):
         return val
-    secs, nsecs = divmod(val.nanoseconds)
+    secs, nsecs = divmod(val.nanoseconds, 10**9)
     return secs + nsecs / 1E9
