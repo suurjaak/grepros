@@ -10,8 +10,9 @@ Can also look for specific values in specific message fields only.
 By default, matches are printed to console. Additionally, matches can be written
 to a bagfile, or published to live topics.
 
-Grepping from or publishing to live topics requires ROS environment to be set
-and ROS master to be running.
+Supports both ROS1 and ROS2. ROS environment variables need to be set.
+
+Grepping from or publishing to ROS1 live topics requires ROS master to be running.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
 
@@ -204,7 +205,8 @@ Installation
 
 This will add the `grepros` command to your path.
 
-Requires ROS Python packages (rospy, roslib, rosbag, rosmsg, genpy).
+Requires ROS Python packages
+(ROS1: rospy, roslib, rosbag, genpy; ROS2: rclpy, rosidl_runtime_py).
 
 
 ### Using catkin
