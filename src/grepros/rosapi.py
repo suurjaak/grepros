@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.11.2021
+@modified    03.11.2021
 ------------------------------------------------------------------------------
 """
 import os
@@ -146,22 +146,9 @@ def make_duration(secs=0, nsecs=0):
     return realapi.make_duration(secs=secs, nsecs=nsecs)
 
 
-def make_bag_time(stamp, bag):
-    """
-    Returns timestamp string or datetime instance as ROS time.
-
-    Interpreted as delta from bag start/end time if numeric string with sign prefix.
-    """
-    return realapi.make_bag_time(bag, stamp)
-
-
-def make_live_time(stamp):
-    """
-    Returns timestamp string or datetime instance as ROS time.
-
-    Interpreted as delta from system time if numeric string with sign prefix.
-    """
-    return realapi.make_live_time(stamp)
+def make_time(secs=0, nsecs=0):
+    """Returns a ROS time."""
+    return realapi.make_time(secs=secs, nsecs=nsecs)
 
 
 def to_sec(val):

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.11.2021
+@modified    03.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -25,6 +25,7 @@ import re
 import shutil
 import sys
 import textwrap
+import time
 try: import curses
 except ImportError: curses = None
 
@@ -337,6 +338,34 @@ def get_message_value(msg, name, typename):
     """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
     v = getattr(msg, name)
     return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+
+
+def make_bag_time(stamp, bag):
+    """
+    Returns timestamp string or datetime instance as epoch seconds.
+
+    Interpreted as delta from bag start/end time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime):
+        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
+    return stamp + shift
+
+
+def make_live_time(stamp):
+    """
+    Returns timestamp string or datetime instance as epoch seconds.
+
+    Interpreted as delta from system time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime):
+        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else time.time()
+    return stamp + shift
 
 
 def make_message_hash(msg, include=(), exclude=()):

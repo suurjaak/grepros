@@ -8,11 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.11.2021
+@modified    03.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
-import datetime
 import os
 import time
 
@@ -153,32 +152,9 @@ def make_duration(secs=0, nsecs=0):
     return rospy.Duration(secs=secs, nsecs=nsecs)
 
 
-def make_bag_time(stamp, bag):
-    """
-    Returns timestamp string or datetime instance as rospy.Time.
-
-    Interpreted as delta from bag start/end time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
-    return rospy.Time(stamp + shift)
-
-
-def make_live_time(stamp):
-    """
-    Returns timestamp string or datetime instance as rospy.Time.
-
-    Interpreted as delta from system time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else time.time()
-    return rospy.Time(stamp + shift)
+def make_time(secs=0, nsecs=0):
+    """Returns a ROS time, as rospy.Time."""
+    return rospy.Time(secs=secs, nsecs=nsecs)
 
 
 def to_sec(val):
