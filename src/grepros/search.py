@@ -182,7 +182,7 @@ class Searcher(object):
         result = False
         if self._args.MAX_MATCHES:
             if sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES \
-            and not self._has_in_window(topic, self._args.AFTER, status=None, full=True):
+            and not self._has_in_window(topic, self._args.AFTER, status=True, full=True):
                 result = True
         return result
 
