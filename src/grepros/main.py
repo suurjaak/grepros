@@ -365,6 +365,7 @@ def run():
     if not validate_args(args):
         sys.exit(1)
 
+    ConsolePrinter.VERBOSE = args.VERBOSE
     cls = inputs.TopicSource if args.LIVE else inputs.BagSource
     searcher, source, sink = search.Searcher(args), cls(args), outputs.MultiSink(args)
     if not source.validate() or not sink.validate():
