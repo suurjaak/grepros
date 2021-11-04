@@ -354,7 +354,7 @@ def flush_stdout():
     """Writes a linefeed to sdtout if nothing has been printed to it so far."""
     if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
         try: print()  # Piping cursed output to `more` remains paging if nothing is printed
-        except Exception: pass
+        except (Exception, KeyboardInterrupt): pass
 
 
 def run():
@@ -372,14 +372,14 @@ def run():
 
     source.thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
     BREAK_EXS = (KeyboardInterrupt, )
-    try: BREAK_EXS += (BrokenPipeError, KeyboardInterrupt, )  # Py3
+    try: BREAK_EXS += (BrokenPipeError, )  # Py3
     except NameError: pass  # Py2
 
     try: searcher.search(source, sink)
     except BREAK_EXS:
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
-        except Exception: pass
+        except (Exception, KeyboardInterrupt): pass
         sys.exit()
 
 

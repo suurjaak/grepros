@@ -348,7 +348,9 @@ class TopicSink(SinkBase):
             ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
                                  sum(self._counts.values()), len(set(self._pubs.values())))
         for t in list(self._pubs):
-            self._pubs.pop(t).unregister()
+            pub = self._pubs.pop(t)
+            # ROS1 prints errors when closing a publisher with subscribers
+            not pub.get_num_connections() and pub.unregister()
 
 
 

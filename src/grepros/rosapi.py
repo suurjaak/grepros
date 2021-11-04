@@ -91,7 +91,7 @@ def create_bag_writer(filename):
 
 
 def create_publisher(topic, cls, queue_size):
-    """Returns a ROS publisher instance, with .publish() and .unregister()."""
+    """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
     return realapi.create_publisher(topic, cls, queue_size)
 
 

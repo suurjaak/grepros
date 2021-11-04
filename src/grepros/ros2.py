@@ -260,9 +260,10 @@ def create_bag_writer(filename):
 
 
 def create_publisher(topic, cls, queue_size):
-    """Returns an rclpy.publisher.Publisher, with .unregister()."""
+    """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     pub = node.create_publisher(cls, topic, qos)
+    pub.get_num_connections = pub.get_subscription_count
     pub.unregister = pub.destroy
     return pub
 
