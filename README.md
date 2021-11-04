@@ -211,13 +211,23 @@ Requires ROS Python packages
 
 ### Using catkin
 
-In your catkin workspace, under the source directory:
+In your ROS1 workspace, under the source directory:
 
-    git glone https://github.com/suurjaak/grepros.git
+    git clone https://github.com/suurjaak/grepros.git
     cd grepros
     catkin build --this
 
-This will add the `grepros` command to your local catkin workspace path.
+This will add the `grepros` command to your local ROS1 workspace path.
+
+
+### Using colcon
+
+In your ROS2 workspace, at the workspace root:
+
+    git clone https://github.com/suurjaak/grepros.git src/grepros
+    colcon build --packages-select grepros
+
+This will add the `grepros` command to your local ROS2 workspace path.
 
 
 License

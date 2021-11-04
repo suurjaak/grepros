@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -336,7 +336,7 @@ def format_stamp(stamp):
 
 def make_bag_time(stamp, bag):
     """
-    Returns timestamp string or datetime instance as epoch seconds.
+    Returns timestamp string or datetime instance as UNIX timestamp.
 
     Interpreted as delta from bag start/end time if numeric string with sign prefix.
     """
@@ -350,7 +350,7 @@ def make_bag_time(stamp, bag):
 
 def make_live_time(stamp):
     """
-    Returns timestamp string or datetime instance as epoch seconds.
+    Returns timestamp string or datetime instance as UNIX timestamp.
 
     Interpreted as delta from system time if numeric string with sign prefix.
     """

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -39,7 +39,7 @@ node = None
 
 
 class Bag(object):
-    """ROS2 bag interface, partially mimicing rosbag.Bag."""
+    """ROS2 bag interface, partially mimicking rosbag.Bag."""
 
     ## ROS2 bag SQLite schema
     CREATE_SQL = """
@@ -66,6 +66,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._db        = None  # sqlite3.Connection instance
         self._topics    = {}    # {name: {id, name, type}}
 
+        ## Bagfile path
         self.filename = filename
 
 
@@ -99,7 +100,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
 
     def get_type_and_topic_info(self):
-        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})"""
+        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})."""
         self._ensure_open()
         TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
         ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
@@ -119,8 +120,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
-        @param   start_time  earliest timestamp of message to return
-        @param   end_time    latest timestamp of message to return
+        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
+        @param   end_time    latest timestamp of message to return, as UNIX timestamp
         @return              (topic, msg, rclpy.time.Time)
         """
         self._ensure_open()
@@ -164,7 +165,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
         @param   topic  name of topic
         @param   msg    ROS2 message
-        @param   stamp  rospy.Time of message publication
+        @param   stamp  rclpy.time.Time of message publication
         """
         self._ensure_open(populate=True)
 
@@ -270,7 +271,7 @@ def format_message_value(msg, name, value):
     """
     Returns a message attribute value as string.
 
-    Result is at least 10 chars wide if message is a ROS time/duration
+    Result is at least 10 chars wide if message is a ROS2 time/duration
     (aligning seconds and nanoseconds).
     """
     LENS = {"secs": 10, "nanosecs": 9}
@@ -327,7 +328,7 @@ def make_duration(secs=0, nsecs=0):
 
 
 def make_time(secs=0, nsecs=0):
-    """Returns a ROS time, as rclpy.time.Time."""
+    """Returns a ROS2 time, as rclpy.time.Time."""
     return rclpy.time.Time(seconds=secs, nanoseconds=nsecs)
 
 

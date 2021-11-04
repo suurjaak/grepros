@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -116,7 +116,7 @@ def get_message_class(typename):
 
 
 def get_message_fields(val):
-    """Returns OrderedDict({field name: field type name}) if RO1 message, else {}."""
+    """Returns OrderedDict({field name: field type name}) if ROS1 message, else {}."""
     names = getattr(val, "__slots__", [])
     if isinstance(val, (rospy.Time, rospy.Duration)):  # Empty __slots__
         names = genpy.TVal.__slots__
@@ -124,7 +124,7 @@ def get_message_fields(val):
 
 
 def get_rostime():
-    """Returns current ROS time, as rospy.Time."""
+    """Returns current ROS1 time, as rospy.Time."""
     return rospy.get_rostime()
 
 
@@ -144,17 +144,17 @@ def get_topic_types():
 
 
 def is_ros_message(val):
-    """Returns whether value is a ROS message or a special like ROS time/duration."""
+    """Returns whether value is a ROS1 message or a special like ROS time/duration."""
     return isinstance(val, (genpy.Message, genpy.TVal))
 
 
 def make_duration(secs=0, nsecs=0):
-    """Returns a ROS duration, as rospy.Duration."""
+    """Returns a ROS1 duration, as rospy.Duration."""
     return rospy.Duration(secs=secs, nsecs=nsecs)
 
 
 def make_time(secs=0, nsecs=0):
-    """Returns a ROS time, as rospy.Time."""
+    """Returns a ROS1 time, as rospy.Time."""
     return rospy.Time(secs=secs, nsecs=nsecs)
 
 

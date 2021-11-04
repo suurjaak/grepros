@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 import os
@@ -77,7 +77,7 @@ def create_bag_reader(filename):
     """
     Returns an object for reading ROS bags.
 
-    Result is rosbag.Bag in ROS1, and something with a conforming API in ROS2.
+    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
     """
     return realapi.create_bag_reader(filename)
 
@@ -86,7 +86,7 @@ def create_bag_writer(filename):
     """
     Returns an object for reading ROS bags.
 
-    Result is rosbag.Bag in ROS1, and something with a conforming API in ROS2.
+    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
     """
     return realapi.create_bag_writer(filename)
 
@@ -122,7 +122,7 @@ def get_message_fields(val):
 
 
 def get_message_value(msg, name, typename):
-    """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
+    """Returns object attribute value, uint8[] converted to [int, ] if bytes()."""
     v = getattr(msg, name)
     return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
 
