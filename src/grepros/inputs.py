@@ -16,6 +16,7 @@ import copy
 import collections
 import datetime
 import functools
+import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
 import threading
@@ -117,6 +118,7 @@ class BagSource(SourceBase):
         @param   args.START_INDEX   message index within topic to start from
         @param   args.END_INDEX     message index within topic to stop at
         @param   args.AFTER         emit NUM messages of trailing context after match
+        @param   args.OUTBAG        output bagfile, to skip in input files
         """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -215,6 +217,8 @@ class BagSource(SourceBase):
 
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
+        if self._args.OUTBAG and os.path.realpath(self._args.OUTBAG) == os.path.realpath(filename):
+            return False
         try:
             bag = rosapi.create_bag_reader(filename)
         except Exception as e:
