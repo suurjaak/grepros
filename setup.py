@@ -37,7 +37,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     scripts      = [os.path.join("scripts", PACKAGE)],
 ) if generate_distutils_setup and "1" == os.getenv("ROS_VERSION") else dict(  # Normal pip setup
     name         = PACKAGE,
-    version      = "0.1.1",
+    version      = "0.2.0",
     entry_points = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
 
     description  = "grep for ROS bag files and live topics",

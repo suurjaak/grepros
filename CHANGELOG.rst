@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.1.1 (2021-11-04)
+0.2.0 (2021-11-04)
 -------------------
 * add ROS2 support
 * flush stdout on every print, to avoid buffering in redirected output
