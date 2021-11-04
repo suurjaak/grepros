@@ -280,8 +280,8 @@ Print first message from each lidar topic on host 1.2.3.4:
                   "overrides prefix and suffix"),
 
         dict(args=["--queue-size-in"],
-             dest="QUEUE_SIZE_IN", metavar="SIZE", type=int, default=100,
-             help="live ROS topic subscriber queue size (default 100)"),
+             dest="QUEUE_SIZE_IN", metavar="SIZE", type=int, default=10,
+             help="live ROS topic subscriber queue size (default 10)"),
 
         dict(args=["--queue-size-out"],
              dest="QUEUE_SIZE_OUT", metavar="SIZE", type=int, default=10,
