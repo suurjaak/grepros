@@ -89,16 +89,16 @@ class Searcher(object):
                 self._statuses[topic][msgid] = True
                 self._counts[topic][True] += 1
                 sink.emit_meta()
-                for i, s, m in self._get_context(topic, before=True):
+                for msgid2, i, s, m in self._get_context(topic, before=True):
                     self._counts[topic][False] += 1
                     sink.emit(topic, i, s, m, None)
-                    self._statuses[topic][i] = False
+                    self._statuses[topic][msgid2] = False
                 sink.emit(topic, self._counts[topic][None], stamp, msg, matched)
             elif self._args.AFTER and self._has_in_window(topic, self._args.AFTER + 1, status=True):
-                for i, s, m in self._get_context(topic, before=False):
+                for msgid2, i, s, m in self._get_context(topic, before=False):
                     self._counts[topic][False] += 1
                     sink.emit(topic, i, s, m, None)
-                    self._statuses[topic][i] = False
+                    self._statuses[topic][msgid2] = False
             source.notify(matched)
 
             self._prune_data(topic)
@@ -165,15 +165,15 @@ class Searcher(object):
 
 
     def _get_context(self, topic, before=False):
-        """Returns unemitted context for latest match, as [(index, timestamp, message)]."""
+        """Returns unemitted context for latest match, as [(msgid, index, timestamp, message)]."""
         result = []
         count = self._args.BEFORE + 1 if before else self._args.AFTER
         candidates = list(self._statuses[topic])[-count:]
         current_index = self._counts[topic][None]
         for i, msgid in enumerate(candidates) if count else ():
             if self._statuses[topic][msgid] is None:
-                idx = current_index + (i - len(candidates) if before else 0)
-                result += [(idx, self._stamps[topic][msgid], self._messages[topic][msgid])]
+                idx = current_index + i - (len(candidates) - 1 if before else 1)
+                result += [(msgid, idx, self._stamps[topic][msgid], self._messages[topic][msgid])]
         return result
 
 
