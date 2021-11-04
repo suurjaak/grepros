@@ -197,9 +197,9 @@ class TextWrapper(textwrap.TextWrapper):
             builtins.len = self.REALLEN
 
 
-def drop_zeros(v):
-    """Drops trailing zeros and empty decimal separator, if any."""
-    return re.sub(r"\.?0+$", "", str(v))
+def drop_zeros(v, replace=""):
+    """Drops or replaces trailing zeros and empty decimal separator, if any."""
+    return re.sub(r"\.?0+$", lambda x: len(x.group()) * replace, str(v))
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):

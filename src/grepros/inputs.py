@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -72,7 +72,7 @@ class SourceBase(object):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
         kws = dict(topic=topic, type=self._msgtypes[topic],
-                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp))),
+                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
@@ -169,7 +169,7 @@ class BagSource(SourceBase):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
         kws = dict(topic=topic, type=self._msgtypes[topic], total=self._msgtotals[topic],
-                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp))),
+                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
