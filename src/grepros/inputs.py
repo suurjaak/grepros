@@ -264,6 +264,7 @@ class TopicSource(SourceBase):
         @param   args.START_INDEX     message index within topic to start from
         @param   args.END_INDEX       message index within topic to stop at
         @param   args.QUEUE_SIZE_IN   subscriber queue size
+        @param   args.ROS_TIME_IN     stamp messages with ROS time instead of wall time
         """
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics
@@ -349,4 +350,6 @@ class TopicSource(SourceBase):
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""
-        self._queue and self._queue.put((topic, msg, rosapi.get_rostime()))
+        stamp = rosapi.get_rostime() if self._args.ROS_TIME_IN else \
+                rosapi.make_time(time.time())
+        self._queue and self._queue.put((topic, msg, stamp))

@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * add ROS2 support
 * flush stdout on every print, to avoid buffering in redirected output
+* add --ros-time-in option
 * add --unique-only option
 * rename options --noselect-field and --noprint-field to --no-select-field and --no-print-field
 

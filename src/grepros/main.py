@@ -287,6 +287,10 @@ Print first message from each lidar topic on host 1.2.3.4:
              dest="QUEUE_SIZE_OUT", metavar="SIZE", type=int, default=10,
              help="output publisher queue size (default 10)"),
 
+        dict(args=["--ros-time-in"],
+             dest="ROS_TIME_IN", action="store_true",
+             help="use ROS time instead of system time for incoming message\n"
+                  "timestamps from subsribed live ROS topics"),
 
     ]},
 }

@@ -193,6 +193,8 @@ Live topic control:
   --queue-size-in SIZE  live ROS topic subscriber queue size (default 10)
   --queue-size-out SIZE
                         output publisher queue size (default 10)
+  --ros-time-in         use ROS time instead of system time for incoming message
+                        timestamps from subsribed live ROS topics
 ```
 
 
