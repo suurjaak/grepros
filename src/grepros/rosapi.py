@@ -12,9 +12,10 @@ Released under the BSD License.
 @modified    04.11.2021
 ------------------------------------------------------------------------------
 """
+import hashlib
 import os
 
-#from . common import ConsolePrinter  # Imported later
+from . common import ConsolePrinter, filter_fields, scalar
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -63,10 +64,8 @@ def validate():
         realapi = ros2
         success = realapi.validate()
     elif not version:
-        from . common import ConsolePrinter
         ConsolePrinter.error("ROS environment not sourced: missing ROS_VERSION.")
     else:
-        from . common import ConsolePrinter
         ConsolePrinter.error("ROS environment not supported: unknown ROS_VERSION %r.", version)
     if success:
         BAG_EXTENSIONS, SKIP_EXTENSIONS = realapi.BAG_EXTENSIONS, realapi.SKIP_EXTENSIONS
@@ -165,6 +164,35 @@ def make_duration(secs=0, nsecs=0):
 def make_time(secs=0, nsecs=0):
     """Returns a ROS time."""
     return realapi.make_time(secs=secs, nsecs=nsecs)
+
+
+def make_message_hash(msg, include=(), exclude=()):
+    """
+    Returns hashcode for ROS message, as a hex digest.
+
+    @param   include   message fields to include if not all, as [((nested, path), re.Pattern())]
+    @param   exclude   message fields to exclude, as [((nested, path), re.Pattern())]
+    """
+    hasher = hashlib.md5()
+
+    def walk_message(obj, top=()):
+        fieldmap = get_message_fields(obj)
+        fieldmap = filter_fields(fieldmap, include=include, exclude=exclude)
+        for k, t in fieldmap.items():
+            v, path = get_message_value(obj, k, t), top + (k, )
+            if is_ros_message(v):
+                walk_message(v, path)
+            elif isinstance(v, (list, tuple)) and scalar(t) not in ROS_BUILTIN_TYPES:
+                for x in v: walk_message(x, path)
+            else:
+                s = "%s=%s" % (path, v)
+                hasher.update(s.encode("utf-8", errors="backslashreplace"))
+        if not hasattr(obj, "__slots__"):
+            s = "%s=%s" % (top, obj)
+            hasher.update(s.encode("utf-8", errors="backslashreplace"))
+
+    walk_message(msg)
+    return hasher.hexdigest()
 
 
 def set_message_value(obj, name, value):

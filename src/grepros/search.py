@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    03.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -16,10 +16,9 @@ import copy
 import collections
 import re
 
-from . common import MatchMarkers, filter_fields, make_message_hash, \
-                     merge_spans, scalar, wildcard_to_regex
+from . common import MatchMarkers, filter_fields, merge_spans, scalar, wildcard_to_regex
 from . rosapi import ROS_NUMERIC_TYPES, get_message_fields, get_message_value, \
-                     iter_message_fields, set_message_value
+                     iter_message_fields, make_message_hash, set_message_value
 
 
 class Searcher(object):

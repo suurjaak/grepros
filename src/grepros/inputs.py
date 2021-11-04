@@ -71,8 +71,9 @@ class SourceBase(object):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic], stamp=drop_zeros(stamp),
-                   dt=drop_zeros(format_stamp(stamp)), index=index)
+        kws = dict(topic=topic, type=self._msgtypes[topic],
+                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp))),
+                   stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def is_processable(self, topic, index, stamp):
@@ -167,8 +168,9 @@ class BagSource(SourceBase):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic], dt=drop_zeros(format_stamp(stamp)),
-                   stamp=drop_zeros(stamp), index=index, total=self._msgtotals[topic])
+        kws = dict(topic=topic, type=self._msgtypes[topic], total=self._msgtotals[topic],
+                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp))),
+                   stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
     def notify(self, status):

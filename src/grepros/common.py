@@ -16,7 +16,6 @@ from __future__ import print_function
 try: import builtins  # Py3
 except ImportError: import __builtin__ as builtins  # Py2
 import datetime
-import hashlib
 import glob
 import math
 import os
@@ -28,8 +27,6 @@ import textwrap
 import time
 try: import curses
 except ImportError: curses = None
-
-from . import rosapi
 
 
 class MatchMarkers(object):
@@ -201,12 +198,8 @@ class TextWrapper(textwrap.TextWrapper):
 
 
 def drop_zeros(v):
-    """
-    Drops trailing zeros and empty decimal separator, if any.
-
-    Converts value to seconds if ROS time.
-    """
-    return re.sub(r"\.?0+$", "", str(rosapi.to_sec(v)))
+    """Drops trailing zeros and empty decimal separator, if any."""
+    return re.sub(r"\.?0+$", "", str(v))
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
@@ -329,8 +322,7 @@ def format_bytes(size, precision=2, inter=" "):
 
 
 def format_stamp(stamp):
-    """Returns ISO datetime from ROS time or UNIX timestamp."""
-    stamp = stamp if isinstance(stamp, (int, float)) else rosapi.to_sec(stamp)
+    """Returns ISO datetime from UNIX timestamp."""
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
@@ -360,35 +352,6 @@ def make_live_time(stamp):
         stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
         shift = 0 if sign is None else time.time()
     return stamp + shift
-
-
-def make_message_hash(msg, include=(), exclude=()):
-    """
-    Returns hashcode for ROS message, as a hex digest.
-
-    @param   include   message fields to include if not all, as [((nested, path), re.Pattern())]
-    @param   exclude   message fields to exclude, as [((nested, path), re.Pattern())]
-    """
-    hasher = hashlib.md5()
-
-    def walk_message(obj, top=()):
-        fieldmap = rosapi.get_message_fields(obj)
-        fieldmap = filter_fields(fieldmap, include=include, exclude=exclude)
-        for k, t in fieldmap.items():
-            v, path = rosapi.get_message_value(obj, k, t), top + (k, )
-            if rosapi.is_ros_message(v):
-                walk_message(v, path)
-            elif isinstance(v, (list, tuple)) and scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
-                for x in v: walk_message(x, path)
-            else:
-                s = "%s=%s" % (path, v)
-                hasher.update(s.encode("utf-8", errors="backslashreplace"))
-        if not hasattr(obj, "__slots__"):
-            s = "%s=%s" % (top, obj)
-            hasher.update(s.encode("utf-8", errors="backslashreplace"))
-
-    walk_message(msg)
-    return hasher.hexdigest()
 
 
 def merge_spans(spans):
