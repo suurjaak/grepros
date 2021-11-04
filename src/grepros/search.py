@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    02.11.2021
+@modified    03.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -16,9 +16,10 @@ import copy
 import collections
 import re
 
-from . common import MatchMarkers, filter_fields, get_message_value, make_message_hash, \
+from . common import MatchMarkers, filter_fields, make_message_hash, \
                      merge_spans, scalar, wildcard_to_regex
-from . rosapi import ROS_NUMERIC_TYPES, get_message_fields, set_message_value
+from . rosapi import ROS_NUMERIC_TYPES, get_message_fields, get_message_value, \
+                     iter_message_fields, set_message_value
 
 
 class Searcher(object):
@@ -52,6 +53,8 @@ class Searcher(object):
         self._statuses = collections.defaultdict(collections.OrderedDict)
         # {topic: (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
+        # Patterns to check in message plaintext and skip full matching if not found
+        self._brute_prechecks = []
 
         self._parse_patterns()
 
@@ -142,15 +145,19 @@ class Searcher(object):
 
     def _parse_patterns(self):
         """Parses pattern arguments into re.Patterns."""
+        NOBRUTE_SIGILS = r"\A", r"\Z", "?("  # Regex specials ruling out brute precheck
         self._patterns.clear()
-        contents, raw, case = [], self._args.RAW, self._args.CASE
+        del self._brute_prechecks[:]
+        contents, brute = [], not self._args.INVERT
         for v in self._args.PATTERNS:
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
-            v = (re.escape(v) if raw else v) + ("|^$" if v in ("''", '""') else "")
+            v = (re.escape(v) if self._args.RAW else v) + ("|^$" if v in ("''", '""') else "")
             path = tuple(path.split(".")) if path else ()
-            contents.append((path, re.compile("(%s)" % v, 0 if case else re.I)))
+            contents.append((path, re.compile("(%s)" % v, 0 if self._args.CASE else re.I)))
+            if brute and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
+                self._brute_prechecks.append(re.compile(v, re.I | re.M))
         self._patterns["content"] = contents
 
         selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
@@ -236,9 +243,10 @@ class Searcher(object):
                 obj = v2 if len(v1) != len(v2) else obj
             return obj
 
-        yml = "" if self._args.INVERT else str(msg)
-        if yml and not all(any(p.finditer(yml)) for _, p in self._patterns["content"]):
-            return None  # Skip detailed matching if patterns not present at all
+        if self._brute_prechecks:
+            text  = "\n".join("%r" % v for _, v in iter_message_fields(msg))
+            if not all(any(p.finditer(text)) for p in self._brute_prechecks):
+                return None  # Skip detailed matching if patterns not present at all
 
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         decorate_message(result)

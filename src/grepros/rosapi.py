@@ -121,6 +121,12 @@ def get_message_fields(val):
     return realapi.get_message_fields(val)
 
 
+def get_message_value(msg, name, typename):
+    """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
+    v = getattr(msg, name)
+    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+
+
 def get_rostime():
     """Returns current ROS time."""
     return realapi.get_rostime()
@@ -138,6 +144,17 @@ def get_topic_types():
 def is_ros_message(val):
     """Returns whether value is a ROS message or a special like ROS time/duration."""
     return realapi.is_ros_message(val)
+
+
+def iter_message_fields(msg, top=()):
+    """Yields message scalar attribute values as ((nested, path), value)."""
+    for k, t in get_message_fields(msg).items():
+        v = get_message_value(msg, k, t)
+        if is_ros_message(v):
+            for p, v2 in iter_message_fields(v, top + (k, )):
+                yield p, v2
+        else:
+            yield top + (k, ), v
 
 
 def make_duration(secs=0, nsecs=0):

@@ -236,8 +236,8 @@ def filter_fields(fieldmap, top=(), include=(), exclude=()):
 
     @param   fieldmap  {field name: field type name}
     @param   top       parent path as (rootattr, ..)
-    @param   include   [((nested, path), re.Pattern())]
-    @param   exclude   [((nested, path), re.Pattern())]
+    @param   include   [((nested, path), re.Pattern())] to require in parent path
+    @param   exclude   [((nested, path), re.Pattern())] to reject in parent path
     """
     result = type(fieldmap)() if include or exclude else fieldmap
     for k, v in fieldmap.items() if not result else ():
@@ -334,12 +334,6 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, uint8[] converted to [int, ] if bytes."""
-    v = getattr(msg, name)
-    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
-
-
 def make_bag_time(stamp, bag):
     """
     Returns timestamp string or datetime instance as epoch seconds.
@@ -379,9 +373,9 @@ def make_message_hash(msg, include=(), exclude=()):
 
     def walk_message(obj, top=()):
         fieldmap = rosapi.get_message_fields(obj)
-        fieldmap = filter_fields(fieldmap, (), include=include, exclude=exclude)
+        fieldmap = filter_fields(fieldmap, include=include, exclude=exclude)
         for k, t in fieldmap.items():
-            v, path = get_message_value(obj, k, t), top + (k, )
+            v, path = rosapi.get_message_value(obj, k, t), top + (k, )
             if rosapi.is_ros_message(v):
                 walk_message(v, path)
             elif isinstance(v, (list, tuple)) and scalar(t) not in rosapi.ROS_BUILTIN_TYPES:

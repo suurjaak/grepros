@@ -22,7 +22,7 @@ import sys
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, get_message_value, merge_spans, scalar, wildcard_to_regex
+                     filter_fields, merge_spans, scalar, wildcard_to_regex
 from . import rosapi
 
 
@@ -213,7 +213,7 @@ class ConsoleSink(SinkBase):
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
             fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
             for k, t in fieldmap.items():
-                v = self.message_to_yaml(get_message_value(val, k, t), top + (k, ), t)
+                v = self.message_to_yaml(rosapi.get_message_value(val, k, t), top + (k, ), t)
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:
                     continue  # for k, t
 
