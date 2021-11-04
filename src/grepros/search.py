@@ -243,7 +243,7 @@ class Searcher(object):
             return obj
 
         if self._brute_prechecks:
-            text  = "\n".join("%r" % v for _, v in iter_message_fields(msg))
+            text  = "\n".join("%r" % (v, ) for _, v in iter_message_fields(msg))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 

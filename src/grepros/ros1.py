@@ -102,7 +102,7 @@ def format_message_value(msg, name, value):
     (aligning seconds and nanoseconds).
     """
     LENS = {"secs": 10, "nsecs": 9}
-    v = "%s" % value
+    v = "%s" % (value, )
     if not isinstance(msg, genpy.TVal) or name not in LENS:
         return v
 

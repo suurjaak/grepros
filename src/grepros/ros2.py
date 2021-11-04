@@ -136,7 +136,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         if topics:
             topics = topics if isinstance(topics, (list, tuple)) else [topics]
             rows   = list(filter(bool, map(self._topics.get, topics)))
-            exprs += ["topic_id IN (%s)" % ", ".join("%s" % x["id"] for x in rows)]
+            exprs += ["topic_id IN (%s)" % ", ".join("%s" % (x["id"], ) for x in rows)]
         if start_time is not None:
             exprs += ["timestamp >= ?"]
             args  += (start_time, )
@@ -285,7 +285,7 @@ def format_message_value(msg, name, value):
     """
     LENS = {"secs": 10, "nanosecs": 9}
     TEMPORAL_TYPES = (builtin_interfaces.msg.Time, builtin_interfaces.msg.Duration)
-    v = "%s" % value
+    v = "%s" % (value, )
     if not isinstance(msg, TEMPORAL_TYPES) or name not in LENS:
         return v
 
