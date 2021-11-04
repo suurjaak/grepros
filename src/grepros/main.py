@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.11.2021
+@modified    04.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -280,8 +280,8 @@ Print first message from each lidar topic on host 1.2.3.4:
                   "overrides prefix and suffix"),
 
         dict(args=["--queue-size-in"],
-             dest="QUEUE_SIZE_IN", metavar="SIZE", type=int, default=-1,
-             help="live ROS topic subscriber queue size (default infinite)"),
+             dest="QUEUE_SIZE_IN", metavar="SIZE", type=int, default=100,
+             help="live ROS topic subscriber queue size (default 100)"),
 
         dict(args=["--queue-size-out"],
              dest="QUEUE_SIZE_OUT", metavar="SIZE", type=int, default=10,

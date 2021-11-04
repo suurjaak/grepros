@@ -190,7 +190,7 @@ Live topic control:
   --publish-fixname TOPIC
                         single output topic name to publish all matches to,
                         overrides prefix and suffix
-  --queue-size-in SIZE  live ROS topic subscriber queue size (default infinite)
+  --queue-size-in SIZE  live ROS topic subscriber queue size (default 100)
   --queue-size-out SIZE
                         output publisher queue size (default 10)
 ```

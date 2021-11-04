@@ -15,6 +15,7 @@ Released under the BSD License.
 import collections
 import os
 import sqlite3
+import threading
 import time
 
 import builtin_interfaces.msg
@@ -226,10 +227,17 @@ def init_node(name):
     if node or not validate():
         return
 
+    def spin_loop():
+        while rclpy.ok():
+            rclpy.spin_once(node, timeout_sec=1)
+
     try: rclpy.init()
     except Exception: pass  # Must not be called twice at runtime
     node_name = "%s_%s_%s" % (name, os.getpid(), int(time.time() * 1000))
     node = rclpy.create_node(node_name)
+    spinner = threading.Thread(target=spin_loop)
+    spinner.daemon = True
+    spinner.start()
 
 
 def validate():
@@ -313,7 +321,7 @@ def get_topic_types():
         mytypes.pop(t, None)
     for topic, typenames in node.get_topic_names_and_types():  # [(topicname, [typename, ])]
         if topic not in mytypes and typenames:
-            result[topic] = typenames[0]
+            result += [(topic, typenames[0])]
     return result
 
 
