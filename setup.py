@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 import os
@@ -37,7 +37,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     scripts      = [os.path.join("scripts", PACKAGE)],
 ) if generate_distutils_setup and "1" == os.getenv("ROS_VERSION") else dict(  # Normal pip setup
     name         = PACKAGE,
-    version      = "0.2.0",
+    version      = "0.2.1",
     entry_points = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
 
     description  = "grep for ROS bag files and live topics",
@@ -64,20 +64,6 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     ],
 
     long_description_content_type = "text/markdown",
-    long_description              = (
-"""grep for ROS bag files and live topics.
-
-Searches through ROS messages and matches any message field value by regular
-expression patterns or plain text, regardless of field type.
-Can also look for specific values in specific message fields only.
-
-By default, matches are printed to console. Additionally, matches can be written
-to a bagfile, or published to live topics.
-
-Supports both ROS1 and ROS2. ROS environment variables need to be set.
-
-Grepping from or publishing to ROS1 live topics requires ROS master to be running.
-"""),
-
+    long_description = open("README.md").read(),
 )
 setup(**dict(common_args, **dict(setup_args, **version_args)))
