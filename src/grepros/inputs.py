@@ -44,7 +44,7 @@ class SourceBase(object):
         # {topic: ["pkg/MsgType", ]} in current source
         self._msgtypes = collections.defaultdict(list)
         # {topic: ["pkg/MsgType", ]} searched in current source
-        self._topics   = collections.defaultdict(int)
+        self._topics   = collections.defaultdict(list)
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
@@ -120,6 +120,7 @@ class BagSource(SourceBase):
         @param   args.START_INDEX   message index within topic to start from
         @param   args.END_INDEX     message index within topic to stop at
         @param   args.AFTER         emit NUM messages of trailing context after match
+        @param   args.ORDERBY       "topic" or "type" if any to group results by
         @param   args.OUTBAG        output bagfile, to skip in input files
         """
         super(BagSource, self).__init__(args)
@@ -140,10 +141,21 @@ class BagSource(SourceBase):
         for filename in find_files(names, paths, exts, skip_exts, recurse=self._args.RECURSE):
             if not self._configure(filename) or not self._topics:
                 continue  # for filename
-            for topic, msg, stamp in self._produce(self._topics):
-                yield topic, msg, stamp
-            if not self._running:
-                return
+
+            topicsets = [self._topics]
+            if "topic" == self._args.ORDERBY:  # Group output by sorted topic names
+                topicsets = [{n: tt} for n, tt in sorted(self._topics.items())]
+            elif "type" == self._args.ORDERBY:  # Group output by sorted type names
+                typetopics = {}
+                for n, tt in self._topics.items():
+                    for t in tt: typetopics.setdefault(t, []).append(n)
+                topicsets = [{n: [t] for n in nn} for t, nn in sorted(typetopics.items())]
+
+            for topics in topicsets:
+                for topic, msg, stamp in self._produce(topics):
+                    yield topic, msg, stamp
+                if not self._running:
+                    return
         self._running = False
 
     def validate(self):
@@ -199,11 +211,14 @@ class BagSource(SourceBase):
     def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
         counts = collections.defaultdict(int)
-        for topic, msg, stamp in self._bag.read_messages(topics, start_time):
+        for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running:
                 break  # for topic
+            typename = rosapi.get_message_type(msg)
+            if typename not in topics[topic]:
+                continue  # for topic
 
-            topickey = (topic, rosapi.get_message_type(msg))
+            topickey = (topic, typename)
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
@@ -216,8 +231,8 @@ class BagSource(SourceBase):
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
                 self._sticky = True
-                onetopic = {topic: topickey[1]}
-                for entry in self._produce(onetopic, stamp + rosapi.make_duration(nsecs=1)):
+                continue_from = stamp + rosapi.make_duration(nsecs=1)
+                for entry in self._produce({topic: typename}, continue_from):
                     yield entry
                 self._sticky = False
 

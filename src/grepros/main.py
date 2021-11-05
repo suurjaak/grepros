@@ -263,6 +263,10 @@ Print first message from each lidar topic on host 1.2.3.4:
              dest="RECURSE", action="store_true",
              help="recurse into subdirectories when looking for bagfiles"),
 
+        dict(args=["--order-bag-by"],
+             dest="ORDERBY", choices=["topic", "type"],
+             help="order bag messages by topic or type first and then by time"),
+
     ], "Live topic control": [
 
         dict(args=["--publish-prefix"],

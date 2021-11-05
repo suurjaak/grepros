@@ -180,6 +180,8 @@ Bag input control:
                         paths to scan if not current directory
                         (supports * wildcards)
   -r, --recursive       recurse into subdirectories when looking for bagfiles
+  --order-bag-by {topic,type}
+                        order bag messages by topic or type first and then by time
 
 Live topic control:
   --publish-prefix PREFIX

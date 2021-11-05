@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.2.1 (2021-11-05)
 -------------------
+* add --order-bag-by option
 * handle topics with multiple message types
 
 0.2.0 (2021-11-04)
