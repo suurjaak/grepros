@@ -21,7 +21,7 @@ import sys
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, merge_spans, scalar, wildcard_to_regex
+                     filter_fields, merge_spans, wildcard_to_regex
 from . import rosapi
 
 
@@ -198,11 +198,11 @@ class ConsoleSink(SinkBase):
         if isinstance(val, (list, tuple)):
             if not val:
                 return "[]"
-            if "string" == scalar(typename):
+            if "string" == rosapi.scalar(typename):
                 yaml_str = yaml.safe_dump(val).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
             vals = [x for v in val for x in [self.message_to_yaml(v, top, typename)] if x]
-            if scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
+            if rosapi.scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v), typename) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
         if rosapi.is_ros_message(val):
@@ -216,7 +216,7 @@ class ConsoleSink(SinkBase):
                     continue  # for k, t
 
                 v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
-                if scalar(t) in rosapi.ROS_BUILTIN_TYPES:
+                if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     extra_indent = " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))

@@ -22,8 +22,8 @@ except ImportError: import Queue as queue  # Py2
 import threading
 import time
 
-from . common import ConsolePrinter, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, make_bag_time, make_live_time
+from . common import ConsolePrinter, drop_zeros, filter_dict, find_files, \
+                     format_bytes, format_stamp, format_timedelta
 from . import rosapi
 
 
@@ -249,9 +249,9 @@ class BagSource(SourceBase):
 
         args = self._args = copy.deepcopy(self._args0)
         if args.START_TIME is not None:
-            args.START_TIME = rosapi.make_time(make_bag_time(args.START_TIME, bag))
+            args.START_TIME = rosapi.make_bag_time(args.START_TIME, bag)
         if args.END_TIME is not None:
-            args.END_TIME = rosapi.make_time(make_bag_time(args.END_TIME, bag))
+            args.END_TIME = rosapi.make_bag_time(args.END_TIME, bag)
         return True
 
 
@@ -346,9 +346,9 @@ class TopicSource(SourceBase):
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
         if self._args.START_TIME is not None:
-            self._args.START_TIME = rosapi.make_time(make_live_time(self._args.START_TIME))
+            self._args.START_TIME = rosapi.make_live_time(self._args.START_TIME)
         if self._args.END_TIME is not None:
-            self._args.END_TIME = rosapi.make_time(make_live_time(self._args.END_TIME))
+            self._args.END_TIME = rosapi.make_live_time(self._args.END_TIME)
 
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS live."""

@@ -16,7 +16,7 @@ import copy
 import collections
 import re
 
-from . common import MatchMarkers, filter_fields, merge_spans, scalar, wildcard_to_regex
+from . common import MatchMarkers, filter_fields, merge_spans, wildcard_to_regex
 from . import rosapi
 
 
@@ -233,7 +233,7 @@ class Searcher(object):
                 is_collection = isinstance(v, (list, tuple))
                 if hasattr(v, "__slots__"):
                     decorate_message(v, path)
-                elif is_collection and scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
+                elif is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
                     rosapi.set_message_value(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)

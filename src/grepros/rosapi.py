@@ -12,10 +12,12 @@ Released under the BSD License.
 @modified    05.11.2021
 ------------------------------------------------------------------------------
 """
+import datetime
 import hashlib
 import os
+import time
 
-from . common import ConsolePrinter, filter_fields, scalar
+from . common import ConsolePrinter, filter_fields
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -161,6 +163,34 @@ def iter_message_fields(msg, top=()):
             yield top + (k, ), v
 
 
+def make_bag_time(stamp, bag):
+    """
+    Returns timestamp string or datetime instance as ROS time.
+
+    Stamp interpreted as delta from bag start/end time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime):
+        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
+    return make_time(stamp + shift)
+
+
+def make_live_time(stamp):
+    """
+    Returns timestamp string or datetime instance as ROS time.
+
+    Stamp interpreted as delta from system time if numeric string with sign prefix.
+    """
+    if isinstance(stamp, datetime.datetime):
+        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
+    else:
+        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+        shift = 0 if sign is None else time.time()
+    return make_time(stamp + shift)
+
+
 def make_duration(secs=0, nsecs=0):
     """Returns a ROS duration."""
     return realapi.make_duration(secs=secs, nsecs=nsecs)
@@ -198,6 +228,15 @@ def make_message_hash(msg, include=(), exclude=()):
 
     walk_message(msg)
     return hasher.hexdigest()
+
+
+def scalar(typename):
+    """
+    Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".
+
+    Returns type unchanged if already a scalar.
+    """
+    return typename[:typename.index("[")] if "[" in typename else typename
 
 
 def set_message_value(obj, name, value):

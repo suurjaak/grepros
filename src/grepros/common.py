@@ -331,34 +331,6 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
-def make_bag_time(stamp, bag):
-    """
-    Returns timestamp string or datetime instance as UNIX timestamp.
-
-    Interpreted as delta from bag start/end time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
-    return stamp + shift
-
-
-def make_live_time(stamp):
-    """
-    Returns timestamp string or datetime instance as UNIX timestamp.
-
-    Interpreted as delta from system time if numeric string with sign prefix.
-    """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else time.time()
-    return stamp + shift
-
-
 def merge_spans(spans):
     """Returns a sorted list of (start, end) spans with overlapping spans merged."""
     result = sorted(spans)
@@ -378,15 +350,6 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
-
-
-def scalar(typename):
-    """
-    Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".
-
-    Returns type unchanged if already a scalar.
-    """
-    return typename[:typename.index("[")] if "[" in typename else typename
 
 
 def wildcard_to_regex(text):
