@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 import hashlib
@@ -118,6 +118,11 @@ def get_message_class(typename):
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS message, else {}."""
     return realapi.get_message_fields(val)
+
+
+def get_message_type(msg):
+    """Returns ROS message type name, like "std_msgs/Header"."""
+    return realapi.get_message_type(msg)
 
 
 def get_message_value(msg, name, typename):

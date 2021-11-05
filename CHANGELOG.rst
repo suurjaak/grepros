@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.1 (2021-11-05)
+-------------------
+* handle topics with multiple message types
+
 0.2.0 (2021-11-04)
 -------------------
 * add ROS2 support

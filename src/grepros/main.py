@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -362,7 +362,7 @@ def flush_stdout():
 
 
 def run():
-    """Parses arguments and runs search."""
+    """Parses command-line arguments and runs search."""
     atexit.register(flush_stdout)
     args, _ = make_parser().parse_known_args()
     ConsolePrinter.configure(args)

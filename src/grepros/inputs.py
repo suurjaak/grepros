@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -41,8 +41,10 @@ class SourceBase(object):
         """
         self._args = copy.deepcopy(args)
         self._patterns = {}    # {key: [re.Pattern, ]}
-        self._msgtypes = {}    # {topic: "pkg/MsgType"} in source
-        self._topics   = []    # [topics searched in current source]
+        # {topic: ["pkg/MsgType", ]} in current source
+        self._msgtypes = collections.defaultdict(list)
+        # {topic: ["pkg/MsgType", ]} searched in current source
+        self._topics   = collections.defaultdict(int)
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
@@ -72,12 +74,12 @@ class SourceBase(object):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic],
+        kws = dict(topic=topic, type=rosapi.get_message_type(msg),
                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
 
-    def is_processable(self, topic, index, stamp):
+    def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
         if self._args.START_TIME and stamp < self._args.START_TIME:
             return False
@@ -125,9 +127,8 @@ class BagSource(SourceBase):
         self._status    = None  # Match status of last produced message
         self._sticky    = False  # Scanning a single topic until all after-context emitted
         self._running   = False
-        self._counts    = collections.defaultdict(int)  # {topic: count processed}
-        self._msgtypes  = {}  # {topic: typename}
-        self._msgtotals = {}  # {topic: total count in bag}
+        self._counts    = collections.defaultdict(int)  # {(topic, type): count processed}
+        self._msgtotals = collections.defaultdict(int)  # {(topic, type): total count in bag}
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
 
@@ -170,7 +171,8 @@ class BagSource(SourceBase):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=self._msgtypes[topic], total=self._msgtotals[topic],
+        msgtype = rosapi.get_message_type(msg)
+        kws = dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
         return self.MESSAGE_META_TEMPLATE.format(**kws)
@@ -179,19 +181,20 @@ class BagSource(SourceBase):
         """Reports match status of last produced message."""
         self._status = bool(status)
 
-    def is_processable(self, topic, index, stamp):
+    def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
+        topickey = (topic, rosapi.get_message_type(msg))
         if self._args.START_INDEX:
             START = self._args.START_INDEX
-            MIN = max(0, START + (self._msgtotals[topic] if START < 0 else 0))
+            MIN = max(0, START + (self._msgtotals[topickey] if START < 0 else 0))
             if MIN >= index:
                 return False
         if self._args.END_INDEX:
             END = self._args.END_INDEX
-            MAX = END + (self._msgtotals[topic] if END < 0 else 0)
+            MAX = END + (self._msgtotals[topickey] if END < 0 else 0)
             if MAX < index:
                 return False
-        return super(BagSource, self).is_processable(topic, index, stamp)
+        return super(BagSource, self).is_processable(topic, index, stamp, msg)
 
     def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
@@ -200,18 +203,21 @@ class BagSource(SourceBase):
             if not self._running:
                 break  # for topic
 
-            counts[topic], self._counts[topic] = counts[topic] + 1, self._counts[topic] + 1
+            topickey = (topic, rosapi.get_message_type(msg))
+            counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
-            if not self._sticky and counts[topic] != self._counts[topic]:
+            if not self._sticky and counts[topickey] != self._counts[topickey]:
                 continue  # for topic
 
             self._status = None
             yield topic, msg, stamp
 
-            if self._status and self._args.AFTER and not self._sticky and len(self._topics) > 1:
+            if self._status and self._args.AFTER and not self._sticky \
+            and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
                 self._sticky = True
-                for entry in self._produce([topic], stamp + rosapi.make_duration(nsecs=1)):
+                onetopic = {topic: topickey[1]}
+                for entry in self._produce(onetopic, stamp + rosapi.make_duration(nsecs=1)):
                     yield entry
                 self._sticky = False
 
@@ -227,16 +233,19 @@ class BagSource(SourceBase):
 
         self._bag      = bag
         self._filename = filename
-        self._sticky  = False
+        self._sticky   = False
         self._counts.clear()
+        self._msgtypes.clear()
+        self._msgtotals.clear()
 
         topicdata = bag.get_type_and_topic_info().topics
-        self._msgtypes  = {k: v.msg_type      for k, v in topicdata.items()}
-        self._msgtotals = {k: v.message_count for k, v in topicdata.items()}
+        for k, v in topicdata.items():
+            self._msgtypes[k] += [v.msg_type]
+            self._msgtotals[(k, v.msg_type)] += v.message_count
 
         dct = filter_dict(self._msgtypes, self._args.TOPICS, self._args.TYPES)
         dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
-        self._topics = list(dct)
+        self._topics = dct
 
         args = self._args = copy.deepcopy(self._args0)
         if args.START_TIME is not None:
@@ -269,7 +278,7 @@ class TopicSource(SourceBase):
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, ROS time)]
-        self._subs    = {}     # {topic: ROS subscriber}
+        self._subs    = {}     # {(topic, type): ROS subscriber}
 
         self._configure()
 
@@ -302,13 +311,13 @@ class TopicSource(SourceBase):
     def close(self):
         """Shuts down subscribers and stops producing messages."""
         self._running = False
-        for t in list(self._subs):
-            self._subs.pop(t).unregister()
+        for k in list(self._subs):
+            self._subs.pop(k).unregister()
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
         self._msgtypes.clear()
 
-    def is_processable(self, topic, index, stamp):
+    def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
         if self._args.START_INDEX:
             if max(0, self._args.START_INDEX) >= index:
@@ -316,22 +325,23 @@ class TopicSource(SourceBase):
         if self._args.END_INDEX:
             if 0 < self._args.END_INDEX < index:
                 return False
-        return super(TopicSource, self).is_processable(topic, index, stamp)
+        return super(TopicSource, self).is_processable(topic, index, stamp, msg)
 
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in rosapi.get_topic_types():
-            if topic in self._msgtypes:
+            topickey = (topic, typename)
+            if topickey in self._msgtypes:
                 continue  # for topic
-            dct = filter_dict({topic: typename}, self._args.TOPICS, self._args.TYPES)
+            dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)
             dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
             if dct:
                 cls = rosapi.get_message_class(typename)
                 handler = functools.partial(self._on_message, topic)
                 sub = rosapi.create_subscriber(topic, cls, handler,
                                                queue_size=self._args.QUEUE_SIZE_IN)
-                self._subs[topic] = sub
-            self._msgtypes[topic] = typename
+                self._subs[topickey] = sub
+            self._msgtypes[topickey] += [typename]
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""

@@ -8,13 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
-import collections
 import copy
 import os
 import sys
@@ -97,7 +96,6 @@ class ConsoleSink(SinkBase):
         self._prefix     = ""     # Printed before each message line (filename if grepping 1+ files)
         self._wrapper    = None   # TextWrapper instance
         self._patterns   = {}     # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
-        self._printed    = collections.defaultdict(int)  # {topic: count}
 
         self._configure(args)
 
@@ -263,7 +261,6 @@ class BagSink(SinkBase):
         """
         super(BagSink, self).__init__(args)
         self._bag    = None
-        self._counts = {}  # {topic: count}
         self._close_printed = False
 
         atexit.register(self.close)
@@ -333,7 +330,7 @@ class TopicSink(SinkBase):
         self._pubs[key].publish(msg)
 
     def bind(self, source):
-        """Attaches source to sink and blocks until connected to ROS master."""
+        """Attaches source to sink and blocks until connected to ROS."""
         SinkBase.bind(self, source)
         rosapi.init_node()
 

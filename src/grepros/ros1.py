@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -121,6 +121,11 @@ def get_message_fields(val):
     if isinstance(val, (rospy.Time, rospy.Duration)):  # Empty __slots__
         names = genpy.TVal.__slots__
     return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
+
+
+def get_message_type(msg):
+    """Returns ROS1 message type name, like "std_msgs/Header"."""
+    return msg._type
 
 
 def get_rostime():

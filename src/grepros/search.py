@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -17,8 +17,7 @@ import collections
 import re
 
 from . common import MatchMarkers, filter_fields, merge_spans, scalar, wildcard_to_regex
-from . rosapi import ROS_NUMERIC_TYPES, get_message_fields, get_message_value, \
-                     iter_message_fields, make_message_hash, set_message_value
+from . import rosapi
 
 
 class Searcher(object):
@@ -42,15 +41,15 @@ class Searcher(object):
         """
         self._args     = copy.deepcopy(args)
         self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
-        # {topic: {message ID: message}}
+        # {(topic, type): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
-        # {topic: {message ID: ROS time}}
+        # {(topic, type): {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
-        # {topic: {None: count processed, True: count matched, False: count emitted as context}}
+        # {(topic, type): {None: count processed, True: count matched, False: count emitted as context}}
         self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))
-        # {topic: {message ID: True if matched else False if emitted else None}
+        # {(topic, type): {message ID: True if matched else False if emitted else None}
         self._statuses = collections.defaultdict(collections.OrderedDict)
-        # {topic: (message hash over all fields used in matching)}
+        # {(topic, type): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
@@ -79,31 +78,32 @@ class Searcher(object):
                 counter, batch = 0, source.get_batch()
 
             msgid = counter = counter + 1
-            self._counts[topic][None] += 1
-            self._messages[topic][msgid] = msg
-            self._stamps  [topic][msgid] = stamp
-            self._statuses[topic][msgid] = None
+            topickey = (topic, rosapi.get_message_type(msg))
+            self._counts[topickey][None] += 1
+            self._messages[topickey][msgid] = msg
+            self._stamps  [topickey][msgid] = stamp
+            self._statuses[topickey][msgid] = None
 
             matched = self._is_processable(source, topic, stamp, msg) and self.get_match(msg)
             if matched:
-                self._statuses[topic][msgid] = True
-                self._counts[topic][True] += 1
+                self._statuses[topickey][msgid] = True
+                self._counts[topickey][True] += 1
                 sink.emit_meta()
-                for msgid2, i, s, m in self._get_context(topic, before=True):
-                    self._counts[topic][False] += 1
+                for msgid2, i, s, m in self._get_context(topickey, before=True):
+                    self._counts[topickey][False] += 1
                     sink.emit(topic, i, s, m, None)
-                    self._statuses[topic][msgid2] = False
-                sink.emit(topic, self._counts[topic][None], stamp, msg, matched)
-            elif self._args.AFTER and self._has_in_window(topic, self._args.AFTER + 1, status=True):
-                for msgid2, i, s, m in self._get_context(topic, before=False):
-                    self._counts[topic][False] += 1
+                    self._statuses[topickey][msgid2] = False
+                sink.emit(topic, self._counts[topickey][None], stamp, msg, matched)
+            elif self._args.AFTER and self._has_in_window(topickey, self._args.AFTER + 1, status=True):
+                for msgid2, i, s, m in self._get_context(topickey, before=False):
+                    self._counts[topickey][False] += 1
                     sink.emit(topic, i, s, m, None)
-                    self._statuses[topic][msgid2] = False
+                    self._statuses[topickey][msgid2] = False
             source.notify(matched)
 
-            self._prune_data(topic)
-            if self._is_max_done(topic):
-                break  # for topic
+            self._prune_data(topickey)
+            if self._is_max_done(topickey):
+                break  # for topic, msg, stamp
 
         source.close(), sink.close()
         return total + sum(x[True] for x in self._counts.values())
@@ -115,31 +115,34 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
+        topickey = (topic, rosapi.get_message_type(msg))
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
             return False
         if self._args.MAX_TOPIC_MATCHES \
-        and self._counts[topic][True] >= self._args.MAX_TOPIC_MATCHES:
+        and self._counts[topickey][True] >= self._args.MAX_TOPIC_MATCHES:
             return False
         if self._args.MAX_TOPICS:
-            topics_matched = [t for t, x in self._counts.items() if x[True]]
-            if topic not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
+            topics_matched = [k for k, vv in self._counts.items() if vv[True]]
+            if topickey not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
                 return False
-        if not source.is_processable(topic, self._counts[topic][None], stamp):
+        if not source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
         if self._args.UNIQUE:
-            msghash = make_message_hash(msg, self._patterns["select"], self._patterns["noselect"])
-            if msghash in self._hashes[topic]:
+            include, exclude = self._patterns["select"], self._patterns["noselect"]
+            msghash = rosapi.make_message_hash(msg, include, exclude)
+            if msghash in self._hashes[topickey]:
                 return False
-            self._hashes[topic].add(msghash)
+            self._hashes[topickey].add(msghash)
         return True
 
-    def _prune_data(self, topic):
+
+    def _prune_data(self, topickey):
         """Drops history older than context window."""
         WINDOW = max(self._args.BEFORE, self._args.AFTER) + 1
         for dct in (self._messages, self._stamps, self._statuses):
-            while len(dct[topic]) > WINDOW:
-                dct[topic].pop(next(iter(dct[topic])))
+            while len(dct[topickey]) > WINDOW:
+                dct[topickey].pop(next(iter(dct[topickey])))
 
 
     def _parse_patterns(self):
@@ -164,34 +167,35 @@ class Searcher(object):
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
 
-    def _get_context(self, topic, before=False):
+    def _get_context(self, topickey, before=False):
         """Returns unemitted context for latest match, as [(msgid, index, timestamp, message)]."""
         result = []
         count = self._args.BEFORE + 1 if before else self._args.AFTER
-        candidates = list(self._statuses[topic])[-count:]
-        current_index = self._counts[topic][None]
+        candidates = list(self._statuses[topickey])[-count:]
+        current_index = self._counts[topickey][None]
         for i, msgid in enumerate(candidates) if count else ():
-            if self._statuses[topic][msgid] is None:
+            if self._statuses[topickey][msgid] is None:
                 idx = current_index + i - (len(candidates) - 1 if before else 1)
-                result += [(msgid, idx, self._stamps[topic][msgid], self._messages[topic][msgid])]
+                stamp, msg = self._stamps[topickey][msgid], self._messages[topickey][msgid]
+                result += [(msgid, idx, stamp, msg)]
         return result
 
 
-    def _is_max_done(self, topic):
+    def _is_max_done(self, topickey):
         """Returns whether max match count has been reached (and message after-context emitted)."""
         result = False
         if self._args.MAX_MATCHES:
             if sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES \
-            and not self._has_in_window(topic, self._args.AFTER, status=True, full=True):
+            and not self._has_in_window(topickey, self._args.AFTER, status=True, full=True):
                 result = True
         return result
 
 
-    def _has_in_window(self, topic, length, status, full=False):
+    def _has_in_window(self, topickey, length, status, full=False):
         """Returns whether given status exists in recent message window."""
-        if not length or full and len(self._statuses[topic]) < length:
+        if not length or full and len(self._statuses[topickey]) < length:
             return False
-        return status in list(self._statuses[topic].values())[-length:]
+        return status in list(self._statuses[topickey].values())[-length:]
 
 
     def get_match(self, msg):
@@ -222,20 +226,20 @@ class Searcher(object):
         def decorate_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = get_message_fields(obj)
+            fieldmap = rosapi.get_message_fields(obj)
             fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items():
-                v, path = get_message_value(obj, k, t), top + (k, )
+                v, path = rosapi.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))
                 if hasattr(v, "__slots__"):
                     decorate_message(v, path)
-                elif is_collection and scalar(t) not in ROS_NUMERIC_TYPES:
-                    set_message_value(obj, k, [decorate_message(x, path) for x in v])
+                elif is_collection and scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
+                    rosapi.set_message_value(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
                     v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
-                        set_message_value(obj, k, v2)
+                        rosapi.set_message_value(obj, k, v2)
             if not hasattr(obj, "__slots__"):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
@@ -243,7 +247,7 @@ class Searcher(object):
             return obj
 
         if self._brute_prechecks:
-            text  = "\n".join("%r" % (v, ) for _, v in iter_message_fields(msg))
+            text  = "\n".join("%r" % (v, ) for _, v in rosapi.iter_message_fields(msg))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 

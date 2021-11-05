@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -176,7 +176,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
         cursor = self._db.cursor()
         if topic not in self._topics:
-            typename = "%s/msg/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
+            typename = get_message_type(msg)
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
             args = (topic, typename, "cdr", "")
@@ -302,6 +302,11 @@ def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
     if not is_ros_message(val): return val
     return collections.OrderedDict(val.get_fields_and_field_types())
+
+
+def get_message_type(msg):
+    """Returns ROS2 message type name, like "std_msgs/Header"."""
+    return "%s/msg/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
 
 
 def get_rostime():

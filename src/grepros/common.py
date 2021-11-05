@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.11.2021
+@modified    05.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -204,7 +204,8 @@ def drop_zeros(v, replace=""):
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
-    Filters string dictionary by keys and values.
+    Filters string dictionary by keys and values. Dictionary values may be
+    additional lists; keys with emptied lists are dropped.
 
     Retains only entries that find a match (supports * wildcards);
     if reverse, retains only entries that do not find a match.
@@ -212,14 +213,18 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     result = type(dct)()
     kpatterns = [wildcard_to_regex(x) for x in keys]
     vpatterns = [wildcard_to_regex(x) for x in values]
-    for k, v in dct.items() if not reverse else ():
-        if  (not keys   or k in keys   or any(p.match(k) for p in kpatterns)) \
-        and (not values or v in values or any(p.match(v) for p in vpatterns)):
-            result[k] = v
-    for k, v in dct.items() if reverse else ():
-        if  (k not in keys   and not any(p.match(k) for p in kpatterns)) \
-        and (v not in values and not any(p.match(v) for p in vpatterns)):
-            result[k] = v
+    for k, vv in dct.items() if not reverse else ():
+        is_array = isinstance(vv, (list, tuple))
+        for v in (vv if is_array else [vv]):
+            if  (not keys   or k in keys   or any(p.match(k) for p in kpatterns)) \
+            and (not values or v in values or any(p.match(v) for p in vpatterns)):
+                result.setdefault(k, []).append(v) if is_array else result.update({k: v})
+    for k, vv in dct.items() if reverse else ():
+        is_array = isinstance(vv, (list, tuple))
+        for v in (vv if is_array else [vv]):
+            if  (k not in keys   and not any(p.match(k) for p in kpatterns)) \
+            and (v not in values and not any(p.match(v) for p in vpatterns)):
+                result.setdefault(k, []).append(v) if is_array else result.update({k: v})
     return result
 
 
