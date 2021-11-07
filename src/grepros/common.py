@@ -164,9 +164,16 @@ class TextWrapper(textwrap.TextWrapper):
         @param   custom_widths  {substring: len} to use in line width calculation
         @param   kwargs         arguments for textwrap.TextWrapper
         """
+        self._max_lines   = kwargs.get("max_lines", None)
+        self._placeholder = kwargs.get("placeholder", " [...]")
+        UNSUPPORTED = ("max_lines", "placeholder") if sys.version_info < (3, 0) else ()
+        for k in UNSUPPORTED: kwargs.pop(k, None)  # Py2
         textwrap.TextWrapper.__init__(self, **dict(self.DEFAULTS, **kwargs))
         self._customs = custom_widths or {}
-        self._realwidth = self.width  # Inherited textwrap.TextWrapper.width
+        self._minwidth = 1 + max(self.len(self.initial_indent), self.len(self.subsequent_indent)) \
+                           + self.len(self._placeholder if self._max_lines else "")
+        self.width = max(self.width, self._minwidth)
+        self._realwidth = self.width
 
 
     def len(self, v):
@@ -184,16 +191,18 @@ class TextWrapper(textwrap.TextWrapper):
     def reserve_width(self, reserved=""):
         """Decreases the configured width by given amount (number or string)."""
         reserved = self.len(reserved) if isinstance(reserved, str) else reserved
-        self.width = self._realwidth - reserved
+        self.width = max(self._minwidth, self._realwidth - reserved)
 
 
     def wrap(self, text):
         """Returns a list of wrapped text lines, without final newlines."""
         builtins.len = self.len
         try:
-            return textwrap.TextWrapper.wrap(self, text)
-        finally:
-            builtins.len = self.REALLEN
+            lines = textwrap.TextWrapper.wrap(self, text)
+            if self._max_lines and len(lines) > self._max_lines:  # Py2
+                del lines[self._max_lines:]
+            return lines
+        finally: builtins.len = self.REALLEN
 
 
 def drop_zeros(v, replace=""):
