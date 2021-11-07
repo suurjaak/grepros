@@ -376,8 +376,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
     def close(self):
         """Closes output file, if any."""
         if self._writer:
-            self._writer = None
+            writer, self._writer = self._writer, None
             self._queue.put(None)
+            writer.is_alive() and writer.join()
         if not self._close_printed and self._counts and self._args.META:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
@@ -409,6 +410,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             ConsolePrinter.debug("Creating %s.", self._filename)
         with open(self._filename, "wb") as f:
             template.stream(f, ns)
+        self._writer = None
 
     def _produce(self):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
