@@ -409,7 +409,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         if self._args.META:
             ConsolePrinter.debug("Creating %s.", self._filename)
         with open(self._filename, "wb") as f:
-            template.stream(f, ns)
+            template.stream(f, ns, unbuffered=True)
         self._writer = None
 
     def _produce(self):
