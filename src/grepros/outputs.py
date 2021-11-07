@@ -144,6 +144,7 @@ class TextSinkMixin(object):
 
         def retag_match_lines(lines):
             """Adds match tags to lines where wrapping separated start and end."""
+            match_started = False
             for i, l in enumerate(lines):
                 startpos0, endpos0 = l.find (MatchMarkers.START), l.find (MatchMarkers.END)
                 startpos1, endpos1 = l.rfind(MatchMarkers.START), l.rfind(MatchMarkers.END)
@@ -151,6 +152,10 @@ class TextSinkMixin(object):
                     lines[i] = MatchMarkers.START + l
                 if startpos1 >= 0 and endpos1 < startpos1 and i + 1 < len(lines):
                     lines[i + 1] = MatchMarkers.START + lines[i + 1]
+                line_match_started = (startpos1 >= 0) and (startpos1 < endpos1)
+                match_started = line_match_started or match_started and (endpos < 0)
+            if match_started:
+                lines[-1] += MatchMarkers.END
             return lines
 
         indent = "  " * len(top)
