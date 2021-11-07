@@ -82,10 +82,13 @@ optional arguments:
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
   -v, --invert-match    select non-matching messages
-
+  --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write OUTBAG        write matched messages to specified bagfile
+  --write OUTFILE       write matched messages to specified output file
+  --write-format {bag,html}
+                        output format (default "bag"),
+                        appended to if bag already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -128,7 +131,10 @@ Filtering:
                         number of matched messages to emit (per file if bag input)
   --max-per-topic NUM   number of matched messages to emit from each topic
                         (per file if bag input)
-  --max-topics NUM      number of topics to print matches from
+  --max-topics NUM      number of topics to emit matches from
+  --unique-only         only emit matches that are unique in topic,
+                        taking --select-field and --no-select-field into account
+                        (per file if bag input)
 
 Output control:
   -pf [FIELD [FIELD ...]], --print-field [FIELD [FIELD ...]]
@@ -164,10 +170,12 @@ Output control:
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
                         (default "**" in colorless output)
+  --write-format-template OUTFILE_TEMPLATE
+                        path to custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
-  --no-meta             do not print metainfo to console
-  --no-filename         do not print bag filename prefix on each console line
+  --no-meta             do not print bag and topic and message metainfo to console
+  --no-filename         do not print bag filename prefix on each console message line
   --no-console-output   do not print matches to console
   --verbose             print status messages during console output
                         for publishing and bag writing
