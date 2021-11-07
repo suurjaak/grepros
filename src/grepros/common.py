@@ -85,7 +85,7 @@ class ConsolePrinter(object):
         except Exception:
             do_color = ("always" == args.COLOR)
         try:
-            if sys.stdout.isatty():
+            if sys.stdout.isatty() or do_color:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
             curses.endwin()
         except Exception: pass
