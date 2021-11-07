@@ -89,7 +89,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Returns the start time of the bag, as UNIX timestamp."""
         self._ensure_open()
         if self._has_table("messages"):
-            row = self._db.execute("SELECT MAX(timestamp) AS val FROM messages").fetchone()
+            row = self._db.execute("SELECT MIN(timestamp) AS val FROM messages").fetchone()
             secs, nsecs = divmod(row["val"], 10**9)
             return secs + nsecs / 1E9
         return None
@@ -99,7 +99,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Returns the end time of the bag, as UNIX timestamp."""
         self._ensure_open()
         if self._has_table("messages"):
-            row = self._db.execute("SELECT MIN(timestamp) AS val FROM messages").fetchone()
+            row = self._db.execute("SELECT MAX(timestamp) AS val FROM messages").fetchone()
             secs, nsecs = divmod(row["val"], 10**9)
             return secs + nsecs / 1E9
         return None
