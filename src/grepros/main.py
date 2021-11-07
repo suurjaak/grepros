@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -18,7 +18,7 @@ import os
 import re
 import sys
 
-from . import inputs, outputs, search
+from . import __version__, inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
 
 
@@ -81,6 +81,11 @@ Print first message from each lidar topic on host 1.2.3.4:
         dict(args=["-v", "--invert-match"],
              dest="INVERT", action="store_true",
              help="select non-matching messages"),
+
+        dict(args=["--version"],
+             dest="VERSION", action="version",
+             version="grepros (grep for ROS bag files and live topics) %s" % __version__,
+             help="display version information and exit"),
 
         dict(args=["--live"],
              dest="LIVE", action="store_true",
