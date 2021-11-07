@@ -170,6 +170,7 @@ class TextWrapper(textwrap.TextWrapper):
         for k in UNSUPPORTED: kwargs.pop(k, None)  # Py2
         textwrap.TextWrapper.__init__(self, **dict(self.DEFAULTS, **kwargs))
         self._customs = custom_widths or {}
+        self._disabled = not self.width
         self._minwidth = 1 + max(self.len(self.initial_indent), self.len(self.subsequent_indent)) \
                            + self.len(self._placeholder if self._max_lines else "")
         self.width = max(self.width, self._minwidth)
@@ -196,6 +197,8 @@ class TextWrapper(textwrap.TextWrapper):
 
     def wrap(self, text):
         """Returns a list of wrapped text lines, without final newlines."""
+        if self._disabled:
+            return [text]
         builtins.len = self.len
         try:
             lines = textwrap.TextWrapper.wrap(self, text)

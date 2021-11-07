@@ -240,6 +240,11 @@ Print first message from each lidar topic on host 1.2.3.4:
                   "or no wrapping if zero values\n"
                   '(default "**" in colorless output)'),
 
+        dict(args=["--wrap-width"],
+             dest="WRAP_WIDTH", metavar="NUM", type=int,
+             help="character width to wrap message YAML output at,\n"
+                  "0 disables (defaults to detected terminal width)"),
+
         dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
              help="path to custom template to use for HTML output"),
 

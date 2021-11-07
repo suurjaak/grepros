@@ -170,6 +170,9 @@ Output control:
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
                         (default "**" in colorless output)
+  --wrap-width NUM
+                        width to wrap console output at, 0 disables wrapping
+                        (defaults to detected terminal width)
   --write-format-template OUTFILE_TEMPLATE
                         path to custom template to use for HTML output
   --color {auto,always,never}

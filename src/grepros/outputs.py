@@ -90,6 +90,7 @@ class TextSinkMixin(object):
         @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
+        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
         self._prefix   = ""    # Put before each message line (filename if grepping 1+ files)
         self._wrapper  = None  # TextWrapper instance
@@ -209,7 +210,8 @@ class TextSinkMixin(object):
             ConsolePrinter.PREFIX_START:   0,
             ConsolePrinter.PREFIX_END:     0,
         }
-        wrapargs = dict(max_lines=args.MAX_FIELD_LINES, width=ConsolePrinter.WIDTH,
+        width = ConsolePrinter.WIDTH if args.WRAP_WIDTH is None else args.WRAP_WIDTH
+        wrapargs = dict(max_lines=args.MAX_FIELD_LINES, width=width,
                         placeholder="%s ...%s" % (LL0, LL1))
         self._wrapper = TextWrapper(custom_widths, **wrapargs)
 
@@ -240,6 +242,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
+        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
         super(ConsoleSink,   self).__init__(args)
         TextSinkMixin.__init__(self, args)
@@ -349,6 +352,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
+        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
