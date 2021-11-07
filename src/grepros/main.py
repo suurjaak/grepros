@@ -404,10 +404,14 @@ def run():
 
     try: searcher.search(source, sink)
     except BREAK_EXS:
+        try: sink.close()
+        except (Exception, KeyboardInterrupt): pass
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except (Exception, KeyboardInterrupt): pass
         sys.exit()
+    finally:
+        sink.close()
 
 
 if "__main__" == __name__:
