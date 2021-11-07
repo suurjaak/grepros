@@ -66,11 +66,11 @@ class SourceBase(object):
         """Shuts down input, closing any files or connections."""
 
     def format_meta(self):
-        """Returns source metainfo string, for console output."""
+        """Returns source metainfo string."""
         return ""
 
     def format_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo string, for console output."""
+        """Returns message metainfo string."""
         return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
 
     def get_batch(self):
@@ -176,11 +176,11 @@ class BagSource(SourceBase):
         self._bag and self._bag.close()
 
     def format_meta(self):
-        """Returns bagfile metainfo string, for console output."""
+        """Returns bagfile metainfo string."""
         return self.META_TEMPLATE.format(**self.get_meta())
 
     def format_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo string, for console output."""
+        """Returns message metainfo string."""
         return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
 
     def get_batch(self):
@@ -346,6 +346,19 @@ class TopicSource(SourceBase):
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
         self._msgtypes.clear()
+
+    def get_meta(self):
+        """Returns source metainfo data dict."""
+        return {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
+
+    def format_meta(self):
+        """Returns source metainfo string."""
+        s, d = "", self.get_meta()
+        if "ROS_MASTER_URI" in d:
+            s += "ROS master %s" % d["ROS_MASTER_URI"]
+        if "ROS_DOMAIN_ID" in d:
+            s += (", " if s else "") + "ROS domain ID %s" % d["ROS_DOMAIN_ID"]
+        return s
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
