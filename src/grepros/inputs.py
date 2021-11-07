@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -65,19 +65,27 @@ class SourceBase(object):
     def close(self):
         """Shuts down input, closing any files or connections."""
 
+    def format_meta(self):
+        """Returns source metainfo string, for console output."""
+        return ""
+
+    def format_message_meta(self, topic, index, stamp, msg):
+        """Returns message metainfo string, for console output."""
+        return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
+
     def get_batch(self):
         """Returns source batch identifier if any (like bagfile name if BagSource)."""
 
     def get_meta(self):
-        """Returns source metainfo string, for console output."""
-        return ""
+        """Returns source metainfo data dict."""
+        return {}
 
     def get_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo string, for console output."""
-        kws = dict(topic=topic, type=rosapi.get_message_type(msg),
-                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
-                   stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
-        return self.MESSAGE_META_TEMPLATE.format(**kws)
+        """Returns message metainfo data dict."""
+        return dict(topic=topic, type=rosapi.get_message_type(msg), index=index,
+                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
+                    stamp=drop_zeros(rosapi.to_sec(stamp)),
+                    schema=rosapi.get_message_definition(msg))
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
@@ -121,7 +129,7 @@ class BagSource(SourceBase):
         @param   args.END_INDEX     message index within topic to stop at
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
-        @param   args.OUTBAG        output bagfile, to skip in input files
+        @param   args.OUTFILE       output bagfile, to skip in input files
         """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -167,27 +175,34 @@ class BagSource(SourceBase):
         self._running = False
         self._bag and self._bag.close()
 
+    def format_meta(self):
+        """Returns bagfile metainfo string, for console output."""
+        return self.META_TEMPLATE.format(**self.get_meta())
+
+    def format_message_meta(self, topic, index, stamp, msg):
+        """Returns message metainfo string, for console output."""
+        return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
+
     def get_batch(self):
         """Returns name of current bagfile."""
         return self._filename
 
     def get_meta(self):
-        """Returns bagfile metainfo string, for console output."""
+        """Returns bagfile metainfo data dict."""
         start, end = self._bag.get_start_time(), self._bag.get_end_time()
-        kws = dict(file=self._filename, size=format_bytes(self._bag.size),
-                   mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
-                   start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
-                   end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
-                   delta=format_timedelta(datetime.timedelta(seconds=end - start)))
-        return self.META_TEMPLATE.format(**kws)
+        return dict(file=self._filename, size=format_bytes(self._bag.size),
+                    mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
+                    start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
+                    end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
+                    delta=format_timedelta(datetime.timedelta(seconds=end - start)))
 
     def get_message_meta(self, topic, index, stamp, msg):
-        """Returns message metainfo string, for console output."""
+        """Returns message metainfo data dict."""
         msgtype = rosapi.get_message_type(msg)
-        kws = dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
-                   dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
-                   stamp=drop_zeros(rosapi.to_sec(stamp)), index=index)
-        return self.MESSAGE_META_TEMPLATE.format(**kws)
+        return dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
+                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
+                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
+                    schema=rosapi.get_message_definition(msg))
 
     def notify(self, status):
         """Reports match status of last produced message."""
@@ -238,7 +253,7 @@ class BagSource(SourceBase):
 
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
-        if self._args.OUTBAG and os.path.realpath(self._args.OUTBAG) == os.path.realpath(filename):
+        if self._args.OUTFILE and os.path.realpath(self._args.OUTFILE) == os.path.realpath(filename):
             return False
         try:
             bag = rosapi.create_bag_reader(filename)

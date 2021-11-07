@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    06.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -90,8 +90,13 @@ Print first message from each lidar topic on host 1.2.3.4:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="OUTBAG", default="",
-             help="write matched messages to specified bagfile"),
+        dict(args=["--write"], dest="OUTFILE", default="",
+             help="write matched messages to specified output file"),
+
+        dict(args=["--write-format"], dest="OUTFILE_FORMAT",
+             choices=["bag", "html"], default="bag",
+             help='output format (default "bag"),\n'
+                  "appended to if bag already exists"),
     ],
 
     "groups": {"Filtering": [
@@ -230,6 +235,9 @@ Print first message from each lidar topic on host 1.2.3.4:
                   "or no wrapping if zero values\n"
                   '(default "**" in colorless output)'),
 
+        dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
+             help="path to custom template to use for HTML output"),
+
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
              help='use color output in console (default "always")'),
@@ -339,8 +347,13 @@ def validate_args(args):
         except Exception: errors.append("Invalid ISO datetime for %s: %s" % 
                                         (n.lower().replace("_", " "), v))
 
-    if not any(getattr(args, n, None) for n in outputs.MultiSink.CLASSES):
+    OUTFLAGS = list(outputs.MultiSink.FLAG_CLASSES) + list(outputs.MultiSink.SUBFLAG_CLASSES)
+    if not any(getattr(args, n, None) for n in OUTFLAGS):
         errors.append("No output configured.")
+
+    if args.OUTFILE and "html" == args.OUTFILE_FORMAT and args.OUTFILE_TEMPLATE:
+        if not os.path.isfile(args.OUTFILE_TEMPLATE):
+            errors.append("Template does not exist: %s." % args.OUTFILE_TEMPLATE)
 
     for v in args.PATTERNS:
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"

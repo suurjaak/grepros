@@ -241,6 +241,14 @@ In your ROS2 workspace, at the workspace root:
 This will add the `grepros` command to your local ROS2 workspace path.
 
 
+Attribution
+-----------
+
+Includes a modified version of step, Simple Template Engine for Python,
+(c) 2012, Daniele Mazzocchio, https://github.com/dotpy/step,
+released under the MIT license.
+
+
 License
 -------
 

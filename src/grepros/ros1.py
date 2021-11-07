@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -113,6 +113,12 @@ def format_message_value(msg, name, value):
 def get_message_class(typename):
     """Returns ROS1 message class."""
     return roslib.message.get_message_class(typename)
+
+
+def get_message_definition(msg_or_type):
+    """Returns ROS1 message type definition full text, including subtype definitions."""
+    msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
+    return msg_or_cls._full_text
 
 
 def get_message_fields(val):

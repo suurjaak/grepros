@@ -8,11 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 import os
-from setuptools import setup
+import setuptools
 try: from catkin_pkg.python_setup import generate_distutils_setup
 except ImportError: generate_distutils_setup = None
 
@@ -34,21 +34,22 @@ version_args = dict(
 
 
 setup_args = generate_distutils_setup(  # fetch values from package.xml
-    scripts      = [os.path.join("scripts", PACKAGE)],
+    scripts         = [os.path.join("scripts", PACKAGE)],
 ) if generate_distutils_setup and "1" == os.getenv("ROS_VERSION") else dict(  # Normal pip setup
-    name         = PACKAGE,
-    version      = "0.2.1",
-    entry_points = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
+    name            = PACKAGE,
+    version         = "0.2.1",
+    entry_points    = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
 
-    description  = "grep for ROS bag files and live topics",
-    url          = "https://github.com/suurjaak/" + PACKAGE,
-    author       = "Erki Suurjaak",
-    author_email = "erki@lap.ee",
-    license      = "BSD",
-    platforms    = ["any"],
-    keywords     = "ROS ROS1 ROS2 rosbag grep",
+    description     = "grep for ROS bag files and live topics",
+    url             = "https://github.com/suurjaak/" + PACKAGE,
+    author          = "Erki Suurjaak",
+    author_email    = "erki@lap.ee",
+    license         = "BSD",
+    platforms       = ["any"],
+    keywords        = "ROS ROS1 ROS2 rosbag grep",
     python_requires = ">=2.7",
 
+    include_package_data = True, # Use MANIFEST.in for data files
     classifiers  = [
         "Development Status :: 4 - Beta",
         "Environment :: Console",
@@ -66,4 +67,4 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     long_description_content_type = "text/markdown",
     long_description = open("README.md").read(),
 )
-setup(**dict(common_args, **dict(setup_args, **version_args)))
+setuptools.setup(**dict(common_args, **dict(setup_args, **version_args)))

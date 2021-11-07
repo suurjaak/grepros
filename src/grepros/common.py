@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -24,7 +24,6 @@ import re
 import shutil
 import sys
 import textwrap
-import time
 try: import curses
 except ImportError: curses = None
 
@@ -350,6 +349,37 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def unique_path(pathname, empty_ok=False):
+    """
+    Returns a unique version of the path.
+    
+    If a file or directory with the same name already exists, returns a unique
+    version (e.g. "/tmp/my.2.file" if ""/tmp/my.file" already exists).
+
+    @param   empty_ok  whether to ignore existence if file is empty
+    """
+    result = pathname
+    if "linux2" == sys.platform and sys.version_info < (3, 0) \
+    and isinstance(result, unicode) and "utf-8" != sys.getfilesystemencoding():
+        result = result.encode("utf-8") # Linux has trouble if locale not UTF-8
+    if os.path.isfile(result) and empty_ok and not os.path.getsize(result):
+        return result
+    path, name = os.path.split(result)
+    base, ext = os.path.splitext(name)
+    if len(name) > 255: # Filesystem limitation
+        name = base[:255 - len(ext) - 2] + ".." + ext
+        result = os.path.join(path, name)
+    counter = 2
+    while os.path.exists(result):
+        suffix = ".%s%s" % (counter, ext)
+        name = base + suffix
+        if len(name) > 255:
+            name = base[:255 - len(suffix) - 2] + ".." + suffix
+        result = os.path.join(path, name)
+        counter += 1
+    return result
 
 
 def wildcard_to_regex(text):

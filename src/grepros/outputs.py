@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -16,13 +16,18 @@ from __future__ import print_function
 import atexit
 import copy
 import os
+try: import queue  # Py3
+except ImportError: import Queue as queue  # Py2
+import re
 import sys
+import threading
 
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, merge_spans, wildcard_to_regex
+                     filter_fields, merge_spans, unique_path, wildcard_to_regex
 from . import rosapi
+from . vendor import step
 
 
 class SinkBase(object):
@@ -44,7 +49,7 @@ class SinkBase(object):
         """Prints source metainfo like bag header as debug stream, if not already printed."""
         batch = self._args.META and self.source.get_batch()
         if self._args.META and batch not in self._batch_meta:
-            meta = self._batch_meta[batch] = self.source.get_meta()
+            meta = self._batch_meta[batch] = self.source.format_meta()
             meta and ConsolePrinter.debug(meta)
 
     def emit(self, topic, index, stamp, msg, match):
@@ -70,69 +75,29 @@ class SinkBase(object):
         """Shuts down output, closing any files or connections."""
 
 
-class ConsoleSink(SinkBase):
-    """Prints messages to console."""
-
-    META_LINE_TEMPLATE   = "{coloron}{sep} {line}{coloroff}"
-    MESSAGE_SEP_TEMPLATE = "{coloron}{sep}{coloroff}"
-    PREFIX_TEMPLATE      = "{coloron}{batch}{coloroff}{sepcoloron}{sep}{sepcoloroff}"
-    MATCH_PREFIX_SEP     = ":"    # Printed after bag filename for matched message lines
-    CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
-    SEP                  = "---"  # Prefix of message separators and metainfo lines
-
+class TextSinkMixin(object):
+    """Provides message formatting as text."""
 
 
     def __init__(self, args):
         """
-        @param   args                   arguments object like argparse.Namespace
-        @param   args.META              whether to print metainfo
-        @param   args.PRINT_FIELDS      message fields to print in output if not all
-        @param   args.NOPRINT_FIELDS    message fields to skip in output
-        @param   args.LINE_PREFIX       print source prefix like bag filename on each message line
-        @param   args.MAX_FIELD_LINES   maximum number of lines to print per field
+        @param   args                       arguments object like argparse.Namespace
+        @param   args.PRINT_FIELDS          message fields to use in output if not all
+        @param   args.NOPRINT_FIELDS        message fields to skip in output
+        @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
+        @param   args.START_LINE            message line number to start output from
+        @param   args.END_LINE              message line number to stop output at
+        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
+        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
+        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         """
-        super(ConsoleSink, self).__init__(args)
-
-        self._prefix     = ""     # Printed before each message line (filename if grepping 1+ files)
-        self._wrapper    = None   # TextWrapper instance
-        self._patterns   = {}     # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
+        self._prefix   = ""    # Put before each message line (filename if grepping 1+ files)
+        self._wrapper  = None  # TextWrapper instance
+        self._patterns = {}    # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
+        self._match_start_repl = ConsolePrinter.HIGHLIGHT_START
+        self._match_end_repl   = ConsolePrinter.HIGHLIGHT_END
 
         self._configure(args)
-
-
-    def emit_meta(self):
-        """Prints source metainfo like bag header, if not already printed."""
-        batch = self._args.META and self.source.get_batch()
-        if self._args.META and batch not in self._batch_meta:
-            meta = self._batch_meta[batch] = self.source.get_meta()
-            kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
-                       coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
-            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
-                             for x in meta.splitlines())
-            meta and ConsolePrinter.print(meta)
-
-
-    def emit(self, topic, index, stamp, msg, match):
-        """Prints separator line and message text."""
-        self._prefix = ""
-        if self._args.LINE_PREFIX and self.source.get_batch():
-            sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
-            kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
-                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch(),
-                       sepcoloron=ConsolePrinter.SEP_START, sepcoloroff=ConsolePrinter.SEP_END)
-            self._prefix = self.PREFIX_TEMPLATE.format(**kws)
-        kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
-                   coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
-        if self._args.META:
-            meta = self.source.get_message_meta(topic, index, stamp, msg)
-            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
-                             for x in meta.splitlines())
-            meta and ConsolePrinter.print(meta)
-        elif self._counts:
-            sep = self.MESSAGE_SEP_TEMPLATE.format(**kws)
-            sep and ConsolePrinter.print(sep)
-        ConsolePrinter.print(self.format_message(match or msg, highlight=bool(match)))
-        super(ConsoleSink, self).emit(topic, index, stamp, msg, match)
 
 
     def format_message(self, msg, highlight=False):
@@ -165,8 +130,8 @@ class ConsoleSink(SinkBase):
             text = "\n".join(lines)
 
         if highlight:  # Cannot use ANSI codes before YAML, they get transformed
-            text = text.replace(MatchMarkers.START, ConsolePrinter.HIGHLIGHT_START)
-            text = text.replace(MatchMarkers.END,   ConsolePrinter.HIGHLIGHT_END)
+            text = text.replace(MatchMarkers.START, self._match_start_repl)
+            text = text.replace(MatchMarkers.END,   self._match_end_repl)
 
         return text
 
@@ -250,6 +215,74 @@ class ConsoleSink(SinkBase):
 
 
 
+class ConsoleSink(SinkBase, TextSinkMixin):
+    """Prints messages to console."""
+
+    META_LINE_TEMPLATE   = "{coloron}{sep} {line}{coloroff}"
+    MESSAGE_SEP_TEMPLATE = "{coloron}{sep}{coloroff}"
+    PREFIX_TEMPLATE      = "{coloron}{batch}{coloroff}{sepcoloron}{sep}{sepcoloroff}"
+    MATCH_PREFIX_SEP     = ":"    # Printed after bag filename for matched message lines
+    CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
+    SEP                  = "---"  # Prefix of message separators and metainfo lines
+
+
+
+    def __init__(self, args):
+        """
+        @param   args                       arguments object like argparse.Namespace
+        @param   args.META                  whether to print metainfo
+        @param   args.PRINT_FIELDS          message fields to print in output if not all
+        @param   args.NOPRINT_FIELDS        message fields to skip in output
+        @param   args.LINE_PREFIX           print source prefix like bag filename on each message line
+        @param   args.MAX_FIELD_LINES       maximum number of lines to print per field
+        @param   args.START_LINE            message line number to start output from
+        @param   args.END_LINE              message line number to stop output at
+        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
+        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
+        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
+        """
+        super(ConsoleSink,   self).__init__(args)
+        TextSinkMixin.__init__(self, args)
+
+        self._configure(args)
+
+
+    def emit_meta(self):
+        """Prints source metainfo like bag header, if not already printed."""
+        batch = self._args.META and self.source.get_batch()
+        if self._args.META and batch not in self._batch_meta:
+            meta = self._batch_meta[batch] = self.source.format_meta()
+            kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
+                       coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
+            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
+                             for x in meta.splitlines())
+            meta and ConsolePrinter.print(meta)
+
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Prints separator line and message text."""
+        self._prefix = ""
+        if self._args.LINE_PREFIX and self.source.get_batch():
+            sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
+            kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
+                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch(),
+                       sepcoloron=ConsolePrinter.SEP_START, sepcoloroff=ConsolePrinter.SEP_END)
+            self._prefix = self.PREFIX_TEMPLATE.format(**kws)
+        kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
+                   coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
+        if self._args.META:
+            meta = self.source.format_message_meta(topic, index, stamp, msg)
+            meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
+                             for x in meta.splitlines())
+            meta and ConsolePrinter.print(meta)
+        elif self._counts:
+            sep = self.MESSAGE_SEP_TEMPLATE.format(**kws)
+            sep and ConsolePrinter.print(sep)
+        ConsolePrinter.print(self.format_message(match or msg, highlight=bool(match)))
+        super(ConsoleSink, self).emit(topic, index, stamp, msg, match)
+
+
+
 class BagSink(SinkBase):
     """Writes messages to bagfile."""
 
@@ -257,7 +290,7 @@ class BagSink(SinkBase):
         """
         @param   args          arguments object like argparse.Namespace
         @param   args.META     whether to print metainfo
-        @param   args.OUTBAG   name of ROS bagfile to create or append to
+        @param   args.OUTFILE  name of ROS bagfile to create or append to
         """
         super(BagSink, self).__init__(args)
         self._bag    = None
@@ -269,10 +302,10 @@ class BagSink(SinkBase):
         """Writes message to output bagfile."""
         if not self._bag:
             if self._args.META:
-                a = os.path.isfile(self._args.OUTBAG) and os.path.getsize(self._args.OUTBAG)
+                a = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
                 ConsolePrinter.debug("%s %s.", "Appending to" if a else "Creating",
-                                     self._args.OUTBAG)
-            self._bag = rosapi.create_bag_writer(self._args.OUTBAG)
+                                     self._args.OUTFILE)
+            self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
 
         if topic not in self._counts:
             ConsolePrinter.debug("Adding topic %s.", topic)
@@ -290,8 +323,104 @@ class BagSink(SinkBase):
         if not self._close_printed and self._counts and self._args.META:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
-                                 sum(self._counts.values()), len(self._counts), self._args.OUTBAG)
+                                 sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
 
+
+
+class HtmlSink(SinkBase, TextSinkMixin):
+    """Writes messages to bagfile."""
+
+    ## HTML template path
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "templates", "html.tpl")
+
+    def __init__(self, args):
+        """
+        @param   args                       arguments object like argparse.Namespace
+        @param   args.META                  whether to print metainfo
+        @param   args.OUTFILE               name of HTML file to write,
+                                            will add counter like (2) to filename if exists
+        @param   args.OUTFILE_TEMPLATE      path to custom HTML template, if any
+        @param   args.PRINT_FIELDS          message fields to use in output if not all
+        @param   args.NOPRINT_FIELDS        message fields to skip in output
+        @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
+        @param   args.START_LINE            message line number to start output from
+        @param   args.END_LINE              message line number to stop output at
+        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
+        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
+        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
+        """
+        super(HtmlSink, self).__init__(args)
+        TextSinkMixin.__init__(self, args)
+        self._queue    = queue.Queue()
+        self._writer   = None          # threading.Thread running _stream()
+        self._filename = args.OUTFILE  # Filename base, will be made unique
+        self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
+        self._close_printed = False
+        self._match_start_repl = MatchMarkers.START
+        self._match_end_repl   = MatchMarkers.END
+
+        atexit.register(self.close)
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output file."""
+        if not self._writer:
+            self._writer = threading.Thread(target=self._stream)
+            self._writer.start()
+        self._queue.put((topic, index, stamp, msg, match))
+
+    def validate(self):
+        """Returns whether ROS environment is set, prints error if not."""
+        return rosapi.validate()
+
+    def close(self):
+        """Closes output file, if any."""
+        if self._writer:
+            self._writer = None
+            self._queue.put(None)
+        if not self._close_printed and self._counts and self._args.META:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
+                                 sum(self._counts.values()), len(self._counts), self._filename)
+
+    def format_message(self, msg, highlight=False):
+        """Returns message as formatted string, optionally highlighted for matches."""
+        text = super(HtmlSink, self).format_message(msg, highlight)
+        if highlight:
+            rgx = "(%s|%s)" % (re.escape(self._match_start_repl), re.escape(self._match_end_repl))
+            TAGS = {self._match_start_repl: '<span class="match">',
+                    self._match_end_repl:   '</span>'}
+            text = "".join(TAGS.get(x) or step.escape_html(x) for x in re.split(rgx, text))
+        else:
+            text = step.escape_html(text)
+        return text
+
+    def _stream(self):
+        """Writer-loop, streams HTML template to file."""
+        if not self._writer:
+            return
+
+        with open(self._template_path, "r") as f: tpl = f.read()
+        template = step.Template(tpl, escape=True, strip=False)
+        ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
+                  messages=self._produce())
+        self._filename = unique_path(self._filename, empty_ok=True)
+        if self._args.META:
+            ConsolePrinter.debug("Creating %s.", self._filename)
+        with open(self._filename, "wb") as f:
+            template.stream(f, ns)
+
+    def _produce(self):
+        """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
+        while True:
+            entry = self._queue.get()
+            if entry is None:
+                break  # while
+            (topic, index, stamp, msg, match) = entry
+            if self._args.META and topic not in self._counts:
+                ConsolePrinter.debug("Adding topic %s.", topic)
+            yield entry
+            super(HtmlSink, self).emit(topic, index, stamp, msg, match)
 
 
 class TopicSink(SinkBase):
@@ -355,20 +484,28 @@ class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
     ## Autobinding between argument flags and sink classes
-    CLASSES = {"PUBLISH": TopicSink, "OUTBAG": BagSink, "CONSOLE": ConsoleSink}
+    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
+
+    ## Autobinding between argument flags+subflags and sink classes
+    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html": HtmlSink}}}
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
-        @param   args.CONSOLE   print matches to console
-        @param   args.OUTBAG    write matches to bagfile
-        @param   args.PUBLISH   publish matches to live topics
+        @param   args                  arguments object like argparse.Namespace
+        @param   args.CONSOLE          print matches to console
+        @param   args.OUTFILE          write matches to output file
+        @param   args.OUTFILE_FORMAT   output file format, "bag" or "html"
+        @param   args.PUBLISH          publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
 
         ## List of all combined sinks
-        self.sinks = [cls(args) for flag, cls in self.CLASSES.items()
-                      if getattr(args, flag, False)]
+        self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
+                      if getattr(args, flag, None)]
+        for flag, opts in self.SUBFLAG_CLASSES.items():
+            for subflag, binding in opts.items() if getattr(args, flag, None) else ():
+                for cls in filter(bool, [binding.get(getattr(args, subflag, None))]):
+                    self.sinks += [cls(args)]
 
     def emit_meta(self):
         """Outputs source metainfo in one sink, if not already emitted."""

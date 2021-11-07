@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -35,7 +35,7 @@ ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
                      "uint16", "uint32", "uint64", "float32", "float64", "bool"]
 
 ## All built-in basic types in ROS
-ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string"]
+ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string", "wstring"]
 
 ## Module grepros.ros1 or grepros.ros2
 realapi = None
@@ -115,6 +115,11 @@ def format_message_value(msg, name, value):
 def get_message_class(typename):
     """Returns ROS message class."""
     return realapi.get_message_class(typename)
+
+
+def get_message_definition(msg_or_type):
+    """Returns ROS message type definition full text, including subtype definitions."""
+    return realapi.get_message_definition(msg_or_type)
 
 
 def get_message_fields(val):

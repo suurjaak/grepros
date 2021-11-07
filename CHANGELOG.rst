@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.1 (2021-11-05)
+0.2.1 (2021-11-07)
 -------------------
+* add --write-format option, with HTML support
 * add --order-bag-by option
 * handle topics with multiple message types
 

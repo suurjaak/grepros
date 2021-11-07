@@ -8,12 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    05.11.2021
+@modified    07.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import collections
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -26,6 +27,7 @@ import rclpy.time
 import rosidl_runtime_py.utilities
 
 from . common import ConsolePrinter, MatchMarkers
+from . rosapi import ROS_BUILTIN_TYPES, scalar
 
 
 ## Bagfile extensions to seek
@@ -33,6 +35,9 @@ BAG_EXTENSIONS  = (".db3")
 
 ## Bagfile extensions to skip
 SKIP_EXTENSIONS = ()
+
+## {"pkg/msg/Msg": message type definition full text with subtypes}
+DEFINITIONS = {}
 
 ## rclpy.node.Node instance
 node = None
@@ -249,6 +254,20 @@ def validate():
     return not missing
 
 
+def canonical(typename):
+    """Returns "pkg/msg/Type" for "pkg/Type"."""
+    if "/msg/" in typename or "/" not in typename:
+        return typename
+    return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
+def uncanonical(typename):
+    """Returns "pkg/Type" for "pkg/msg/Type"."""
+    if "/msg/" not in typename or "/" not in typename:
+        return typename
+    return "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
 def create_bag_reader(filename):
     """Returns a ROS2 bag reader with rosbag.Bag-like interface."""
     return Bag(filename)
@@ -296,6 +315,35 @@ def format_message_value(msg, name, value):
 def get_message_class(typename):
     """Returns ROS2 message class."""
     return rosidl_runtime_py.utilities.get_message(typename)
+
+
+def get_message_definition(msg_or_type):
+    """Returns ROS2 message type definition full text, including subtype definitions."""
+    typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+    typename = canonical(typename)
+    if typename not in DEFINITIONS:
+        try:
+            texts, files = collections.OrderedDict(), collections.OrderedDict()
+            files[typename] = rosidl_runtime_py.get_interface_path(typename)
+            while files:
+                myname, mypath = next(iter(files)), files.pop(next(iter(files)))
+                with open(mypath) as f:
+                    texts[myname] = f.read()
+                for line in texts[myname].splitlines():
+                    linetype = scalar(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line))
+                    if not linetype or not linetype[0].isalpha() or linetype in ROS_BUILTIN_TYPES:
+                        continue  # for line
+                    linetype = canonical(linetype if "/" in linetype else
+                                         "%s/%s" % (myname.rsplit("/", 1)[0], linetype))
+                    linedef = None if linetype in texts else get_message_definition(linetype)
+                    if linedef: texts[linetype] = linedef
+            basedef = texts.pop(next(iter(texts)))
+            subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, uncanonical(k), v) for k, v in texts.items()]
+            DEFINITIONS[typename] = basedef + "\n".join(subdefs)
+        except Exception as e:
+            ConsolePrinter.error("Error reading type definition of %s: %s", typename, e)
+            DEFINITIONS[typename] = ""
+    return DEFINITIONS[typename]
 
 
 def get_message_fields(val):
