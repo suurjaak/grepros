@@ -26,6 +26,13 @@ def readfile(path):
     root = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(root, path)) as f: return f.read()
 
+def get_description():
+    """Returns package description from README."""
+    LINK_RGX = r"\[([^\]]+)\]\(([^\)]+)\)"  # 1: content in [], 2: content in ()
+    # Unwrap local links like [LICENSE.md](LICENSE.md)
+    repl = lambda m: m.group(1 if m.group(1) == m.group(2) else 0)
+    return re.sub(LINK_RGX, repl, readfile("README.md"))
+
 def get_version():
     """Returns package current version number from source code."""
     VERSION_RGX = r'__version__\s*\=\s*\"*([^\n\"]+)'
@@ -80,6 +87,6 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     ],
 
     long_description_content_type = "text/markdown",
-    long_description = readfile("README.md"),
+    long_description = get_description(),
 )
 setuptools.setup(**dict(common_args, **dict(setup_args, **version_args)))
