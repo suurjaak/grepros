@@ -17,13 +17,14 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 import datetime, re
+from grepros import __version__
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M") 
 %>
 <!DOCTYPE HTML><html lang="">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-  <meta name="generator" content="grepros 0.2.1" />
+  <meta name="generator" content="grepros {{ __version__ }}" />
   <title>grepros {{ dt }}</title>
   <style>
     body {

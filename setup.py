@@ -12,12 +12,27 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 import os
+import re
 import setuptools
 try: from catkin_pkg.python_setup import generate_distutils_setup
 except ImportError: generate_distutils_setup = None
 
 
 PACKAGE = "grepros"
+
+
+def readfile(path):
+    """Returns contents of path, relative to current file."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(root, path)) as f: return f.read()
+
+def get_version():
+    """Returns package current version number from source code."""
+    VERSION_RGX = r'__version__\s*\=\s*\"*([^\n\"]+)'
+    content = readfile(os.path.join("src", PACKAGE, "__init__.py"))
+    match = re.search(VERSION_RGX, content)
+    return match.group(1).strip() if match else None
+
 
 common_args = dict(
     install_requires = ["pyyaml"],
@@ -37,7 +52,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     scripts         = [os.path.join("scripts", PACKAGE)],
 ) if generate_distutils_setup and "1" == os.getenv("ROS_VERSION") else dict(  # Normal pip setup
     name            = PACKAGE,
-    version         = "0.2.1",
+    version         = get_version(),
     entry_points    = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
 
     description     = "grep for ROS bag files and live topics",
@@ -65,6 +80,6 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     ],
 
     long_description_content_type = "text/markdown",
-    long_description = open("README.md").read(),
+    long_description = readfile("README.md"),
 )
 setuptools.setup(**dict(common_args, **dict(setup_args, **version_args)))
