@@ -208,6 +208,13 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     function registerTopic(topic, type, schema, id, dt) {
       var topickey = [topic, type];
       SCHEMAS[type] = schema;
+      registerMessage(topic, type, id, dt);
+    }
+
+
+    /** Registers message. */
+    function registerTopic(topic, type, id, dt) {
+      var topickey = [topic, type];
       if (!FIRSTMSGS[topickey]) {
         FIRSTMSGS[topickey] = {"id": id, "dt": dt};
         (TOPICS[topic] = TOPICS[topic] || []).push(type);
@@ -433,7 +440,11 @@ topickey = (topic, meta["type"])
     %endif
         <span class="next" title="Go to next message in topic '{{ topic }}'"
               onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], +1)"></span>
+    %if topickey in topics_seen:
+        <script> registerMessage('{{ topic }}', '{{ meta["type"] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+    %else:
         <script> registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+    %endif
       </td>
     </tr>
     <%
