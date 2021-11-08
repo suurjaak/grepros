@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.11.2021
+@modified    08.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -95,8 +95,8 @@ class TextSinkMixin(object):
         self._prefix   = ""    # Put before each message line (filename if grepping 1+ files)
         self._wrapper  = None  # TextWrapper instance
         self._patterns = {}    # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
-        self._match_start_repl = ConsolePrinter.HIGHLIGHT_START
-        self._match_end_repl   = ConsolePrinter.HIGHLIGHT_END
+        self._format_repls = {MatchMarkers.START: ConsolePrinter.HIGHLIGHT_START,
+                              MatchMarkers.END:   ConsolePrinter.HIGHLIGHT_END}
 
         self._configure(args)
 
@@ -130,9 +130,8 @@ class TextSinkMixin(object):
 
             text = "\n".join(lines)
 
-        if highlight:  # Cannot use ANSI codes before YAML, they get transformed
-            text = text.replace(MatchMarkers.START, self._match_start_repl)
-            text = text.replace(MatchMarkers.END,   self._match_end_repl)
+        for a, b in self._format_repls.items() if highlight else ():
+            text = text.replace(a, b)
 
         return text
 
@@ -144,18 +143,17 @@ class TextSinkMixin(object):
 
         def retag_match_lines(lines):
             """Adds match tags to lines where wrapping separated start and end."""
-            match_started = False
+            PH = self._wrapper.placeholder
             for i, l in enumerate(lines):
                 startpos0, endpos0 = l.find (MatchMarkers.START), l.find (MatchMarkers.END)
                 startpos1, endpos1 = l.rfind(MatchMarkers.START), l.rfind(MatchMarkers.END)
                 if endpos0 >= 0 and (startpos0 < 0 or startpos0 > endpos0):
-                    lines[i] = MatchMarkers.START + l
+                    lines[i] = l = MatchMarkers.START + l
                 if startpos1 >= 0 and endpos1 < startpos1 and i + 1 < len(lines):
                     lines[i + 1] = MatchMarkers.START + lines[i + 1]
-                line_match_started = (startpos1 >= 0) and (startpos1 < endpos1)
-                match_started = line_match_started or match_started and (endpos < 0)
-            if match_started:
-                lines[-1] += MatchMarkers.END
+                if startpos1 >= 0 and startpos1 > endpos1:
+                    CUT, EXTRA = (-len(PH), PH) if PH and l.endswith(PH) else (len(l), "")
+                    lines[i] = l[:CUT] + MatchMarkers.END + EXTRA
             return lines
 
         indent = "  " * len(top)
@@ -216,9 +214,9 @@ class TextSinkMixin(object):
             ConsolePrinter.PREFIX_END:     0,
         }
         width = ConsolePrinter.WIDTH if args.WRAP_WIDTH is None else args.WRAP_WIDTH
-        wrapargs = dict(max_lines=args.MAX_FIELD_LINES, width=width,
+        wrapargs = dict(width=width, max_lines=args.MAX_FIELD_LINES,
                         placeholder="%s ...%s" % (LL0, LL1))
-        self._wrapper = TextWrapper(custom_widths, **wrapargs)
+        self._wrapper = TextWrapper(custom_widths=custom_widths, **wrapargs)
 
 
 
@@ -249,7 +247,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
-        super(ConsoleSink,   self).__init__(args)
+        super(ConsoleSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
         self._configure(args)
@@ -366,9 +364,13 @@ class HtmlSink(SinkBase, TextSinkMixin):
         self._filename = args.OUTFILE  # Filename base, will be made unique
         self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
         self._close_printed = False
-        self._match_start_repl = MatchMarkers.START
-        self._match_end_repl   = MatchMarkers.END
+        self._tag_repls = {MatchMarkers.START:            '<span class="match">',
+                           MatchMarkers.END:              '</span>',
+                           ConsolePrinter.LOWLIGHT_START: '<span class="lowlight">',
+                           ConsolePrinter.LOWLIGHT_END:   '</span>'}
+        self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
 
+        self._format_repls.clear()
         atexit.register(self.close)
 
     def emit(self, topic, index, stamp, msg, match):
@@ -395,14 +397,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches."""
-        text = super(HtmlSink, self).format_message(msg, highlight)
-        if highlight:
-            rgx = "(%s|%s)" % (re.escape(self._match_start_repl), re.escape(self._match_end_repl))
-            TAGS = {self._match_start_repl: '<span class="match">',
-                    self._match_end_repl:   '</span>'}
-            text = "".join(TAGS.get(x) or step.escape_html(x) for x in re.split(rgx, text))
-        else:
-            text = step.escape_html(text)
+        text = TextSinkMixin.format_message(self, msg, highlight)
+        text = "".join(self._tag_repls.get(x) or step.escape_html(x)
+                       for x in self._tag_rgx.split(text))
         return text
 
     def _stream(self):
