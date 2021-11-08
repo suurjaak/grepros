@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.1 (2021-11-07)
+0.2.1 (2021-11-08)
 -------------------
 * add --write-format option, with HTML support
 * add --wrap-width option

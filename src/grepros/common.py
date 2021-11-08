@@ -9,12 +9,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.11.2021
+@modified    08.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
-try: import builtins  # Py3
-except ImportError: import __builtin__ as builtins  # Py2
 import datetime
 import glob
 import math
@@ -23,7 +21,6 @@ import random
 import re
 import shutil
 import sys
-import textwrap
 try: import curses
 except ImportError: curses = None
 
@@ -147,65 +144,142 @@ class ConsolePrinter(object):
 
 
 
-class TextWrapper(textwrap.TextWrapper):
+class TextWrapper(object):
     """
-    textwrap.TextWrapper that supports custom substring widths in line width calculation.
+    TextWrapper that supports custom substring widths in line width calculation.
 
     Intended for wrapping text containing ANSI control codes.
+    Heavily refactored from Python standard library textwrap.TextWrapper.
     """
 
-    ## Defaults for textwrap.TextWrapper
-    DEFAULTS = dict(break_long_words=False, break_on_hyphens=False, expand_tabs=False,
-                    replace_whitespace=False, subsequent_indent="  ")
-    REALLEN = builtins.len
-
-    def __init__(self, custom_widths=None, **kwargs):
-        """
-        @param   custom_widths  {substring: len} to use in line width calculation
-        @param   kwargs         arguments for textwrap.TextWrapper
-        """
-        self._max_lines   = kwargs.get("max_lines", None)
-        self._placeholder = kwargs.get("placeholder", " [...]")
-        UNSUPPORTED = ("max_lines", "placeholder") if sys.version_info < (3, 0) else ()
-        for k in UNSUPPORTED: kwargs.pop(k, None)  # Py2
-        textwrap.TextWrapper.__init__(self, **dict(self.DEFAULTS, **kwargs))
-        self._customs = custom_widths or {}
-        self._disabled = not self.width
-        self._minwidth = 1 + max(self.len(self.initial_indent), self.len(self.subsequent_indent)) \
-                           + self.len(self._placeholder if self._max_lines else "")
-        self.width = max(self.width, self._minwidth)
-        self._realwidth = self.width
+    ## Regex for breaking text at whitespace
+    SPACE_RGX = re.compile(r"([%s]+)" % re.escape("\t\n\x0b\x0c\r "))
 
 
-    def len(self, v):
+    def __init__(self, width=80, subsequent_indent="  ", max_lines=None, placeholder=" ...",
+                 custom_widths=None):
         """
-        Returns the number of items of a sequence or collection.
+        @param   width              default maximum width to wrap at, 0 disables
+        @param   max_lines          count to truncate lines from
+        @param   placeholder        appended to last retained line when truncating
+        @param   subsequent_indent  appended to last retained line when truncating
+        @param   custom_widths      {substring: len} to use in line width calculation
+        """
+        self.width             = width
+        self.subsequent_indent = subsequent_indent
+        self.max_lines         = max_lines
+        self.placeholder       = placeholder
 
-        Uses configured custom substring widths if string value.
-        """
-        result = self.REALLEN(v)
-        for s, l in self._customs.items() if isinstance(v, str) else ():
-            result -= v.count(s) * (self.REALLEN(s) - l)
-        return result
+        self.customs    = {s: l for s, l in (custom_widths or {}).items() if s}
+        self.custom_rgx = re.compile("(%s)" % "|".join(re.escape(s) for s in self.customs))
+        self.disabled   = not self.width
+        self.minwidth   = 1 + self.strlen(self.subsequent_indent) \
+                            + self.strlen(self.placeholder if self.max_lines else "")
+        self.width      = max(self.width, self.minwidth)
+        self.realwidth  = self.width
+
+
+    def wrap(self, text):
+        """Returns a list of wrapped text lines, without linebreaks."""
+        if self.disabled: return [text]
+        return self._wrap_chunks([c for c in self.SPACE_RGX.split(text) if c])
 
 
     def reserve_width(self, reserved=""):
         """Decreases the configured width by given amount (number or string)."""
-        reserved = self.len(reserved) if isinstance(reserved, str) else reserved
-        self.width = max(self._minwidth, self._realwidth - reserved)
+        reserved = self.strlen(reserved) if isinstance(reserved, str) else reserved
+        self.width = max(self.minwidth, self.realwidth - reserved)
 
 
-    def wrap(self, text):
-        """Returns a list of wrapped text lines, without final newlines."""
-        if self._disabled:
-            return [text]
-        builtins.len = self.len
-        try:
-            lines = textwrap.TextWrapper.wrap(self, text)
-            if self._max_lines and len(lines) > self._max_lines:  # Py2
-                del lines[self._max_lines:]
-            return lines
-        finally: builtins.len = self.REALLEN
+    def strlen(self, v):
+        """Returns length of string, using custom substring widths."""
+        return len(v) - sum(v.count(s) * (len(s) - l) for s, l in self.customs.items())
+
+
+    def isblank(self, v):
+        """Returns whether string is empty or all whitespace, using custom substring widths."""
+        return not self.custom_rgx.sub(lambda m: "X" * self.customs[m.group()], v).strip()
+
+
+    def _wrap_chunks(self, chunks):
+        """Returns a list of lines joined from text chunks, wrapped to width."""
+        lines = []
+        chunks.reverse()  # Reverse for efficient popping
+
+        placeholder_len = self.strlen(self.placeholder)
+        while chunks:
+            cur_line, cur_len = [], 0  # [chunk, ], sum(map(len, cur_line))
+            indent = self.subsequent_indent if lines else ""
+            width = self.width - self.strlen(indent)
+
+            if lines and self.isblank(chunks[-1]):
+                del chunks[-1]  # Drop starting all-whitespace chunk if subsequent line
+
+            while chunks:
+                l = self.strlen(chunks[-1])
+                if cur_len + l <= width:
+                    cur_line.append(chunks.pop())
+                    cur_len += l
+                else:  # Line full
+                    break  # while chunks (inner-while)
+
+            if chunks and self.strlen(chunks[-1]) > width:
+                # Current line is full, and next chunk is too big to fit on any line
+                self._handle_long_word(chunks, cur_line, cur_len, width)
+                cur_len = sum(map(self.strlen, cur_line))
+
+            if cur_line and self.isblank(cur_line[-1]):
+                cur_len -= self.strlen(cur_line[-1])
+                del cur_line[-1]  # Last chunk is all whitespace, drop it
+
+            if cur_line:
+                if (self.max_lines is None or len(lines) + 1 < self.max_lines
+                or (not chunks or len(chunks) == 1 and self.isblank(chunks[0]))
+                and cur_len <= width):  # Current line ok
+                    lines.append(indent + "".join(cur_line))
+                    continue  # while chunks
+            else:
+                continue  # while chunks
+
+            while cur_line:
+                if not self.isblank(cur_line[-1]) and cur_len + placeholder_len <= width:
+                    cur_line.append(self.placeholder)
+                    lines.append(indent + "".join(cur_line))
+                    break  # while cur_line
+                cur_len -= self.strlen(cur_line[-1])
+                del cur_line[-1]
+            else:
+                if lines:
+                    prev_line = lines[-1].rstrip()
+                    if self.strlen(prev_line) + placeholder_len <= self.width:
+                        lines[-1] = prev_line + self.placeholder
+                        break  # while chunks
+                lines.append(indent + self.placeholder.lstrip())
+            break  # while chunks
+
+        return lines
+
+
+    def _handle_long_word(self, reversed_chunks, cur_line, cur_len, width):
+        """
+        Breaks last chunk if not only containing a custom-width string,
+        else adds last chunk to current line if line still empty.
+        """
+        text, breakable = reversed_chunks[-1], False
+        break_pos = 1 if width < 1 else width - cur_len
+        if text not in self.customs:
+            unbreakable_spans = [m.span() for m in self.custom_rgx.finditer(text)]
+            text_in_spans = [x for x in unbreakable_spans if x[0] <= break_pos < x[1]]
+            last_span = text_in_spans and sorted(text_in_spans, key=lambda x: -x[1])[0]
+            break_pos = last_span[1] if last_span else break_pos
+            breakable = 0 < break_pos < len(text)
+
+        if breakable:
+            cur_line.append(text[:break_pos])
+            reversed_chunks[-1] = text[break_pos:]
+        elif not cur_line:
+            cur_line.append(reversed_chunks.pop())
+
 
 
 def drop_zeros(v, replace=""):
@@ -366,7 +440,7 @@ def parse_datetime(text):
 def unique_path(pathname, empty_ok=False):
     """
     Returns a unique version of the path.
-    
+
     If a file or directory with the same name already exists, returns a unique
     version (e.g. "/tmp/my.2.file" if ""/tmp/my.file" already exists).
 
