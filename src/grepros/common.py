@@ -108,7 +108,7 @@ class ConsolePrinter(object):
 
 
     @classmethod
-    def print(cls, text, *args, **kwargs):
+    def print(cls, text="", *args, **kwargs):
         """Prints text, formatted with args and kwargs."""
         fileobj = kwargs.pop("__file", sys.stdout)
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
@@ -125,14 +125,14 @@ class ConsolePrinter(object):
 
 
     @classmethod
-    def error(cls, text, *args, **kwargs):
+    def error(cls, text="", *args, **kwargs):
         """Prints error to stderr, formatted with args and kwargs, in error colors if supported."""
         KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 
     @classmethod
-    def debug(cls, text, *args, **kwargs):
+    def debug(cls, text="", *args, **kwargs):
         """
         Prints debug text to stderr if verbose.
 
