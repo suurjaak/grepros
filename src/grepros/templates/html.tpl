@@ -213,7 +213,7 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
     /** Registers message. */
-    function registerTopic(topic, type, id, dt) {
+    function registerMessage(topic, type, id, dt) {
       var topickey = [topic, type];
       if (!FIRSTMSGS[topickey]) {
         FIRSTMSGS[topickey] = {"id": id, "dt": dt};
