@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.11.2021
+@modified    09.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -156,17 +156,19 @@ class TextWrapper(object):
     SPACE_RGX = re.compile(r"([%s]+)" % re.escape("\t\n\x0b\x0c\r "))
 
 
-    def __init__(self, width=80, subsequent_indent="  ", max_lines=None, placeholder=" ...",
-                 custom_widths=None):
+    def __init__(self, width=80, subsequent_indent="  ", drop_whitespace=False,
+                 max_lines=None, placeholder=" ...", custom_widths=None):
         """
         @param   width              default maximum width to wrap at, 0 disables
+        @param   subsequent_indent  string prepended to all consecutive lines
+        @param   drop_whitespace    drop leading and trailing whitespace from lines
         @param   max_lines          count to truncate lines from
         @param   placeholder        appended to last retained line when truncating
-        @param   subsequent_indent  appended to last retained line when truncating
         @param   custom_widths      {substring: len} to use in line width calculation
         """
         self.width             = width
         self.subsequent_indent = subsequent_indent
+        self.drop_whitespace   = drop_whitespace
         self.max_lines         = max_lines
         self.placeholder       = placeholder
 
@@ -182,7 +184,21 @@ class TextWrapper(object):
     def wrap(self, text):
         """Returns a list of wrapped text lines, without linebreaks."""
         if self.disabled: return [text]
-        return self._wrap_chunks([c for c in self.SPACE_RGX.split(text) if c])
+        result = []
+        for i, line in enumerate(text.splitlines()):
+            chunks = [c for c in self.SPACE_RGX.split(line) if c]
+            lines = self._wrap_chunks(chunks)
+            if i and lines and self.subsequent_indent:
+                lines[0] = self.subsequent_indent + lines[0]
+            result.extend(lines)
+            if self.max_lines and result and len(result) >= self.max_lines:
+                break  # for i, line
+        if self.max_lines and result and (len(result) > self.max_lines
+        or len(result) == self.max_lines and not text.endswith(result[-1].strip())):
+            result = result[:self.max_lines]
+            if not result[-1].endswith(self.placeholder.lstrip()):
+                result[-1] += self.placeholder
+        return result
 
 
     def reserve_width(self, reserved=""):
@@ -212,8 +228,8 @@ class TextWrapper(object):
             indent = self.subsequent_indent if lines else ""
             width = self.width - self.strlen(indent)
 
-            if lines and self.isblank(chunks[-1]):
-                del chunks[-1]  # Drop starting all-whitespace chunk if subsequent line
+            if self.drop_whitespace and lines and self.isblank(chunks[-1]):
+                del chunks[-1]  # Drop initial whitespace on subsequent lines
 
             while chunks:
                 l = self.strlen(chunks[-1])
@@ -228,33 +244,32 @@ class TextWrapper(object):
                 self._handle_long_word(chunks, cur_line, cur_len, width)
                 cur_len = sum(map(self.strlen, cur_line))
 
-            if cur_line and self.isblank(cur_line[-1]):
-                cur_len -= self.strlen(cur_line[-1])
-                del cur_line[-1]  # Last chunk is all whitespace, drop it
+            if self.drop_whitespace and cur_line and self.isblank(cur_line[-1]):
+                cur_len -= len(cur_line[-1])  # Drop line last whitespace chunk
+                del cur_line[-1]
 
             if cur_line:
                 if (self.max_lines is None or len(lines) + 1 < self.max_lines
-                or (not chunks or len(chunks) == 1 and self.isblank(chunks[0]))
+                or (not chunks or self.drop_whitespace
+                    and len(chunks) == 1 and self.isblank(chunks[0])) \
                 and cur_len <= width):  # Current line ok
                     lines.append(indent + "".join(cur_line))
                     continue  # while chunks
             else:
                 continue  # while chunks
 
-            while cur_line:
-                if not self.isblank(cur_line[-1]) and cur_len + placeholder_len <= width:
-                    cur_line.append(self.placeholder)
-                    lines.append(indent + "".join(cur_line))
-                    break  # while cur_line
+            while cur_line:  # Truncate for max_lines
+                if not self.isblank(cur_line[-1]):
+                    if cur_len + placeholder_len <= width:
+                        lines.append(indent + "".join(cur_line))
+                        break  # while cur_line
+                    if len(cur_line) == 1:
+                        lines.append(indent + cur_line[-1])
                 cur_len -= self.strlen(cur_line[-1])
                 del cur_line[-1]
             else:
-                if lines:
-                    prev_line = lines[-1].rstrip()
-                    if self.strlen(prev_line) + placeholder_len <= self.width:
-                        lines[-1] = prev_line + self.placeholder
-                        break  # while chunks
-                lines.append(indent + self.placeholder.lstrip())
+                if not lines or self.strlen(lines[-1]) + placeholder_len > self.width:
+                    lines.append(indent + self.placeholder.lstrip())
             break  # while chunks
 
         return lines
@@ -265,9 +280,10 @@ class TextWrapper(object):
         Breaks last chunk if not only containing a custom-width string,
         else adds last chunk to current line if line still empty.
         """
-        text, breakable = reversed_chunks[-1], False
+        text = reversed_chunks[-1]
         break_pos = 1 if width < 1 else width - cur_len
-        if text not in self.customs:
+        breakable = text not in self.customs
+        if breakable:
             unbreakable_spans = [m.span() for m in self.custom_rgx.finditer(text)]
             text_in_spans = [x for x in unbreakable_spans if x[0] <= break_pos < x[1]]
             last_span = text_in_spans and sorted(text_in_spans, key=lambda x: -x[1])[0]

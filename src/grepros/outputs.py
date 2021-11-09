@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.11.2021
+@modified    09.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -186,9 +186,12 @@ class TextSinkMixin(object):
 
                 v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
                 if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
-                    extra_indent = " " * len(indent + k + ": ")
+                    is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
+                    extra_indent = indent if is_strlist else " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
+                    self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
+                    if is_strlist: v = "\n" + v
                 vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
             return ("\n" if indent and vals else "") + "\n".join(vals)
 

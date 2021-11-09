@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    07.11.2021
+@modified    09.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -30,12 +30,15 @@ BAG_EXTENSIONS  = ()
 ## Bagfile extensions to skip, including leading dot, populated after init
 SKIP_EXTENSIONS = ()
 
-## All built-in numeric basic types in ROS
+## All built-in numeric types in ROS
 ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
                      "uint16", "uint32", "uint64", "float32", "float64", "bool"]
 
+## All built-in string types in ROS
+ROS_STRING_TYPES = ["string", "wstring"]
+
 ## All built-in basic types in ROS
-ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ["string", "wstring"]
+ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ROS_STRING_TYPES
 
 ## Module grepros.ros1 or grepros.ros2
 realapi = None
