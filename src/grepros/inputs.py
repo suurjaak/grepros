@@ -40,7 +40,6 @@ class SourceBase(object):
                      .END_TIME     latest timestamp of messages to scan
         """
         self._args = copy.deepcopy(args)
-        self._patterns = {}    # {key: [re.Pattern, ]}
         # {topic: ["pkg/MsgType", ]} in current source
         self._msgtypes = collections.defaultdict(list)
         # {topic: ["pkg/MsgType", ]} searched in current source
@@ -140,6 +139,7 @@ class BagSource(SourceBase):
         self._msgtotals = collections.defaultdict(int)  # {(topic, type): total count in bag}
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
+        self._meta      = None   # Cached get_meta()
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -189,12 +189,15 @@ class BagSource(SourceBase):
 
     def get_meta(self):
         """Returns bagfile metainfo data dict."""
+        if self._meta is not None:
+            return self._meta
         start, end = self._bag.get_start_time(), self._bag.get_end_time()
-        return dict(file=self._filename, size=format_bytes(self._bag.size),
-                    mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
-                    start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
-                    end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
-                    delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+        self._meta = dict(file=self._filename, size=format_bytes(self._bag.size),
+                          mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
+                          start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
+                          end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
+                          delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+        return self._meta
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
@@ -253,6 +256,13 @@ class BagSource(SourceBase):
 
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
+        self._meta     = None
+        self._bag      = None
+        self._filename = None
+        self._sticky   = False
+        self._counts.clear()
+        self._msgtypes.clear()
+        self._msgtotals.clear()
         if self._args.OUTFILE and os.path.realpath(self._args.OUTFILE) == os.path.realpath(filename):
             return False
         try:
@@ -263,10 +273,6 @@ class BagSource(SourceBase):
 
         self._bag      = bag
         self._filename = filename
-        self._sticky   = False
-        self._counts.clear()
-        self._msgtypes.clear()
-        self._msgtotals.clear()
 
         topicdata = bag.get_type_and_topic_info().topics
         for k, v in topicdata.items():
@@ -276,6 +282,7 @@ class BagSource(SourceBase):
         dct = filter_dict(self._msgtypes, self._args.TOPICS, self._args.TYPES)
         dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
         self._topics = dct
+        self._meta   = self.get_meta()
 
         args = self._args = copy.deepcopy(self._args0)
         if args.START_TIME is not None:
