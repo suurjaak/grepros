@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.11.2021
+@modified    08.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -392,31 +392,37 @@ def run():
     """Parses command-line arguments and runs search."""
     atexit.register(flush_stdout)
     args, _ = make_parser().parse_known_args()
-    ConsolePrinter.configure(args)
-    if not validate_args(args):
-        sys.exit(1)
 
-    ConsolePrinter.VERBOSE = args.VERBOSE
-    cls = inputs.TopicSource if args.LIVE else inputs.BagSource
-    searcher, source, sink = search.Searcher(args), cls(args), outputs.MultiSink(args)
-    if not source.validate() or not sink.validate():
-        sys.exit(1)
-
-    source.thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
     except NameError: pass  # Py2
 
-    try: searcher.search(source, sink)
+    source, sink = None, None
+    try:
+        ConsolePrinter.configure(args)
+        if not validate_args(args):
+            sys.exit(1)
+
+        ConsolePrinter.VERBOSE = args.VERBOSE
+        cls = inputs.TopicSource if args.LIVE else inputs.BagSource
+        source, sink = cls(args), outputs.MultiSink(args)
+        if not source.validate() or not sink.validate():
+            sys.exit(1)
+
+        source.thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
+        search.Searcher(args).search(source, sink)
     except BREAK_EXS:
-        try: sink.close()
+        try: sink and sink.close()
+        except (Exception, KeyboardInterrupt): pass
+        try: source and source.close()
         except (Exception, KeyboardInterrupt): pass
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except (Exception, KeyboardInterrupt): pass
         sys.exit()
     finally:
-        sink.close()
+        sink and sink.close()
+        source and source.close()
 
 
 if "__main__" == __name__:
