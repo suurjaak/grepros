@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    05.11.2021
+@modified    08.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -148,17 +148,18 @@ class Searcher(object):
     def _parse_patterns(self):
         """Parses pattern arguments into re.Patterns."""
         NOBRUTE_SIGILS = r"\A", r"\Z", "?("  # Regex specials ruling out brute precheck
+        BRUTE, FLAGS = not self._args.INVERT, re.DOTALL | (0 if self._args.CASE else re.I)
         self._patterns.clear()
         del self._brute_prechecks[:]
-        contents, brute = [], not self._args.INVERT
+        contents = []
         for v in self._args.PATTERNS:
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
             v = (re.escape(v) if self._args.RAW else v) + ("|^$" if v in ("''", '""') else "")
             path = tuple(path.split(".")) if path else ()
-            contents.append((path, re.compile("(%s)" % v, 0 if self._args.CASE else re.I)))
-            if brute and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
+            contents.append((path, re.compile("(%s)" % v, FLAGS)))
+            if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
         self._patterns["content"] = contents
 
