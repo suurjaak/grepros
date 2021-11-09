@@ -9,6 +9,7 @@ Changelog for package grepros
 * add --order-bag-by option
 * handle topics with multiple message types
 * improve console output wrapping
+* fix detecting ROS2 primitive array types
 * fix using ROS2 bag start-end timestamps
 
 0.2.0 (2021-11-04)

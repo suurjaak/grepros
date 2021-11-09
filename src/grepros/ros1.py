@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    07.11.2021
+@modified    09.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -134,6 +134,12 @@ def get_message_type(msg):
     return msg._type
 
 
+def get_message_value(msg, name, typename):
+    """Returns object attribute value, with numeric arrays converted to lists."""
+    v = getattr(msg, name)
+    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+
+
 def get_rostime():
     """Returns current ROS1 time, as rospy.Time."""
     return rospy.get_rostime()
@@ -167,6 +173,15 @@ def make_duration(secs=0, nsecs=0):
 def make_time(secs=0, nsecs=0):
     """Returns a ROS1 time, as rospy.Time."""
     return rospy.Time(secs=secs, nsecs=nsecs)
+
+
+def scalar(typename):
+    """
+    Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".
+
+    Returns type unchanged if already a scalar.
+    """
+    return typename[:typename.index("[")] if "[" in typename else typename
 
 
 def set_message_value(obj, name, value):

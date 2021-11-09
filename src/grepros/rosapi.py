@@ -32,7 +32,7 @@ SKIP_EXTENSIONS = ()
 
 ## All built-in numeric types in ROS
 ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
-                     "uint16", "uint32", "uint64", "float32", "float64", "bool"]
+                     "uint16", "uint32", "uint64", "float32", "float64", "double", "bool"]
 
 ## All built-in string types in ROS
 ROS_STRING_TYPES = ["string", "wstring"]
@@ -136,9 +136,8 @@ def get_message_type(msg):
 
 
 def get_message_value(msg, name, typename):
-    """Returns object attribute value, uint8[] converted to [int, ] if bytes()."""
-    v = getattr(msg, name)
-    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+    """Returns object attribute value, with numeric arrays converted to lists."""
+    return realapi.get_message_value(msg, name, typename)
 
 
 def get_rostime():
@@ -240,11 +239,11 @@ def make_message_hash(msg, include=(), exclude=()):
 
 def scalar(typename):
     """
-    Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".
+    Returns scalar type from ROS message data type, like "uint8" from uint8-array.
 
     Returns type unchanged if already a scalar.
     """
-    return typename[:typename.index("[")] if "[" in typename else typename
+    return realapi.scalar(typename)
 
 
 def set_message_value(obj, name, value):

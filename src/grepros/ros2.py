@@ -12,6 +12,7 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
+import array
 import collections
 import os
 import re
@@ -27,7 +28,7 @@ import rclpy.time
 import rosidl_runtime_py.utilities
 
 from . common import ConsolePrinter, MatchMarkers
-from . rosapi import ROS_BUILTIN_TYPES, scalar
+from . rosapi import ROS_BUILTIN_TYPES
 
 
 ## Bagfile extensions to seek
@@ -357,6 +358,16 @@ def get_message_type(msg):
     return "%s/msg/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
 
 
+def get_message_value(msg, name, typename):
+    """Returns object attribute value, with numeric arrays converted to lists."""
+    v = getattr(msg, name)
+    if "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
+        return v.tolist()
+    if isinstance(v, (bytes, array.array)):
+        return list(v)
+    return v
+
+
 def get_rostime():
     """Returns current ROS2 time, as rclpy.time.Time."""
     return node.get_clock().now()
@@ -392,6 +403,17 @@ def make_duration(secs=0, nsecs=0):
 def make_time(secs=0, nsecs=0):
     """Returns a ROS2 time, as rclpy.time.Time."""
     return rclpy.time.Time(seconds=secs, nanoseconds=nsecs)
+
+
+def scalar(typename):
+    """
+    Returns scalar type from ROS message data type, like "uint8" from "sequence<uint8, 100>".
+
+    Returns type unchanged if already a scalar.
+    """
+    if "[" in typename: return typename[:typename.index("[")]
+    match = re.match(r"sequence<([^\,>]+).*>", typename)
+    return match.group(1) if match else typename
 
 
 def set_message_value(obj, name, value):
