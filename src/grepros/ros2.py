@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    07.11.2021
+@modified    09.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -144,10 +144,10 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             exprs += ["topic_id IN (%s)" % ", ".join("%s" % (x["id"], ) for x in rows)]
         if start_time is not None:
             exprs += ["timestamp >= ?"]
-            args  += (start_time, )
+            args  += (start_time.nanoseconds, )
         if end_time is not None:
             exprs += ["timestamp <= ?"]
-            args  += (end_time, )
+            args  += (end_time.nanoseconds, )
         sql += ((" WHERE " + " AND ".join(exprs)) if exprs else "")
         sql += " ORDER BY timestamp"
 

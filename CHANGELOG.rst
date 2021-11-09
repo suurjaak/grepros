@@ -8,8 +8,8 @@ Changelog for package grepros
 * add --wrap-width option
 * add --order-bag-by option
 * handle topics with multiple message types
-* fix mixing up ROS2 bag start-end timestamps
 * improve console output wrapping
+* fix using ROS2 bag start-end timestamps
 
 0.2.0 (2021-11-04)
 -------------------
