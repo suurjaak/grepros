@@ -13,7 +13,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    07.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, re
@@ -87,6 +87,27 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     }
     table#toc.collapsed {
       display:                none;
+    }
+    th .sort {
+      display:                block;
+    }
+    th .sort:hover {
+      cursor:                 pointer;
+      text-decoration:        none;
+    }
+    th .sort::after {
+      content:                "";
+      display:                inline-block;
+      min-width:              6px;
+      position:               relative;
+      left:                   3px;
+      top:                    -1px; 
+    }
+    th .sort.asc::after {
+      content:                "\\2193";  /** Downwards arrow ↓. */
+    }
+    th .sort.desc::after {
+      content:                "\\2191";  /** Upwards arrow ↓. */
     }
     table#messages td, table#messages th {
       padding:                5px 10px;
@@ -191,6 +212,9 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     var FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
     var LASTMSGS  = {};  // {[topic, type]: {id, dt}}
     var MSGCOUNTS = {};  // {[topic, type]: count}
+
+    var sort_col       = 0;     // Current sort column index in toc
+    var sort_direction = true;  // Ascending
 
 
     /**
@@ -326,24 +350,70 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     };
 
 
+    function sort(col) {
+      var elem_table = document.getElementById("toc");
+      var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
+      var elems_tr   = elem_tbody.getElementsByTagName("tr");
+      if (!elems_tr.length) return false;
+
+      if (col == sort_col && !sort_direction)
+        sort_col = 0, sort_direction = true;
+      else if (col == sort_col)
+        sort_direction = !sort_direction;
+      else
+        sort_col = col, sort_direction = true;
+
+      var elems_tr = elem_tbody.getElementsByTagName("tr");
+      var rows = [];
+      for (var i = 0, ll = elems_tr.length; i != ll; rows.push(elems_tr[i++]));
+      rows.sort(cmp_node);
+      for (var i = 0; i < rows.length; i++) elem_tbody.appendChild(rows[i]);
+      var linklist = document.getElementsByClassName("sort");
+      for (var i = 0; i < linklist.length; i++) {
+        linklist[i].classList.remove("asc");
+        linklist[i].classList.remove("desc");
+        if (i == sort_col) linklist[i].classList.add(sort_direction ? "asc" : "desc")
+      };
+      return false;
+    };
+
+
+    /** Returns node child content comparison result, -1, 0 or 1. */
+    var cmp_node = function(a, b) {
+      var v1 = a.children[sort_col] ? a.children[sort_col].innerText.toLowerCase() : "";
+      var v2 = b.children[sort_col] ? b.children[sort_col].innerText.toLowerCase() : "";
+      var result = String(v1).localeCompare(String(v2), undefined, {numeric: true});
+      return cmp(v1, v2) * (sort_direction ? 1 : -1);
+    };
+
+
+    /** Returns string comparison result, -1, 0 or 1. */
+    var cmp = function(a, b) {
+      return String(a).localeCompare(String(b), undefined, {numeric: true});
+    };
+
+
     if (document.location.hash) document.location.hash = "";
     window.addEventListener("load", function() {
       var elem_table = document.getElementById("toc");
       var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
-      Object.keys(TOPICS).sort().forEach(function(topic) {
-        TOPICS[topic].sort().forEach(function(type) {
+      Object.keys(TOPICS).sort(cmp).forEach(function(topic) {
+        TOPICS[topic].sort(cmp).forEach(function(type) {
           var topickey = [topic, type];
           var id0 = FIRSTMSGS[topickey]["id"], dt0 = FIRSTMSGS[topickey]["dt"];
           var id1 = LASTMSGS [topickey]["id"], dt1 = LASTMSGS [topickey]["dt"];
           var elem_row = document.createElement("tr");
           elem_row.append(createElement("td", topic));
-          var elem_type = createElement("a", type, {"href": "javascript:;", "onclick": "return showSchema('{0}')".format(type)});
+          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show schema",
+                                                    "onclick": "return showSchema('{0}')".format(type)});
           elem_row.append(createElement("td", elem_type));
           elem_row.append(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
-          var elem_first = createElement("a", dt0, {"href": "#" + id0, "onclick": "return gotoMessage('{0}')".format(id0)});
+          var elem_first = createElement("a", dt0, {"href": "#" + id0, "title": "Go to first message in topic",
+                                                    "onclick": "return gotoMessage('{0}')".format(id0)});
           elem_row.append(createElement("td", elem_first))
           if (id0 != id1) {
-            var elem_last = createElement("a", dt1, {"href": "#" + id1, "onclick": "return gotoMessage('{0}')".format(id1)});
+            var elem_last = createElement("a", dt1, {"href": "#" + id1, "title": "Go to last message in topic",
+                                                     "onclick": "return gotoMessage('{0}')".format(id1)});
             elem_row.append(createElement("td", elem_last))
           };
           elem_tbody.append(elem_row);
@@ -368,11 +438,9 @@ Command: {{ " ".join(args) }}
     <table id="toc" class="collapsed">
       <thead>
         <tr>
-          <th>Topic</th>
-          <th>Type</th>
-          <th>Count</th>
-          <th>First</th>
-          <th>Last</th>
+%for i, name in enumerate(["topic", "type", "count", "first", "last"]):
+          <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="sort({{ i }})">{{ name.capitalize() }}</span></th>
+%endfor
         </tr>
       </thead>
       <tbody></tbody>
