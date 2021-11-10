@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.2 (2021-11-10)
+-------------------
+* better support for ROS2 primitive types
+
 0.2.1 (2021-11-09)
 -------------------
 * add --write-format option, with HTML support
