@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * shut down ROS2 live node properly
 * better support for ROS2 primitive types
+* stop requiring unneeded environment variables
 
 0.2.1 (2021-11-09)
 -------------------

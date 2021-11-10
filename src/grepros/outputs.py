@@ -480,7 +480,7 @@ class TopicSink(SinkBase):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate()
+        return rosapi.validate(live=True)
 
     def close(self):
         """Shuts down publishers."""

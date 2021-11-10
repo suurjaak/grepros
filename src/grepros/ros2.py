@@ -237,7 +237,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 def init_node(name):
     """Initializes a ROS2 node if not already initialized."""
     global node, context, executor
-    if node or not validate():
+    if node or not validate(live=True):
         return
 
     def spin_loop():
@@ -266,12 +266,19 @@ def shutdown_node():
         context_.shutdown()
 
 
-def validate():
-    """Returns whether ROS2 environment is set, prints error if not."""
-    missing = [k for k in ("ROS_DISTRO", "ROS_VERSION") if not os.getenv(k)]
+def validate(live=False):
+    """
+    Returns whether ROS2 environment is set, prints error if not.
+
+    @param   live  whether environment must support launching a ROS node
+    """
+    missing = [k for k in ["ROS_VERSION"] if not os.getenv(k)]
     if missing:
         ConsolePrinter.error("ROS environment not sourced: missing %s.",
                              ", ".join(sorted(missing)))
+    if "2" != os.getenv("ROS_VERSION", "2"):
+        ConsolePrinter.error("ROS environment not supported: need ROS_VERSION=2.")
+        missing = True
     return not missing
 
 

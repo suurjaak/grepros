@@ -58,8 +58,12 @@ def shutdown_node():
     realapi.shutdown_node()
 
 
-def validate():
-    """Returns whether ROS environment is set, prints error if not."""
+def validate(live=False):
+    """
+    Returns whether ROS environment is set, prints error if not.
+
+    @param   live  whether environment must support launching a ROS node
+    """
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS
     if realapi:
         return True
@@ -72,9 +76,9 @@ def validate():
     elif "2" == version:
         from . import ros2
         realapi = ros2
-        success = realapi.validate()
+        success = realapi.validate(live)
     elif not version:
-        ConsolePrinter.error("ROS environment not sourced: missing ROS_VERSION.")
+        ConsolePrinter.error("ROS environment not set: missing ROS_VERSION.")
     else:
         ConsolePrinter.error("ROS environment not supported: unknown ROS_VERSION %r.", version)
     if success:

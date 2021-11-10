@@ -43,7 +43,7 @@ def init_node(name):
 
     Blocks until ROS master available.
     """
-    if not validate():
+    if not validate(live=True):
         return
 
     global master
@@ -71,13 +71,20 @@ def shutdown_node():
         rospy.signal_shutdown()
 
 
-def validate():
-    """Returns whether ROS1 environment is set, prints error if not."""
-    missing = [k for k in ("ROS_DISTRO", "ROS_MASTER_URI", "ROS_ROOT",
-               "ROS_PACKAGE_PATH", "ROS_VERSION") if not os.getenv(k)]
+def validate(live=False):
+    """
+    Returns whether ROS1 environment is set, prints error if not.
+
+    @param   live  whether environment must support launching a ROS node
+    """
+    VARS = ["ROS_MASTER_URI", "ROS_ROOT", "ROS_VERSION"] if live else ["ROS_VERSION"]
+    missing = [k for k in VARS if not os.getenv(k)]
     if missing:
         ConsolePrinter.error("ROS environment not sourced: missing %s.",
                              ", ".join(sorted(missing)))
+    if "1" != os.getenv("ROS_VERSION", "1"):
+        ConsolePrinter.error("ROS environment not supported: need ROS_VERSION=1.")
+        missing = True
     return not missing
 
 
