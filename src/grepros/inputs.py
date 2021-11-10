@@ -63,6 +63,8 @@ class SourceBase(object):
 
     def close(self):
         """Shuts down input, closing any files or connections."""
+        self._msgtypes.clear()
+        self._topics.clear()
 
     def format_meta(self):
         """Returns source metainfo string."""
@@ -174,6 +176,7 @@ class BagSource(SourceBase):
         """Closes current bag, if any."""
         self._running = False
         self._bag and self._bag.close()
+        super(BagSource, self).close()
 
     def format_meta(self):
         """Returns bagfile metainfo string."""
@@ -352,7 +355,7 @@ class TopicSource(SourceBase):
             self._subs.pop(k).unregister()
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
-        self._msgtypes.clear()
+        super(TopicSource, self).close()
         rosapi.shutdown_node()
 
     def get_meta(self):
