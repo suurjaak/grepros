@@ -246,7 +246,7 @@ def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from uint8-array.
 
-    Returns type unchanged if already a scalar.
+    Returns type unchanged if an ordinary type.
     """
     return realapi.scalar(typename)
 

@@ -426,11 +426,13 @@ def make_time(secs=0, nsecs=0):
 
 def scalar(typename):
     """
-    Returns scalar type from ROS message data type, like "uint8" from "sequence<uint8, 100>".
-
-    Returns type unchanged if already a scalar.
+    Returns scalar type from ROS2 message data type
+    
+    Like "uint8" from "sequence<uint8, 100>", or "string" from "string<=10[<=5]".
+    Returns type unchanged if not a collection or constrained-length type.
     """
-    if "[" in typename: return typename[:typename.index("[")]
+    if "["  in typename: typename = typename[:typename.index("[")]
+    if "<=" in typename: typename = typename[:typename.index("<=")]
     match = re.match(r"sequence<([^\,>]+).*>", typename)
     return match.group(1) if match else typename
 
