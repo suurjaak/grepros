@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -63,6 +63,8 @@ class SourceBase(object):
 
     def close(self):
         """Shuts down input, closing any files or connections."""
+        self._msgtypes.clear()
+        self._topics.clear()
 
     def format_meta(self):
         """Returns source metainfo string."""
@@ -174,6 +176,7 @@ class BagSource(SourceBase):
         """Closes current bag, if any."""
         self._running = False
         self._bag and self._bag.close()
+        super(BagSource, self).close()
 
     def format_meta(self):
         """Returns bagfile metainfo string."""
@@ -343,7 +346,7 @@ class TopicSource(SourceBase):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate()
+        return rosapi.validate(live=True)
 
     def close(self):
         """Shuts down subscribers and stops producing messages."""
@@ -352,7 +355,8 @@ class TopicSource(SourceBase):
             self._subs.pop(k).unregister()
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
-        self._msgtypes.clear()
+        super(TopicSource, self).close()
+        rosapi.shutdown_node()
 
     def get_meta(self):
         """Returns source metainfo data dict."""

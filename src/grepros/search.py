@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    08.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -227,12 +227,13 @@ class Searcher(object):
         def decorate_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = rosapi.get_message_fields(obj)
-            fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
-            for k, t in fieldmap.items():
+            fieldmap = rosapi.get_message_fields(obj)  # Returns obj if not a ROS message
+            if fieldmap != obj:
+                fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
+            for k, t in fieldmap.items() if fieldmap != obj else ():
                 v, path = rosapi.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))
-                if hasattr(v, "__slots__"):
+                if rosapi.is_ros_message(v):
                     decorate_message(v, path)
                 elif is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
                     rosapi.set_message_value(obj, k, [decorate_message(x, path) for x in v])
@@ -241,7 +242,7 @@ class Searcher(object):
                     v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
                         rosapi.set_message_value(obj, k, v2)
-            if not hasattr(obj, "__slots__"):
+            if not rosapi.is_ros_message(obj):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj

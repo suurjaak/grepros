@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -73,6 +73,8 @@ class SinkBase(object):
 
     def close(self):
         """Shuts down output, closing any files or connections."""
+        self._batch_meta.clear()
+        self._counts.clear()
 
 
 class TextSinkMixin(object):
@@ -302,7 +304,7 @@ class BagSink(SinkBase):
         @param   args.OUTFILE  name of ROS bagfile to create or append to
         """
         super(BagSink, self).__init__(args)
-        self._bag    = None
+        self._bag = None
         self._close_printed = False
 
         atexit.register(self.close)
@@ -333,6 +335,7 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
+        super(BagSink, self).close()
 
 
 
@@ -397,6 +400,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._filename)
+        super(HtmlSink, self).close()
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches."""
@@ -476,7 +480,7 @@ class TopicSink(SinkBase):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate()
+        return rosapi.validate(live=True)
 
     def close(self):
         """Shuts down publishers."""
@@ -488,6 +492,8 @@ class TopicSink(SinkBase):
             pub = self._pubs.pop(t)
             # ROS1 prints errors when closing a publisher with subscribers
             not pub.get_num_connections() and pub.unregister()
+        super(TopicSink, self).close()
+        rosapi.shutdown_node()
 
 
 

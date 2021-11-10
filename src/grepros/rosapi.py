@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    09.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -31,7 +31,7 @@ BAG_EXTENSIONS  = ()
 SKIP_EXTENSIONS = ()
 
 ## All built-in numeric types in ROS
-ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
+ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8", "octet",
                      "uint16", "uint32", "uint64", "float32", "float64", "double", "bool"]
 
 ## All built-in string types in ROS
@@ -53,8 +53,17 @@ def init_node(name=None):
     validate() and realapi.init_node(name or NODE_NAME)
 
 
-def validate():
-    """Returns whether ROS environment is set, prints error if not."""
+def shutdown_node():
+    """Shuts down live ROS node."""
+    realapi.shutdown_node()
+
+
+def validate(live=False):
+    """
+    Returns whether ROS environment is set, prints error if not.
+
+    @param   live  whether environment must support launching a ROS node
+    """
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS
     if realapi:
         return True
@@ -67,9 +76,9 @@ def validate():
     elif "2" == version:
         from . import ros2
         realapi = ros2
-        success = realapi.validate()
+        success = realapi.validate(live)
     elif not version:
-        ConsolePrinter.error("ROS environment not sourced: missing ROS_VERSION.")
+        ConsolePrinter.error("ROS environment not set: missing ROS_VERSION.")
     else:
         ConsolePrinter.error("ROS environment not supported: unknown ROS_VERSION %r.", version)
     if success:
@@ -241,7 +250,7 @@ def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from uint8-array.
 
-    Returns type unchanged if already a scalar.
+    Returns type unchanged if an ordinary type.
     """
     return realapi.scalar(typename)
 
