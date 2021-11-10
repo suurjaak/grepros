@@ -381,9 +381,8 @@ def get_message_type(msg):
 def get_message_value(msg, name, typename):
     """Returns object attribute value, with numeric arrays converted to lists."""
     v = getattr(msg, name)
-    if "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        return v.tolist()
-    if isinstance(v, (bytes, array.array)):
+    if isinstance(v, (bytes, array.array)) \
+    or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
         return list(v)
     return v
 
