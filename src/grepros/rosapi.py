@@ -53,6 +53,11 @@ def init_node(name=None):
     validate() and realapi.init_node(name or NODE_NAME)
 
 
+def shutdown_node():
+    """Shuts down live ROS node."""
+    realapi.shutdown_node()
+
+
 def validate():
     """Returns whether ROS environment is set, prints error if not."""
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS

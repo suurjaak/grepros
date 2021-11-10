@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.2.2 (2021-11-10)
 -------------------
+* shut down ROS2 live node properly
 * better support for ROS2 primitive types
 
 0.2.1 (2021-11-09)

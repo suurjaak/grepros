@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    09.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -23,6 +23,7 @@ import time
 import builtin_interfaces.msg
 import rclpy
 import rclpy.duration
+import rclpy.executors
 import rclpy.serialization
 import rclpy.time
 import rosidl_runtime_py.utilities
@@ -42,6 +43,12 @@ DEFINITIONS = {}
 
 ## rclpy.node.Node instance
 node = None
+
+## rclpy.context.Context instance
+context = None
+
+## rclpy.executors.Executor instance
+executor = None
 
 
 
@@ -229,21 +236,34 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
 def init_node(name):
     """Initializes a ROS2 node if not already initialized."""
-    global node
+    global node, context, executor
     if node or not validate():
         return
 
     def spin_loop():
-        while rclpy.ok():
-            rclpy.spin_once(node, timeout_sec=1)
+        while context and context.ok():
+            executor.spin_once(timeout_sec=1)
 
-    try: rclpy.init()
+    context = rclpy.Context()
+    try: rclpy.init(context=context)
     except Exception: pass  # Must not be called twice at runtime
     node_name = "%s_%s_%s" % (name, os.getpid(), int(time.time() * 1000))
-    node = rclpy.create_node(node_name)
+    node = rclpy.create_node(node_name, context=context, use_global_arguments=False, enable_rosout=False, start_parameter_services=False)
+    executor = rclpy.executors.MultiThreadedExecutor(context=context)
+    executor.add_node(node)
     spinner = threading.Thread(target=spin_loop)
     spinner.daemon = True
     spinner.start()
+
+
+def shutdown_node():
+    """Shuts down live ROS2 node."""
+    global node, context, executor
+    if context:
+        context_, executor_ = context, executor
+        context = executor = node = None
+        executor_.shutdown()
+        context_.shutdown()
 
 
 def validate():

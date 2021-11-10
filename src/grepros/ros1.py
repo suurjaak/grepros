@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    09.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -61,6 +61,14 @@ def init_node(name):
     try: rospy.get_rostime()
     except Exception:  # Init node only if not already inited
         rospy.init_node(name, anonymous=True, disable_signals=True)
+
+
+def shutdown_node():
+    """Shuts down live ROS1 node."""
+    global master
+    if master:
+        master = None
+        rospy.signal_shutdown()
 
 
 def validate():

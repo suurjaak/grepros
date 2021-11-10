@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -353,6 +353,7 @@ class TopicSource(SourceBase):
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
         self._msgtypes.clear()
+        rosapi.shutdown_node()
 
     def get_meta(self):
         """Returns source metainfo data dict."""

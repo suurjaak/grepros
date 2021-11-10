@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.11.2021
+@modified    10.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -488,6 +488,7 @@ class TopicSink(SinkBase):
             pub = self._pubs.pop(t)
             # ROS1 prints errors when closing a publisher with subscribers
             not pub.get_num_connections() and pub.unregister()
+        rosapi.shutdown_node()
 
 
 
