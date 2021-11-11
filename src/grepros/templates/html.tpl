@@ -13,7 +13,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    10.11.2021
+@modified    11.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, re
@@ -252,7 +252,7 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     function showSchema(type, evt) {
       var elem = document.getElementById("overlay");
       elem.classList.remove("hidden");
-      var text = SCHEMAS[type].replace(/#[^\\n]+/g, '<span class="comment">$&</span>');
+      var text = SCHEMAS[type].replace(/#[^\\n]*/g, '<span class="comment">$&</span>');
       text = text.replace(/\\n(=+)\\n/g, '\\n<span class="separator">$1</span>\\n');
       text = text.replace(/\\n/g, "<br />");
       elem.getElementsByClassName("title")[0].innerText = type + ":";
