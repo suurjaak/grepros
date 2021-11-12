@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.3 (2021-11-12)
+-------------------
+* add --write-format sqlite
+
 0.2.2 (2021-11-10)
 -------------------
 * shut down ROS2 live node properly

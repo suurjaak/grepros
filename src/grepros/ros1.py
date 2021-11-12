@@ -8,11 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    10.11.2021
+@modified    12.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
 import collections
+import io
 import os
 import time
 
@@ -29,6 +30,9 @@ BAG_EXTENSIONS  = (".bag", ".bag.active")
 
 ## Bagfile extensions to skip
 SKIP_EXTENSIONS = (".bag.orig.active", )
+
+## ROS1 time/duration types
+ROS_TIME_TYPES = ["time", "duration"]
 
 ## Seconds between checking whether ROS master is available.
 SLEEP_INTERVAL = 0.5
@@ -130,6 +134,13 @@ def get_message_class(typename):
     return roslib.message.get_message_class(typename)
 
 
+def get_message_data(msg):
+    """Returns ROS1 message as a serialized binary."""
+    buf = io.BytesIO()
+    msg.serialize(buf)
+    return buf.getvalue()
+
+
 def get_message_definition(msg_or_type):
     """Returns ROS1 message type definition full text, including subtype definitions."""
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
@@ -175,9 +186,13 @@ def get_topic_types():
     return result
 
 
-def is_ros_message(val):
-    """Returns whether value is a ROS1 message or a special like ROS time/duration."""
-    return isinstance(val, (genpy.Message, genpy.TVal))
+def is_ros_message(val, ignore_time=False):
+    """
+    Returns whether value is a ROS1 message or special like ROS1 time/duration.
+
+    @param  ignore_time  whether to ignore ROS1 time/duration types
+    """
+    return isinstance(val, genpy.Message if ignore_time else (genpy.Message, genpy.TVal))
 
 
 def make_duration(secs=0, nsecs=0):
@@ -202,6 +217,11 @@ def scalar(typename):
 def set_message_value(obj, name, value):
     """Sets message or object attribute value."""
     setattr(obj, name, value)
+
+
+def to_nsec(val):
+    """Returns value in nanoseconds if value is ROS time/duration, else value."""
+    return val.to_nsec() if isinstance(val, genpy.TVal) else val
 
 
 def to_sec(val):

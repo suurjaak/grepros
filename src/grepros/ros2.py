@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    10.11.2021
+@modified    12.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -37,6 +37,9 @@ BAG_EXTENSIONS  = (".db3")
 
 ## Bagfile extensions to skip
 SKIP_EXTENSIONS = ()
+
+## ROS2 time/duration types
+ROS_TIME_TYPES = ["builtin_interfaces/Time", "builtin_interfaces/Duration"]
 
 ## {"pkg/msg/Msg": message type definition full text with subtypes}
 DEFINITIONS = {}
@@ -197,9 +200,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             tdata = {"id": cursor.lastrowid, "name": topic, "type": typename}
             self._topics[topic] = tdata
 
-        data = rclpy.serialization.serialize_message(msg)
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
-        args = (self._topics[topic]["id"], stamp.nanoseconds, data)
+        args = (self._topics[topic]["id"], stamp.nanoseconds, get_message_data(msg))
         cursor.execute(sql, args)
 
 
@@ -345,6 +347,11 @@ def get_message_class(typename):
     return rosidl_runtime_py.utilities.get_message(typename)
 
 
+def get_message_data(msg):
+    """Returns ROS2 message as a serialized binary."""
+    return rclpy.serialization.serialize_message(msg)
+
+
 def get_message_definition(msg_or_type):
     """Returns ROS2 message type definition full text, including subtype definitions."""
     typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
@@ -416,9 +423,16 @@ def get_topic_types():
     return result
 
 
-def is_ros_message(val):
-    """Returns whether value is a ROS2 message or a special like ROS2 time/duration."""
-    return rosidl_runtime_py.utilities.is_message(val)
+def is_ros_message(val, ignore_time=False):
+    """
+    Returns whether value is a ROS2 message or special like ROS2 time/duration.
+
+    @param  ignore_time  whether to ignore ROS2 time/duration types
+    """
+    is_message = rosidl_runtime_py.utilities.is_message(val)
+    if is_message and ignore_time:
+        is_message = not isinstance(val, (rclpy.time.Time, rclpy.duration.Duration))
+    return is_message
 
 
 def make_duration(secs=0, nsecs=0):
@@ -452,6 +466,13 @@ def set_message_value(obj, name, value):
         if name in fieldmap:
             name = obj.__slots__[list(fieldmap).index(name)]
     setattr(obj, name, value)
+
+
+def to_nsec(val):
+    """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
+    if not isinstance(val, (rclpy.duration.Duration, rclpy.time.Time)):
+        return val
+    return val.nanoseconds
 
 
 def to_sec(val):

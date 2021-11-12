@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.11.2021
+@modified    12.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -451,6 +451,38 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def quote(name, force=False):
+    """
+    Returns name in quotes and proper-escaped for SQLite queries.
+
+    @param   force  quote even if name does not need quoting (starts with a letter,
+                    contains only alphanumerics, and is not a reserved keyword)
+    """
+    ## Words that need quoting if in name context, e.g. table name.
+    SQLITE_RESERVED_KEYWORDS = [
+        "ACTION", "ADD", "AFTER", "ALL", "ALTER", "ALWAYS", "ANALYZE",
+        "AND", "AS", "ASC", "ATTACH", "AUTOINCREMENT", "BEFORE", "BEGIN", "BETWEEN",
+        "BY", "CASE", "CAST", "CHECK", "COLLATE", "COMMIT", "CONSTRAINT", "CREATE",
+        "CURRENT_DATE", "CURRENT_TIME", "CURRENT_TIMESTAMP", "DEFAULT", "DEFERRABLE",
+        "DEFERRED", "DELETE", "DESC", "DETACH", "DISTINCT", "DO", "DROP", "EACH",
+        "ELSE", "END", "ESCAPE", "EXCEPT", "EXISTS", "EXPLAIN", "FOR", "FOREIGN",
+        "FROM", "GENERATED", "GROUP", "HAVING", "IF", "IMMEDIATE", "IN", "INDEX",
+        "INITIALLY", "INSERT", "INSTEAD", "INTERSECT", "INTO", "IS", "ISNULL",
+        "JOIN", "KEY", "LIKE", "LIMIT", "MATCH", "NO", "NOT", "NOTHING", "NOTNULL",
+        "NULL", "OF", "ON", "OR", "ORDER", "OVER", "PRAGMA", "PRECEDING", "PRIMARY",
+        "RAISE", "RECURSIVE", "REFERENCES", "REGEXP", "REINDEX", "RELEASE", "RENAME",
+        "REPLACE", "RESTRICT", "ROLLBACK", "SAVEPOINT", "SELECT", "SET", "TABLE",
+        "TEMPORARY", "THEN", "TIES", "TO", "TRANSACTION", "TRIGGER", "UNBOUNDED",
+        "UNION", "UNIQUE", "UPDATE", "USING", "VACUUM", "VALUES", "VIEW", "WHEN",
+        "WHERE", "WITHOUT"
+    ]
+    result = name
+    if force or result.upper() in SQLITE_RESERVED_KEYWORDS \
+    or re.search(r"(^[\W\d])|(?=\W)", result, re.U):
+        result = '"%s"' % result.replace('"', '""')
+    return result
 
 
 def unique_path(pathname, empty_ok=False):

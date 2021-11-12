@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.11.2021
+@modified    12.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -99,9 +99,9 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="write matched messages to specified output file"),
 
         dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "html"], default="bag",
+             choices=["bag", "html", "sqlite"], default="bag",
              help='output format (default "bag"),\n'
-                  "appended to if bag already exists"),
+                  "appended to if bag or database already exists"),
     ],
 
     "groups": {"Filtering": [

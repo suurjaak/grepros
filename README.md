@@ -86,9 +86,9 @@ optional arguments:
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
   --write OUTFILE       write matched messages to specified output file
-  --write-format {bag,html}
+  --write-format {bag,html,sqlite}
                         output format (default "bag"),
-                        appended to if bag already exists
+                        appended to if bag or database already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
