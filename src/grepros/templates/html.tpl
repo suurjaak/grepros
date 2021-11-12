@@ -137,7 +137,7 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     }
     table#messages span.next::after {
       content:                "\\21E3";  /* Downwards dashed arrow ⇣. */
-      bottom:                 5p;
+      bottom:                 5px;
     }
     span.toggle::after {
       content:                "–";
@@ -204,6 +204,7 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
       margin:                 10px 0 10px 0;
       padding:                0 10px 0 0;
       overflow:               auto;
+      white-space:            pre-wrap;
     }
   </style>
   <script>
