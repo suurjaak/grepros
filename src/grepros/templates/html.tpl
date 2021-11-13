@@ -13,19 +13,21 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    11.11.2021
+@modified    13.11.2021
 ------------------------------------------------------------------------------
 """
-import datetime, re
+import datetime, os, re
 from grepros import __version__
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M") 
+sourcemeta = source.get_meta()
+subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "live"
 %>
 <!DOCTYPE HTML><html lang="">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
   <meta name="generator" content="grepros {{ __version__ }}" />
-  <title>grepros {{ dt }}</title>
+  <title>grepros {{ subtitle }} {{ dt }}</title>
   <style>
     body {
       background:             #300A24;
@@ -40,9 +42,6 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
       color:                  gray;
       bottom:                 0;
       position:               absolute;
-    }
-    #topics ul {
-      margin:                 0;
     }
     #content {
       padding-bottom:         20px;
@@ -68,6 +67,10 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
       border-bottom-width:    1px;
       cursor:                 pointer;
     }
+    table#messages tr.meta span.index {
+      display:                block;
+      opacity:                0.5;
+    }
     table#messages tr.message.collapsed {
       display:                none;
     }
@@ -78,6 +81,9 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     #topics {
       margin-bottom:          20px;
     }
+    #topics > span:first-child {
+      cursor:                 pointer;
+    }
     table#toc td, table#toc th {
       padding:                0px 5px;
       position:               relative;
@@ -87,6 +93,12 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     }
     table#toc.collapsed {
       display:                none;
+    }
+    table#toc tbody:empty::after {
+      content:                "Loading..";
+      color:                  gray;
+      position:               relative;
+      left:                   10px;
     }
     th .sort {
       display:                block;
@@ -128,16 +140,23 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     table#messages span.prev::after, table#messages span.next::after {
       color:                  cornflowerblue;
       cursor:                 pointer;
+      display:                block;
       position:               absolute;
-      right:                  10px;
+      text-align:             center;
+      top:                    5px;
+      width:                  15px;
     }
     table#messages span.prev::after {
       content:                "\\21E1";  /* Upwards dashed arrow ⇡. */
-      top:                    -5px;
+      right:                  20px;
     }
     table#messages span.next::after {
       content:                "\\21E3";  /* Downwards dashed arrow ⇣. */
-      bottom:                 5px;
+      right:                  5px;
+    }
+    table#messages span.disabled::after {
+      color:                  gray;
+      cursor:                 default;
     }
     span.toggle::after {
       content:                "–";
@@ -154,6 +173,14 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     a:hover {
       text-decoration:        underline;
       text-decoration-style:  dotted;
+    }
+    @keyframes flash_border {
+      0%   { background-color: inherit;  }
+      50%  { background-color: #450F35; }
+      100% { background-color: inherit; }
+    }
+    #messages tr.highlight {
+      animation: flash_border 1s 1 linear;
     }
     #overlay {
       display:                flex;
@@ -253,8 +280,12 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     function showSchema(type, evt) {
       var elem = document.getElementById("overlay");
       elem.classList.remove("hidden");
-      var text = SCHEMAS[type].replace(/#[^\\n]*/g, '<span class="comment">$&</span>');
-      text = text.replace(/\\n(=+)\\n/g, '\\n<span class="separator">$1</span>\\n');
+      var text = SCHEMAS[type].split("\\n").map(function(line) {
+        if (!line.match(/^w?string [^#]*=/))  // String constant lines cannot have comments
+          return line.replace(/#.*$/g, '<span class="comment">$&</span>');
+        return line;
+      }).join("\\n");
+      text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
       text = text.replace(/\\n/g, "<br />");
       elem.getElementsByClassName("title")[0].innerText = type + ":";
       elem.getElementsByClassName("content")[0].innerHTML = text;
@@ -311,20 +342,37 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
     /** Scrolls to a preceding or following sibling element, and uncollapses it. */
-    function gotoSibling(id_source, sibling_classes, direction) {
+    function gotoSibling(id_source, sibling_classes, direction, elem_link) {
+      if (elem_link && elem_link.classList.contains("disabled")) return;
       var elem_source = document.getElementById(id_source);
       if (elem_source) {
         var selectors = sibling_classes.map(function(v) { return v.replace(/[^\w\-]/g, "\\\$&"); });
         var adjacent = (direction < 0) ? "previousElementSibling" : "nextElementSibling";
         var elem_sibling = elem_source[adjacent];
+        var found = false;
         while (elem_sibling) {
           if (selectors.every(function(v) { return elem_sibling.classList.contains(v); })) {
             if (elem_sibling.classList.contains("collapsed")) toggleMessage(elem_sibling.id);
             elem_sibling.scrollIntoView();
+            found = true;
+            elem_sibling.classList.remove("highlight");
+            elem_sibling.nextElementSibling.classList.remove("highlight");
+            window.requestAnimationFrame(function() {
+              elem_sibling.classList.add("highlight");
+              elem_sibling.nextElementSibling.classList.add("highlight");
+              window.setTimeout(function() {
+                elem_sibling.classList.remove("highlight");
+                elem_sibling.nextElementSibling.classList.remove("highlight");
+              }, 1500);
+            });
             break;  // while
           };
           elem_sibling = elem_sibling[adjacent];
         }
+        if (!found && elem_link) {
+          elem_link.classList.add("disabled");
+          elem_link.title = "No more messages in topic";
+        };
       };
       return false;
     }
@@ -405,7 +453,7 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
           var id1 = LASTMSGS [topickey]["id"], dt1 = LASTMSGS [topickey]["dt"];
           var elem_row = document.createElement("tr");
           elem_row.append(createElement("td", topic));
-          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show schema",
+          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show definition",
                                                     "onclick": "return showSchema('{0}')".format(type)});
           elem_row.append(createElement("td", elem_type));
           elem_row.append(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
@@ -435,7 +483,9 @@ dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 Command: {{ " ".join(args) }}
   </div>
   <div id="topics">
-    Contents: <span class="toggle collapsed" title="Toggle contents" onclick="return toggleClass('toc', 'collapsed', this)"></span>
+    <span title="Toggle contents" onclick="return toggleClass('toc', 'collapsed', document.getElementById('toggle_topics'))">
+      Contents: <span id="toggle_topics" class="toggle collapsed"></span>
+    </span>
     <table id="toc" class="collapsed">
       <thead>
         <tr>
@@ -490,9 +540,12 @@ meta = source.get_message_meta(topic, index, stamp, msg)
 topickey = (topic, meta["type"])
     %>
     <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }}" id="{{ i }}" onclick="return onMessageHeader({{ i }}, event)">
-      <td>{{ "{0:,d}".format(index) }}{{ ("/{0:,d}".format(meta["total"])) if "total" in meta else "" }}</td>
+      <td>
+        {{ "{0:,d}".format(index) }}{{ ("/{0:,d}".format(meta["total"])) if "total" in meta else "" }}
+        <span class="index">{{ i }}</span>
+      </td>
       <td>{{ topic }}</td>
-      <td><a title="Show schema" href="javascript:;" onclick="return showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
+      <td><a title="Show definition" href="javascript:;" onclick="return showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
       <td>{{ meta["dt"] }}</td>
       <td>{{ meta["stamp"] }}</td>
       <td>
@@ -505,10 +558,10 @@ topickey = (topic, meta["type"])
         <span class="data">{{! sink.format_message(match or msg, highlight=bool(match)) }}</span>
     %if topickey in topics_seen:
         <span class="prev" title="Go to previous message in topic '{{ topic }}'"
-              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], -1)"></span>
+              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], -1, this)"></span>
     %endif
         <span class="next" title="Go to next message in topic '{{ topic }}'"
-              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], +1)"></span>
+              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], +1, this)"></span>
     %if topickey in topics_seen:
         <script> registerMessage('{{ topic }}', '{{ meta["type"] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
     %else:
