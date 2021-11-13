@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.11.2021
+@modified    13.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -364,11 +364,12 @@ class TopicSource(SourceBase):
 
     def format_meta(self):
         """Returns source metainfo string."""
-        s, d = "", self.get_meta()
+        name = "ROS%s" % os.getenv("ROS_VERSION")
+        s, d = "\n%s live" % name, self.get_meta()
         if "ROS_MASTER_URI" in d:
-            s += "ROS master %s" % d["ROS_MASTER_URI"]
+            s += "%s master %s" % (name, d["ROS_MASTER_URI"])
         if "ROS_DOMAIN_ID" in d:
-            s += (", " if s else "") + "ROS domain ID %s" % d["ROS_DOMAIN_ID"]
+            s += (", " if s else "") + "%s domain ID %s" % (name, d["ROS_DOMAIN_ID"])
         return s
 
     def is_processable(self, topic, index, stamp, msg):
