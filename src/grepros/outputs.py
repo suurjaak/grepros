@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -325,9 +325,10 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args          arguments object like argparse.Namespace
-        @param   args.META     whether to print metainfo
-        @param   args.OUTFILE  name of ROS bagfile to create or append to
+        @param   args           arguments object like argparse.Namespace
+        @param   args.META      whether to print metainfo
+        @param   args.OUTFILE   name of ROS bagfile to create or append to
+        @param   args.VERBOSE   whether to print debug information
         """
         super(BagSink, self).__init__(args)
         self._bag = None
@@ -338,13 +339,13 @@ class BagSink(SinkBase):
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output bagfile."""
         if not self._bag:
-            if self._args.META:
+            if self._args.VERBOSE:
                 a = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
                 ConsolePrinter.debug("%s %s.", "Appending to" if a else "Creating",
                                      self._args.OUTFILE)
             self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
 
-        if topic not in self._counts:
+        if topic not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
         self._bag.write(topic, msg, stamp)
@@ -357,7 +358,7 @@ class BagSink(SinkBase):
     def close(self):
         """Closes output bagfile, if any."""
         self._bag and self._bag.close()
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
@@ -373,12 +374,13 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                       arguments object like argparse.Namespace
-        @param   args.META                  whether to print metainfo
-        @param   args.OUTFILE               name of HTML file to write,
-                                            will add counter like .2 to filename if exists
-        @param   args.OUTFILE_TEMPLATE      path to custom HTML template, if any
-        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   args                    arguments object like argparse.Namespace
+        @param   args.META               whether to print metainfo
+        @param   args.OUTFILE            name of HTML file to write,
+                                         will add counter like .2 to filename if exists
+        @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
+        @param   args.WRAP_WIDTH         character width to wrap message YAML output at
+        @param   args.VERBOSE            whether to print debug information
         """
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
@@ -413,7 +415,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             writer, self._writer = self._writer, None
             self._queue.put(None)
             writer.is_alive() and writer.join()
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._filename)
@@ -436,7 +438,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                   messages=self._produce())
         self._filename = unique_path(self._filename, empty_ok=True)
-        if self._args.META:
+        if self._args.VERBOSE:
             ConsolePrinter.debug("Creating %s.", self._filename)
         with open(self._filename, "wb") as f:
             template.stream(f, ns, unbuffered=True)
@@ -449,7 +451,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
-            if self._args.META and topic not in self._counts:
+            if self._args.VERBOSE and topic not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
@@ -557,11 +559,12 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                       arguments object like argparse.Namespace
-        @param   args.META                  whether to print metainfo
-        @param   args.OUTFILE               name of SQLite file to write,
-                                            will be appended to if exists
-        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   args              arguments object like argparse.Namespace
+        @param   args.META         whether to print metainfo
+        @param   args.OUTFILE      name of SQLite file to write,
+                                   will be appended to if exists
+        @param   args.WRAP_WIDTH   character width to wrap message YAML output at
+        @param   args.VERBOSE      whether to print debug information
         """
         args = TextSinkMixin.make_nonconsole_args(args)
         super(SqliteSink, self).__init__(args)
@@ -593,7 +596,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         if self._db:
             self._db.close()
             self._db = None
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._filename)
@@ -602,7 +605,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        if self._args.META:
+        if self._args.VERBOSE:
             exists = os.path.exists(self._filename) and os.path.getsize(self._filename)
             ConsolePrinter.debug("%s %s.", "Adding to" if exists else "Creating", self._filename)
         self._db = sqlite3.connect(self._filename, isolation_level=None, check_same_thread=False)
@@ -758,6 +761,7 @@ class TopicSink(SinkBase):
         @param   args.PUBLISH_SUFFIX    output topic suffix, appended to output topic
         @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
+        @param   args.VERBOSE           whether to print debug information
         """
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, cls): ROS publisher}
@@ -769,7 +773,7 @@ class TopicSink(SinkBase):
         if key not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
-            self._args.META and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
+            self._args.VERBOSE and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
 
             pub = None
             if self._args.PUBLISH_FIXNAME:
@@ -792,7 +796,7 @@ class TopicSink(SinkBase):
 
     def close(self):
         """Shuts down publishers."""
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
                                  sum(self._counts.values()), len(set(self._pubs.values())))

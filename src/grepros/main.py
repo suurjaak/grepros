@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -253,7 +253,7 @@ Print first message from each lidar topic on host 1.2.3.4:
              help='use color output in console (default "always")'),
 
         dict(args=["--no-meta"], dest="META", action="store_false",
-             help="do not print bag and topic and message metainfo to console"),
+             help="do not print source and message metainfo to console"),
 
         dict(args=["--no-filename"], dest="LINE_PREFIX", action="store_false",
              help="do not print bag filename prefix on each console message line"),
@@ -403,7 +403,6 @@ def run():
         if not validate_args(args):
             sys.exit(1)
 
-        ConsolePrinter.VERBOSE = args.VERBOSE
         cls = inputs.TopicSource if args.LIVE else inputs.BagSource
         source, sink = cls(args), outputs.MultiSink(args)
         if not source.validate() or not sink.validate():

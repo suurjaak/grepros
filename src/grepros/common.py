@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -53,8 +53,6 @@ class ConsolePrinter(object):
     ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  ## Error message wrappers
     SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  ## Filename prefix separator wrappers
 
-    VERBOSE = False  ## Whether to print debug information
-
     WIDTH = 80       ## Console width in characters, updated from shutil and curses
 
     PRINTS = {}      ## {sys.stdout: number of texts printed, sys.stderr: ..}
@@ -69,9 +67,7 @@ class ConsolePrinter(object):
         @param   args.MATCH_WRAPPER   string to wrap around matched values,
                                       both sides if one value, start and end if more than one,
                                       or no wrapping if zero values (default ** in colorless output)
-        @param   args.VERBOSE         whether to print debug information
         """
-        cls.VERBOSE = args.VERBOSE
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
         do_color = ("never" != args.COLOR)
@@ -134,13 +130,12 @@ class ConsolePrinter(object):
     @classmethod
     def debug(cls, text="", *args, **kwargs):
         """
-        Prints debug text to stderr if verbose.
+        Prints debug text to stderr.
 
         Formatted with args and kwargs, in lowlight colors if supported.
         """
-        if cls.VERBOSE:
-            KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
-            cls.print(text, *args, **dict(kwargs, **KWS))
+        KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
+        cls.print(text, *args, **dict(kwargs, **KWS))
 
 
 
