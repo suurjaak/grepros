@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.3 (2021-11-12)
+0.2.3 (2021-11-14)
 -------------------
 * add --write-format sqlite
+* add topic toggle checkboxes to HTML output
 
 0.2.2 (2021-11-10)
 -------------------

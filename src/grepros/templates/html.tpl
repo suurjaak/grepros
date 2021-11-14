@@ -67,6 +67,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       border-bottom-width:    1px;
       cursor:                 pointer;
     }
+    table#messages tr.meta.collapsed span.index {
+      display:                none;
+    }
     table#messages tr.meta span.index {
       display:                block;
       opacity:                0.5;
@@ -84,12 +87,19 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     #topics > span:first-child {
       cursor:                 pointer;
     }
+    table#toc {
+      margin-top:             10px;
+    }
     table#toc td, table#toc th {
       padding:                0px 5px;
       position:               relative;
     }
     table#toc td:nth-child(3), table#toc th:nth-child(3) {
       text-align:             right;
+    }
+    table#toc input[type=checkbox] {
+      height:                 10px;
+      width:                  10px;
     }
     table#toc.collapsed {
       display:                none;
@@ -294,7 +304,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Toggles message on or off. */
+    /** Toggles message collapsed or maximized. */
     function toggleMessage(id, evt) {
       var elem_meta = document.getElementById(id);
       var elem_msg  = document.getElementById(id + "msg");
@@ -312,7 +322,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Toggles all messages on or off. */
+    /** Toggles all messages collapsed or maximized. */
     function toggleAllMessages(evt) {
       var elem_table = document.getElementById("messages");
       var rows = elem_table.getElementsByTagName("tr");
@@ -323,7 +333,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Toggles all messages on or off. */
+    /** Toggles class on ID-d element, and toggle-element if any.. */
     function toggleClass(id, cls, elem_toggle) {
       var elem = document.getElementById(id);
       if (elem) {
@@ -341,7 +351,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     };
 
 
-    /** Scrolls to a preceding or following sibling element, and uncollapses it. */
+    /** Goes to previous or next message in same topic. */
     function gotoSibling(id_source, sibling_classes, direction, elem_link) {
       if (elem_link && elem_link.classList.contains("disabled")) return;
       var elem_source = document.getElementById(id_source);
@@ -352,19 +362,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         var found = false;
         while (elem_sibling) {
           if (selectors.every(function(v) { return elem_sibling.classList.contains(v); })) {
-            if (elem_sibling.classList.contains("collapsed")) toggleMessage(elem_sibling.id);
-            elem_sibling.scrollIntoView();
+            gotoMessage(elem_sibling.id);
             found = true;
-            elem_sibling.classList.remove("highlight");
-            elem_sibling.nextElementSibling.classList.remove("highlight");
-            window.requestAnimationFrame(function() {
-              elem_sibling.classList.add("highlight");
-              elem_sibling.nextElementSibling.classList.add("highlight");
-              window.setTimeout(function() {
-                elem_sibling.classList.remove("highlight");
-                elem_sibling.nextElementSibling.classList.remove("highlight");
-              }, 1500);
-            });
             break;  // while
           };
           elem_sibling = elem_sibling[adjacent];
@@ -378,14 +377,48 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Scrolls to specified message, and uncollapses it. */
+    /** Scrolls to specified message, unhides and uncollapses it, and highlights it briefly. */
     function gotoMessage(id) {
-      var elem = document.getElementById(id);
-      if (elem) {
-        if (elem.classList.contains("collapsed")) toggleMessage(id);
-        elem.scrollIntoView();
+      var elem_meta = document.getElementById(id);
+      var elem_msg  = document.getElementById(id + "msg");
+      if (elem_meta && elem_msg) {
+        ["collapsed", "hidden", "highlight"].forEach(function(cls) {
+          elem_meta.classList.remove(cls); elem_msg.classList.remove(cls);
+        });
+        elem_meta.scrollIntoView();
+        window.requestAnimationFrame(function() {
+          elem_meta.classList.add("highlight"); elem_msg.classList.add("highlight");
+          window.setTimeout(function() {
+            elem_meta.classList.remove("highlight"); elem_msg.classList.remove("highlight");
+          }, 1500);
+        });
       };
       return false;
+    }
+
+
+    /** Shows or hides all message rows. */
+    function enableTopics(elem_cb) {
+      var toggler = elem_cb.checked ? "remove" : "add";
+      var rows = document.querySelectorAll("#messages tbody tr");
+      [].slice.call(rows).forEach(function(x) { x.classList[toggler]("hidden"); });
+      var cbs = document.querySelectorAll("#toc tbody input[type=checkbox]");
+      [].slice.call(cbs).forEach(function(x) { x.checked = elem_cb.checked; });
+    }
+
+
+    /** Shows or hides topic message rows. */
+    function enableTopic(topic, type, elem_cb) {
+      var toggler = elem_cb.checked ? "remove" : "add";
+      var selectors = [topic, type].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
+      var rows = document.querySelectorAll("#messages tbody tr.meta");
+      for (var i = 0; i < rows.length; i++) {
+        var elem_tr = rows[i];
+        if (selectors.every(function(v) { return elem_tr.classList.contains(v); })) {
+          elem_tr.classList[toggler]("hidden");
+          selectors.length && elem_tr.nextElementSibling.classList[toggler]("hidden");
+        };
+      };
     }
 
 
@@ -445,14 +478,25 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     if (document.location.hash) document.location.hash = "";
     window.addEventListener("load", function() {
       var elem_table = document.getElementById("toc");
+      elem_table.querySelector("th").append(
+        createElement("input", null, {"type": "checkbox", "checked": "checked",
+                                      "title": "Toggle visibility of all topic messages",
+                                      "onclick": "return enableTopics(this)"})
+      );
+
       var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
-      Object.keys(TOPICS).sort(cmp).forEach(function(topic) {
-        TOPICS[topic].sort(cmp).forEach(function(type) {
+      Object.keys(TOPICS).sort(cmp).forEach(function(topic, i) {
+        TOPICS[topic].sort(cmp).forEach(function(type, j) {
           var topickey = [topic, type];
           var id0 = FIRSTMSGS[topickey]["id"], dt0 = FIRSTMSGS[topickey]["dt"];
           var id1 = LASTMSGS [topickey]["id"], dt1 = LASTMSGS [topickey]["dt"];
           var elem_row = document.createElement("tr");
-          elem_row.append(createElement("td", topic));
+          var id_cb = "cb_topic_{0}_{1}".format(i, j);
+          var elem_cb = createElement("input", null, {"type": "checkbox", "checked": "checked", "id": id_cb,
+                                                      "title": "Toggle topic messages visibility",
+                                                      "onclick": "return enableTopic('{0}', '{1}', this)".format(topic, type)});
+          elem_row.append(createElement("td", elem_cb));
+          elem_row.append(createElement("td", createElement("label", topic, {"for": id_cb})));
           var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show definition",
                                                     "onclick": "return showSchema('{0}')".format(type)});
           elem_row.append(createElement("td", elem_type));
@@ -469,7 +513,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         });
       });
       if (elem_table.classList.contains("collapsed")) {
-        toggleClass("toc", "collapsed", elem_table.parentElement.getElementsByTagName("span")[0]);
+        toggleClass("toc", "collapsed", elem_table.parentElement.querySelector("span.collapsed"));
       };
     });
   </script>
@@ -489,7 +533,8 @@ Command: {{ " ".join(args) }}
     <table id="toc" class="collapsed">
       <thead>
         <tr>
-%for i, name in enumerate(["topic", "type", "count", "first", "last"]):
+          <th></th>
+%for i, name in enumerate(["topic", "type", "count", "first", "last"], 1):
           <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="sort({{ i }})">{{ name.capitalize() }}</span></th>
 %endfor
         </tr>
@@ -522,14 +567,15 @@ Command: {{ " ".join(args) }}
 
 <div id="content">
   <table id="messages">
-    <tr>
+    <thead><tr>
       <th>#</th>
       <th>Topic</th>
       <th>Type</th>
       <th>Datetime</th>
       <th>Timestamp</th>
       <th><span class="toggle all" title="Toggle all messages" onclick="return toggleAllMessages()"></span></th>
-    </tr>
+    </tr></thead>
+    <tbody>
 <%
 topics_seen = set()  # {(topic, type), ]
 selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
@@ -573,6 +619,7 @@ topickey = (topic, meta["type"])
 topics_seen.add(topickey)
     %>
 %endfor
+    </tbody>
   </table>
 </div>
 
