@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    13.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime
 import hashlib
 import os
+import re
 import time
 
 from . common import ConsolePrinter, filter_fields
@@ -95,6 +96,7 @@ def create_bag_reader(filename):
     Returns an object for reading ROS bags.
 
     Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
+    Supplemented with get_message_definition().
     """
     return realapi.create_bag_reader(filename)
 
@@ -257,6 +259,29 @@ def make_message_hash(msg, include=(), exclude=()):
 
     walk_message(msg)
     return hasher.hexdigest()
+
+
+def parse_definition_subtypes(typedef):
+    """
+    Returns subtype names and type definitions from a full message definition.
+
+    @return  {"pkg/MsgType": "definition for MsgType"}
+    """
+    result = {}  # {subtypename: subtypedef}
+    curtype, curlines = "", []
+    rgx = re.compile(r"^((=+)|(MSG: (.+)))$")  # Group 2: separator, 4: new type
+    for line in typedef.splitlines():
+        m = rgx.match(line)
+        if m and m.group(2) and curtype:  # Separator line between nested definitions
+            result[curtype] = "\n".join(curlines)
+            curtype, curlines = "", []
+        elif m and m.group(4):  # Start of nested definition "MSG: pkg/MsgType"
+            curtype, curlines = m.group(4), []
+        elif not m and curtype:  # Nested definition content
+            curlines.append(line)
+    if curtype:
+        result[curtype] = "\n".join(curlines)
+    return result
 
 
 def scalar(typename):

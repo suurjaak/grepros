@@ -654,7 +654,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
     def _process_type(self, typename, msg):
         """Inserts type rows and creates pkg/MsgType tables if not already existing."""
         if typename not in self._types:
-            msgdef = rosapi.get_message_definition(typename)
+            msgdef = self.source.get_message_definition(typename)
             targs = dict(type=typename, definition=msgdef, subtypes={})
             self._types[typename] = targs
             for path, submsgs, subtype in self._iter_fields(msg, messages_only=True):

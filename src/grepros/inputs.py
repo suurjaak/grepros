@@ -90,6 +90,10 @@ class SourceBase(object):
                     stamp=drop_zeros(rosapi.to_sec(stamp)),
                     schema=rosapi.get_message_definition(msg))
 
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        return rosapi.get_message_definition(msg_or_type)
+
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
         if self._args.START_TIME and stamp < self._args.START_TIME:
@@ -212,7 +216,12 @@ class BagSource(SourceBase):
         return dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
-                    schema=rosapi.get_message_definition(msg))
+                    schema=self.get_message_definition(msg))
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        return self._bag.get_message_definition(msg_or_type) or \
+               rosapi.get_message_definition(msg_or_type)
 
     def notify(self, status):
         """Reports match status of last produced message."""

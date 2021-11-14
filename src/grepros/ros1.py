@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -23,6 +23,7 @@ import roslib
 import rospy
 
 from . common import ConsolePrinter, MatchMarkers
+from . rosapi import parse_definition_subtypes
 
 
 ## Bagfile extensions to seek
@@ -93,8 +94,26 @@ def validate(live=False):
 
 
 def create_bag_reader(filename):
-    """Returns a rosbag.Bag."""
-    return rosbag.Bag(filename, skip_index=True)
+    """Returns a rosbag.Bag, supplemented with get_message_definition()."""
+    DEFINITIONS = {}
+    def get_message_definition(msg_or_type):
+        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
+        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+        if not DEFINITIONS:
+            for c in bag._connections.values():
+                DEFINITIONS[c.datatype] = c.msg_def
+        if typename not in DEFINITIONS:
+            for typedef in DEFINITIONS.values():
+                subdefs = parse_definition_subtypes(typedef)
+                DEFINITIONS.update(subdefs)
+                if typename in subdefs:
+                    break  # for typedef
+            DEFINITIONS.setdefault(typename, "")
+        return DEFINITIONS.get(typename)
+
+    bag = rosbag.Bag(filename, skip_index=True)
+    bag.get_message_definition = get_message_definition
+    return bag
 
 
 def create_bag_writer(filename):

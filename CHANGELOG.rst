@@ -5,6 +5,8 @@ Changelog for package grepros
 0.2.3 (2021-11-14)
 -------------------
 * add --write-format sqlite
+* local Python packages no longer required for custom message types
+  when grepping ROS1 bags
 * add topic toggle checkboxes to HTML output
 * add topic count to live source metainfo
 * break early when max matches per topic reached
