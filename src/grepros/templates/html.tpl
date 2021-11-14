@@ -391,7 +391,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           elem_meta.classList.remove(cls); elem_msg.classList.remove(cls);
         });
         elem_meta.scrollIntoView();
-        window.requestAnimationFrame(function() {
+        window.requestAnimationFrame && window.requestAnimationFrame(function() {
           elem_meta.classList.add("highlight"); elem_msg.classList.add("highlight");
           window.setTimeout(function() {
             elem_meta.classList.remove("highlight"); elem_msg.classList.remove("highlight");
@@ -427,11 +427,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Returns a new DOM tag with specified inner HTML and attributes. */
-    function createElement(name, html, opts) {
+    /** Returns a new DOM tag with specified body (text or node) and attributes. */
+    function createElement(name, body, opts) {
       var result = document.createElement(name);
-      if ("object" == typeof(html)) result.append(html);
-      else if (html != null) result.innerHTML = html;
+      if (body != null && "object" != typeof(body)) body = document.createTextNode(body);
+      if (body != null) result.appendChild(body);
       Object.keys(opts || {}).forEach(function(x) { result.setAttribute(x, opts[x]); });
       return result;
     };
@@ -483,7 +483,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     if (document.location.hash) document.location.hash = "";
     window.addEventListener("load", function() {
       var elem_table = document.getElementById("toc");
-      elem_table.querySelector("th").append(
+      elem_table.querySelector("th").appendChild(
         createElement("input", null, {"type": "checkbox", "checked": "checked",
                                       "title": "Toggle visibility of all topic messages",
                                       "onclick": "return enableTopics(this)"})
@@ -493,28 +493,28 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       Object.keys(TOPICS).sort(cmp).forEach(function(topic, i) {
         TOPICS[topic].sort(cmp).forEach(function(type, j) {
           var topickey = [topic, type];
-          var id0 = FIRSTMSGS[topickey]["id"], dt0 = FIRSTMSGS[topickey]["dt"];
-          var id1 = LASTMSGS [topickey]["id"], dt1 = LASTMSGS [topickey]["dt"];
+          var id0 = FIRSTMSGS[topickey]["id"], id1 = LASTMSGS[topickey]["id"];
+          var dt0 = FIRSTMSGS[topickey]["dt"], dt1 = LASTMSGS[topickey]["dt"];
           var elem_row = document.createElement("tr");
           var id_cb = "cb_topic_{0}_{1}".format(i, j);
           var elem_cb = createElement("input", null, {"type": "checkbox", "checked": "checked", "id": id_cb,
                                                       "title": "Toggle topic messages visibility",
                                                       "onclick": "return enableTopic('{0}', '{1}', this)".format(topic, type)});
-          elem_row.append(createElement("td", elem_cb));
-          elem_row.append(createElement("td", createElement("label", topic, {"for": id_cb})));
+          elem_row.appendChild(createElement("td", elem_cb));
+          elem_row.appendChild(createElement("td", createElement("label", topic, {"for": id_cb})));
           var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show type definition",
                                                     "onclick": "return showSchema('{0}')".format(type)});
-          elem_row.append(createElement("td", elem_type));
-          elem_row.append(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
+          elem_row.appendChild(createElement("td", elem_type));
+          elem_row.appendChild(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
           var elem_first = createElement("a", dt0, {"href": "#" + id0, "title": "Go to first message in topic",
                                                     "onclick": "return gotoMessage('{0}')".format(id0)});
-          elem_row.append(createElement("td", elem_first))
+          elem_row.appendChild(createElement("td", elem_first))
           if (id0 != id1) {
             var elem_last = createElement("a", dt1, {"href": "#" + id1, "title": "Go to last message in topic",
                                                      "onclick": "return gotoMessage('{0}')".format(id1)});
-            elem_row.append(createElement("td", elem_last))
+            elem_row.appendChild(createElement("td", elem_last))
           };
-          elem_tbody.append(elem_row);
+          elem_tbody.appendChild(elem_row);
         });
       });
       if (elem_table.classList.contains("collapsed")) {
