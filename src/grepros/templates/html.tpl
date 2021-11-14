@@ -141,6 +141,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     span.match {
       color:                  red;
     }
+    span.lowlight {
+      color:                  gray;
+    }
     span.comment {
       color:                  darkgreen;
     }
