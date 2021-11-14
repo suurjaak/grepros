@@ -246,6 +246,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
   </style>
   <script>
     var TOPICS    = {};  // {topic: [type, ]}
+    var TOPICKEYS = [];  // [[topic, type], ]
     var SCHEMAS   = {};  // {type: schema}
     var FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
     var LASTMSGS  = {};  // {[topic, type]: {id, dt}}
@@ -269,14 +270,15 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     /** Registers entry in a topic. */
     function registerTopic(topic, type, schema, id, dt) {
       var topickey = [topic, type];
+      TOPICKEYS.push(topickey);
       SCHEMAS[type] = schema;
-      registerMessage(topic, type, id, dt);
+      registerMessage(null, id, dt, topic, type);
     }
 
 
     /** Registers message. */
-    function registerMessage(topic, type, id, dt) {
-      var topickey = [topic, type];
+    function registerMessage(topicindex, id, dt, topic, type) {
+      var topickey = (topic && type) ? [topic, type] : TOPICKEYS[topicindex];
       if (!FIRSTMSGS[topickey]) {
         FIRSTMSGS[topickey] = {"id": id, "dt": dt};
         (TOPICS[topic] = TOPICS[topic] || []).push(type);
@@ -352,11 +354,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
     /** Goes to previous or next message in same topic. */
-    function gotoSibling(id_source, sibling_classes, direction, elem_link) {
+    function gotoSibling(id_source, direction, elem_link) {
       if (elem_link && elem_link.classList.contains("disabled")) return;
       var elem_source = document.getElementById(id_source);
       if (elem_source) {
-        var selectors = sibling_classes.map(function(v) { return v.replace(/[^\w\-]/g, "\\\$&"); });
+        var selectors = [].slice.call(elem_source.classList).filter(function(v) { return v.match(/\\//); });
         var adjacent = (direction < 0) ? "previousElementSibling" : "nextElementSibling";
         var elem_sibling = elem_source[adjacent];
         var found = false;
@@ -497,7 +499,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
                                                       "onclick": "return enableTopic('{0}', '{1}', this)".format(topic, type)});
           elem_row.append(createElement("td", elem_cb));
           elem_row.append(createElement("td", createElement("label", topic, {"for": id_cb})));
-          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show definition",
+          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show type definition",
                                                     "onclick": "return showSchema('{0}')".format(type)});
           elem_row.append(createElement("td", elem_type));
           elem_row.append(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
@@ -577,7 +579,7 @@ Command: {{ " ".join(args) }}
     </tr></thead>
     <tbody>
 <%
-topics_seen = set()  # {(topic, type), ]
+topic_idx = {}  # {(topic, type), ]
 selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %>
 %for i, (topic, index, stamp, msg, match) in enumerate(messages, 1):
@@ -591,7 +593,7 @@ topickey = (topic, meta["type"])
         <span class="index">{{ i }}</span>
       </td>
       <td>{{ topic }}</td>
-      <td><a title="Show definition" href="javascript:;" onclick="return showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
+      <td><a title="Show type definition" href="javascript:;" onclick="return showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
       <td>{{ meta["dt"] }}</td>
       <td>{{ meta["stamp"] }}</td>
       <td>
@@ -602,21 +604,21 @@ topickey = (topic, meta["type"])
       <td></td>
       <td colspan="5">
         <span class="data">{{! sink.format_message(match or msg, highlight=bool(match)) }}</span>
-    %if topickey in topics_seen:
-        <span class="prev" title="Go to previous message in topic '{{ topic }}'"
-              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], -1, this)"></span>
+    %if topickey in topic_idx:
+        <span class="prev" title="Go to previous message"
+              onclick="return gotoSibling({{ i }}, -1, this)"></span>
     %endif
-        <span class="next" title="Go to next message in topic '{{ topic }}'"
-              onclick="return gotoSibling({{ i }}, ['{{ topic }}', '{{ meta["type"] }}'], +1, this)"></span>
-    %if topickey in topics_seen:
-        <script> registerMessage('{{ topic }}', '{{ meta["type"] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+        <span class="next" title="Go to next message in topic"
+              onclick="return gotoSibling({{ i }}, +1, this)"></span>
+    %if topickey in topic_idx:
+        <script> registerMessage('{{ topic_idx[topickey] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
     %else:
         <script> registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, '{{ meta["dt"] }}'); </script>
     %endif
       </td>
     </tr>
     <%
-topics_seen.add(topickey)
+topic_idx.setdefault(topickey, len(topic_idx))
     %>
 %endfor
     </tbody>
