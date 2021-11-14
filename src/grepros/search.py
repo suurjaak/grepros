@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    10.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -102,7 +102,7 @@ class Searcher(object):
             source.notify(matched)
 
             self._prune_data(topickey)
-            if self._is_max_done(topickey):
+            if self._is_max_done(source):
                 break  # for topic, msg, stamp
 
         source.close(), sink.close()
@@ -182,13 +182,23 @@ class Searcher(object):
         return result
 
 
-    def _is_max_done(self, topickey):
+    def _is_max_done(self, source):
         """Returns whether max match count has been reached (and message after-context emitted)."""
-        result = False
+        result, is_maxed, is_maxable = False, False, False
         if self._args.MAX_MATCHES:
-            if sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES \
-            and not self._has_in_window(topickey, self._args.AFTER, status=True, full=True):
-                result = True
+            is_maxed = sum(vv[True] for vv in self._counts.values()) >= self._args.MAX_MATCHES
+        if not is_maxed and self._args.MAX_TOPIC_MATCHES:
+            if self._args.MAX_TOPICS:
+                if len([k for k, vv in self._counts.items() if vv[True]]) >= self._args.MAX_TOPICS:
+                    is_maxable = True
+            else:
+                is_maxable = source.is_static
+            is_maxed = is_maxable and any(vv[True] for vv in self._counts.values()) and \
+                       all(vv[True] >= self._args.MAX_TOPIC_MATCHES
+                           for vv in self._counts.values() if vv[True])
+        if is_maxed:
+            result = not any(self._has_in_window(k, self._args.AFTER, status=True, full=True)
+                             for k in self._counts)
         return result
 
 

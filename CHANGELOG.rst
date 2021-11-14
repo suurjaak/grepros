@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * add --write-format sqlite
 * add topic toggle checkboxes to HTML output
+* break early when max matches per topic reached
 
 0.2.2 (2021-11-10)
 -------------------

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -47,6 +47,8 @@ class SourceBase(object):
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
+        ## Whether source is static like a bag source, all topics known from the start
+        self.is_static = None
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -142,6 +144,8 @@ class BagSource(SourceBase):
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
+
+        self.is_static  = True
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -321,6 +325,7 @@ class TopicSource(SourceBase):
         self._subs    = {}     # {(topic, type): ROS subscriber}
 
         self._configure()
+        self.is_static = False
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
