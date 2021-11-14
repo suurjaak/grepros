@@ -13,7 +13,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    13.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -94,7 +94,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       padding:                0px 5px;
       position:               relative;
     }
-    table#toc td:nth-child(3), table#toc th:nth-child(3) {
+    table#toc td:nth-child(4), table#toc th:nth-child(4) {
       text-align:             right;
     }
     table#toc input[type=checkbox] {
