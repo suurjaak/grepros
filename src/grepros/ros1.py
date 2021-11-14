@@ -18,6 +18,7 @@ import os
 import time
 
 import genpy
+import genpy.dynamic
 import rosbag
 import roslib
 import rospy
@@ -34,6 +35,9 @@ SKIP_EXTENSIONS = (".bag.orig.active", )
 
 ## ROS1 time/duration types
 ROS_TIME_TYPES = ["time", "duration"]
+
+## {"pkg/msg/Msg": message type class}
+TYPECLASSES = {}
 
 ## Seconds between checking whether ROS master is available.
 SLEEP_INTERVAL = 0.5
@@ -73,7 +77,7 @@ def shutdown_node():
     global master
     if master:
         master = None
-        rospy.signal_shutdown()
+        rospy.signal_shutdown("Close grepros")
 
 
 def validate(live=False):
@@ -96,7 +100,7 @@ def validate(live=False):
 def create_bag_reader(filename):
     """Returns a rosbag.Bag, supplemented with get_message_definition()."""
     DEFINITIONS = {}
-    def get_message_definition(msg_or_type):
+    def get_bag_message_definition(msg_or_type):
         """Returns ROS1 message type definition full text from bag, including subtype definitions."""
         typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
         if not DEFINITIONS:
@@ -112,7 +116,7 @@ def create_bag_reader(filename):
         return DEFINITIONS.get(typename)
 
     bag = rosbag.Bag(filename, skip_index=True)
-    bag.get_message_definition = get_message_definition
+    bag.get_message_definition = get_bag_message_definition
     return bag
 
 
@@ -122,14 +126,39 @@ def create_bag_writer(filename):
     return rosbag.Bag(filename, mode)
 
 
-def create_publisher(topic, cls, queue_size):
+def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a rospy.Publisher."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
     return rospy.Publisher(topic, cls, queue_size=queue_size)
 
 
-def create_subscriber(topic, cls, handler, queue_size):
-    """Returns a rospy.Subscriber."""
+def create_subscriber(topic, cls_or_typename, handler, queue_size):
+    """Returns a rospy.Subscriber. Local message packages are not strictly required."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
+    if cls is None and isinstance(cls_or_typename, str):
+        return create_anymsg_subscriber(topic, cls_or_typename, handler, queue_size)
     return rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
+
+
+def create_anymsg_subscriber(topic, typename, handler, queue_size):
+    """
+    Returns a rospy.Subscriber not requiring local message packages.
+
+    Subscribes as AnyMsg, creates message class dynamically from connection info,
+    and deserializes message before providing to handler.
+    """
+    def myhandler(msg):
+        if msg._connection_header["type"] != typename:
+            return
+        if typename not in TYPECLASSES:
+            typedef = msg._connection_header["message_definition"]
+            cls = genpy.dynamic.generate_dynamic(typename, typedef)[typename]
+            TYPECLASSES[typename] = cls
+        handler(TYPECLASSES[typename]().deserialize(msg._buff))
+
+    return rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
 
 
 def format_message_value(msg, name, value):

@@ -342,8 +342,10 @@ def create_bag_writer(filename):
     return Bag(filename)
 
 
-def create_publisher(topic, cls, queue_size):
+def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     pub = node.create_publisher(cls, topic, qos)
     pub.get_num_connections = pub.get_subscription_count
@@ -351,8 +353,10 @@ def create_publisher(topic, cls, queue_size):
     return pub
 
 
-def create_subscriber(topic, cls, handler, queue_size):
+def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns an rclpy.Subscriber, with .unregister()."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy

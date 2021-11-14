@@ -110,14 +110,14 @@ def create_bag_writer(filename):
     return realapi.create_bag_writer(filename)
 
 
-def create_publisher(topic, cls, queue_size):
+def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
-    return realapi.create_publisher(topic, cls, queue_size)
+    return realapi.create_publisher(topic, cls_or_typename, queue_size)
 
 
-def create_subscriber(topic, cls, handler, queue_size):
+def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns a ROS subscriber instance, with .unregister()."""
-    return realapi.create_subscriber(topic, cls, handler, queue_size)
+    return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 
 def format_message_value(msg, name, value):

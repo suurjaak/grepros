@@ -407,9 +407,8 @@ class TopicSource(SourceBase):
             dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)
             dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
             if dct:
-                cls = rosapi.get_message_class(typename)
                 handler = functools.partial(self._on_message, topic)
-                sub = rosapi.create_subscriber(topic, cls, handler,
+                sub = rosapi.create_subscriber(topic, typename, handler,
                                                queue_size=self._args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
             self._msgtypes[topickey] += [typename]
