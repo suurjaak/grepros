@@ -365,17 +365,19 @@ class TopicSource(SourceBase):
 
     def get_meta(self):
         """Returns source metainfo data dict."""
-        return {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
+        ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
+        return dict(ENV, tcount=sum(len(x) for x in self._msgtypes.values()))
 
     def format_meta(self):
         """Returns source metainfo string."""
-        name = "ROS%s" % os.getenv("ROS_VERSION")
-        s, d = "\n%s live" % name, self.get_meta()
-        if "ROS_MASTER_URI" in d:
-            s += "%s master %s" % (name, d["ROS_MASTER_URI"])
-        if "ROS_DOMAIN_ID" in d:
-            s += (", " if s else "") + "%s domain ID %s" % (name, d["ROS_DOMAIN_ID"])
-        return s
+        metadata = self.get_meta()
+        result = "\nROS%s live" % os.getenv("ROS_VERSION")
+        if "ROS_MASTER_URI" in metadata:
+            result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
+        if "ROS_DOMAIN_ID" in metadata:
+            result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
+        result += ", %s topic(s) initially" % metadata["tcount"]
+        return result
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
