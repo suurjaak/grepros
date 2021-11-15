@@ -8,11 +8,15 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile, or published to live topics.
+to a bagfile or as HTML/CSV/SQLite, or published to live topics.
 
-Supports both ROS1 and ROS2. ROS environment variables need to be set.
+Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
-Grepping from or publishing to ROS1 live topics requires ROS master to be running.
+Using ROS1 live topics requires ROS master to be running.
+
+Using ROS2 requires Python packages for message types to be available in path;
+in ROS1 messages can be grepped even if the packages are not available.
+
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
 
@@ -63,9 +67,320 @@ Patterns use Python regular expression syntax, message matches if all match.
 '*' wildcards in other arguments use simple globbing as zero or more characters,
 target matches if any value matches.
 
-When publishing matches to live topics, the published topic name will default to
-`/grepros/ORIGINALNAME`. Topic prefix and suffix can be changed via command-line
-parameter, or topic set to a single output topic name.
+
+Installation
+------------
+
+### Using pip
+
+    pip install grepros
+
+This will add the `grepros` command to path.
+
+Requires ROS Python packages
+(ROS1: rospy, roslib, rosbag, genpy; ROS2: rclpy, rosidl_runtime_py).
+
+If you don't want to install the ROS1 stack, and are only interested
+in using bag files, not grepping from or publishing to live topics,
+minimal ROS1 Python packages can also be installed separately with:
+
+    pip install rospy rosbag roslib roslz4 \
+    --extra-index-url https://rospypi.github.io/simple/
+
+
+### Using catkin
+
+In a ROS1 workspace, under the source directory:
+
+    git clone https://github.com/suurjaak/grepros.git
+    cd grepros
+    catkin build --this
+
+This will add the `grepros` command to the local ROS1 workspace path.
+
+
+### Using colcon
+
+In a ROS2 workspace, at the workspace root:
+
+    git clone https://github.com/suurjaak/grepros.git src/grepros
+    colcon build --packages-select grepros
+
+This will add the `grepros` command to the local ROS2 workspace path.
+
+
+Matching and filtering
+----------------------
+
+Specify any number of patterns to match, e.g. match messages containing any of the words:
+
+    cpu memory speed
+
+Match anything (note that * wildcards need to quoted to stop shell from auto-expanding them):
+
+    ".*"
+
+Match as plaintext, not Python regular expression patterns:
+
+    -F
+    --fixed-strings
+
+Select non-matching messages instead:
+
+    -v
+    --invert-match
+
+Use case-sensitive matching in patterns (default is insensitive):
+
+    -I
+    --no-ignore-case
+
+
+### Limits
+
+Stop after matching a specified number of messages (per each file if bag input):
+
+    -m          100
+    --max-count 100
+
+Scan only a specified number of topics (per each file if bag input):
+
+    --max-topics 10
+
+Emit a specified number of matches per topic (per each file if bag input):
+
+    --max-per-topic 20
+
+
+### Filtering
+
+Scan specific topics only (supports * wildcards):
+
+    -t      *lidar* *ins*
+    --topic /robot/sensors/*
+
+Skip specific topics (supports * wildcards):
+
+    -nt        *lidar* *ins*
+    --no-topic /robot/sensors/*
+
+Scan specific message types only (supports * wildcards):
+
+    -d     *Twist*
+    --type sensor_msgs/*
+
+Skip specific message types from scanning (supports * wildcards):
+
+    -nd       *Twist*
+    --no-type sensor_msgs/*
+
+Set specific message fields to scan (supports nested.paths and * wildcards):
+
+    -sf            twist.linear
+    --select-field *data
+
+Skip specific message fields in scan (supports nested.paths and * wildcards):
+
+    -ns               twist.linear
+    --no-select-field *data
+
+Only emit matches that are unique in topic,
+taking `--select-field` and `--no-select-field` into account (per each file if bag input):
+
+    --unique-only
+
+Start scanning from a specific timestamp:
+
+    -t0          2021-11     (using partial ISO datetime)
+    --start-time 1636900000  (using UNIX timestamp)
+    --start-time +100        (seconds from bag start time, or from script startup time if live input)
+    --start-time -100        (seconds from bag end time, or script startup time if live input)
+
+Stop scanning at a specific timestamp:
+
+    -t1        2021-11     (using partial ISO datetime)
+    --end-time 1636900000  (using UNIX timestamp)
+    --end-time +100        (seconds from bag start time, or from script startup time if live input)
+    --end-time -100        (seconds from bag end time, or from script startup time if live input)
+
+Start scanning from a specific message index in topic:
+
+    -n0           -100  (counts back from topic total message count in bag)
+    --start-index   10  (1-based index)
+
+Stop scanning at a specific message index in topic:
+
+    -n1         -100  (counts back from topic total message count in bag)
+    --end-index   10  (1-based index)
+
+
+Inputs
+------
+
+### bag
+
+Read messages from ROS bag files, by default all in current directory.
+
+Recurse into subdirectories when looking for bagfiles:
+
+    -r
+    --recursive
+
+Read specific filenames (supports * wildcards):
+
+    --n        /tmp/*.bag
+    --filename my.bag 2021-11-*.bag
+
+Scan specific paths instead of current directory (supports * wildcards):
+
+    -p     /home/*
+    --path my/dir
+
+Order bag messages first by topic or type, and only then by time:
+
+    --order-bag-by topic
+    --order-bag-by type
+
+
+### live
+
+    --live
+
+Read messages from live ROS topics instead of bagfiles.
+
+Requires `ROS_MASTER_URI` and `ROS_ROOT` to be set in environment if ROS1.
+
+Set custom queue size for subscribing (default 10):
+
+    --queue-size-in 100
+
+Use ROS time instead of system time for incoming message timestamps:
+
+    --ros-time-in
+
+
+Outputs
+-------
+
+### console
+
+Default output is to console, in ANSI colors, mimicking `grep` output.
+
+Disable printing messages to console:
+
+    --no-console-output
+
+Manage color output:
+
+    --color always  (default)
+    --color auto    (auto-detect terminal support)
+    --color never   (disable colors)
+
+Set maximum number of lines to print per message:
+
+    --lines-per-message 5
+
+Set maximum number of lines to print per message field:
+
+    --lines-per-field 2
+
+Start printing from, or stop printing at, message line number:
+
+    --start-line  2   (1-based if positive
+    --end-line   -2   (count back from total if negative)
+
+Print only the fields where patterns find a match:
+
+    --matched-fields-only
+
+Print only matched fields and specified number of lines around match:
+
+    --lines-around-match 5
+
+Print only specific message fields (supports nested.paths and * wildcards):
+
+    --print-field *data
+
+Skip printing specific message fields (supports nested.paths and * wildcards):
+
+    --no-print-field header.stamp
+
+Wrap printed matches in custom texts:
+
+    --match-wrapper ***
+    --match-wrapper <MATCH> </MATCH>
+
+Set custom width for wrapping printed message YAML (auto-detected from terminal by default):
+
+    --wrap-width 120
+
+
+### live
+
+    --publish
+
+Publish messages to live ROS topics. The published topic name will default to
+`/grepros/original/name`. Topic prefix and suffix can be changed, 
+or topic name set to one specific name:
+
+    --publish-prefix   /myroot
+    --publish-suffix   /myend
+    --publish-fixname  /my/singular/name
+
+Set custom queue size for publishers (default 10):
+
+    --queue-size-out 100
+
+
+### bag
+
+    --write my.bag
+
+Write messages to a ROS bag file, the custom `.bag` format in ROS1
+or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
+it is appended to. 
+
+
+### csv
+
+    --write my.csv --write-format csv
+
+Write messages to CSV files, each topic to a separate file, named
+as `my.__topic__name__.csv` for `/topic/name`.
+
+Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
+to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
+
+
+### html
+
+    --write my.html --write-format html
+
+Write messages to an HTML file, with a linked table of contents,
+message type definitions, and a topically traversable message list.
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
+
+Note: resulting file may be large, and take a long time to open in browser. 
+
+A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
+
+    --write-format-template /my/html.template
+
+
+### sqlite
+
+    --write my.db --write-format sqlite
+
+Write an SQLite database with tables `pkg/MsgType` for each ROS message type
+and nested type, and views `/full/topic/name` for each topic. 
+If the database already exists, it is appended to.
+
+Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
+full message YAMLs, and message type definition texts.
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
+
 
 
 Command-line arguments
@@ -86,9 +401,9 @@ optional arguments:
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
   --write OUTFILE       write matched messages to specified output file
-  --write-format {bag,html,sqlite}
+  --write-format {bag,csv,html,sqlite}
                         output format (default "bag"),
-                        appended to if bag or database already exists
+                        bag or database appended to if file already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -128,21 +443,15 @@ Filtering:
                         message fields to skip in matching
                         (supports nested.paths and * wildcards)
   -m NUM, --max-count NUM
-                        number of matched messages to emit (per file if bag input)
+                        number of matched messages to emit (per each file if bag input)
   --max-per-topic NUM   number of matched messages to emit from each topic
-                        (per file if bag input)
-  --max-topics NUM      number of topics to emit matches from
+                        (per each file if bag input)
+  --max-topics NUM      number of topics to emit matches from (per each file if bag input)
   --unique-only         only emit matches that are unique in topic,
                         taking --select-field and --no-select-field into account
-                        (per file if bag input)
+                        (per each file if bag input)
 
 Output control:
-  -pf [FIELD [FIELD ...]], --print-field [FIELD [FIELD ...]]
-                        message fields to print in console output if not all
-                        (supports nested.paths and * wildcards)
-  -np [FIELD [FIELD ...]], --no-print-field [FIELD [FIELD ...]]
-                        message fields to skip in console output
-                        (supports nested.paths and * wildcards)
   -B NUM, --before-context NUM
                         emit NUM messages of leading context before match
   -A NUM, --after-context NUM
@@ -150,6 +459,12 @@ Output control:
   -C NUM, --context NUM
                         emit NUM messages of leading and trailing context
                         around match
+  -pf [FIELD [FIELD ...]], --print-field [FIELD [FIELD ...]]
+                        message fields to print in console output if not all
+                        (supports nested.paths and * wildcards)
+  -np [FIELD [FIELD ...]], --no-print-field [FIELD [FIELD ...]]
+                        message fields to skip in console output
+                        (supports nested.paths and * wildcards)
   -mo, --matched-fields-only
                         print only the fields where PATTERNs find a match
   -la NUM, --lines-around-match NUM
@@ -170,14 +485,13 @@ Output control:
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
                         (default "**" in colorless output)
-  --wrap-width NUM
-                        width to wrap console output at, 0 disables wrapping
-                        (defaults to detected terminal width)
+  --wrap-width NUM      character width to wrap message YAML output at,
+                        0 disables (defaults to detected terminal width)
   --write-format-template OUTFILE_TEMPLATE
                         path to custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
-  --no-meta             do not print bag and topic and message metainfo to console
+  --no-meta             do not print source and message metainfo to console
   --no-filename         do not print bag filename prefix on each console message line
   --no-console-output   do not print matches to console
   --verbose             print status messages during console output
@@ -209,47 +523,6 @@ Live topic control:
   --ros-time-in         use ROS time instead of system time for incoming message
                         timestamps from subsribed live ROS topics
 ```
-
-
-Installation
-------------
-
-### Using pip
-
-    pip install grepros
-
-This will add the `grepros` command to your path.
-
-Requires ROS Python packages
-(ROS1: rospy, roslib, rosbag, genpy; ROS2: rclpy, rosidl_runtime_py).
-
-If you don't want to install the ROS1 stack, and are only interested
-in using bag files, not grepping from or publishing to live topics,
-minimal ROS1 Python packages can also be installed separately with:
-
-    pip install rospy rosbag roslib roslz4 \
-    --extra-index-url https://rospypi.github.io/simple/
-
-
-### Using catkin
-
-In your ROS1 workspace, under the source directory:
-
-    git clone https://github.com/suurjaak/grepros.git
-    cd grepros
-    catkin build --this
-
-This will add the `grepros` command to your local ROS1 workspace path.
-
-
-### Using colcon
-
-In your ROS2 workspace, at the workspace root:
-
-    git clone https://github.com/suurjaak/grepros.git src/grepros
-    colcon build --packages-select grepros
-
-This will add the `grepros` command to your local ROS2 workspace path.
 
 
 Attribution

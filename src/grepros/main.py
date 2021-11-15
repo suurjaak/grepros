@@ -101,7 +101,7 @@ Print first message from each lidar topic on host 1.2.3.4:
         dict(args=["--write-format"], dest="OUTFILE_FORMAT",
              choices=["bag", "csv", "html", "sqlite"], default="bag",
              help='output format (default "bag"),\n'
-                  "appended to if bag or database already exists"),
+                  "bag or database appended to if file already exists"),
     ],
 
     "groups": {"Filtering": [
