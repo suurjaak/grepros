@@ -107,7 +107,7 @@ def create_bag_reader(filename):
             for c in bag._connections.values():
                 DEFINITIONS[c.datatype] = c.msg_def
         if typename not in DEFINITIONS:
-            for typedef in DEFINITIONS.values():
+            for typedef in list(DEFINITIONS.values()):
                 subdefs = parse_definition_subtypes(typedef)
                 DEFINITIONS.update(subdefs)
                 if typename in subdefs:
