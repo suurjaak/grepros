@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.11.2021
+@modified    15.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -99,7 +99,7 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="write matched messages to specified output file"),
 
         dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "html", "sqlite"], default="bag",
+             choices=["bag", "csv", "html", "sqlite"], default="bag",
              help='output format (default "bag"),\n'
                   "appended to if bag or database already exists"),
     ],
@@ -164,34 +164,24 @@ Print first message from each lidar topic on host 1.2.3.4:
 
         dict(args=["-m", "--max-count"],
              dest="MAX_MATCHES", metavar="NUM", default=0, type=int,
-             help="number of matched messages to emit (per file if bag input)"),
+             help="number of matched messages to emit (per each file if bag input)"),
 
         dict(args=["--max-per-topic"],
              dest="MAX_TOPIC_MATCHES", metavar="NUM", default=0, type=int,
              help="number of matched messages to emit from each topic\n"
-                  "(per file if bag input)"),
+                  "(per each file if bag input)"),
 
         dict(args=["--max-topics"],
              dest="MAX_TOPICS", metavar="NUM", default=0, type=int,
-             help="number of topics to emit matches from"),
+             help="number of topics to emit matches from (per each file if bag input)"),
 
         dict(args=["--unique-only"],
              dest="UNIQUE", action="store_true",
              help="only emit matches that are unique in topic,\n"
                   "taking --select-field and --no-select-field into account\n"
-                  "(per file if bag input)"),
+                  "(per each file if bag input)"),
 
     ], "Output control": [
-
-        dict(args=["-pf", "--print-field"],
-             dest="PRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
-             help="message fields to print in console output if not all\n"
-                  "(supports nested.paths and * wildcards)"),
-
-        dict(args=["-np", "--no-print-field"],
-             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
-             help="message fields to skip in console output\n"
-                  "(supports nested.paths and * wildcards)"),
 
         dict(args=["-B", "--before-context"],
              dest="BEFORE", metavar="NUM", default=0, type=int,
@@ -205,6 +195,16 @@ Print first message from each lidar topic on host 1.2.3.4:
              dest="CONTEXT", metavar="NUM", default=0, type=int,
              help="emit NUM messages of leading and trailing context\n"
                   "around match"),
+
+        dict(args=["-pf", "--print-field"],
+             dest="PRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to print in console output if not all\n"
+                  "(supports nested.paths and * wildcards)"),
+
+        dict(args=["-np", "--no-print-field"],
+             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             help="message fields to skip in console output\n"
+                  "(supports nested.paths and * wildcards)"),
 
         dict(args=["-mo", "--matched-fields-only"],
              dest="MATCHED_FIELDS_ONLY", action="store_true",

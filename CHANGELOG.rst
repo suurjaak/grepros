@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.3 (2021-11-14)
+0.2.3 (2021-11-15)
 -------------------
+* add --write-format csv
 * add --write-format sqlite
 * local Python packages no longer required for custom message types in ROS1
 * add topic toggle checkboxes to HTML output

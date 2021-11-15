@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.11.2021
+@modified    15.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
 import collections
+import csv
 import copy
 import json
 import os
@@ -28,7 +29,7 @@ import threading
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, merge_spans, quote, unique_path, wildcard_to_regex
+                     filter_fields, format_bytes, merge_spans, quote, unique_path, wildcard_to_regex
 from . import rosapi
 from . vendor import step
 
@@ -457,6 +458,106 @@ class HtmlSink(SinkBase, TextSinkMixin):
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
 
 
+class CsvSink(SinkBase):
+    """Writes messages to CSV files, each topic to a separate file."""
+
+    def __init__(self, args):
+        """
+        @param   args           arguments object like argparse.Namespace
+        @param   args.OUTFILE   base name of CSV file to write,
+                                will add topic name like "name.__my__topic.csv" for "/my/topic",
+                                will add counter like "name.__my__topic.2.csv" if exists
+        @param   args.VERBOSE   whether to print debug information
+        """
+        super(CsvSink, self).__init__(args)
+        self._filebase      = args.OUTFILE  # Filename base, will be made unique
+        self._files         = {}            # {topic: file()}
+        self._writers       = {}            # {topic: csv.writer}
+        self._lasttopic     = None          # Last topic emitted
+        self._close_printed = False
+
+        atexit.register(self.close)
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output file."""
+        data = [v for _, v in self._iter_fields(msg)]
+        metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
+        self._make_writer(topic, msg).writerow(self._format_row(metadata + data))
+        super(CsvSink, self).emit(topic, index, stamp, msg, match)
+
+    def close(self):
+        """Closes output file(s), if any."""
+        names = {t: f.name for t, f in self._files.items()}
+        for t in names:
+            self._files.pop(t).close()
+        self._writers.clear()
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to files:",
+                                 sum(self._counts.values()), len(self._counts))
+            for topic, name in names.items():
+                ConsolePrinter.debug("- %s (%s, %s message(s))", name,
+                                    format_bytes(os.path.getsize(name)), self._counts[topic])
+        super(CsvSink, self).close()
+
+    def _make_writer(self, topic, msg):
+        """
+        Returns a csv.writer for writing topic data.
+
+        File is populated with header if 
+        """
+        if self._lasttopic and topic != self._lasttopic:
+            self._files[self._lasttopic].close()  # Avoid hitting ulimit
+        if topic not in self._files or self._files[topic].closed:
+            name = self._files[topic].name if topic in self._files else None
+            if not name:
+                base, ext = os.path.splitext(self._filebase)
+                name = unique_path("%s.%s%s" % (base, topic.replace("/", "__"), ext))
+            flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
+            f = open(name, **flags)
+            w = csv.writer(f)
+            if topic not in self._files:
+                if self._args.VERBOSE:
+                    ConsolePrinter.debug("Creating %s.", name)
+                header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
+                metaheader = ["__time", "__datetime", "__type"]
+                w.writerow(self._format_row(metaheader + header))
+            self._files[topic], self._writers[topic] = f, w
+        self._lasttopic = topic
+        return self._writers[topic]
+
+    def _format_row(self, data):
+        """Returns row suitable for writing to CSV."""
+        data = [int(v) if isinstance(v, bool) else v for v in data]
+        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
+            data = [v.encode("utf-8") if isinstance(v, unicode) else v for v in data]
+        return data
+
+    def _iter_fields(self, msg, top=()):
+        """
+        Yields ((nested, path), scalar value) from ROS message.
+
+        Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
+        """
+        fieldmap = rosapi.get_message_fields(msg)
+        for k, t in fieldmap.items() if fieldmap != msg else ():
+            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES
+            if isinstance(v, (list, tuple)) and not is_sublist:
+                for i, lv in enumerate(v):
+                    yield path + (i, ), rosapi.to_sec(lv)
+            elif is_sublist:
+                for i, lmsg in enumerate(v):
+                    for lp, lv in self._iter_fields(lmsg, path + (i, )):
+                        yield lp, lv
+            elif rosapi.is_ros_message(v, ignore_time=True):
+                for mp, mv in self._iter_fields(v, path):
+                    yield mp, mv
+            else:
+                yield path, rosapi.to_sec(v)
+
+
 
 class SqliteSink(SinkBase, TextSinkMixin):
     """
@@ -589,6 +690,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         typename = rosapi.get_message_type(msg)
         self._process_topic(topic, typename, msg)
         self._process_message(topic, typename, msg, stamp)
+        super(SqliteSink, self).emit(topic, index, stamp, msg, match)
 
 
     def close(self):
@@ -660,7 +762,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
             for path, submsgs, subtype in self._iter_fields(msg, messages_only=True):
                 subtype = rosapi.scalar(subtype)
                 targs["subtypes"][".".join(path)] = subtype
-                for submsg in submsgs[:1] if isinstance(submsgs, list) else [submsgs]:
+                for submsg in submsgs[:1] if isinstance(submsgs, (list, tuple)) else [submsgs]:
                     submsg = submsg or rosapi.get_message_class(subtype)()  # List may be empty
                     self._process_type(subtype, submsg)
 
@@ -669,7 +771,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         if typename not in self._schema["table"]:
             cols = []
             for path, value, subtype in self._iter_fields(msg):
-                suffix = "[]" if isinstance(value, list) else ""
+                suffix = "[]" if isinstance(value, (list, tuple)) else ""
                 cols += [(".".join(path), quote(rosapi.scalar(subtype) + suffix))]
             coldefs = ["%s %s" % (quote(n), t) for n, t in cols + self.MESSAGE_TYPE_BASECOLS]
             sql = "CREATE TABLE %s (%s)" % (quote(typename), ", ".join(coldefs))
@@ -699,7 +801,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
                     _parent_type=parent_type, _parent_id=parent_id)
         cols, vals = [], []
         for p, v, t in self._iter_fields(msg):
-            if isinstance(v, list) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
+            if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
                 continue  # for p, v, t
             cols += [".".join(p)]
             vals += [re.sub(r"\W", "_", cols[-1])]
@@ -713,11 +815,11 @@ class SqliteSink(SinkBase, TextSinkMixin):
         subids = {}  # {path: [ids]}
         for subpath, submsgs, subtype in self._iter_fields(msg, messages_only=True):
             subtype = rosapi.scalar(subtype)
-            if isinstance(submsgs, list):
+            if isinstance(submsgs, (list, tuple)):
                 subids[subpath] = []
-            for submsg in submsgs if isinstance(submsgs, list) else [submsgs]:
+            for submsg in submsgs if isinstance(submsgs, (list, tuple)) else [submsgs]:
                 subid = self._populate_type(topic, subtype, submsg, stamp, typename, myid)
-                if isinstance(submsgs, list):
+                if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:
             sql = "UPDATE %s SET " % quote(typename)
@@ -740,7 +842,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
         for k, t in fieldmap.items() if fieldmap != msg else ():
             v, path = rosapi.get_message_value(msg, k, t), top + (k, )
             is_true_msg, is_msg_or_time = (rosapi.is_ros_message(v, ignore_time=x) for x in (1, 0))
-            is_sublist = isinstance(v, list) and rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
             if (is_true_msg or is_sublist) if messages_only else not is_msg_or_time:
                 yield path, v, t
             if is_msg_or_time:
@@ -816,7 +919,7 @@ class MultiSink(SinkBase):
 
     ## Autobinding between argument flags+subflags and sink classes
     SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html": HtmlSink,
-                                                      "sqlite": SqliteSink}}}
+                                                      "csv": CsvSink, "sqlite": SqliteSink}}}
 
     def __init__(self, args):
         """
