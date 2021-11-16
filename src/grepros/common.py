@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -53,8 +53,6 @@ class ConsolePrinter(object):
     ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  ## Error message wrappers
     SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  ## Filename prefix separator wrappers
 
-    VERBOSE = False  ## Whether to print debug information
-
     WIDTH = 80       ## Console width in characters, updated from shutil and curses
 
     PRINTS = {}      ## {sys.stdout: number of texts printed, sys.stderr: ..}
@@ -69,9 +67,7 @@ class ConsolePrinter(object):
         @param   args.MATCH_WRAPPER   string to wrap around matched values,
                                       both sides if one value, start and end if more than one,
                                       or no wrapping if zero values (default ** in colorless output)
-        @param   args.VERBOSE         whether to print debug information
         """
-        cls.VERBOSE = args.VERBOSE
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
         do_color = ("never" != args.COLOR)
@@ -134,13 +130,12 @@ class ConsolePrinter(object):
     @classmethod
     def debug(cls, text="", *args, **kwargs):
         """
-        Prints debug text to stderr if verbose.
+        Prints debug text to stderr.
 
         Formatted with args and kwargs, in lowlight colors if supported.
         """
-        if cls.VERBOSE:
-            KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
-            cls.print(text, *args, **dict(kwargs, **KWS))
+        KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
+        cls.print(text, *args, **dict(kwargs, **KWS))
 
 
 
@@ -451,6 +446,38 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def quote(name, force=False):
+    """
+    Returns name in quotes and proper-escaped for SQLite queries.
+
+    @param   force  quote even if name does not need quoting (starts with a letter,
+                    contains only alphanumerics, and is not a reserved keyword)
+    """
+    ## Words that need quoting if in name context, e.g. table name.
+    SQLITE_RESERVED_KEYWORDS = [
+        "ACTION", "ADD", "AFTER", "ALL", "ALTER", "ALWAYS", "ANALYZE",
+        "AND", "AS", "ASC", "ATTACH", "AUTOINCREMENT", "BEFORE", "BEGIN", "BETWEEN",
+        "BY", "CASE", "CAST", "CHECK", "COLLATE", "COMMIT", "CONSTRAINT", "CREATE",
+        "CURRENT_DATE", "CURRENT_TIME", "CURRENT_TIMESTAMP", "DEFAULT", "DEFERRABLE",
+        "DEFERRED", "DELETE", "DESC", "DETACH", "DISTINCT", "DO", "DROP", "EACH",
+        "ELSE", "END", "ESCAPE", "EXCEPT", "EXISTS", "EXPLAIN", "FOR", "FOREIGN",
+        "FROM", "GENERATED", "GROUP", "HAVING", "IF", "IMMEDIATE", "IN", "INDEX",
+        "INITIALLY", "INSERT", "INSTEAD", "INTERSECT", "INTO", "IS", "ISNULL",
+        "JOIN", "KEY", "LIKE", "LIMIT", "MATCH", "NO", "NOT", "NOTHING", "NOTNULL",
+        "NULL", "OF", "ON", "OR", "ORDER", "OVER", "PRAGMA", "PRECEDING", "PRIMARY",
+        "RAISE", "RECURSIVE", "REFERENCES", "REGEXP", "REINDEX", "RELEASE", "RENAME",
+        "REPLACE", "RESTRICT", "ROLLBACK", "SAVEPOINT", "SELECT", "SET", "TABLE",
+        "TEMPORARY", "THEN", "TIES", "TO", "TRANSACTION", "TRIGGER", "UNBOUNDED",
+        "UNION", "UNIQUE", "UPDATE", "USING", "VACUUM", "VALUES", "VIEW", "WHEN",
+        "WHERE", "WITHOUT"
+    ]
+    result = name
+    if force or result.upper() in SQLITE_RESERVED_KEYWORDS \
+    or re.search(r"(^[\W\d])|(?=\W)", result, re.U):
+        result = '"%s"' % result.replace('"', '""')
+    return result
 
 
 def unique_path(pathname, empty_ok=False):

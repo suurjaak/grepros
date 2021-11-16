@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -47,6 +47,8 @@ class SourceBase(object):
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
+        ## Whether source is static like a bag source, all topics known from the start
+        self.is_static = None
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -87,6 +89,10 @@ class SourceBase(object):
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)),
                     schema=rosapi.get_message_definition(msg))
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        return rosapi.get_message_definition(msg_or_type)
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
@@ -142,6 +148,8 @@ class BagSource(SourceBase):
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
+
+        self.is_static  = True
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -208,7 +216,12 @@ class BagSource(SourceBase):
         return dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
-                    schema=rosapi.get_message_definition(msg))
+                    schema=self.get_message_definition(msg))
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        return self._bag.get_message_definition(msg_or_type) or \
+               rosapi.get_message_definition(msg_or_type)
 
     def notify(self, status):
         """Reports match status of last produced message."""
@@ -321,6 +334,7 @@ class TopicSource(SourceBase):
         self._subs    = {}     # {(topic, type): ROS subscriber}
 
         self._configure()
+        self.is_static = False
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
@@ -360,16 +374,19 @@ class TopicSource(SourceBase):
 
     def get_meta(self):
         """Returns source metainfo data dict."""
-        return {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
+        ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
+        return dict(ENV, tcount=sum(len(x) for x in self._msgtypes.values()))
 
     def format_meta(self):
         """Returns source metainfo string."""
-        s, d = "", self.get_meta()
-        if "ROS_MASTER_URI" in d:
-            s += "ROS master %s" % d["ROS_MASTER_URI"]
-        if "ROS_DOMAIN_ID" in d:
-            s += (", " if s else "") + "ROS domain ID %s" % d["ROS_DOMAIN_ID"]
-        return s
+        metadata = self.get_meta()
+        result = "\nROS%s live" % os.getenv("ROS_VERSION")
+        if "ROS_MASTER_URI" in metadata:
+            result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
+        if "ROS_DOMAIN_ID" in metadata:
+            result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
+        result += ", %s topic(s) initially" % metadata["tcount"]
+        return result
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
@@ -390,9 +407,8 @@ class TopicSource(SourceBase):
             dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)
             dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
             if dct:
-                cls = rosapi.get_message_class(typename)
                 handler = functools.partial(self._on_message, topic)
-                sub = rosapi.create_subscriber(topic, cls, handler,
+                sub = rosapi.create_subscriber(topic, typename, handler,
                                                queue_size=self._args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
             self._msgtypes[topickey] += [typename]

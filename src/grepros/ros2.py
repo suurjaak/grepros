@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    10.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -38,8 +38,27 @@ BAG_EXTENSIONS  = (".db3")
 ## Bagfile extensions to skip
 SKIP_EXTENSIONS = ()
 
+## ROS2 time/duration message types
+ROS_TIME_TYPES = ["builtin_interfaces/Time", "builtin_interfaces/Duration"]
+
+## ROS2 time/duration types and message types
+ROS_TIME_CLASSES = (builtin_interfaces.msg.Time, builtin_interfaces.msg.Duration,
+                    rclpy.time.Time,             rclpy.duration.Duration)
+
 ## {"pkg/msg/Msg": message type definition full text with subtypes}
 DEFINITIONS = {}
+
+## Data Distribution Service types to ROS builtins
+DDS_TYPES = {"boolean":             "bool",
+             "float":               "float32",
+             "double":              "float64",
+             "octet":               "int8",
+             "short":               "int16",
+             "unsigned short":      "uint16",
+             "long":                "int32",
+             "unsigned long":       "uint32",
+             "long long":           "int64",
+             "unsigned long long":  "uint64", }
 
 ## rclpy.node.Node instance
 node = None
@@ -124,9 +143,14 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                                       "GROUP BY topic_id").fetchall()
             countmap = {x["topic_id"]: x["count"] for x in counts}
             for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
-                mytype, mycount =row["type"], countmap.get(row["id"], 0)
+                mytype, mycount = canonical(row["type"]), countmap.get(row["id"], 0)
                 topicmap[row["name"]] = TopicTuple(msg_type=mytype, message_count=mycount)
         return ResultTuple(topics=topicmap)
+
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS2 message type definition full text, including subtype definitions."""
+        return get_message_definition(msg_or_type)
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None):
@@ -189,7 +213,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
         cursor = self._db.cursor()
         if topic not in self._topics:
-            typename = get_message_type(msg)
+            typename = make_full_typename(get_message_type(msg))
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
             args = (topic, typename, "cdr", "")
@@ -197,9 +221,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             tdata = {"id": cursor.lastrowid, "name": topic, "type": typename}
             self._topics[topic] = tdata
 
-        data = rclpy.serialization.serialize_message(msg)
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
-        args = (self._topics[topic]["id"], stamp.nanoseconds, data)
+        args = (self._topics[topic]["id"], stamp.nanoseconds, get_message_data(msg))
         cursor.execute(sql, args)
 
 
@@ -248,7 +271,8 @@ def init_node(name):
     try: rclpy.init(context=context)
     except Exception: pass  # Must not be called twice at runtime
     node_name = "%s_%s_%s" % (name, os.getpid(), int(time.time() * 1000))
-    node = rclpy.create_node(node_name, context=context, use_global_arguments=False, enable_rosout=False, start_parameter_services=False)
+    node = rclpy.create_node(node_name, context=context, use_global_arguments=False,
+                             enable_rosout=False, start_parameter_services=False)
     executor = rclpy.executors.MultiThreadedExecutor(context=context)
     executor.add_node(node)
     spinner = threading.Thread(target=spin_loop)
@@ -283,17 +307,29 @@ def validate(live=False):
 
 
 def canonical(typename):
-    """Returns "pkg/msg/Type" for "pkg/Type"."""
-    if "/msg/" in typename or "/" not in typename:
-        return typename
-    return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+    """
+    Returns "pkg/Type" for "pkg/msg/Type", standardizes various ROS2 formats.
 
+    Converts DDS types like "octet" to "byte", and "sequence<uint8, 100>" to "uint8[100]".
+    """
+    is_array, bound, dimension = False, "", ""
+    match = re.match(r"sequence<([^\,>]+)\,?\s*(.*)>", typename)
+    if match:  # "sequence<uint8, 100>" or "sequence<uint8>"
+        typename, is_array = match.group(1), True
+        if match.group(2): dimension = match.group(2)
 
-def uncanonical(typename):
-    """Returns "pkg/Type" for "pkg/msg/Type"."""
-    if "/msg/" not in typename or "/" not in typename:
-        return typename
-    return "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+    if "[" in typename:  # "string<=5[<=10]" or "string<=5[10]"
+        dimension = typename[typename.index("[") + 1:typename.index("]")]
+        typename, is_array = typename[:typename.index("[")], True
+
+    if "<=" in typename:  # "string<=5"
+        typename, bound = typename.split("<=")
+
+    if typename.count("/") > 1:
+        typename = "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+    suffix = ("<=%s" % bound if bound else "") + ("[%s]" % dimension if is_array else "")
+    return DDS_TYPES.get(typename, typename) + suffix
 
 
 def create_bag_reader(filename):
@@ -306,8 +342,10 @@ def create_bag_writer(filename):
     return Bag(filename)
 
 
-def create_publisher(topic, cls, queue_size):
+def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     pub = node.create_publisher(cls, topic, qos)
     pub.get_num_connections = pub.get_subscription_count
@@ -315,8 +353,10 @@ def create_publisher(topic, cls, queue_size):
     return pub
 
 
-def create_subscriber(topic, cls, handler, queue_size):
+def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns an rclpy.Subscriber, with .unregister()."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
@@ -330,10 +370,9 @@ def format_message_value(msg, name, value):
     Result is at least 10 chars wide if message is a ROS2 time/duration
     (aligning seconds and nanoseconds).
     """
-    LENS = {"secs": 10, "nanosecs": 9}
-    TEMPORAL_TYPES = (builtin_interfaces.msg.Time, builtin_interfaces.msg.Duration)
+    LENS = {"sec": 13, "nanosec": 9}
     v = "%s" % (value, )
-    if not isinstance(msg, TEMPORAL_TYPES) or name not in LENS:
+    if not isinstance(msg, ROS_TIME_CLASSES) or name not in LENS:
         return v
 
     EXTRA = sum(v.count(x) * len(x) for x in (MatchMarkers.START, MatchMarkers.END))
@@ -342,7 +381,12 @@ def format_message_value(msg, name, value):
 
 def get_message_class(typename):
     """Returns ROS2 message class."""
-    return rosidl_runtime_py.utilities.get_message(typename)
+    return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
+
+
+def get_message_data(msg):
+    """Returns ROS2 message as a serialized binary."""
+    return rclpy.serialization.serialize_message(msg)
 
 
 def get_message_definition(msg_or_type):
@@ -352,21 +396,23 @@ def get_message_definition(msg_or_type):
     if typename not in DEFINITIONS:
         try:
             texts, files = collections.OrderedDict(), collections.OrderedDict()
-            files[typename] = rosidl_runtime_py.get_interface_path(typename)
+            files[typename] = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
             while files:
                 myname, mypath = next(iter(files)), files.pop(next(iter(files)))
                 with open(mypath) as f:
                     texts[myname] = f.read()
                 for line in texts[myname].splitlines():
-                    linetype = scalar(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line))
-                    if not linetype or not linetype[0].isalpha() or linetype in ROS_BUILTIN_TYPES:
+                    if not line or not line[0].isalpha():
                         continue  # for line
-                    linetype = canonical(linetype if "/" in linetype else
-                                         "%s/%s" % (myname.rsplit("/", 1)[0], linetype))
+                    linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
+                    if linetype in ROS_BUILTIN_TYPES:
+                        continue  # for line
+                    linetype = linetype if "/" in linetype else \
+                               "%s/%s" % (myname.rsplit("/", 1)[0], linetype)
                     linedef = None if linetype in texts else get_message_definition(linetype)
                     if linedef: texts[linetype] = linedef
             basedef = texts.pop(next(iter(texts)))
-            subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, uncanonical(k), v) for k, v in texts.items()]
+            subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
             DEFINITIONS[typename] = basedef + "\n".join(subdefs)
         except Exception as e:
             ConsolePrinter.error("Error reading type definition of %s: %s", typename, e)
@@ -377,12 +423,13 @@ def get_message_definition(msg_or_type):
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
     if not is_ros_message(val): return val
-    return collections.OrderedDict(val.get_fields_and_field_types())
+    fields = {k: canonical(v) for k, v in val.get_fields_and_field_types().items()}
+    return collections.OrderedDict(fields)
 
 
 def get_message_type(msg):
     """Returns ROS2 message type name, like "std_msgs/Header"."""
-    return "%s/msg/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__)
+    return canonical("%s/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__))
 
 
 def get_message_value(msg, name, typename):
@@ -407,18 +454,28 @@ def get_topic_types():
     """
     result = []
     myname, myns = node.get_name(), node.get_namespace()
-    mytypes = dict(node.get_publisher_names_and_types_by_node(myname, myns))
-    for t in ("/parameter_events", "/rosout"):
+    mytypes = {}  # {topic: [typename, ]}
+    for topic, typename in node.get_publisher_names_and_types_by_node(myname, myns):
+        mytypes.setdefault(topic, []).append(typename)
+    for t in ("/parameter_events", "/rosout"):  # Published by all nodes
         mytypes.pop(t, None)
     for topic, typenames in node.get_topic_names_and_types():  # [(topicname, [typename, ])]
-        if topic not in mytypes and typenames:
-            result += [(topic, typenames[0])]
+        for typename in typenames:
+            if topic not in mytypes or typename not in mytypes[topic]:
+                result += [(topic, canonical(typename))]
     return result
 
 
-def is_ros_message(val):
-    """Returns whether value is a ROS2 message or a special like ROS2 time/duration."""
-    return rosidl_runtime_py.utilities.is_message(val)
+def is_ros_message(val, ignore_time=False):
+    """
+    Returns whether value is a ROS2 message or special like ROS2 time/duration.
+
+    @param  ignore_time  whether to ignore ROS2 time/duration types
+    """
+    is_message = rosidl_runtime_py.utilities.is_message(val)
+    if is_message and ignore_time:
+        is_message = not isinstance(val, ROS_TIME_CLASSES)
+    return is_message
 
 
 def make_duration(secs=0, nsecs=0):
@@ -431,17 +488,23 @@ def make_time(secs=0, nsecs=0):
     return rclpy.time.Time(seconds=secs, nanoseconds=nsecs)
 
 
+def make_full_typename(typename):
+    """Returns "pkg/msg/Type" for "pkg/Type"."""
+    if "/msg/" in typename or "/" not in typename:
+        return typename
+    return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
 def scalar(typename):
     """
     Returns scalar type from ROS2 message data type
     
-    Like "uint8" from "sequence<uint8, 100>", or "string" from "string<=10[<=5]".
-    Returns type unchanged if not a collection or constrained-length type.
+    Like "uint8" from "uint8[]", or "string" from "string<=10[<=5]".
+    Returns type unchanged if not a collection or bounded type.
     """
     if "["  in typename: typename = typename[:typename.index("[")]
     if "<=" in typename: typename = typename[:typename.index("<=")]
-    match = re.match(r"sequence<([^\,>]+).*>", typename)
-    return match.group(1) if match else typename
+    return typename
 
 
 def set_message_value(obj, name, value):
@@ -454,9 +517,17 @@ def set_message_value(obj, name, value):
     setattr(obj, name, value)
 
 
+def to_nsec(val):
+    """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
+    if not isinstance(val, ROS_TIME_CLASSES):
+        return val
+    return val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
+
+
 def to_sec(val):
     """Returns value in seconds if value is ROS2 time/duration, else value."""
-    if not isinstance(val, (rclpy.duration.Duration, rclpy.time.Time)):
+    if not isinstance(val, ROS_TIME_CLASSES):
         return val
-    secs, nsecs = divmod(val.nanoseconds, 10**9)
+    nanos = val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
+    secs, nsecs = divmod(nanos, 10**9)
     return secs + nsecs / 1E9

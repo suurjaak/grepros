@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    10.11.2021
+@modified    14.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime
 import hashlib
 import os
+import re
 import time
 
 from . common import ConsolePrinter, filter_fields
@@ -31,14 +32,17 @@ BAG_EXTENSIONS  = ()
 SKIP_EXTENSIONS = ()
 
 ## All built-in numeric types in ROS
-ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8", "octet",
-                     "uint16", "uint32", "uint64", "float32", "float64", "double", "bool"]
+ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
+                     "uint16", "uint32", "uint64", "float32", "float64", "bool"]
 
 ## All built-in string types in ROS
 ROS_STRING_TYPES = ["string", "wstring"]
 
 ## All built-in basic types in ROS
 ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ROS_STRING_TYPES
+
+## All built-in basic types plus time types in ROS, populated after init
+ROS_COMMON_TYPES = []
 
 ## Module grepros.ros1 or grepros.ros2
 realapi = None
@@ -64,7 +68,7 @@ def validate(live=False):
 
     @param   live  whether environment must support launching a ROS node
     """
-    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS
+    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS_COMMON_TYPES
     if realapi:
         return True
 
@@ -83,6 +87,7 @@ def validate(live=False):
         ConsolePrinter.error("ROS environment not supported: unknown ROS_VERSION %r.", version)
     if success:
         BAG_EXTENSIONS, SKIP_EXTENSIONS = realapi.BAG_EXTENSIONS, realapi.SKIP_EXTENSIONS
+        ROS_COMMON_TYPES = ROS_BUILTIN_TYPES + realapi.ROS_TIME_TYPES
     return success
 
 
@@ -91,6 +96,7 @@ def create_bag_reader(filename):
     Returns an object for reading ROS bags.
 
     Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
+    Supplemented with get_message_definition().
     """
     return realapi.create_bag_reader(filename)
 
@@ -104,14 +110,14 @@ def create_bag_writer(filename):
     return realapi.create_bag_writer(filename)
 
 
-def create_publisher(topic, cls, queue_size):
+def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
-    return realapi.create_publisher(topic, cls, queue_size)
+    return realapi.create_publisher(topic, cls_or_typename, queue_size)
 
 
-def create_subscriber(topic, cls, handler, queue_size):
+def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns a ROS subscriber instance, with .unregister()."""
-    return realapi.create_subscriber(topic, cls, handler, queue_size)
+    return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 
 def format_message_value(msg, name, value):
@@ -127,6 +133,11 @@ def format_message_value(msg, name, value):
 def get_message_class(typename):
     """Returns ROS message class."""
     return realapi.get_message_class(typename)
+
+
+def get_message_data(msg):
+    """Returns ROS message as a serialized binary."""
+    return realapi.get_message_data(msg)
 
 
 def get_message_definition(msg_or_type):
@@ -163,9 +174,13 @@ def get_topic_types():
     return realapi.get_topic_types()
 
 
-def is_ros_message(val):
-    """Returns whether value is a ROS message or a special like ROS time/duration."""
-    return realapi.is_ros_message(val)
+def is_ros_message(val, ignore_time=False):
+    """
+    Returns whether value is a ROS message or special like ROS time/duration.
+
+    @param  ignore_time  whether to ignore ROS time/duration types
+    """
+    return realapi.is_ros_message(val, ignore_time)
 
 
 def iter_message_fields(msg, top=()):
@@ -246,6 +261,29 @@ def make_message_hash(msg, include=(), exclude=()):
     return hasher.hexdigest()
 
 
+def parse_definition_subtypes(typedef):
+    """
+    Returns subtype names and type definitions from a full message definition.
+
+    @return  {"pkg/MsgType": "definition for MsgType"}
+    """
+    result = {}  # {subtypename: subtypedef}
+    curtype, curlines = "", []
+    rgx = re.compile(r"^((=+)|(MSG: (.+)))$")  # Group 2: separator, 4: new type
+    for line in typedef.splitlines():
+        m = rgx.match(line)
+        if m and m.group(2) and curtype:  # Separator line between nested definitions
+            result[curtype] = "\n".join(curlines)
+            curtype, curlines = "", []
+        elif m and m.group(4):  # Start of nested definition "MSG: pkg/MsgType"
+            curtype, curlines = m.group(4), []
+        elif not m and curtype:  # Nested definition content
+            curlines.append(line)
+    if curtype:
+        result[curtype] = "\n".join(curlines)
+    return result
+
+
 def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from uint8-array.
@@ -258,6 +296,17 @@ def scalar(typename):
 def set_message_value(obj, name, value):
     """Sets message or object attribute value."""
     realapi.set_message_value(obj, name, value)
+
+
+def to_datetime(val):
+    """Returns value as datetime.datetime if value is ROS time/duration, else value."""
+    sec = realapi.to_sec(val)
+    return datetime.datetime.fromtimestamp(sec) if sec is not val else val
+
+
+def to_nsec(val):
+    """Returns value in nanoseconds if value is ROS time/duration, else value."""
+    return realapi.to_nsec(val)
 
 
 def to_sec(val):

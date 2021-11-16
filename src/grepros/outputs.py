@@ -8,24 +8,28 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.11.2021
+@modified    15.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
+import collections
+import csv
 import copy
+import json
 import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
 import re
+import sqlite3
 import sys
 import threading
 
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, merge_spans, unique_path, wildcard_to_regex
+                     filter_fields, format_bytes, merge_spans, quote, unique_path, wildcard_to_regex
 from . import rosapi
 from . vendor import step
 
@@ -200,6 +204,29 @@ class TextSinkMixin(object):
         return str(val)
 
 
+    @classmethod
+    def make_nonconsole_args(cls, args):
+        """
+        Returns init arguments with all non-console arguments blanked to defaults.
+
+        @param   args                       arguments object like argparse.Namespace
+        @param   args.PRINT_FIELDS          blanked to [] in result
+        @param   args.NOPRINT_FIELDS        blanked to [] in result
+        @param   args.MAX_FIELD_LINES       blanked to None in result
+        @param   args.START_LINE            blanked to None in result
+        @param   args.END_LINE              blanked to None in result
+        @param   args.MAX_MESSAGE_LINES     blanked to None in result
+        @param   args.LINES_AROUND_MATCH    blanked to None in result
+        @param   args.MATCHED_FIELDS_ONLY   blanked to False in result
+        """
+        DEFAULTS = {"PRINT_FIELDS": [], "NOPRINT_FIELDS": [], "MAX_FIELD_LINES": None,
+                    "START_LINE": None, "END_LINE": None, "MAX_MESSAGE_LINES": None,
+                    "LINES_AROUND_MATCH": None, "MATCHED_FIELDS_ONLY": False}
+        args = copy.deepcopy(args)
+        for k, v in DEFAULTS.items(): setattr(args, k, v)
+        return args
+
+
     def _configure(self, args):
         """Initializes output settings."""
         prints, noprints = args.PRINT_FIELDS, args.NOPRINT_FIELDS
@@ -299,9 +326,10 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args          arguments object like argparse.Namespace
-        @param   args.META     whether to print metainfo
-        @param   args.OUTFILE  name of ROS bagfile to create or append to
+        @param   args           arguments object like argparse.Namespace
+        @param   args.META      whether to print metainfo
+        @param   args.OUTFILE   name of ROS bagfile to create or append to
+        @param   args.VERBOSE   whether to print debug information
         """
         super(BagSink, self).__init__(args)
         self._bag = None
@@ -312,13 +340,13 @@ class BagSink(SinkBase):
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output bagfile."""
         if not self._bag:
-            if self._args.META:
+            if self._args.VERBOSE:
                 a = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
                 ConsolePrinter.debug("%s %s.", "Appending to" if a else "Creating",
                                      self._args.OUTFILE)
             self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
 
-        if topic not in self._counts:
+        if topic not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
         self._bag.write(topic, msg, stamp)
@@ -331,12 +359,11 @@ class BagSink(SinkBase):
     def close(self):
         """Closes output bagfile, if any."""
         self._bag and self._bag.close()
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
         super(BagSink, self).close()
-
 
 
 class HtmlSink(SinkBase, TextSinkMixin):
@@ -348,20 +375,13 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                       arguments object like argparse.Namespace
-        @param   args.META                  whether to print metainfo
-        @param   args.OUTFILE               name of HTML file to write,
-                                            will add counter like (2) to filename if exists
-        @param   args.OUTFILE_TEMPLATE      path to custom HTML template, if any
-        @param   args.PRINT_FIELDS          message fields to use in output if not all
-        @param   args.NOPRINT_FIELDS        message fields to skip in output
-        @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
-        @param   args.START_LINE            message line number to start output from
-        @param   args.END_LINE              message line number to stop output at
-        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
-        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
-        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
-        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   args                    arguments object like argparse.Namespace
+        @param   args.META               whether to print metainfo
+        @param   args.OUTFILE            name of HTML file to write,
+                                         will add counter like .2 to filename if exists
+        @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
+        @param   args.WRAP_WIDTH         character width to wrap message YAML output at
+        @param   args.VERBOSE            whether to print debug information
         """
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
@@ -396,7 +416,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             writer, self._writer = self._writer, None
             self._queue.put(None)
             writer.is_alive() and writer.join()
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._filename)
@@ -419,7 +439,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                   messages=self._produce())
         self._filename = unique_path(self._filename, empty_ok=True)
-        if self._args.META:
+        if self._args.VERBOSE:
             ConsolePrinter.debug("Creating %s.", self._filename)
         with open(self._filename, "wb") as f:
             template.stream(f, ns, unbuffered=True)
@@ -432,10 +452,404 @@ class HtmlSink(SinkBase, TextSinkMixin):
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
-            if self._args.META and topic not in self._counts:
+            if self._args.VERBOSE and topic not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
+
+
+class CsvSink(SinkBase):
+    """Writes messages to CSV files, each topic to a separate file."""
+
+    def __init__(self, args):
+        """
+        @param   args           arguments object like argparse.Namespace
+        @param   args.OUTFILE   base name of CSV file to write,
+                                will add topic name like "name.__my__topic.csv" for "/my/topic",
+                                will add counter like "name.__my__topic.2.csv" if exists
+        @param   args.VERBOSE   whether to print debug information
+        """
+        super(CsvSink, self).__init__(args)
+        self._filebase      = args.OUTFILE  # Filename base, will be made unique
+        self._files         = {}            # {topic: file()}
+        self._writers       = {}            # {topic: csv.writer}
+        self._lasttopic     = None          # Last topic emitted
+        self._close_printed = False
+
+        atexit.register(self.close)
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output file."""
+        data = [v for _, v in self._iter_fields(msg)]
+        metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
+        self._make_writer(topic, msg).writerow(self._format_row(metadata + data))
+        super(CsvSink, self).emit(topic, index, stamp, msg, match)
+
+    def close(self):
+        """Closes output file(s), if any."""
+        names = {t: f.name for t, f in self._files.items()}
+        for t in names:
+            self._files.pop(t).close()
+        self._writers.clear()
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to files:",
+                                 sum(self._counts.values()), len(self._counts))
+            for topic, name in names.items():
+                ConsolePrinter.debug("- %s (%s, %s message(s))", name,
+                                    format_bytes(os.path.getsize(name)), self._counts[topic])
+        super(CsvSink, self).close()
+
+    def _make_writer(self, topic, msg):
+        """
+        Returns a csv.writer for writing topic data.
+
+        File is populated with header if 
+        """
+        if self._lasttopic and topic != self._lasttopic:
+            self._files[self._lasttopic].close()  # Avoid hitting ulimit
+        if topic not in self._files or self._files[topic].closed:
+            name = self._files[topic].name if topic in self._files else None
+            if not name:
+                base, ext = os.path.splitext(self._filebase)
+                name = unique_path("%s.%s%s" % (base, topic.replace("/", "__"), ext))
+            flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
+            f = open(name, **flags)
+            w = csv.writer(f)
+            if topic not in self._files:
+                if self._args.VERBOSE:
+                    ConsolePrinter.debug("Creating %s.", name)
+                header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
+                metaheader = ["__time", "__datetime", "__type"]
+                w.writerow(self._format_row(metaheader + header))
+            self._files[topic], self._writers[topic] = f, w
+        self._lasttopic = topic
+        return self._writers[topic]
+
+    def _format_row(self, data):
+        """Returns row suitable for writing to CSV."""
+        data = [int(v) if isinstance(v, bool) else v for v in data]
+        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
+            data = [v.encode("utf-8") if isinstance(v, unicode) else v for v in data]
+        return data
+
+    def _iter_fields(self, msg, top=()):
+        """
+        Yields ((nested, path), scalar value) from ROS message.
+
+        Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
+        """
+        fieldmap = rosapi.get_message_fields(msg)
+        for k, t in fieldmap.items() if fieldmap != msg else ():
+            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES
+            if isinstance(v, (list, tuple)) and not is_sublist:
+                for i, lv in enumerate(v):
+                    yield path + (i, ), rosapi.to_sec(lv)
+            elif is_sublist:
+                for i, lmsg in enumerate(v):
+                    for lp, lv in self._iter_fields(lmsg, path + (i, )):
+                        yield lp, lv
+            elif rosapi.is_ros_message(v, ignore_time=True):
+                for mp, mv in self._iter_fields(v, path):
+                    yield mp, mv
+            else:
+                yield path, rosapi.to_sec(v)
+
+
+
+class SqliteSink(SinkBase, TextSinkMixin):
+    """
+    Writes messages to an SQLite database.
+
+    Output will have:
+    - table "messages", with all messages as YAML and serialized binary
+    - table "types", with message definitions
+    - table "topics", with topic information
+    plus:
+    - table "pkg/MsgType" for each message type, with detailed fields,
+      and array fields to linking to subtypes
+    - view "/topic/full/name" for each topic,
+      selecting from the message type table
+
+    """
+
+    ## SQL statements for populating database base schema
+    BASE_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS messages (
+      id           INTEGER   PRIMARY KEY,
+      dt           TIMESTAMP NOT NULL,
+      topic        TEXT      NOT NULL,
+      type         TEXT      NOT NULL,
+      yaml         TEXT      NOT NULL,
+      data         BLOB      NOT NULL,
+      topic_id     INTEGER   NOT NULL,
+      timestamp    INTEGER   NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS types (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      type       TEXT    NOT NULL,
+      definition TEXT    NOT NULL,
+      subtypes   JSON
+    );
+
+    CREATE TABLE IF NOT EXISTS topics (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name                 TEXT    NOT NULL,
+      type                 TEXT    NOT NULL,
+      count                INTEGER NOT NULL DEFAULT 0,
+      dt_first             TIMESTAMP,
+      dt_last              TIMESTAMP,
+      timestamp_first      INTEGER,
+      timestamp_last       INTEGER,
+      serialization_format TEXT DEFAULT "cdr",
+      offered_qos_profiles TEXT DEFAULT ""
+    );
+    """
+
+    ## SQL statement for inserting messages
+    INSERT_MESSAGE = """
+    INSERT INTO messages (dt, topic, type, yaml, data, topic_id, timestamp)
+    VALUES (:dt, :topic, :type, :yaml, :data, :topic_id, :timestamp)
+    """
+
+    ## SQL statement for inserting topics
+    INSERT_TOPIC = "INSERT INTO topics (name, type) VALUES (:name, :type)"
+
+    ## SQL statement for updating topics with latest message
+    UPDATE_TOPIC = """
+    UPDATE topics SET count = count + 1,
+    dt_first = MIN(COALESCE(dt_first, :dt), :dt),
+    dt_last  = MAX(COALESCE(dt_last,  :dt), :dt),
+    timestamp_first = MIN(COALESCE(timestamp_first, :timestamp), :timestamp),
+    timestamp_last  = MAX(COALESCE(timestamp_last,  :timestamp), :timestamp)
+    WHERE name = :name AND type = :type
+    """
+
+    ## SQL statement for inserting types
+    INSERT_TYPE = """
+    INSERT INTO types (type, definition, subtypes)
+    VALUES (:type, :definition, :subtypes)
+    """
+
+    ## SQL statement for creating a view for topic
+    CREATE_TOPIC_VIEW = """
+    CREATE VIEW %(name)s AS
+    SELECT %(cols)s
+    FROM %(type)s
+    WHERE _topic = %(topic)s
+    """
+
+    ## SQL statement template for inserting message types
+    INSERT_MESSAGE_TYPE = """
+    INSERT INTO %(type)s (_topic, _dt, _timestamp, _parent_type, _parent_id%(cols)s)
+    VALUES (:_topic, :_dt, :_timestamp, :_parent_type, :_parent_id%(vals)s)
+    """
+
+    ## Default columns for pkg/MsgType tables
+    MESSAGE_TYPE_BASECOLS = [("_topic",       "TEXT"),
+                             ("_dt",          "TIMESTAMP"),
+                             ("_timestamp",   "INTEGER"),
+                             ("_id",          "INTEGER NOT NULL "
+                                              "PRIMARY KEY AUTOINCREMENT"),
+                             ("_parent_type", "TEXT"),
+                             ("_parent_id",   "INTEGER"), ]
+
+
+    def __init__(self, args):
+        """
+        @param   args              arguments object like argparse.Namespace
+        @param   args.META         whether to print metainfo
+        @param   args.OUTFILE      name of SQLite file to write,
+                                   will be appended to if exists
+        @param   args.WRAP_WIDTH   character width to wrap message YAML output at
+        @param   args.VERBOSE      whether to print debug information
+        """
+        args = TextSinkMixin.make_nonconsole_args(args)
+        super(SqliteSink, self).__init__(args)
+        TextSinkMixin.__init__(self, args)
+
+        self._filename      = args.OUTFILE
+        self._db            = None   # sqlite3.Connection
+        self._close_printed = False
+
+        self._topics = {}  # {(topic, typename): {topics-row}}
+        self._types  = {}  # {typename: {types-row}}
+        # {"view": {topic: {typename: True}}, "table": {typename: {cols}}}
+        self._schema = collections.defaultdict(dict)
+
+        atexit.register(self.close)
+
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output file."""
+        if not self._db:
+            self._init_db()
+        typename = rosapi.get_message_type(msg)
+        self._process_topic(topic, typename, msg)
+        self._process_message(topic, typename, msg, stamp)
+        super(SqliteSink, self).emit(topic, index, stamp, msg, match)
+
+
+    def close(self):
+        """Closes output file, if any."""
+        if self._db:
+            self._db.close()
+            self._db = None
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
+                                 sum(self._counts.values()), len(self._counts), self._filename)
+
+
+    def _init_db(self):
+        """Opens the database file and populates schema if not already existing."""
+        for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
+        if self._args.VERBOSE:
+            exists = os.path.exists(self._filename) and os.path.getsize(self._filename)
+            ConsolePrinter.debug("%s %s.", "Adding to" if exists else "Creating", self._filename)
+        self._db = sqlite3.connect(self._filename, isolation_level=None, check_same_thread=False)
+        self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+        self._db.executescript(self.BASE_SCHEMA)
+        for row in self._db.execute("SELECT * FROM topics"):
+            topickey = (row["name"], row["type"])
+            self._topics[topickey] = row
+        for row in self._db.execute("SELECT * FROM topics"):
+            self._types[row["type"]] = row
+        for row in self._db.execute("SELECT name FROM sqlite_master "
+                                    "WHERE type = 'table' AND name LIKE '%/%'"):
+            cols = self._db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
+            cols = [c for c in cols if not c["name"].startswith("_")]
+            self._schema["table"][row["name"]] = {c["name"]: c for c in cols}
+        for row in self._db.execute("SELECT name, sql FROM sqlite_master "
+                                    "WHERE type = 'view' AND name LIKE '%/%'"):
+            try:
+                topic = row["name"]
+                typename = row["sql"][row["sql"].rfind("="):].strip().strip('";')
+                self._schema["view"].setdefault(topic, {})[typename] = True
+            except Exception as e:
+                ConsolePrinter.error("Error parsing view %s: %s.", row, e)
+
+
+    def _process_topic(self, topic, typename, msg):
+        """Inserts topic and message rows and tables and views if not already existing."""
+        topickey = (topic, typename)
+        if topickey not in self._topics:
+            targs = dict(name=topic, type=typename)
+            targs["id"] = self._db.execute(self.INSERT_TOPIC, targs).lastrowid
+            self._topics[topickey] = targs
+
+        self._process_type(typename, msg)
+
+        if topic not in self._schema["view"] or typename not in self._schema["view"][topic]:
+            cols = ["_id", "_dt"] + list(self._schema["table"][typename])
+            fargs = dict(topic=quote(topic), cols=", ".join(map(quote, cols)), type=quote(typename))
+            suffix = " (%s)" % typename if topic in self._schema["view"] else ""
+            fargs["name"] = quote(topic + suffix)
+            sql = self.CREATE_TOPIC_VIEW % fargs
+            self._db.execute(sql)
+            self._schema["view"].setdefault(topic, {})[typename] = True
+
+
+    def _process_type(self, typename, msg):
+        """Inserts type rows and creates pkg/MsgType tables if not already existing."""
+        if typename not in self._types:
+            msgdef = self.source.get_message_definition(typename)
+            targs = dict(type=typename, definition=msgdef, subtypes={})
+            self._types[typename] = targs
+            for path, submsgs, subtype in self._iter_fields(msg, messages_only=True):
+                subtype = rosapi.scalar(subtype)
+                targs["subtypes"][".".join(path)] = subtype
+                for submsg in submsgs[:1] if isinstance(submsgs, (list, tuple)) else [submsgs]:
+                    submsg = submsg or rosapi.get_message_class(subtype)()  # List may be empty
+                    self._process_type(subtype, submsg)
+
+            targs["id"] = self._db.execute(self.INSERT_TYPE, targs).lastrowid
+
+        if typename not in self._schema["table"]:
+            cols = []
+            for path, value, subtype in self._iter_fields(msg):
+                suffix = "[]" if isinstance(value, (list, tuple)) else ""
+                cols += [(".".join(path), quote(rosapi.scalar(subtype) + suffix))]
+            coldefs = ["%s %s" % (quote(n), t) for n, t in cols + self.MESSAGE_TYPE_BASECOLS]
+            sql = "CREATE TABLE %s (%s)" % (quote(typename), ", ".join(coldefs))
+            self._schema["table"][typename] = collections.OrderedDict(cols)
+            self._db.execute(sql)
+
+
+    def _process_message(self, topic, typename, msg, stamp):
+        """Inserts message to messages-table, and to pkg/MsgType tables."""
+        topic_id = self._topics[(topic, typename)]["id"]
+        margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
+                     topic=topic, name=topic, topic_id=topic_id, type=typename,
+                     yaml=self.format_message(msg), data=rosapi.get_message_data(msg))
+        self._db.execute(self.INSERT_MESSAGE, margs)
+        self._db.execute(self.UPDATE_TOPIC,   margs)
+        self._populate_type(topic, typename, msg, stamp)
+
+
+    def _populate_type(self, topic, typename, msg, stamp, parent_type=None, parent_id=None):
+        """
+        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message.
+
+        Returns inserted ID.
+        """
+        args = dict(_topic=topic, _dt=rosapi.to_datetime(stamp),
+                    _timestamp=rosapi.to_nsec(stamp),
+                    _parent_type=parent_type, _parent_id=parent_id)
+        cols, vals = [], []
+        for p, v, t in self._iter_fields(msg):
+            if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
+                continue  # for p, v, t
+            cols += [".".join(p)]
+            vals += [re.sub(r"\W", "_", cols[-1])]
+            args[vals[-1]] = v
+        inter = ", " if cols else ""
+        fargs = dict(type=quote(typename), cols=inter + ", ".join(map(quote, cols)),
+                     vals=inter + ", ".join(":" + c for c in vals))
+        sql = self.INSERT_MESSAGE_TYPE % fargs
+        myid = args["_id"] = self._db.execute(sql, args).lastrowid
+
+        subids = {}  # {path: [ids]}
+        for subpath, submsgs, subtype in self._iter_fields(msg, messages_only=True):
+            subtype = rosapi.scalar(subtype)
+            if isinstance(submsgs, (list, tuple)):
+                subids[subpath] = []
+            for submsg in submsgs if isinstance(submsgs, (list, tuple)) else [submsgs]:
+                subid = self._populate_type(topic, subtype, submsg, stamp, typename, myid)
+                if isinstance(submsgs, (list, tuple)):
+                    subids[subpath].append(subid)
+        if subids:
+            sql = "UPDATE %s SET " % quote(typename)
+            for i, (path, subids) in enumerate(subids.items()):
+                sql += "%s%s = :%s" % (", " if i else "", quote(".".join(path)), "_".join(path))
+                args["_".join(path)] = subids
+            sql += " WHERE _id = :_id"
+            self._db.execute(sql, args)
+        return myid
+
+
+    def _iter_fields(self, msg, messages_only=False, top=()):
+        """
+        Yields ((nested, path), value, typename) from ROS message.
+
+        @param  messages_only  whether to yield only values that are ROS messages themselves
+                               or lists of ROS messages, else will yield scalar and list values
+        """
+        fieldmap = rosapi.get_message_fields(msg)
+        for k, t in fieldmap.items() if fieldmap != msg else ():
+            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
+            is_true_msg, is_msg_or_time = (rosapi.is_ros_message(v, ignore_time=x) for x in (1, 0))
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
+            if (is_true_msg or is_sublist) if messages_only else not is_msg_or_time:
+                yield path, v, t
+            if is_msg_or_time:
+                for p2, v2, t2 in self._iter_fields(v, messages_only, top=path):
+                    yield p2, v2, t2
+
 
 
 class TopicSink(SinkBase):
@@ -450,6 +864,7 @@ class TopicSink(SinkBase):
         @param   args.PUBLISH_SUFFIX    output topic suffix, appended to output topic
         @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
+        @param   args.VERBOSE           whether to print debug information
         """
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, cls): ROS publisher}
@@ -461,7 +876,7 @@ class TopicSink(SinkBase):
         if key not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
-            self._args.META and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
+            self._args.VERBOSE and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
 
             pub = None
             if self._args.PUBLISH_FIXNAME:
@@ -484,7 +899,7 @@ class TopicSink(SinkBase):
 
     def close(self):
         """Shuts down publishers."""
-        if not self._close_printed and self._counts and self._args.META:
+        if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
                                  sum(self._counts.values()), len(set(self._pubs.values())))
@@ -496,7 +911,6 @@ class TopicSink(SinkBase):
         rosapi.shutdown_node()
 
 
-
 class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
@@ -504,7 +918,8 @@ class MultiSink(SinkBase):
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
     ## Autobinding between argument flags+subflags and sink classes
-    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html": HtmlSink}}}
+    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html": HtmlSink,
+                                                      "csv": CsvSink, "sqlite": SqliteSink}}}
 
     def __init__(self, args):
         """
