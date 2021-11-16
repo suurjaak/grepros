@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.4 (2021-11-16)
+-------------------
+* fix inserting duplicate types-rows when adding to an existing SQLite output file
+
 0.2.3 (2021-11-15)
 -------------------
 * add --write-format csv

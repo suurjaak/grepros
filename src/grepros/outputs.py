@@ -716,7 +716,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         for row in self._db.execute("SELECT * FROM topics"):
             topickey = (row["name"], row["type"])
             self._topics[topickey] = row
-        for row in self._db.execute("SELECT * FROM topics"):
+        for row in self._db.execute("SELECT * FROM types"):
             self._types[row["type"]] = row
         for row in self._db.execute("SELECT name FROM sqlite_master "
                                     "WHERE type = 'table' AND name LIKE '%/%'"):
