@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    15.11.2021
+@modified    17.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -144,6 +144,7 @@ class TextSinkMixin(object):
             text = "\n".join(lines)
 
         for a, b in self._format_repls.items() if highlight else ():
+            text = re.sub(r"(%s)\1+" % re.escape(a), r"\1", text)  # Remove consecutive duplicates
             text = text.replace(a, b)
 
         return text
@@ -304,8 +305,6 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         super(ConsoleSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
-        self._configure(args)
-
 
     def emit_meta(self):
         """Prints source metainfo like bag header, if not already printed."""
@@ -402,6 +401,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
                                          will add counter like .2 to filename if exists
         @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
         @param   args.VERBOSE            whether to print debug information
+        @param   args.MATCH_WRAPPER      string to wrap around matched values,
+                                         both sides if one value, start and end if more than one,
+                                         or no wrapping if zero values
         """
         args = copy.deepcopy(args)
         args.WRAP_WIDTH = self.WRAP_WIDTH
@@ -414,8 +416,11 @@ class HtmlSink(SinkBase, TextSinkMixin):
         self._filename = args.OUTFILE  # Filename base, will be made unique
         self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
         self._close_printed = False
-        self._tag_repls = {MatchMarkers.START:            '<span class="match">',
-                           MatchMarkers.END:              '</span>',
+
+        WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
+        self._tag_repls = {MatchMarkers.START:            '<span class="match">' +
+                                                          step.escape_html(WRAPS[0]),
+                           MatchMarkers.END:              step.escape_html(WRAPS[1]) + '</span>',
                            ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
                            ConsolePrinter.STYLE_RESET:    '</span>'}
         self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
