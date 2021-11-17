@@ -15,10 +15,33 @@ Supports both ROS1 and ROS2. ROS environment variables need to be set, at least 
 Using ROS1 live topics requires ROS master to be running.
 
 Using ROS2 requires Python packages for message types to be available in path;
-in ROS1 messages can be grepped even if the packages are not available.
+in ROS1 messages can be grepped even if the packages are not installed.
 
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
+
+
+- [Example usage](#example-usage)
+- [Installation](#installation)
+  - [Using pip](#using-pip)
+  - [Using catkin](#using-catkin)
+  - [Using colcon](#using-colcon)
+- [Inputs](#inputs)
+  - [bag](#bag)
+  - [live](#live)
+- [Outputs](#outputs)
+  - [console](#console)
+  - [bag](#bag)
+  - [csv](#csv)
+  - [html](#html)
+  - [sqlite](#sqlite)
+  - [live](#live)
+  - [console / html message formatting](#console--html-message-formatting)
+- [Matching and filtering](#matching-and-filtering)
+  - [Limits](#limits)
+  - [Filtering](#filtering)
+- [Attribution](#attribution)
+- [License](#license)
 
 
 Example usage
@@ -109,12 +132,189 @@ In a ROS2 workspace, at the workspace root:
 This will add the `grepros` command to the local ROS2 workspace path.
 
 
+Inputs
+------
+
+### bag
+
+Read messages from ROS bag files, by default all in current directory.
+
+Recurse into subdirectories when looking for bagfiles:
+
+    -r
+    --recursive
+
+Read specific filenames (supports * wildcards):
+
+    --n        /tmp/*.bag
+    --filename my.bag 2021-11-*.bag
+
+Scan specific paths instead of current directory (supports * wildcards):
+
+    -p     /home/bags/2021-11-*
+    --path my/dir
+
+Order bag messages first by topic or type, and only then by time:
+
+    --order-bag-by topic
+    --order-bag-by type
+
+
+### live
+
+    --live
+
+Read messages from live ROS topics instead of bagfiles.
+
+Requires `ROS_MASTER_URI` and `ROS_ROOT` to be set in environment if ROS1.
+
+Set custom queue size for subscribing (default 10):
+
+    --queue-size-in 100
+
+Use ROS time instead of system time for incoming message timestamps:
+
+    --ros-time-in
+
+
+Outputs
+-------
+
+### console
+
+Default output is to console, in ANSI colors, mimicking `grep` output.
+
+Disable printing messages to console:
+
+    --no-console-output
+
+Manage color output:
+
+    --color always  (default)
+    --color auto    (auto-detect terminal support)
+    --color never   (disable colors)
+
+
+### bag
+
+    --write my.bag
+
+Write messages to a ROS bag file, the custom `.bag` format in ROS1
+or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
+it is appended to. 
+
+
+### csv
+
+    --write my.csv --write-format csv
+
+Write messages to CSV files, each topic to a separate file, named
+`my.__topic__name__.csv` for `/topic/name`.
+
+Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
+to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
+
+
+### html
+
+    --write my.html --write-format html
+
+Write messages to an HTML file, with a linked table of contents,
+message type definitions, and a topically traversable message list.
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
+
+Note: resulting file may be large, and take a long time to open in browser. 
+
+A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
+
+    --write-format-template /my/html.template
+
+
+### sqlite
+
+    --write my.db --write-format sqlite
+
+Write an SQLite database with tables `pkg/MsgType` for each ROS message type
+and nested type, and views `/full/topic/name` for each topic. 
+If the database already exists, it is appended to.
+
+Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
+full message YAMLs, and message type definition texts.
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
+
+
+### live
+
+    --publish
+
+Publish messages to live ROS topics. The published topic name will default to
+`/grepros/original/name`. Topic prefix and suffix can be changed, 
+or topic name set to one specific name:
+
+    --publish-prefix  /myroot
+    --publish-suffix  /myend
+    --publish-fixname /my/singular/name
+
+Set custom queue size for publishers (default 10):
+
+    --queue-size-out 100
+
+
+### console / html message formatting
+
+Set maximum number of lines to output per message:
+
+    --lines-per-message 5
+
+Set maximum number of lines to output per message field:
+
+    --lines-per-field 2
+
+Start outputting from, or stop outputting at, message line number:
+
+    --start-line  2   (1-based if positive
+    --end-line   -2   (count back from total if negative)
+
+Output only the fields where patterns find a match:
+
+    --matched-fields-only
+
+Output only matched fields and specified number of lines around match:
+
+    --lines-around-match 5
+
+Output only specific message fields (supports nested.paths and * wildcards):
+
+    --print-field *data
+
+Skip outputting specific message fields (supports nested.paths and * wildcards):
+
+    --no-print-field header.stamp
+
+Wrap matches in custom texts:
+
+    --match-wrapper $$$
+    --match-wrapper "<<<<" ">>>>"
+
+Set custom width for wrapping message YAML printed to console (auto-detected from terminal by default):
+
+    --wrap-width 120
+
+
 Matching and filtering
 ----------------------
 
-Specify any number of patterns to match, e.g. match messages containing any of the words:
+Any number of patterns can be specified, message matches if all patterns find a match.
+
+Match messages containing any of the words:
 
     cpu memory speed
+
+Match messages where `frame_id` contains "world":
+
+    frame_id=world
 
 Match anything (note that * wildcards need to quoted to stop shell from auto-expanding them):
 
@@ -212,175 +412,6 @@ Stop scanning at a specific message index in topic:
 
     -n1         -100  (counts back from topic total message count in bag)
     --end-index   10  (1-based index)
-
-
-Inputs
-------
-
-### bag
-
-Read messages from ROS bag files, by default all in current directory.
-
-Recurse into subdirectories when looking for bagfiles:
-
-    -r
-    --recursive
-
-Read specific filenames (supports * wildcards):
-
-    --n        /tmp/*.bag
-    --filename my.bag 2021-11-*.bag
-
-Scan specific paths instead of current directory (supports * wildcards):
-
-    -p     /home/*
-    --path my/dir
-
-Order bag messages first by topic or type, and only then by time:
-
-    --order-bag-by topic
-    --order-bag-by type
-
-
-### live
-
-    --live
-
-Read messages from live ROS topics instead of bagfiles.
-
-Requires `ROS_MASTER_URI` and `ROS_ROOT` to be set in environment if ROS1.
-
-Set custom queue size for subscribing (default 10):
-
-    --queue-size-in 100
-
-Use ROS time instead of system time for incoming message timestamps:
-
-    --ros-time-in
-
-
-Outputs
--------
-
-### console
-
-Default output is to console, in ANSI colors, mimicking `grep` output.
-
-Disable printing messages to console:
-
-    --no-console-output
-
-Manage color output:
-
-    --color always  (default)
-    --color auto    (auto-detect terminal support)
-    --color never   (disable colors)
-
-Set maximum number of lines to print per message:
-
-    --lines-per-message 5
-
-Set maximum number of lines to print per message field:
-
-    --lines-per-field 2
-
-Start printing from, or stop printing at, message line number:
-
-    --start-line  2   (1-based if positive
-    --end-line   -2   (count back from total if negative)
-
-Print only the fields where patterns find a match:
-
-    --matched-fields-only
-
-Print only matched fields and specified number of lines around match:
-
-    --lines-around-match 5
-
-Print only specific message fields (supports nested.paths and * wildcards):
-
-    --print-field *data
-
-Skip printing specific message fields (supports nested.paths and * wildcards):
-
-    --no-print-field header.stamp
-
-Wrap printed matches in custom texts:
-
-    --match-wrapper ***
-    --match-wrapper <MATCH> </MATCH>
-
-Set custom width for wrapping printed message YAML (auto-detected from terminal by default):
-
-    --wrap-width 120
-
-
-### live
-
-    --publish
-
-Publish messages to live ROS topics. The published topic name will default to
-`/grepros/original/name`. Topic prefix and suffix can be changed, 
-or topic name set to one specific name:
-
-    --publish-prefix   /myroot
-    --publish-suffix   /myend
-    --publish-fixname  /my/singular/name
-
-Set custom queue size for publishers (default 10):
-
-    --queue-size-out 100
-
-
-### bag
-
-    --write my.bag
-
-Write messages to a ROS bag file, the custom `.bag` format in ROS1
-or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
-it is appended to. 
-
-
-### csv
-
-    --write my.csv --write-format csv
-
-Write messages to CSV files, each topic to a separate file, named
-as `my.__topic__name__.csv` for `/topic/name`.
-
-Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
-to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
-
-
-### html
-
-    --write my.html --write-format html
-
-Write messages to an HTML file, with a linked table of contents,
-message type definitions, and a topically traversable message list.
-
-[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
-
-Note: resulting file may be large, and take a long time to open in browser. 
-
-A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
-
-    --write-format-template /my/html.template
-
-
-### sqlite
-
-    --write my.db --write-format sqlite
-
-Write an SQLite database with tables `pkg/MsgType` for each ROS message type
-and nested type, and views `/full/topic/name` for each topic. 
-If the database already exists, it is appended to.
-
-Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
-full message YAMLs, and message type definition texts.
-
-[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
-
 
 
 Command-line arguments
