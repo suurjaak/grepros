@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.2.4 (2021-11-16)
 -------------------
+* ensure message YAMLs in html output always in color and wrapped at 120 characters
 * fix inserting duplicate types-rows when adding to an existing SQLite output file
 
 0.2.3 (2021-11-15)
