@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    15.11.2021
+@modified    18.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -80,14 +80,22 @@ class SinkBase(object):
         self._batch_meta.clear()
         self._counts.clear()
 
+    def thread_excepthook(self, exc):
+        """Handles exception, used by background threads."""
+        ConsolePrinter.error(exc)
+
 
 class TextSinkMixin(object):
     """Provides message formatting as text."""
+
+    ## Default highlight wrappers if not color output
+    NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
 
     def __init__(self, args):
         """
         @param   args                       arguments object like argparse.Namespace
+        @param   args.COLOR                 "never" for not using colors in replacements
         @param   args.PRINT_FIELDS          message fields to use in output if not all
         @param   args.NOPRINT_FIELDS        message fields to skip in output
         @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
@@ -97,12 +105,15 @@ class TextSinkMixin(object):
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   args.MATCH_WRAPPER         string to wrap around matched values,
+                                            both sides if one value, start and end if more than one,
+                                            or no wrapping if zero values
         """
-        self._prefix   = ""    # Put before each message line (filename if grepping 1+ files)
-        self._wrapper  = None  # TextWrapper instance
-        self._patterns = {}    # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
-        self._format_repls = {MatchMarkers.START: ConsolePrinter.HIGHLIGHT_START,
-                              MatchMarkers.END:   ConsolePrinter.HIGHLIGHT_END}
+        self._prefix       = ""    # Put before each message line (filename if grepping 1+ files)
+        self._wrapper      = None  # TextWrapper instance
+        self._patterns     = {}    # {key: [(() if any field else ('path', ), re.Pattern), ]}
+        self._format_repls = {}    # {text to replace if highlight: replacement text}
+        self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
         self._configure(args)
 
@@ -119,7 +130,7 @@ class TextSinkMixin(object):
                 start = self._args.START_LINE or 0
                 start = max(start, -len(lines)) - (start > 0)  # <0 to sanity, >0 to 0-base
                 lines = lines[start:start + (self._args.MAX_MESSAGE_LINES or len(lines))]
-                lines = lines and (lines[:-1] + [lines[-1] + ConsolePrinter.STYLE_RESET])
+                lines = lines and (lines[:-1] + [lines[-1] + self._styles["rst"]])
 
             if self._args.LINES_AROUND_MATCH and highlight:
                 spans, NUM = [], self._args.LINES_AROUND_MATCH
@@ -128,7 +139,7 @@ class TextSinkMixin(object):
                         spans.append([max(0, i - NUM), min(i + NUM + 1, len(lines))])
                     if MatchMarkers.END in l and spans:
                         spans[-1][1] = min(i + NUM + 1, len(lines))
-                lines = sum((lines[a:b - 1] + [lines[b - 1] + ConsolePrinter.STYLE_RESET]
+                lines = sum((lines[a:b - 1] + [lines[b - 1] + self._styles["rst"]]
                              for a, b in merge_spans(spans)), [])
 
             if self._prefix:
@@ -137,6 +148,7 @@ class TextSinkMixin(object):
             text = "\n".join(lines)
 
         for a, b in self._format_repls.items() if highlight else ():
+            text = re.sub(r"(%s)\1+" % re.escape(a), r"\1", text)  # Remove consecutive duplicates
             text = text.replace(a, b)
 
         return text
@@ -154,9 +166,9 @@ class TextSinkMixin(object):
                 startpos0, endpos0 = l.find (MatchMarkers.START), l.find (MatchMarkers.END)
                 startpos1, endpos1 = l.rfind(MatchMarkers.START), l.rfind(MatchMarkers.END)
                 if endpos0 >= 0 and (startpos0 < 0 or startpos0 > endpos0):
-                    lines[i] = l = MatchMarkers.START + l
+                    lines[i] = l = re.sub(r"^(\s*)", r"\1" + MatchMarkers.START, l)
                 if startpos1 >= 0 and endpos1 < startpos1 and i + 1 < len(lines):
-                    lines[i + 1] = MatchMarkers.START + lines[i + 1]
+                    lines[i + 1] = re.sub(r"^(\s*)", r"\1" + MatchMarkers.START, lines[i + 1])
                 if startpos1 >= 0 and startpos1 > endpos1:
                     CUT, EXTRA = (-len(PH), PH) if PH and l.endswith(PH) else (len(l), "")
                     lines[i] = l[:CUT] + MatchMarkers.END + EXTRA
@@ -193,9 +205,11 @@ class TextSinkMixin(object):
                 v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
                 if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
+                    is_num = rosapi.scalar(t) in rosapi.ROS_NUMERIC_TYPES
                     extra_indent = indent if is_strlist else " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
                     self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
+                    self._wrapper.break_long_words = not is_num
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
                     if is_strlist: v = "\n" + v
                 vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
@@ -205,11 +219,12 @@ class TextSinkMixin(object):
 
 
     @classmethod
-    def make_nonconsole_args(cls, args):
+    def make_full_yaml_args(cls, args):
         """
-        Returns init arguments with all non-console arguments blanked to defaults.
+        Returns init arguments that provide message full YAMLs with no markers or colors.
 
         @param   args                       arguments object like argparse.Namespace
+        @param   args.COLOR                 set to "never" in result
         @param   args.PRINT_FIELDS          blanked to [] in result
         @param   args.NOPRINT_FIELDS        blanked to [] in result
         @param   args.MAX_FIELD_LINES       blanked to None in result
@@ -218,10 +233,13 @@ class TextSinkMixin(object):
         @param   args.MAX_MESSAGE_LINES     blanked to None in result
         @param   args.LINES_AROUND_MATCH    blanked to None in result
         @param   args.MATCHED_FIELDS_ONLY   blanked to False in result
+        @param   args.MATCH_WRAPPER         set to [""] in result
+        @param   args.WRAP_WIDTH            set to 120 in result
         """
         DEFAULTS = {"PRINT_FIELDS": [], "NOPRINT_FIELDS": [], "MAX_FIELD_LINES": None,
                     "START_LINE": None, "END_LINE": None, "MAX_MESSAGE_LINES": None,
-                    "LINES_AROUND_MATCH": None, "MATCHED_FIELDS_ONLY": False}
+                    "LINES_AROUND_MATCH": None, "MATCHED_FIELDS_ONLY": False,
+                    "COLOR": "never", "MATCH_WRAPPER": [""], "WRAP_WIDTH": 120}
         args = copy.deepcopy(args)
         for k, v in DEFAULTS.items(): setattr(args, k, v)
         return args
@@ -233,31 +251,38 @@ class TextSinkMixin(object):
         for key, vals in [("print", prints), ("noprint", noprints)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
-        HL0, HL1 = ConsolePrinter.HIGHLIGHT_START, ConsolePrinter.HIGHLIGHT_END
-        LL0, LL1 = ConsolePrinter.LOWLIGHT_START,  ConsolePrinter.LOWLIGHT_END
-        custom_widths = {
-            MatchMarkers.START:            len(HL0.replace(ConsolePrinter.STYLE_HIGHLIGHT, "")),
-            MatchMarkers.END:              len(HL1.replace(ConsolePrinter.STYLE_RESET,     "")),
-            ConsolePrinter.LOWLIGHT_START: 0,
-            ConsolePrinter.LOWLIGHT_END:   0,
-            ConsolePrinter.ERROR_START:    0,
-            ConsolePrinter.ERROR_END:      0,
-            ConsolePrinter.PREFIX_START:   0,
-            ConsolePrinter.PREFIX_END:     0,
-        }
-        width = ConsolePrinter.WIDTH if args.WRAP_WIDTH is None else args.WRAP_WIDTH
-        wrapargs = dict(width=width, max_lines=args.MAX_FIELD_LINES,
-                        placeholder="%s ...%s" % (LL0, LL1))
+        if "never" != args.COLOR:
+            self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT,
+                                 "ll0":  ConsolePrinter.STYLE_LOWLIGHT,
+                                 "pfx0": ConsolePrinter.STYLE_SPECIAL, # Content line prefix start
+                                 "sep0": ConsolePrinter.STYLE_SPECIAL2})
+            self._styles.default_factory = lambda: ConsolePrinter.STYLE_RESET
+
+        WRAPS = args.MATCH_WRAPPER
+        if WRAPS is None and "never" == args.COLOR: WRAPS = self.NOCOLOR_HIGHLIGHT_WRAPPERS
+        WRAPS = ((WRAPS or [""]) * 2)[:2]
+        self._styles["hl0"] = self._styles["hl0"] + WRAPS[0]
+        self._styles["hl1"] = WRAPS[1] + self._styles["hl1"]
+
+        custom_widths = {MatchMarkers.START: len(WRAPS[0]), MatchMarkers.END:     len(WRAPS[1]),
+                         self._styles["ll0"]:            0, self._styles["ll1"]:  0,
+                         self._styles["pfx0"]:           0, self._styles["pfx1"]: 0,
+                         self._styles["sep0"]:           0, self._styles["sep1"]: 0}
+        wrapargs = dict(max_lines=args.MAX_FIELD_LINES,
+                        placeholder="%s ...%s" % (self._styles["ll0"], self._styles["ll1"]))
+        if args.WRAP_WIDTH is not None: wrapargs.update(width=args.WRAP_WIDTH)
         self._wrapper = TextWrapper(custom_widths=custom_widths, **wrapargs)
+        self._format_repls = {MatchMarkers.START: self._styles["hl0"],
+                              MatchMarkers.END:   self._styles["hl1"]}
 
 
 
 class ConsoleSink(SinkBase, TextSinkMixin):
     """Prints messages to console."""
 
-    META_LINE_TEMPLATE   = "{coloron}{sep} {line}{coloroff}"
-    MESSAGE_SEP_TEMPLATE = "{coloron}{sep}{coloroff}"
-    PREFIX_TEMPLATE      = "{coloron}{batch}{coloroff}{sepcoloron}{sep}{sepcoloroff}"
+    META_LINE_TEMPLATE   = "{ll0}{sep} {line}{ll1}"
+    MESSAGE_SEP_TEMPLATE = "{ll0}{sep}{ll1}"
+    PREFIX_TEMPLATE      = "{pfx0}{batch}{pfx1}{sep0}{sep}{sep1}"
     MATCH_PREFIX_SEP     = ":"    # Printed after bag filename for matched message lines
     CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
     SEP                  = "---"  # Prefix of message separators and metainfo lines
@@ -279,10 +304,12 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
+        if args.WRAP_WIDTH is None:
+            args = copy.deepcopy(args)
+            args.WRAP_WIDTH = ConsolePrinter.WIDTH
+
         super(ConsoleSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
-
-        self._configure(args)
 
 
     def emit_meta(self):
@@ -290,8 +317,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         batch = self._args.META and self.source.get_batch()
         if self._args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.format_meta()
-            kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
-                       coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
+            kws = dict(self._styles, sep=self.SEP)
             meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
                              for x in meta.splitlines())
             meta and ConsolePrinter.print(meta)
@@ -302,12 +328,9 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         self._prefix = ""
         if self._args.LINE_PREFIX and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
-            kws = dict(coloron=ConsolePrinter.PREFIX_START, sep=sep,
-                       coloroff=ConsolePrinter.PREFIX_END, batch=self.source.get_batch(),
-                       sepcoloron=ConsolePrinter.SEP_START, sepcoloroff=ConsolePrinter.SEP_END)
+            kws = dict(self._styles, sep=sep, batch=self.source.get_batch())
             self._prefix = self.PREFIX_TEMPLATE.format(**kws)
-        kws = dict(coloron=ConsolePrinter.LOWLIGHT_START,
-                   coloroff=ConsolePrinter.LOWLIGHT_END, sep=self.SEP)
+        kws = dict(self._styles, sep=self.SEP)
         if self._args.META:
             meta = self.source.format_message_meta(topic, index, stamp, msg)
             meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
@@ -364,98 +387,6 @@ class BagSink(SinkBase):
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
         super(BagSink, self).close()
-
-
-class HtmlSink(SinkBase, TextSinkMixin):
-    """Writes messages to bagfile."""
-
-    ## HTML template path
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                 "templates", "html.tpl")
-
-    def __init__(self, args):
-        """
-        @param   args                    arguments object like argparse.Namespace
-        @param   args.META               whether to print metainfo
-        @param   args.OUTFILE            name of HTML file to write,
-                                         will add counter like .2 to filename if exists
-        @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
-        @param   args.WRAP_WIDTH         character width to wrap message YAML output at
-        @param   args.VERBOSE            whether to print debug information
-        """
-        super(HtmlSink, self).__init__(args)
-        TextSinkMixin.__init__(self, args)
-        self._queue    = queue.Queue()
-        self._writer   = None          # threading.Thread running _stream()
-        self._filename = args.OUTFILE  # Filename base, will be made unique
-        self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
-        self._close_printed = False
-        self._tag_repls = {MatchMarkers.START:            '<span class="match">',
-                           MatchMarkers.END:              '</span>',
-                           ConsolePrinter.LOWLIGHT_START: '<span class="lowlight">',
-                           ConsolePrinter.LOWLIGHT_END:   '</span>'}
-        self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
-
-        self._format_repls.clear()
-        atexit.register(self.close)
-
-    def emit(self, topic, index, stamp, msg, match):
-        """Writes message to output file."""
-        if not self._writer:
-            self._writer = threading.Thread(target=self._stream)
-            self._writer.start()
-        self._queue.put((topic, index, stamp, msg, match))
-
-    def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate()
-
-    def close(self):
-        """Closes output file, if any."""
-        if self._writer:
-            writer, self._writer = self._writer, None
-            self._queue.put(None)
-            writer.is_alive() and writer.join()
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
-                                 sum(self._counts.values()), len(self._counts), self._filename)
-        super(HtmlSink, self).close()
-
-    def format_message(self, msg, highlight=False):
-        """Returns message as formatted string, optionally highlighted for matches."""
-        text = TextSinkMixin.format_message(self, msg, highlight)
-        text = "".join(self._tag_repls.get(x) or step.escape_html(x)
-                       for x in self._tag_rgx.split(text))
-        return text
-
-    def _stream(self):
-        """Writer-loop, streams HTML template to file."""
-        if not self._writer:
-            return
-
-        with open(self._template_path, "r") as f: tpl = f.read()
-        template = step.Template(tpl, escape=True, strip=False)
-        ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
-                  messages=self._produce())
-        self._filename = unique_path(self._filename, empty_ok=True)
-        if self._args.VERBOSE:
-            ConsolePrinter.debug("Creating %s.", self._filename)
-        with open(self._filename, "wb") as f:
-            template.stream(f, ns, unbuffered=True)
-        self._writer = None
-
-    def _produce(self):
-        """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
-        while True:
-            entry = self._queue.get()
-            if entry is None:
-                break  # while
-            (topic, index, stamp, msg, match) = entry
-            if self._args.VERBOSE and topic not in self._counts:
-                ConsolePrinter.debug("Adding topic %s.", topic)
-            yield entry
-            super(HtmlSink, self).emit(topic, index, stamp, msg, match)
 
 
 class CsvSink(SinkBase):
@@ -556,6 +487,114 @@ class CsvSink(SinkBase):
                     yield mp, mv
             else:
                 yield path, rosapi.to_sec(v)
+
+
+class HtmlSink(SinkBase, TextSinkMixin):
+    """Writes messages to bagfile."""
+
+    ## HTML template path
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "templates", "html.tpl")
+
+    ## Character wrap width for message YAML
+    WRAP_WIDTH = 120
+
+    def __init__(self, args):
+        """
+        @param   args                    arguments object like argparse.Namespace
+        @param   args.META               whether to print metainfo
+        @param   args.OUTFILE            name of HTML file to write,
+                                         will add counter like .2 to filename if exists
+        @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
+        @param   args.VERBOSE            whether to print debug information
+        @param   args.MATCH_WRAPPER      string to wrap around matched values,
+                                         both sides if one value, start and end if more than one,
+                                         or no wrapping if zero values
+        """
+        args = copy.deepcopy(args)
+        args.WRAP_WIDTH = self.WRAP_WIDTH
+        args.COLOR = "always"
+
+        super(HtmlSink, self).__init__(args)
+        TextSinkMixin.__init__(self, args)
+        self._queue    = queue.Queue()
+        self._writer   = None          # threading.Thread running _stream()
+        self._filename = args.OUTFILE  # Filename base, will be made unique
+        self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
+        self._close_printed = False
+
+        WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
+        self._tag_repls = {MatchMarkers.START:            '<span class="match">' +
+                                                          step.escape_html(WRAPS[0]),
+                           MatchMarkers.END:              step.escape_html(WRAPS[1]) + '</span>',
+                           ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
+                           ConsolePrinter.STYLE_RESET:    '</span>'}
+        self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
+
+        self._format_repls.clear()
+        atexit.register(self.close)
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Writes message to output file."""
+        if not self._writer:
+            self._writer = threading.Thread(target=self._stream)
+            self._writer.start()
+        self._queue.put((topic, index, stamp, msg, match))
+
+    def validate(self):
+        """Returns whether ROS environment is set, prints error if not."""
+        return rosapi.validate()
+
+    def close(self):
+        """Closes output file, if any."""
+        if self._writer:
+            writer, self._writer = self._writer, None
+            self._queue.put(None)
+            writer.is_alive() and writer.join()
+        if not self._close_printed and self._counts:
+            self._close_printed = True
+            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
+                                 sum(self._counts.values()), len(self._counts), self._filename)
+        super(HtmlSink, self).close()
+
+    def format_message(self, msg, highlight=False):
+        """Returns message as formatted string, optionally highlighted for matches."""
+        text = TextSinkMixin.format_message(self, msg, highlight)
+        text = "".join(self._tag_repls.get(x) or step.escape_html(x)
+                       for x in self._tag_rgx.split(text))
+        return text
+
+    def _stream(self):
+        """Writer-loop, streams HTML template to file."""
+        if not self._writer:
+            return
+
+        try:
+            with open(self._template_path, "r") as f: tpl = f.read()
+            template = step.Template(tpl, escape=True, strip=False)
+            ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
+                      messages=self._produce())
+            self._filename = unique_path(self._filename, empty_ok=True)
+            if self._args.VERBOSE:
+                ConsolePrinter.debug("Creating %s.", self._filename)
+            with open(self._filename, "wb") as f:
+                template.stream(f, ns, unbuffered=True)
+        except Exception as e:
+            self.thread_excepthook(e)
+        finally:
+            self._writer = None
+
+    def _produce(self):
+        """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
+        while True:
+            entry = self._queue.get()
+            if entry is None:
+                break  # while
+            (topic, index, stamp, msg, match) = entry
+            if self._args.VERBOSE and topic not in self._counts:
+                ConsolePrinter.debug("Adding topic %s.", topic)
+            yield entry
+            super(HtmlSink, self).emit(topic, index, stamp, msg, match)
 
 
 
@@ -667,7 +706,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
         @param   args.WRAP_WIDTH   character width to wrap message YAML output at
         @param   args.VERBOSE      whether to print debug information
         """
-        args = TextSinkMixin.make_nonconsole_args(args)
+        args = TextSinkMixin.make_full_yaml_args(args)
+
         super(SqliteSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
@@ -680,6 +720,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         # {"view": {topic: {typename: True}}, "table": {typename: {cols}}}
         self._schema = collections.defaultdict(dict)
 
+        self._format_repls.update({k: "" for k in self._format_repls})
         atexit.register(self.close)
 
 
@@ -716,7 +757,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         for row in self._db.execute("SELECT * FROM topics"):
             topickey = (row["name"], row["type"])
             self._topics[topickey] = row
-        for row in self._db.execute("SELECT * FROM topics"):
+        for row in self._db.execute("SELECT * FROM types"):
             self._types[row["type"]] = row
         for row in self._db.execute("SELECT name FROM sqlite_master "
                                     "WHERE type = 'table' AND name LIKE '%/%'"):

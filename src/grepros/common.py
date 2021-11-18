@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.11.2021
+@modified    17.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -45,13 +45,10 @@ class ConsolePrinter(object):
     STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
     STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
 
-    NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"  ## Default highlight wrappers if not color output
+    DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
+    ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
 
-    HIGHLIGHT_START, HIGHLIGHT_END = STYLE_HIGHLIGHT, STYLE_RESET  ## Matched value wrappers
-    LOWLIGHT_START,  LOWLIGHT_END  = STYLE_LOWLIGHT,  STYLE_RESET  ## Metainfo wrappers
-    PREFIX_START,    PREFIX_END    = STYLE_SPECIAL,   STYLE_RESET  ## Content line prefix wrappers
-    ERROR_START,     ERROR_END     = STYLE_ERROR,     STYLE_RESET  ## Error message wrappers
-    SEP_START,       SEP_END       = STYLE_SPECIAL2,  STYLE_RESET  ## Filename prefix separator wrappers
+    COLOR = None     ## Whether using colors in output
 
     WIDTH = 80       ## Console width in characters, updated from shutil and curses
 
@@ -64,43 +61,28 @@ class ConsolePrinter(object):
 
         @param   args                 arguments object like argparse.Namespace
         @param   args.COLOR           "never", "always", or "auto" for when supported by TTY
-        @param   args.MATCH_WRAPPER   string to wrap around matched values,
-                                      both sides if one value, start and end if more than one,
-                                      or no wrapping if zero values (default ** in colorless output)
         """
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
-        do_color = ("never" != args.COLOR)
+        cls.COLOR = ("never" != args.COLOR)
         try:
             curses.setupterm()
-            if do_color and not sys.stdout.isatty():
+            if cls.COLOR and not sys.stdout.isatty():
                 raise Exception()
         except Exception:
-            do_color = ("always" == args.COLOR)
+            cls.COLOR = ("always" == args.COLOR)
         try:
-            if sys.stdout.isatty() or do_color:
+            if sys.stdout.isatty() or cls.COLOR:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
             curses.endwin()
         except Exception: pass
 
-        if do_color:
-            cls.HIGHLIGHT_START, cls.HIGHLIGHT_END = cls.STYLE_HIGHLIGHT, cls.STYLE_RESET
-            cls.LOWLIGHT_START,  cls.LOWLIGHT_END  = cls.STYLE_LOWLIGHT,  cls.STYLE_RESET
-            cls.PREFIX_START,    cls.PREFIX_END    = cls.STYLE_SPECIAL,   cls.STYLE_RESET
-            cls.SEP_START,       cls.SEP_END       = cls.STYLE_SPECIAL2,  cls.STYLE_RESET
-            cls.ERROR_START,     cls.ERROR_END     = cls.STYLE_ERROR,     cls.STYLE_RESET
+        if cls.COLOR:
+            cls.DEBUG_START, cls.DEBUG_END = cls.STYLE_LOWLIGHT, cls.STYLE_RESET
+            cls.ERROR_START, cls.ERROR_END = cls.STYLE_ERROR,    cls.STYLE_RESET
         else:
-            cls.HIGHLIGHT_START, cls.HIGHLIGHT_END = "", ""
-            cls.LOWLIGHT_START,  cls.LOWLIGHT_END  = "", ""
-            cls.ERROR_START,     cls.ERROR_END     = "", ""
-            cls.SEP_START,       cls.SEP_END       = "", ""
-            cls.PREFIX_START,    cls.PREFIX_END    = "", ""
-
-        WRAPS = args.MATCH_WRAPPER
-        WRAPS = cls.NOCOLOR_HIGHLIGHT_WRAPPERS if WRAPS is None and not do_color else WRAPS
-        WRAPS = ((WRAPS or [""]) * 2)[:2]
-        cls.HIGHLIGHT_START = cls.HIGHLIGHT_START + WRAPS[0]
-        cls.HIGHLIGHT_END   = WRAPS[1] + cls.HIGHLIGHT_END
+            cls.DEBUG_START, cls.DEBUG_END = "", ""
+            cls.ERROR_START, cls.ERROR_END = "", ""
 
 
     @classmethod
@@ -134,7 +116,7 @@ class ConsolePrinter(object):
 
         Formatted with args and kwargs, in lowlight colors if supported.
         """
-        KWS = dict(__file=sys.stderr, __prefix=cls.LOWLIGHT_START, __suffix=cls.LOWLIGHT_END)
+        KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 
@@ -151,11 +133,12 @@ class TextWrapper(object):
     SPACE_RGX = re.compile(r"([%s]+)" % re.escape("\t\n\x0b\x0c\r "))
 
 
-    def __init__(self, width=80, subsequent_indent="  ", drop_whitespace=False,
-                 max_lines=None, placeholder=" ...", custom_widths=None):
+    def __init__(self, width=80, subsequent_indent="  ", break_long_words=True,
+                 drop_whitespace=False, max_lines=None, placeholder=" ...", custom_widths=None):
         """
         @param   width              default maximum width to wrap at, 0 disables
         @param   subsequent_indent  string prepended to all consecutive lines
+        @param   break_long_words   break words longer than width
         @param   drop_whitespace    drop leading and trailing whitespace from lines
         @param   max_lines          count to truncate lines from
         @param   placeholder        appended to last retained line when truncating
@@ -163,6 +146,7 @@ class TextWrapper(object):
         """
         self.width             = width
         self.subsequent_indent = subsequent_indent
+        self.break_long_words  = break_long_words
         self.drop_whitespace   = drop_whitespace
         self.max_lines         = max_lines
         self.placeholder       = placeholder
@@ -277,7 +261,7 @@ class TextWrapper(object):
         """
         text = reversed_chunks[-1]
         break_pos = 1 if width < 1 else width - cur_len
-        breakable = text not in self.customs
+        breakable = self.break_long_words and text not in self.customs
         if breakable:
             unbreakable_spans = [m.span() for m in self.custom_rgx.finditer(text)]
             text_in_spans = [x for x in unbreakable_spans if x[0] <= break_pos < x[1]]

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    14.11.2021
+@modified    18.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -132,18 +132,24 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return None
 
 
-    def get_type_and_topic_info(self):
-        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})."""
+    def get_type_and_topic_info(self, counts=False):
+        """
+        Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)}).
+
+        @param   counts  whether to return actual message counts instead of None
+        """
         self._ensure_open()
         TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
         ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
-        topicmap = {}
-        if self._has_table("messages") and self._has_table("topics"):
-            counts = self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
-                                      "GROUP BY topic_id").fetchall()
-            countmap = {x["topic_id"]: x["count"] for x in counts}
+        topicmap, countmap = {}, {}
+        DEFAULTCOUNT = 0 if counts else None
+        if counts and self._has_table("messages"):
+            msgcounts = self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
+                                         "GROUP BY topic_id").fetchall()
+            countmap = {x["topic_id"]: x["count"] for x in msgcounts}
+        if self._has_table("topics"):
             for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
-                mytype, mycount = canonical(row["type"]), countmap.get(row["id"], 0)
+                mytype, mycount = canonical(row["type"]), countmap.get(row["id"], DEFAULTCOUNT)
                 topicmap[row["name"]] = TopicTuple(msg_type=mytype, message_count=mycount)
         return ResultTuple(topics=topicmap)
 
