@@ -162,9 +162,9 @@ class TextSinkMixin(object):
                 startpos0, endpos0 = l.find (MatchMarkers.START), l.find (MatchMarkers.END)
                 startpos1, endpos1 = l.rfind(MatchMarkers.START), l.rfind(MatchMarkers.END)
                 if endpos0 >= 0 and (startpos0 < 0 or startpos0 > endpos0):
-                    lines[i] = l = MatchMarkers.START + l
+                    lines[i] = l = re.sub(r"^(\s*)", r"\1" + MatchMarkers.START, l)
                 if startpos1 >= 0 and endpos1 < startpos1 and i + 1 < len(lines):
-                    lines[i + 1] = MatchMarkers.START + lines[i + 1]
+                    lines[i + 1] = re.sub(r"^(\s*)", r"\1" + MatchMarkers.START, lines[i + 1])
                 if startpos1 >= 0 and startpos1 > endpos1:
                     CUT, EXTRA = (-len(PH), PH) if PH and l.endswith(PH) else (len(l), "")
                     lines[i] = l[:CUT] + MatchMarkers.END + EXTRA
@@ -201,9 +201,11 @@ class TextSinkMixin(object):
                 v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
                 if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
+                    is_num = rosapi.scalar(t) in rosapi.ROS_NUMERIC_TYPES
                     extra_indent = indent if is_strlist else " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
                     self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
+                    self._wrapper.break_long_words = not is_num
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
                     if is_strlist: v = "\n" + v
                 vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))

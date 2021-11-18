@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    16.11.2021
+@modified    17.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -133,11 +133,12 @@ class TextWrapper(object):
     SPACE_RGX = re.compile(r"([%s]+)" % re.escape("\t\n\x0b\x0c\r "))
 
 
-    def __init__(self, width=80, subsequent_indent="  ", drop_whitespace=False,
-                 max_lines=None, placeholder=" ...", custom_widths=None):
+    def __init__(self, width=80, subsequent_indent="  ", break_long_words=True,
+                 drop_whitespace=False, max_lines=None, placeholder=" ...", custom_widths=None):
         """
         @param   width              default maximum width to wrap at, 0 disables
         @param   subsequent_indent  string prepended to all consecutive lines
+        @param   break_long_words   break words longer than width
         @param   drop_whitespace    drop leading and trailing whitespace from lines
         @param   max_lines          count to truncate lines from
         @param   placeholder        appended to last retained line when truncating
@@ -145,6 +146,7 @@ class TextWrapper(object):
         """
         self.width             = width
         self.subsequent_indent = subsequent_indent
+        self.break_long_words  = break_long_words
         self.drop_whitespace   = drop_whitespace
         self.max_lines         = max_lines
         self.placeholder       = placeholder
@@ -259,7 +261,7 @@ class TextWrapper(object):
         """
         text = reversed_chunks[-1]
         break_pos = 1 if width < 1 else width - cur_len
-        breakable = text not in self.customs
+        breakable = self.break_long_words and text not in self.customs
         if breakable:
             unbreakable_spans = [m.span() for m in self.custom_rgx.finditer(text)]
             text_in_spans = [x for x in unbreakable_spans if x[0] <= break_pos < x[1]]
