@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.4 (2021-11-17)
+0.2.4 (2021-11-18)
 -------------------
+* skip retrieving full message counts from ROS2 bag before any match
 * ensure message YAMLs in html output always in color and wrapped at 120 characters
 * fix inserting duplicate types-rows when adding to an existing SQLite output file
 * improve wrapping lists and nunbers

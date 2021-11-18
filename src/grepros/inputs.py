@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.11.2021
+@modified    18.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -212,6 +212,7 @@ class BagSource(SourceBase):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
+        self._ensure_totals()
         msgtype = rosapi.get_message_type(msg)
         return dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
@@ -231,11 +232,13 @@ class BagSource(SourceBase):
         """Returns whether specified message in topic is in acceptable range."""
         topickey = (topic, rosapi.get_message_type(msg))
         if self._args.START_INDEX:
+            self._ensure_totals()
             START = self._args.START_INDEX
             MIN = max(0, START + (self._msgtotals[topickey] if START < 0 else 0))
             if MIN >= index:
                 return False
         if self._args.END_INDEX:
+            self._ensure_totals()
             END = self._args.END_INDEX
             MAX = END + (self._msgtotals[topickey] if END < 0 else 0)
             if MAX < index:
@@ -270,6 +273,12 @@ class BagSource(SourceBase):
                     yield entry
                 self._sticky = False
 
+    def _ensure_totals(self):
+        """Retrieves total message counts if not retrieved."""
+        if not self._msgtotals:  # Must be ros2.Bag
+            for k, v in self._bag.get_type_and_topic_info(counts=True).topics.items():
+                self._msgtotals[(k, v.msg_type)] += v.message_count
+
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
         self._meta     = None
@@ -290,10 +299,10 @@ class BagSource(SourceBase):
         self._bag      = bag
         self._filename = filename
 
-        topicdata = bag.get_type_and_topic_info().topics
-        for k, v in topicdata.items():
+        for k, v in bag.get_type_and_topic_info().topics.items():
             self._msgtypes[k] += [v.msg_type]
-            self._msgtotals[(k, v.msg_type)] += v.message_count
+            if v.message_count is not None:
+                self._msgtotals[(k, v.msg_type)] += v.message_count
 
         dct = filter_dict(self._msgtypes, self._args.TOPICS, self._args.TYPES)
         dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
