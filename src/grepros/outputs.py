@@ -80,6 +80,10 @@ class SinkBase(object):
         self._batch_meta.clear()
         self._counts.clear()
 
+    def thread_excepthook(self, exc):
+        """Handles exception, used by background threads."""
+        ConsolePrinter.error(exc)
+
 
 class TextSinkMixin(object):
     """Provides message formatting as text."""
@@ -565,16 +569,20 @@ class HtmlSink(SinkBase, TextSinkMixin):
         if not self._writer:
             return
 
-        with open(self._template_path, "r") as f: tpl = f.read()
-        template = step.Template(tpl, escape=True, strip=False)
-        ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
-                  messages=self._produce())
-        self._filename = unique_path(self._filename, empty_ok=True)
-        if self._args.VERBOSE:
-            ConsolePrinter.debug("Creating %s.", self._filename)
-        with open(self._filename, "wb") as f:
-            template.stream(f, ns, unbuffered=True)
-        self._writer = None
+        try:
+            with open(self._template_path, "r") as f: tpl = f.read()
+            template = step.Template(tpl, escape=True, strip=False)
+            ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
+                      messages=self._produce())
+            self._filename = unique_path(self._filename, empty_ok=True)
+            if self._args.VERBOSE:
+                ConsolePrinter.debug("Creating %s.", self._filename)
+            with open(self._filename, "wb") as f:
+                template.stream(f, ns, unbuffered=True)
+        except Exception as e:
+            self.thread_excepthook(e)
+        finally:
+            self._writer = None
 
     def _produce(self):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
