@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.11.2021
+@modified    19.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -89,6 +89,10 @@ class SourceBase(object):
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)),
                     schema=rosapi.get_message_definition(msg))
+
+    def get_message_class(self, typename):
+        """Returns message type class."""
+        return rosapi.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text, including subtype definitions."""
@@ -218,6 +222,11 @@ class BagSource(SourceBase):
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
                     schema=self.get_message_definition(msg))
+
+    def get_message_class(self, typename):
+        """Returns ROS message type class."""
+        return self._bag.get_message_class(typename) or \
+               rosapi.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text, including subtype definitions."""

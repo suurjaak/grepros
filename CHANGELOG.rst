@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.0 (2021-11-19)
+-------------------
+* add embag support, for faster grepping
+
 0.2.4 (2021-11-18)
 -------------------
 * skip retrieving full message counts from ROS2 bag before any match

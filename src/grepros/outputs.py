@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.11.2021
+@modified    19.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -804,7 +804,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
                 subtype = rosapi.scalar(subtype)
                 targs["subtypes"][".".join(path)] = subtype
                 for submsg in submsgs[:1] if isinstance(submsgs, (list, tuple)) else [submsgs]:
-                    submsg = submsg or rosapi.get_message_class(subtype)()  # List may be empty
+                    submsg = submsg or self.source.get_message_class(subtype)()  # List may be empty
                     self._process_type(subtype, submsg)
 
             targs["id"] = self._db.execute(self.INSERT_TYPE, targs).lastrowid

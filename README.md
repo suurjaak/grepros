@@ -17,6 +17,9 @@ Using ROS1 live topics requires ROS master to be running.
 Using ROS2 requires Python packages for message types to be available in path;
 in ROS1 messages can be grepped even if the packages are not installed.
 
+Can make use of [embag](https://github.com/embarktrucks/embag)
+for significantly faster bag reading in ROS1.
+
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
 
@@ -93,6 +96,12 @@ target matches if any value matches.
 
 Installation
 ------------
+
+Installing the [embag](https://github.com/embarktrucks/embag) library in ROS1
+is advisable, as it makes bag reading significantly faster. Installable on Linux:
+
+    pip install embag
+
 
 ### Using pip
 

@@ -1,3 +1,4 @@
 # ROS1 deps not pip-installable: genpy, rosbag, roslib, rospy
-# ROS2 deps not pip-installable: rclpy, rosidl_runtime_py
+# ROS2 deps not pip-installable: builtin_interfaces, rclpy, rosidl_runtime_py
+# Not required but recommended for ROS1: embag
 pyyaml
