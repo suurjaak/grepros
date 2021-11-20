@@ -5,6 +5,7 @@ Changelog for package grepros
 0.3.0 (2021-11-19)
 -------------------
 * add embag support, for faster grepping
+* match anything by default if no patterns given
 
 0.2.4 (2021-11-18)
 -------------------

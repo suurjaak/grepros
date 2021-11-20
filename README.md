@@ -12,10 +12,10 @@ to a bagfile or as HTML/CSV/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
+In ROS1, messages can be grepped even if Python packages for message types are not installed.
 Using ROS1 live topics requires ROS master to be running.
 
-Using ROS2 requires Python packages for message types to be available in path;
-in ROS1 messages can be grepped even if the packages are not installed.
+Using ROS2 requires Python packages for message types to be available in path.
 
 Can make use of [embag](https://github.com/embarktrucks/embag)
 for significantly faster bag reading in ROS1.
@@ -56,7 +56,7 @@ Search for "my text" in all bags under current directory and subdirectories:
 
 Print 30 lines of the first message from each live ROS topic:
 
-    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
+    grepros --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
 
@@ -86,7 +86,7 @@ print only header stamp and values:
 Print first message from each lidar topic on host 1.2.3.4:
 
     ROS_MASTER_URI=http://1.2.3.4::11311 \
-    grepros ".*" --live --topic *lidar* --max-per-topic 1
+    grepros --live --topic *lidar* --max-per-topic 1
 
 
 Patterns use Python regular expression syntax, message matches if all match.
@@ -203,6 +203,9 @@ Manage color output:
     --color auto    (auto-detect terminal support)
     --color never   (disable colors)
 
+Note that when paging color output with `more` or `less`, the pager needs to
+accept raw control characters (`more -f` or `less -R`).
+
 
 ### bag
 
@@ -316,6 +319,7 @@ Matching and filtering
 ----------------------
 
 Any number of patterns can be specified, message matches if all patterns find a match.
+If no patterns are given, any message matches.
 
 Match messages containing any of the words:
 
@@ -325,9 +329,9 @@ Match messages where `frame_id` contains "world":
 
     frame_id=world
 
-Match anything (note that * wildcards need to quoted to stop shell from auto-expanding them):
+Match messages where `header.frame_id` is present:
 
-    ".*"
+    header.frame_id=.*
 
 Match as plaintext, not Python regular expression patterns:
 

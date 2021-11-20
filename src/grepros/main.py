@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.11.2021
+@modified    20.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -37,7 +37,7 @@ Search for "my text" in all bags under current directory and subdirectories:
     grepros -r "my text"
 
 Print 30 lines of the first message from each live ROS topic:
-    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
+    grepros --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
@@ -61,14 +61,15 @@ print only header stamp and values:
 
 Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
-    grepros ".*" --live --topic *lidar* --max-per-topic 1
+    grepros --live --topic *lidar* --max-per-topic 1
     """,
 
     "arguments": [
         dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
              help="pattern(s) to find in message field values,\n"
+                  "all messages match if not given,\n"),
                   "can specify message field as NAME=PATTERN\n"
-                  "(name may be a nested.path)"),
+                  "(name may be a nested.path);"),
 
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
@@ -365,7 +366,7 @@ def validate_args(args):
         if not os.path.isfile(args.OUTFILE_TEMPLATE):
             errors.append("Template does not exist: %s." % args.OUTFILE_TEMPLATE)
 
-    for v in args.PATTERNS:
+    for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.RAW else v)

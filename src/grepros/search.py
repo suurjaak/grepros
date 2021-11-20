@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    14.11.2021
+@modified    20.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -161,6 +161,8 @@ class Searcher(object):
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
             if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
+        if not self._args.PATTERNS:  # Add match-all pattern
+            contents.append((), re.compile("(.*)", re.DOTALL))
         self._patterns["content"] = contents
 
         selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
