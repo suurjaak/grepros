@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.11.2021
+@modified    21.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -779,11 +779,11 @@ class SqliteSink(SinkBase, TextSinkMixin):
             cols = self._db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
             cols = [c for c in cols if not c["name"].startswith("_")]
             self._schema["table"][row["name"]] = {c["name"]: c for c in cols}
-        for row in self._db.execute("SELECT name, sql FROM sqlite_master "
+        for row in self._db.execute("SELECT sql FROM sqlite_master "
                                     "WHERE type = 'view' AND name LIKE '%/%'"):
             try:
-                topic = row["name"]
-                typename = row["sql"][row["sql"].rfind("="):].strip().strip('";')
+                topic = re.search(r'WHERE _topic = "([^"]+)"', row["sql"]).group(1)
+                typename = re.search(r'FROM "([^"]+)"', row["sql"]).group(1)
                 self._schema["view"].setdefault(topic, {})[typename] = True
             except Exception as e:
                 ConsolePrinter.error("Error parsing view %s: %s.", row, e)
