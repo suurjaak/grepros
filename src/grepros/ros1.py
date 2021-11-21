@@ -159,6 +159,8 @@ class EmbagReader(object):
                 self._counts[topickey] = self._counts.get(topickey, 0) + conn.message_count
                 self._hashdefs[conn.md5sum] = typename
                 self._typedefs[typename] = conn.message_definition
+                for n, d in parse_definition_subtypes(conn.message_definition).items():
+                    self._typedefs.setdefault(n, d)
 
 
     def _populate_message(self, msg, embagval):

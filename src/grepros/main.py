@@ -66,7 +66,7 @@ Print first message from each lidar topic on host 1.2.3.4:
     """,
 
     "arguments": [
-        dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
+        dict(args=["PATTERNS"], nargs="*", metavar="PATTERN",
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"

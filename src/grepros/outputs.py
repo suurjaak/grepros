@@ -554,7 +554,6 @@ class HtmlSink(SinkBase, TextSinkMixin):
         if self._writer:
             writer, self._writer = self._writer, None
             self._queue.put(None)
-            self._queue = None
             writer.is_alive() and writer.join()
         if not self._close_printed and self._counts:
             self._close_printed = True
@@ -564,7 +563,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def flush(self):
         """Writes out any pending data to disk."""
-        self._queue and self._queue.join()
+        self._queue.join()
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches."""
@@ -595,10 +594,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def _produce(self):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
-        q = self._queue
-        while self._queue:
-            entry = q.get()
-            q.task_done()
+        while True:
+            entry = self._queue.get()
+            self._queue.task_done()
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
@@ -607,7 +605,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
         try:
-            while q.get_nowait() or True: q.task_done()
+            while self._queue.get_nowait() or True: self._queue.task_done()
         except queue.Empty: pass
 
 
@@ -1021,3 +1019,8 @@ class MultiSink(SinkBase):
         """Closes all sinks."""
         for sink in self.sinks:
             sink.close()
+
+    def flush(self):
+        """Flushes all sinks."""
+        for sink in self.sinks:
+            sink.flush()
