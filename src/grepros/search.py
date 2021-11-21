@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    20.11.2021
+@modified    21.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -22,6 +22,9 @@ from . import rosapi
 
 class Searcher(object):
     """ROS message grepper."""
+
+    ## Match patterns for global any-match
+    ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
 
     def __init__(self, args):
@@ -164,7 +167,7 @@ class Searcher(object):
             if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
         if not self._args.PATTERNS:  # Add match-all pattern
-            contents.append((), re.compile("(.*)", re.DOTALL))
+            contents.append(self.ANY_MATCHES[0])
         self._patterns["content"] = contents
 
         selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
@@ -238,7 +241,7 @@ class Searcher(object):
         def decorate_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = rosapi.get_message_fields(obj)  # Returns obj if not ROS message
+            fieldmap = fieldmap0 = rosapi.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
                 fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
@@ -257,6 +260,9 @@ class Searcher(object):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
+            if not top and not matched and not selects and not fieldmap0 \
+            and set(self._patterns["content"]) == set(self.ANY_MATCHES):  # Ensure Empty any-match
+                matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
             return obj
 
         if self._brute_prechecks:

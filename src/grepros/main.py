@@ -8,12 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.11.2021
+@modified    21.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
 import argparse
 import atexit
+import collections
 import os
 import re
 import sys
@@ -67,7 +68,7 @@ Print first message from each lidar topic on host 1.2.3.4:
     "arguments": [
         dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
              help="pattern(s) to find in message field values,\n"
-                  "all messages match if not given,\n"),
+                  "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
                   "(name may be a nested.path);"),
 
@@ -212,26 +213,26 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="print only the fields where PATTERNs find a match"),
 
         dict(args=["-la", "--lines-around-match"],
-             metavar="NUM", dest="LINES_AROUND_MATCH", type=int,
+             dest="LINES_AROUND_MATCH", metavar="NUM", type=int,
              help="print only matched fields and NUM message lines\n"
                   "around match"),
 
         dict(args=["-lf", "--lines-per-field"],
-             metavar="NUM", dest="MAX_FIELD_LINES", type=int,
+             dest="MAX_FIELD_LINES", metavar="NUM", type=int,
              help="maximum number of lines to print per field"),
 
         dict(args=["-l0", "--start-line"],
-             metavar="NUM", dest="START_LINE", type=int,
+             dest="START_LINE", metavar="NUM", type=int,
              help="message line number to start printing from\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-l1", "--end-line"],
-             metavar="NUM", dest="END_LINE", type=int,
+             dest="END_LINE", metavar="NUM", type=int,
              help="message line number to stop printing at\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-lm", "--lines-per-message"],
-             metavar="NUM", dest="MAX_MESSAGE_LINES", type=int,
+             dest="MAX_MESSAGE_LINES", metavar="NUM", type=int,
              help="maximum number of lines to print per message"),
 
         dict(args=["--match-wrapper"],
@@ -349,6 +350,10 @@ def validate_args(args):
     # Print filename prefix on each console message line if not single specific file
     args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
                                              or args.PATHS or any("*" in x for x in args.FILES))
+
+    for k, v in vars(args).items():  # Drop duplicates from list values
+        if isinstance(v, list):
+            setattr(args, k, list(collections.OrderedDict((x, None) for x in v)))
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
         if v is None: continue  # for v, n
