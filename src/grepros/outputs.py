@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.11.2021
+@modified    20.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -79,6 +79,9 @@ class SinkBase(object):
         """Shuts down output, closing any files or connections."""
         self._batch_meta.clear()
         self._counts.clear()
+
+    def flush(self):
+        """Writes out any pending data to disk."""
 
     def thread_excepthook(self, exc):
         """Handles exception, used by background threads."""
@@ -536,10 +539,11 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output file."""
+        self._queue.put((topic, index, stamp, msg, match))
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)
             self._writer.start()
-        self._queue.put((topic, index, stamp, msg, match))
+        if self._queue.qsize() > 100: self._queue.join()
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
@@ -550,12 +554,17 @@ class HtmlSink(SinkBase, TextSinkMixin):
         if self._writer:
             writer, self._writer = self._writer, None
             self._queue.put(None)
+            self._queue = None
             writer.is_alive() and writer.join()
         if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
                                  sum(self._counts.values()), len(self._counts), self._filename)
         super(HtmlSink, self).close()
+
+    def flush(self):
+        """Writes out any pending data to disk."""
+        self._queue and self._queue.join()
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches."""
@@ -586,8 +595,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def _produce(self):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
-        while True:
-            entry = self._queue.get()
+        q = self._queue
+        while self._queue:
+            entry = q.get()
+            q.task_done()
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
@@ -595,6 +606,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
+        try:
+            while q.get_nowait() or True: q.task_done()
+        except queue.Empty: pass
 
 
 
@@ -606,6 +620,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
     - table "messages", with all messages as YAML and serialized binary
     - table "types", with message definitions
     - table "topics", with topic information
+
     plus:
     - table "pkg/MsgType" for each message type, with detailed fields,
       and array fields to linking to subtypes

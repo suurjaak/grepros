@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * add embag support, for faster grepping
 * match anything by default if no patterns given
+* fix breaking too early on --max-per-topic
 
 0.2.4 (2021-11-18)
 -------------------

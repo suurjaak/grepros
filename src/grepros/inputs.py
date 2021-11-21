@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.11.2021
+@modified    20.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -40,15 +40,13 @@ class SourceBase(object):
                      .END_TIME     latest timestamp of messages to scan
         """
         self._args = copy.deepcopy(args)
-        # {topic: ["pkg/MsgType", ]} in current source
-        self._msgtypes = collections.defaultdict(list)
         # {topic: ["pkg/MsgType", ]} searched in current source
         self._topics   = collections.defaultdict(list)
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
-        ## Whether source is static like a bag source, all topics known from the start
-        self.is_static = None
+        ## All topics in source, as [(topic, "pkg/MsgType")]
+        self.topics = set()
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -58,15 +56,17 @@ class SourceBase(object):
         self.sink = sink
 
     def validate(self):
-        """
-        Returns whether source prerequisites are met (like ROS environment set if TopicSource).
-        """
+        """Returns whether source prerequisites are met (like ROS environment for TopicSource)."""
         return True
 
     def close(self):
         """Shuts down input, closing any files or connections."""
-        self._msgtypes.clear()
+        self.topics.clear()
         self._topics.clear()
+
+    def close_batch(self):
+        """Shuts down input batch if any (like bagfile), else all input."""
+        self.close()
 
     def format_meta(self):
         """Returns source metainfo string."""
@@ -153,8 +153,6 @@ class BagSource(SourceBase):
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
 
-        self.is_static  = True
-
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
         self._running = True
@@ -190,6 +188,11 @@ class BagSource(SourceBase):
         self._bag and self._bag.close()
         super(BagSource, self).close()
 
+    def close_batch(self):
+        """Closes current bag, if any, and moves reading to the next one, if any."""
+        self._bag and self._bag.close()
+        self._bag = None
+
     def format_meta(self):
         """Returns bagfile metainfo string."""
         return self.META_TEMPLATE.format(**self.get_meta())
@@ -208,7 +211,7 @@ class BagSource(SourceBase):
             return self._meta
         start, end = self._bag.get_start_time(), self._bag.get_end_time()
         self._meta = dict(file=self._filename, size=format_bytes(self._bag.size),
-                          mcount=self._bag.get_message_count(), tcount=len(self._msgtypes),
+                          mcount=self._bag.get_message_count(), tcount=len(self.topics),
                           start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
                           end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
                           delta=format_timedelta(datetime.timedelta(seconds=end - start)))
@@ -258,7 +261,7 @@ class BagSource(SourceBase):
         """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
         counts = collections.defaultdict(int)
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
-            if not self._running:
+            if not self._running or not self._bag:
                 break  # for topic
             typename = rosapi.get_message_type(msg)
             if typename not in topics[topic]:
@@ -295,8 +298,8 @@ class BagSource(SourceBase):
         self._filename = None
         self._sticky   = False
         self._counts.clear()
-        self._msgtypes.clear()
         self._msgtotals.clear()
+        self.topics.clear()
         if self._args.OUTFILE and os.path.realpath(self._args.OUTFILE) == os.path.realpath(filename):
             return False
         try:
@@ -308,12 +311,14 @@ class BagSource(SourceBase):
         self._bag      = bag
         self._filename = filename
 
+        dct = {}  # {topic: [typename, ]}
         for k, v in bag.get_type_and_topic_info().topics.items():
-            self._msgtypes[k] += [v.msg_type]
+            dct.setdefault(k, []).append(v.msg_type)
+            self.topics.add((k, v.msg_type))
             if v.message_count is not None:
                 self._msgtotals[(k, v.msg_type)] += v.message_count
 
-        dct = filter_dict(self._msgtypes, self._args.TOPICS, self._args.TYPES)
+        dct = filter_dict(dct, self._args.TOPICS, self._args.TYPES)
         dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
         self._topics = dct
         self._meta   = self.get_meta()
@@ -352,7 +357,6 @@ class TopicSource(SourceBase):
         self._subs    = {}     # {(topic, type): ROS subscriber}
 
         self._configure()
-        self.is_static = False
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
@@ -393,7 +397,7 @@ class TopicSource(SourceBase):
     def get_meta(self):
         """Returns source metainfo data dict."""
         ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
-        return dict(ENV, tcount=sum(len(x) for x in self._msgtypes.values()))
+        return dict(ENV, tcount=len(self.topics))
 
     def format_meta(self):
         """Returns source metainfo string."""
@@ -420,7 +424,7 @@ class TopicSource(SourceBase):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in rosapi.get_topic_types():
             topickey = (topic, typename)
-            if topickey in self._msgtypes:
+            if topickey in self.topics:
                 continue  # for topic
             dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)
             dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
@@ -429,7 +433,7 @@ class TopicSource(SourceBase):
                 sub = rosapi.create_subscriber(topic, typename, handler,
                                                queue_size=self._args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
-            self._msgtypes[topickey] += [typename]
+            self.topics.add(topickey)
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
