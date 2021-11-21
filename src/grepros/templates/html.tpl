@@ -13,7 +13,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    14.11.2021
+@modified    21.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -459,7 +459,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       for (var i = 0; i < linklist.length; i++) {
         linklist[i].classList.remove("asc");
         linklist[i].classList.remove("desc");
-        if (i == sort_col) linklist[i].classList.add(sort_direction ? "asc" : "desc")
+        if (i + 1 == sort_col) linklist[i].classList.add(sort_direction ? "asc" : "desc")
       };
       return false;
     };
@@ -540,7 +540,7 @@ Command: {{ " ".join(args) }}
         <tr>
           <th></th>
 %for i, name in enumerate(["topic", "type", "count", "first", "last"], 1):
-          <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="sort({{ i }})">{{ name.capitalize() }}</span></th>
+          <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="sort({{ i + 1 }})">{{ name.capitalize() }}</span></th>
 %endfor
         </tr>
       </thead>

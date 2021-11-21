@@ -8,6 +8,7 @@ Changelog for package grepros
 * match anything by default if no patterns given
 * fix breaking too early on --max-per-topic
 * fix adding topic views to existing SQLite output database
+* fix sorting table of contents in HTML output
 
 0.2.4 (2021-11-18)
 -------------------
