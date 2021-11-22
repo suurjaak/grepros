@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    21.11.2021
+@modified    22.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -197,7 +197,8 @@ class Searcher(object):
         if not is_maxed and self._args.MAX_TOPIC_MATCHES:
             count_required = self._args.MAX_TOPICS or len(source.topics)
             count_maxed = sum(vv[True] >= self._args.MAX_TOPIC_MATCHES
-                              for vv in self._counts.values())
+                              or source.topics.get(k) and vv[None] >= source.topics[k]
+                              for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)
         if is_maxed:
             result = not self._args.AFTER or \

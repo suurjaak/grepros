@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.11.2021
+@modified    22.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -45,8 +45,8 @@ class SourceBase(object):
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
-        ## All topics in source, as [(topic, "pkg/MsgType")]
-        self.topics = set()
+        ## All topics in source, as {(topic, "pkg/MsgType"): total message count or None}
+        self.topics = {}
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -146,9 +146,9 @@ class BagSource(SourceBase):
         self._args0     = copy.deepcopy(args)  # Original arguments
         self._status    = None  # Match status of last produced message
         self._sticky    = False  # Scanning a single topic until all after-context emitted
+        self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
         self._counts    = collections.defaultdict(int)  # {(topic, type): count processed}
-        self._msgtotals = collections.defaultdict(int)  # {(topic, type): total count in bag}
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
@@ -221,7 +221,7 @@ class BagSource(SourceBase):
         """Returns message metainfo data dict."""
         self._ensure_totals()
         msgtype = rosapi.get_message_type(msg)
-        return dict(topic=topic, type=msgtype, total=self._msgtotals[(topic, msgtype)],
+        return dict(topic=topic, type=msgtype, total=self.topics[(topic, msgtype)],
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
                     schema=self.get_message_definition(msg))
@@ -239,6 +239,8 @@ class BagSource(SourceBase):
     def notify(self, status):
         """Reports match status of last produced message."""
         self._status = bool(status)
+        if status and not self._totals_ok:
+            self._ensure_totals()
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
@@ -246,13 +248,13 @@ class BagSource(SourceBase):
         if self._args.START_INDEX:
             self._ensure_totals()
             START = self._args.START_INDEX
-            MIN = max(0, START + (self._msgtotals[topickey] if START < 0 else 0))
+            MIN = max(0, START + (self.topics[topickey] if START < 0 else 0))
             if MIN >= index:
                 return False
         if self._args.END_INDEX:
             self._ensure_totals()
             END = self._args.END_INDEX
-            MAX = END + (self._msgtotals[topickey] if END < 0 else 0)
+            MAX = END + (self.topics[topickey] if END < 0 else 0)
             if MAX < index:
                 return False
         return super(BagSource, self).is_processable(topic, index, stamp, msg)
@@ -287,18 +289,19 @@ class BagSource(SourceBase):
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
-        if not self._msgtotals:  # Must be ros2.Bag
+        if not self._totals_ok:  # Must be ros2.Bag
             for k, v in self._bag.get_type_and_topic_info(counts=True).topics.items():
-                self._msgtotals[(k, v.msg_type)] += v.message_count
+                self.topics[(k, v.msg_type)] = v.message_count
+            self._totals_ok = True
 
     def _configure(self, filename):
         """Opens bag and populates bag-specific argument state, returns success."""
-        self._meta     = None
-        self._bag      = None
-        self._filename = None
-        self._sticky   = False
+        self._meta      = None
+        self._bag       = None
+        self._filename  = None
+        self._sticky    = False
+        self._totals_ok = False
         self._counts.clear()
-        self._msgtotals.clear()
         self.topics.clear()
         if self._args.OUTFILE and os.path.realpath(self._args.OUTFILE) == os.path.realpath(filename):
             return False
@@ -314,9 +317,8 @@ class BagSource(SourceBase):
         dct = {}  # {topic: [typename, ]}
         for k, v in bag.get_type_and_topic_info().topics.items():
             dct.setdefault(k, []).append(v.msg_type)
-            self.topics.add((k, v.msg_type))
-            if v.message_count is not None:
-                self._msgtotals[(k, v.msg_type)] += v.message_count
+            self.topics[(k, v.msg_type)] = v.message_count
+        self._totals_ok = not any(v is None for v in self.topics.values())
 
         dct = filter_dict(dct, self._args.TOPICS, self._args.TYPES)
         dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
@@ -433,7 +435,7 @@ class TopicSource(SourceBase):
                 sub = rosapi.create_subscriber(topic, typename, handler,
                                                queue_size=self._args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
-            self.topics.add(topickey)
+            self.topics[topickey] = None
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
