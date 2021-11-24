@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.11.2021
+@modified    24.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -513,6 +513,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         @param   args.MATCH_WRAPPER      string to wrap around matched values,
                                          both sides if one value, start and end if more than one,
                                          or no wrapping if zero values
+        @param   args.ORDERBY            "topic" or "type" if any to group results by
         """
         args = copy.deepcopy(args)
         args.WRAP_WIDTH = self.WRAP_WIDTH
@@ -581,7 +582,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             with open(self._template_path, "r") as f: tpl = f.read()
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
-                      messages=self._produce())
+                      timeline=not self._args.ORDERBY, messages=self._produce())
             self._filename = unique_path(self._filename, empty_ok=True)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Creating %s.", self._filename)

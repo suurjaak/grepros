@@ -5,6 +5,7 @@ HTML export template.
 @param   source     inputs.SourceBase instance
 @param   sink       inputs.HtmlSink instance
 @param   args       list of command-line arguments
+@param   timeline   whether to create timeline
 @param   messages   iterable yielding (topic, index, stamp, msg, match)
 
 ------------------------------------------------------------------------------
@@ -13,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    21.11.2021
+@modified    24.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -195,6 +196,56 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     #messages tr.highlight {
       animation: flash_border 1s 1 linear;
     }
+%if timeline:
+    #timeline {
+      background:             rgba(66, 14, 51, 0.8);
+      position:               fixed;
+      top:                    0px;
+      bottom:                 0px;
+      right:                  0px;
+      padding:                5px;
+      z-index:                1;
+    }
+    #timeline span.toggle {
+      position:               absolute;
+      top:                    5px;
+      right:                  5px;
+    }
+    #timeline ul {
+      list-style-type:        none;
+      margin:                 0;
+      padding:                1px;
+      position:               relative;
+      overflow-y:             auto;
+      overflow-x:             hidden;
+    }
+    #timeline ul li {
+      line-height:            25px;
+    }
+    #timeline ul li a {
+      padding-right:          10px;
+    }
+    #timeline ul li a:hover {
+      cursor:                 pointer;
+      text-decoration:        underline;
+      text-decoration-style:  dotted;
+    }
+    #timeline ul li span.time {
+      color:                  gray;
+    }
+    #timeline ul li .count {
+      float:                  right;
+      font-size:              0.8em;
+      color:                  lightgray;
+    }
+    #timeline.collapsed {
+      bottom:                 unset;
+    }
+    #timeline.collapsed ul {
+      height:                 0;
+      overflow:               hidden;
+    }
+%endif
     #overlay {
       display:                flex;
       align-items:            center;
@@ -254,6 +305,10 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     var FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
     var LASTMSGS  = {};  // {[topic, type]: {id, dt}}
     var MSGCOUNTS = {};  // {[topic, type]: count}
+%if timeline:
+    var MSGIDS    = [];  // [id, ]
+    var MSGSTAMPS = [];  // [dtstr, ] indexes correspond to MSGIDS
+%endif
 
     var sort_col       = 0;     // Current sort column index in toc
     var sort_direction = true;  // Ascending
@@ -270,6 +325,48 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     };
 
 
+%if timeline:
+    /** Adds right-justifying to JavaScript String. */
+    String.prototype.rjust = function(len, char) {
+      len = this.length < len ? len - this.length : 0;
+      char = char || " ";
+      return String(this + Array(len+1).join(char));
+    };
+
+
+    /** Adds left-justifying to JavaScript String. */
+    String.prototype.ljust = function(len, char) {
+      len = this.length < len ? len - this.length : 0;
+      char = char || " ";
+      return String(Array(len+1).join(char) + this);
+    };
+
+
+    /** Adds basic numeric strftime formatting to JavaScript Date, local time. */
+    Date.prototype.strftime = function(format) {
+      var result = format.replace(/%%/g, "~~~~~~~~~~"); // Temp-replace literal %
+      var x = this;
+      var FMTERS = {
+        "%d": function() { return String(x.getDate()).ljust(2, "0"); },
+        "%m": function() { return String(x.getMonth() + 1).ljust(2, "0"); },
+        "%y": function() { return String(x.getFullYear() % 100).ljust(2, "0").slice(-2); },
+        "%Y": function() { return String(x.getFullYear()).rjust(4, "0"); },
+        "%H": function() { return String(x.getHours()).ljust(2, "0"); },
+        "%I": function() { var h = x.getHours(); return String(h > 12 ? h - 12 : h).ljust(2, "0"); },
+        "%M": function() { return String(x.getMinutes()).ljust(2, "0"); },
+        "%S": function() { return String(x.getSeconds()).ljust(2, "0"); },
+        "%f": function() { return String(x.getMilliseconds()).rjust(3, "0").ljust(6, "0"); },
+        "%w": function() { return x.getDay(); },
+        "%W": function() { return String(Util.weekOfYear(x)).ljust(2, "0"); },
+        "%p": function() { return (x.getHours() < 12) ? "AM" : "PM"; },
+        "%P": function() { return (x.getHours() < 12) ? "am" : "pm"; },
+      };
+      for (var f in FMTERS) result = result.replace(new RegExp(f, "g"), FMTERS[f]);
+      return result.replace(/~~~~~~~~~~/g, "%"); // Restore literal %-s
+    };
+
+
+%endif
     /** Registers entry in a topic. */
     function registerTopic(topic, type, schema, id, dt) {
       var topickey = [topic, type];
@@ -288,6 +385,10 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       };
       LASTMSGS[topickey] = {"id": id, "dt": dt};
       MSGCOUNTS[topickey] = (MSGCOUNTS[topickey] || 0) + 1;
+%if timeline:
+      MSGIDS.push(id);
+      MSGSTAMPS.push(dt);
+%endif
     }
 
 
@@ -338,7 +439,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Toggles class on ID-d element, and toggle-element if any.. */
+    /** Toggles class on ID-d element, and toggle-element if any. */
     function toggleClass(id, cls, elem_toggle) {
       var elem = document.getElementById(id);
       if (elem) {
@@ -427,16 +528,21 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
 
 
-    /** Returns a new DOM tag with specified body (text or node) and attributes. */
+    /** Returns a new DOM tag with specified body (text or node, or list of) and attributes. */
     function createElement(name, body, opts) {
       var result = document.createElement(name);
-      if (body != null && "object" != typeof(body)) body = document.createTextNode(body);
-      if (body != null) result.appendChild(body);
+      var elems = Array.isArray(body) ? body : [body];
+      for (var i = 0; i < elems.length; i++) {
+        var elem = elems[i];
+        if (elem != null && "object" != typeof(elem)) elem = document.createTextNode(elem);
+        if (elem != null) result.appendChild(elem);
+      };
       Object.keys(opts || {}).forEach(function(x) { result.setAttribute(x, opts[x]); });
       return result;
     };
 
 
+    /** Sorts table of contents by column. */
     function sort(col) {
       var elem_table = document.getElementById("toc");
       var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
@@ -480,8 +586,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     };
 
 
-    if (document.location.hash) document.location.hash = "";
-    window.addEventListener("load", function() {
+    /** Builds the table of contents. */
+    var populateToc = function() {
       var elem_table = document.getElementById("toc");
       elem_table.querySelector("th").appendChild(
         createElement("input", null, {"type": "checkbox", "checked": "checked",
@@ -520,7 +626,100 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       if (elem_table.classList.contains("collapsed")) {
         toggleClass("toc", "collapsed", elem_table.parentElement.querySelector("span.collapsed"));
       };
+    };
+
+
+%if timeline:
+    /** Populates timeline structures and the timeline element. */
+    var populateTimeline = function() {
+      var NUM = 30;  // @todo from window height mebbe
+
+      // Calculate a sensibly rounded interval
+      var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
+      var ROUNDINGS = [ // [[threshold in millis, rounding in millis], ]
+        [3600 * 1000, 3600 * 1000],  // >1h, round to 60m
+        [ 600 * 1000,  900 * 1000],  // 10m..60m, round to 15m
+        [ 300 * 1000,  600 * 1000],  // 5m..10m, round to 10m
+        [ 120 * 1000,  300 * 1000],  // 2m..5m, round to 5m
+        [  60 * 1000,  120 * 1000],  // 1m..2m, round to 2m
+        [  30 * 1000,   60 * 1000],  // 30s..1m, round to 1m
+        [  10 * 1000,   30 * 1000],  // 10s..30s, round to 30s
+        [   5 * 1000,   10 * 1000],  // 5s..10s, round to 10s
+        [   2 * 1000,    5 * 1000],  // 2s..5s, round to 5s
+        [   1 * 1000,    2 * 1000],  // 1s..2s, round to 2s
+        [        500,    1 * 1000],  // 500ms..1s, round to 1s
+        [        100,         100],  // 100ms..500ms, round to 100
+        [          5,          10],  // 5ms..100ms, round to 10
+        [          2,           5],  // 2ms..5ms, round to 5
+        [          1,           1],  // 1ms..2ms, round to 2
+      ];
+      var rounded = false;
+      for (var i = 0; i < ROUNDINGS.length; i++) {
+        var threshold = ROUNDINGS[i][0], modulo = ROUNDINGS[i][1];
+        if (entryspan > threshold) {
+          entryspan += modulo - entryspan % modulo;
+          rounded = true;
+          break;  // for i
+        };
+      };
+      if (!rounded) entryspan = 1000;
+
+      // Assemble timeline entries
+      var timeentry = new Date(MSGSTAMPS[0]);
+      timeentry = new Date(+timeentry - (+timeentry % entryspan));
+      var timelines = [timeentry];
+      var indexids = {};  // [dt: first message ID]
+      var counts   = {};  // {dt: message count}
+      for (var i = 0; i < MSGSTAMPS.length; i++) {
+        var dt = new Date(MSGSTAMPS[i]);
+        if (!i || +dt >= +timeentry + +entryspan) {
+          while (i && +dt >= +timeentry + +entryspan) {
+            timeentry = new Date(+timeentry + +entryspan);
+            timelines.push(timeentry);
+          };
+          indexids[timeentry] = MSGIDS[i];
+        };
+        counts[timeentry] = (counts[timeentry] || 0) + 1;
+      };
+
+      // Generate date format string
+      var dt1 = new Date(MSGSTAMPS[0]);
+      var dt2 = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
+      var fmtstr = "";
+      if (dt1.getYear() != dt2.getYear()) {
+        fmtstr = "%Y-%m-%d";
+      } else if (dt1.getMonth() != dt2.getMonth() || dt1.getDate() != dt2.getDate()) {
+        fmtstr = "%m-%d";
+      };
+      fmtstr += (fmtstr ? " " : "") + "%H:%M:%S";
+      if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) fmtstr += ".%f";
+
+      // Populate timeline
+      var elem_timeline = document.querySelector("#timeline ul");
+      for (var i = 0; i < timelines.length; i++) {
+        var dt = timelines[i];
+        var attr = !counts[dt] ? {"class": "time"} :
+                                 {"title": "Go to first message in time span", "href": "javascript;",
+                                  "onclick": "return gotoMessage({0})".format(indexids[dt])};
+        var elem_time  = createElement(counts[dt] ? "a" : "span", dt.strftime(fmtstr), attr);
+        var elem_count = counts[dt] ? createElement("span", (counts[dt]).toLocaleString("en"), {"class": "count"}) : null;
+        var elem_li    = createElement("li", [elem_time, elem_count]);
+        elem_timeline.appendChild(elem_li);
+      };
+      elem_timeline.parentNode.classList.remove("hidden");
+    };
+
+
+%endif
+    window.addEventListener("DOMContentLoaded", function() {
+      populateToc();
+%if timeline:
+      populateTimeline();
+%endif
     });
+
+    if (document.location.hash) document.location.hash = "";
+
   </script>
 </head>
 
@@ -565,6 +764,13 @@ Command: {{ " ".join(args) }}
     if (evt.keyCode == 27 && !document.getElementById("overlay").classList.contains("hidden")) toggleOverlay();
   });
 </script>
+
+
+<div id="timeline" class="hidden">
+  Timeline:
+  <span title="Toggle timeline" class="toggle" onclick="return toggleClass('timeline', 'collapsed', this)"></span>
+  <ul></ul>
+</div>
 
 
 <div id="footer">Written by grepros on {{ dt }}.</div>
