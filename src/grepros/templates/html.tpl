@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    24.11.2021
+@modified    25.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -623,9 +623,6 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           elem_tbody.appendChild(elem_row);
         });
       });
-      if (elem_table.classList.contains("collapsed")) {
-        toggleClass("toc", "collapsed", elem_table.parentElement.querySelector("span.collapsed"));
-      };
     };
 
 

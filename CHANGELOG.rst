@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.0 (2021-11-24)
+0.3.0 (2021-11-25)
 -------------------
 * add embag support, for faster grepping
 * match anything by default if no patterns given
@@ -10,6 +10,7 @@ Changelog for package grepros
 * fix breaking too early on --max-per-topic
 * fix adding topic views to existing SQLite output database
 * fix sorting table of contents in HTML output
+* do not auto-expand table of contents in HTML output
 
 0.2.4 (2021-11-18)
 -------------------
