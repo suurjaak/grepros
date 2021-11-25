@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.11.2021
+@modified    25.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -101,9 +101,9 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="write matched messages to specified output file"),
 
         dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "csv", "html", "sqlite"], default="bag",
-             help='output format (default "bag"),\n'
-                  "bag or database appended to if file already exists"),
+             choices=["bag", "csv", "html", "sqlite"],
+             help="output format, auto-detected from OUTFILE extension if not given,\n"
+                  "bag or database will be appended to if file already exists"),
     ],
 
     "groups": {"Filtering": [
@@ -409,9 +409,11 @@ def run():
         if not validate_args(args):
             sys.exit(1)
 
-        cls = inputs.TopicSource if args.LIVE else inputs.BagSource
-        source, sink = cls(args), outputs.MultiSink(args)
-        if not source.validate() or not sink.validate():
+        source = (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+        if not source.validate():
+            sys.exit(1)
+        sink = outputs.MultiSink(args)
+        if not sink.validate():
             sys.exit(1)
 
         thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))

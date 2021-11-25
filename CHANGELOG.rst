@@ -7,6 +7,7 @@ Changelog for package grepros
 * add embag support, for faster grepping
 * match anything by default if no patterns given
 * add timeline to HTML output
+* auto-detect output format from given filename
 * fix breaking too early on --max-per-topic
 * fix adding topic views to existing SQLite output database
 * fix sorting table of contents in HTML output

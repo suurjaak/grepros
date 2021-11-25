@@ -449,8 +449,8 @@ optional arguments:
   --publish             publish matched messages to live ROS topics
   --write OUTFILE       write matched messages to specified output file
   --write-format {bag,csv,html,sqlite}
-                        output format (default "bag"),
-                        bag or database appended to if file already exists
+                        output format, auto-detected from OUTFILE extension if not given,
+                        bag or database will be appended to if file already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]

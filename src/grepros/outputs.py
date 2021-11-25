@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.11.2021
+@modified    25.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -973,8 +973,14 @@ class MultiSink(SinkBase):
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
     ## Autobinding between argument flags+subflags and sink classes
-    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html": HtmlSink,
+    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html":   HtmlSink,
                                                       "csv": CsvSink, "sqlite": SqliteSink}}}
+
+    ## Autobinding between flag value file extension and subflags
+    SUBFLAG_AUTODETECTS = {"OUTFILE": {"OUTFILE_FORMAT": {
+        "bag":  lambda: rosapi.BAG_EXTENSIONS, "csv": (".csv", ),  # Need late binding
+        "html": (".htm", ".html"),             "sqlite": (".sqlite", ".sqlite3")}
+    }}
 
     def __init__(self, args):
         """
@@ -990,9 +996,26 @@ class MultiSink(SinkBase):
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
                       if getattr(args, flag, None)]
         for flag, opts in self.SUBFLAG_CLASSES.items():
-            for subflag, binding in opts.items() if getattr(args, flag, None) else ():
+            if not getattr(args, flag, None): continue  # for glag
+
+            found = None
+            for subflag, binding in opts.items():
+                ext = os.path.splitext(getattr(args, flag))[-1].lower()
+                found = False if getattr(args, subflag, None) else None
                 for cls in filter(bool, [binding.get(getattr(args, subflag, None))]):
                     self.sinks += [cls(args)]
+                    found = True
+                    break  # for cls
+                if found is None and subflag in self.SUBFLAG_AUTODETECTS.get(flag, {}):
+                    subopts = self.SUBFLAG_AUTODETECTS[flag][subflag]
+                    subflagval = next((k for k, v in subopts.items()
+                                       if ext in (v() if callable(v) else v)), None)
+                    if subflagval in opts[subflag]:
+                        cls = opts[subflag][subflagval]
+                        self.sinks += [cls(args)]
+                        found = True
+            if not found:
+                raise Exception("Unknown output format.")
 
     def emit_meta(self):
         """Outputs source metainfo in one sink, if not already emitted."""
