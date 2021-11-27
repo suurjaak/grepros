@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -367,9 +367,9 @@ class BagSink(SinkBase):
         """Writes message to output bagfile."""
         if not self._bag:
             if self._args.VERBOSE:
-                a = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
-                ConsolePrinter.debug("%s %s.", "Appending to" if a else "Creating",
-                                     self._args.OUTFILE)
+                sz = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
+                ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
+                                     self._args.OUTFILE, (" (%s)" % format_bytes(sz)) if a else "")
             self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
 
         if topic not in self._counts and self._args.VERBOSE:
@@ -387,8 +387,9 @@ class BagSink(SinkBase):
         self._bag and self._bag.close()
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
-                                 sum(self._counts.values()), len(self._counts), self._args.OUTFILE)
+            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
+                                 sum(self._counts.values()), len(self._counts), self._args.OUTFILE,
+                                 format_bytes(os.path.getsize(self._args.OUTFILE)))
         super(BagSink, self).close()
 
 
@@ -427,11 +428,13 @@ class CsvSink(SinkBase):
         self._writers.clear()
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to files:",
-                                 sum(self._counts.values()), len(self._counts))
+            sizes = {t: os.path.getsize(n) for t, n in names.items()}
+            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to files ({2}):",
+                                 sum(self._counts.values()), len(self._counts),
+                                 format_bytes(sum(sizes.values())))
             for topic, name in names.items():
                 ConsolePrinter.debug("- %s (%s, %s message(s))", name,
-                                    format_bytes(os.path.getsize(name)), self._counts[topic])
+                                    format_bytes(sizes[topic]), self._counts[topic])
         super(CsvSink, self).close()
 
     def _make_writer(self, topic, msg):
@@ -558,8 +561,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
             writer.is_alive() and writer.join()
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
-                                 sum(self._counts.values()), len(self._counts), self._filename)
+            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
+                                 sum(self._counts.values()), len(self._counts), self._filename,
+                                 format_bytes(os.path.getsize(self._filename)))
         super(HtmlSink, self).close()
 
     def flush(self):
@@ -755,16 +759,19 @@ class SqliteSink(SinkBase, TextSinkMixin):
             self._db = None
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s message(s) in %s topic(s) to %s.",
-                                 sum(self._counts.values()), len(self._counts), self._filename)
+            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
+                                 sum(self._counts.values()), len(self._counts), self._filename,
+                                 format_bytes(os.path.getsize(self._filename)))
+
 
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
         if self._args.VERBOSE:
-            exists = os.path.exists(self._filename) and os.path.getsize(self._filename)
-            ConsolePrinter.debug("%s %s.", "Adding to" if exists else "Creating", self._filename)
+            sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
+            ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
+                                 (" (%s)" % format_bytes(sz)) if sz else "")
         self._db = sqlite3.connect(self._filename, isolation_level=None, check_same_thread=False)
         self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         self._db.executescript(self.BASE_SCHEMA)
