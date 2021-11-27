@@ -9,6 +9,7 @@ Changelog for package grepros
 * auto-detect output format from given filename
 * fix breaking too early on --max-per-topic
 * fix adding topic views to existing SQLite output database
+* fix error on adding message type tables for empty list values in SQLite output
 * fix sorting table of contents in HTML output
 * do not auto-expand table of contents in HTML output
 

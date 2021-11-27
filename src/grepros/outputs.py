@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.11.2021
+@modified    26.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -804,6 +804,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
             suffix = " (%s)" % typename if topic in self._schema["view"] else ""
             fargs["name"] = quote(topic + suffix)
             sql = self.CREATE_TOPIC_VIEW % fargs
+            if self._args.VERBOSE:
+                ConsolePrinter.debug("Adding topic %s.", topic)
             self._db.execute(sql)
             self._schema["view"].setdefault(topic, {})[typename] = True
 
@@ -817,7 +819,10 @@ class SqliteSink(SinkBase, TextSinkMixin):
             for path, submsgs, subtype in self._iter_fields(msg, messages_only=True):
                 subtype = rosapi.scalar(subtype)
                 targs["subtypes"][".".join(path)] = subtype
-                for submsg in submsgs[:1] if isinstance(submsgs, (list, tuple)) else [submsgs]:
+
+                if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
+                elif not submsgs: submsgs = [rosapi.get_message_class(subtype)()]
+                for submsg in submsgs:
                     submsg = submsg or self.source.get_message_class(subtype)()  # List may be empty
                     self._process_type(subtype, submsg)
 
