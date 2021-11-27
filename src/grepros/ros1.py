@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.11.2021
+@modified    26.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -249,7 +249,7 @@ def create_bag_reader(filename):
 
     rosbag.Bag is supplemented with get_message_class() and get_message_definition().
     """
-    if embag:
+    if False and embag:  # @todo enable when embag fixes its memory leak
         return EmbagReader(filename)
 
     DEFINITIONS = {}

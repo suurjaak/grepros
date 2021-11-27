@@ -2,9 +2,8 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.0 (2021-11-25)
+0.2.5 (2021-11-26)
 -------------------
-* add embag support, for faster grepping
 * match anything by default if no patterns given
 * add timeline to HTML output
 * auto-detect output format from given filename
