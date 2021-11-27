@@ -456,7 +456,7 @@ class CsvSink(SinkBase):
             name = self._files[topic].name if topic in self._files else None
             if not name:
                 base, ext = os.path.splitext(self._filebase)
-                name = unique_path("%s.%s%s" % (base, topic.replace("/", "__"), ext))
+                name = unique_path("%s.%s%s" % (base, topic.lstrip("/").replace("/", "__"), ext))
             flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
             f = open(name, **flags)
             w = csv.writer(f)
