@@ -51,11 +51,13 @@ class ConsolePrinter(object):
     DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
     ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
 
-    COLOR = None     ## Whether using colors in output
+    COLOR = None       ## Whether using colors in output
 
-    WIDTH = 80       ## Console width in characters, updated from shutil and curses
+    WIDTH = 80         ## Console width in characters, updated from shutil and curses
 
-    PRINTS = {}      ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    PRINTS = {}        ## {sys.stdout: number of texts printed, sys.stderr: ..}
+
+    _LINEOPEN = False  ## Whether last print was without linefeed
 
     @classmethod
     def configure(cls, args):
@@ -100,9 +102,11 @@ class ConsolePrinter(object):
         except Exception: pass
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
+        if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
         print(pref + text + suff, end=end, file=fileobj)
         fileobj is sys.stdout and not fileobj.isatty() and fileobj.flush()
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
+        cls._LINEOPEN = "\n" not in end
 
 
     @classmethod
@@ -136,7 +140,7 @@ class ProgressBar(threading.Thread):
 
     def __init__(self, max=100, value=0, min=0, width=30, forechar="-",
                  backchar=" ", foreword="", afterword="", interval=1,
-                 pulse=False, static=False, aftertemplate=" {afterword}"):
+                 pulse=False, aftertemplate=" {afterword}"):
         """
         Creates a new progress bar, without drawing it yet.
 
@@ -150,18 +154,17 @@ class ProgressBar(threading.Thread):
         @param   afterword      text after progress bar
         @param   interval       ticker thread interval, in seconds
         @param   pulse          ignore value-min-max, use constant pulse instead
-        @param   static         print stripped afterword only, on explicit update()
         @param   counts         print value and nax afterword
         @param   aftertemplate  afterword format() template, populated with vars(self)
         """
         threading.Thread.__init__(self)
         for k, v in locals().items(): setattr(self, k, v) if "self" != k else 0
+        afterword = aftertemplate.format(**vars(self))
         self.daemon    = True   # Daemon threads do not keep application running
         self.percent   = None   # Current progress ratio in per cent
         self.value     = None   # Current progress bar value
         self.pause     = False  # Whether drawing is currently paused
         self.pulse_pos = 0      # Current pulse position
-        afterword = aftertemplate.format(**vars(self))
         self.bar = "%s[%s%s]%s" % (foreword,
                                    backchar if pulse else forechar,
                                    backchar * (width - 3),
@@ -169,17 +172,13 @@ class ProgressBar(threading.Thread):
         self.printbar = self.bar   # Printable text, with padding to clear previous
         self.progresschar = itertools.cycle("-\\|/")
         self.is_running = False
-        if static or not pulse: self.update(value, draw=static)
+        if not pulse: self.update(value, draw=False)
 
 
     def update(self, value=None, draw=True):
         """Updates the progress bar value, and refreshes by default."""
         if value is not None: self.value = min(self.max, max(self.min, value))
         afterword = self.aftertemplate.format(**vars(self))
-        if self.static:
-            if afterword.strip(): ConsolePrinter.print(afterword.strip())
-            return
-
         w_full = self.width - 2
         if self.pulse:
             if self.pulse_pos is None:
@@ -222,15 +221,13 @@ class ProgressBar(threading.Thread):
 
     def draw(self):
         """Prints the progress bar, from the beginning of the current line."""
-        if self.static: return
         ConsolePrinter.print("\r" + self.printbar, __end=" ")
-        if len(self.printbar) != len(self.bar):
-            self.printbar = self.bar # Discard padding to clear previous
+        if len(self.printbar) != len(self.bar):  # Draw twice to position caret at true content end
+            self.printbar = self.bar
             ConsolePrinter.print("\r" + self.printbar, __end=" ")
 
 
     def run(self):
-        if self.static: return # No running progress
         self.is_running = True
         while self.is_running:
             if not self.pause: self.update(self.value)

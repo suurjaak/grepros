@@ -87,7 +87,7 @@ Print first message from each lidar topic on host 1.2.3.4:
 
 Export all bag messages to SQLite, print only export progress:
 
-    grepros -n my.bag --no-console-output --write my.bag.sqlite --write-progress
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
 
 
 Patterns use Python regular expression syntax, message matches if all match.
@@ -539,7 +539,6 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-progress      show progress bar when writing to file without console output
   --write-format-template OUTFILE_TEMPLATE
                         path to custom template to use for HTML output
   --color {auto,always,never}
@@ -547,6 +546,7 @@ Output control:
   --no-meta             do not print source and message metainfo to console
   --no-filename         do not print bag filename prefix on each console message line
   --no-console-output   do not print matches to console
+  --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
                         for publishing and bag writing
 

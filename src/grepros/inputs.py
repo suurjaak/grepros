@@ -301,9 +301,9 @@ class BagSource(SourceBase):
         """Initializes progress bar, if any, for current bag."""
         if self._args.PROGRESS and not self.bar:
             self._ensure_totals()
-            self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}({max:,d})")
-            afterword = os.path.basename(self._filename)
-            self.bar.afterword, self.bar.max = afterword, sum(self.topics.values())
+            self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
+            self.bar.afterword = os.path.basename(self._filename)
+            self.bar.max = sum(self.topics[(t, d)] for t, dd in self._topics.items() for d in dd)
             self.bar.update(value=0)
 
     def _ensure_totals(self):
@@ -472,7 +472,7 @@ class TopicSource(SourceBase):
         """Updates progress bar, if any."""
         if self.bar:
             afterword = "ROS%s live, %s" % (os.getenv("ROS_VERSION"), plural("message", count))
-            self.bar.afterword = afterword
+            self.bar.afterword, self.bar.max = afterword, count
             if not running:
                 self.bar.pause, self.bar.pulse_pos = True, None
             self.bar.update(count)

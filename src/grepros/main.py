@@ -65,7 +65,7 @@ Print first message from each lidar topic on host 1.2.3.4:
     grepros --live --topic *lidar* --max-per-topic 1
 
 Export all bag messages to SQLite, print only export progress:
-    grepros -n my.bag --no-console-output --write my.bag.sqlite --write-progress
+    grepros -n my.bag --no-console-output --write my.bag.sqlite --progress 2>/dev/null
     """,
 
     "arguments": [
@@ -250,9 +250,6 @@ Export all bag messages to SQLite, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-progress"], dest="PROGRESS", action="store_true",
-             help="show progress bar when writing to file without console output"),
-
         dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
              help="path to custom template to use for HTML output"),
 
@@ -268,6 +265,9 @@ Export all bag messages to SQLite, print only export progress:
 
         dict(args=["--no-console-output"], dest="CONSOLE", action="store_false",
              help="do not print matches to console"),
+
+        dict(args=["--progress"], dest="PROGRESS", action="store_true",
+             help="show progress bar when not printing matches to console"),
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
