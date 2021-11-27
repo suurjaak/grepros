@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.5 (2021-11-26)
+0.2.5 (2021-11-27)
 -------------------
+* add --write-progress option
 * match anything by default if no patterns given
 * add timeline to HTML output
 * auto-detect output format from given filename

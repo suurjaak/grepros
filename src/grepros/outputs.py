@@ -356,6 +356,7 @@ class BagSink(SinkBase):
         @param   args.META      whether to print metainfo
         @param   args.OUTFILE   name of ROS bagfile to create or append to
         @param   args.VERBOSE   whether to print debug information
+        @param   args.PROGRESS  whether progress bar is being printed
         """
         super(BagSink, self).__init__(args)
         self._bag = None
@@ -365,15 +366,17 @@ class BagSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output bagfile."""
+        meta_printed = not self._bag and self._args.VERBOSE
         if not self._bag:
             if self._args.VERBOSE:
                 sz = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
-                                     self._args.OUTFILE, (" (%s)" % format_bytes(sz)) if a else "")
+                                     self._args.OUTFILE, (" (%s)" % format_bytes(sz)) if sz else "")
             self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
 
         if topic not in self._counts and self._args.VERBOSE:
-            ConsolePrinter.debug("Adding topic %s.", topic)
+            inter = "\n" if not meta_printed and self._args.PROGRESS else ""
+            ConsolePrinter.debug("%sAdding topic %s.", inter, topic)
 
         self._bag.write(topic, msg, stamp)
         super(BagSink, self).emit(topic, index, stamp, msg, match)
@@ -403,6 +406,7 @@ class CsvSink(SinkBase):
                                 will add topic name like "name.__my__topic.csv" for "/my/topic",
                                 will add counter like "name.__my__topic.2.csv" if exists
         @param   args.VERBOSE   whether to print debug information
+        @param   args.PROGRESS  whether progress bar is being printed
         """
         super(CsvSink, self).__init__(args)
         self._filebase      = args.OUTFILE  # Filename base, will be made unique
@@ -455,7 +459,8 @@ class CsvSink(SinkBase):
             w = csv.writer(f)
             if topic not in self._files:
                 if self._args.VERBOSE:
-                    ConsolePrinter.debug("Creating %s.", name)
+                    inter = "\n" if self._args.PROGRESS else ""
+                    ConsolePrinter.debug("%sCreating %s.", inter, name)
                 header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
                 metaheader = ["__time", "__datetime", "__type"]
                 w.writerow(self._format_row(metaheader + header))
@@ -517,6 +522,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
                                          both sides if one value, start and end if more than one,
                                          or no wrapping if zero values
         @param   args.ORDERBY            "topic" or "type" if any to group results by
+        @param   args.PROGRESS           whether progress bar is being printed
         """
         args = copy.deepcopy(args)
         args.WRAP_WIDTH = self.WRAP_WIDTH
@@ -606,7 +612,8 @@ class HtmlSink(SinkBase, TextSinkMixin):
                 break  # while
             (topic, index, stamp, msg, match) = entry
             if self._args.VERBOSE and topic not in self._counts:
-                ConsolePrinter.debug("Adding topic %s.", topic)
+                inter = "\n" if self._args.PROGRESS else ""
+                ConsolePrinter.debug("%sAdding topic %s.", inter, topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
         try:
@@ -723,6 +730,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
                                    will be appended to if exists
         @param   args.WRAP_WIDTH   character width to wrap message YAML output at
         @param   args.VERBOSE      whether to print debug information
+        @param   args.PROGRESS     whether progress bar is being printed
         """
         args = TextSinkMixin.make_full_yaml_args(args)
 
@@ -812,7 +820,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
             fargs["name"] = quote(topic + suffix)
             sql = self.CREATE_TOPIC_VIEW % fargs
             if self._args.VERBOSE:
-                ConsolePrinter.debug("Adding topic %s.", topic)
+                inter = "\n" if self._args.PROGRESS else ""
+                ConsolePrinter.debug("%sAdding topic %s.", inter, topic)
             self._db.execute(sql)
             self._schema["view"].setdefault(topic, {})[typename] = True
 
@@ -932,6 +941,7 @@ class TopicSink(SinkBase):
         @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
         @param   args.VERBOSE           whether to print debug information
+        @param   args.PROGRESS          whether progress bar is being printed
         """
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, cls): ROS publisher}
@@ -943,7 +953,9 @@ class TopicSink(SinkBase):
         if key not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
-            self._args.VERBOSE and ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
+            if self._args.VERBOSE:
+                inter = "\n" if self._args.PROGRESS else ""
+                ConsolePrinter.debug("%sPublishing from %s to %s.", inter, topic, topic2)
 
             pub = None
             if self._args.PUBLISH_FIXNAME:

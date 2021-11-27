@@ -525,6 +525,7 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
+  --write-progress      show progress bar when writing to file without console output
   --write-format-template OUTFILE_TEMPLATE
                         path to custom template to use for HTML output
   --color {auto,always,never}

@@ -9,18 +9,21 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
+import itertools
 import math
 import os
 import random
 import re
 import shutil
 import sys
+import threading
+import time
 try: import curses
 except ImportError: curses = None
 
@@ -88,7 +91,7 @@ class ConsolePrinter(object):
     @classmethod
     def print(cls, text="", *args, **kwargs):
         """Prints text, formatted with args and kwargs."""
-        fileobj = kwargs.pop("__file", sys.stdout)
+        fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
         text = str(text)
         try: text = text % args if args else text
@@ -97,7 +100,7 @@ class ConsolePrinter(object):
         except Exception: pass
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
-        print(pref + text + suff, file=fileobj)
+        print(pref + text + suff, end=end, file=fileobj)
         fileobj is sys.stdout and not fileobj.isatty() and fileobj.flush()
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
 
@@ -118,6 +121,124 @@ class ConsolePrinter(object):
         """
         KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+
+class ProgressBar(threading.Thread):
+    """
+    A simple ASCII progress bar with a ticker thread
+
+    Drawn like
+    '[---------\   36%            ] Progressing text..'.
+    or for pulse mode
+    '[    ----                    ] Progressing text..'.
+    """
+
+    def __init__(self, max=100, value=0, min=0, width=30, forechar="-",
+                 backchar=" ", foreword="", afterword="", interval=1,
+                 pulse=False, static=False, aftertemplate=" {afterword}"):
+        """
+        Creates a new progress bar, without drawing it yet.
+
+        @param   max            progress bar maximum value, 100%
+        @param   value          progress bar initial value
+        @param   min            progress bar minimum value, for 0%
+        @param   width          progress bar width (in characters)
+        @param   forechar       character used for filling the progress bar
+        @param   backchar       character used for filling the background
+        @param   foreword       text in front of progress bar
+        @param   afterword      text after progress bar
+        @param   interval       ticker thread interval, in seconds
+        @param   pulse          ignore value-min-max, use constant pulse instead
+        @param   static         print stripped afterword only, on explicit update()
+        @param   counts         print value and nax afterword
+        @param   aftertemplate  afterword format() template, populated with vars(self)
+        """
+        threading.Thread.__init__(self)
+        for k, v in locals().items(): setattr(self, k, v) if "self" != k else 0
+        self.daemon    = True   # Daemon threads do not keep application running
+        self.percent   = None   # Current progress ratio in per cent
+        self.value     = None   # Current progress bar value
+        self.pause     = False  # Whether drawing is currently paused
+        self.pulse_pos = 0      # Current pulse position
+        afterword = aftertemplate.format(**vars(self))
+        self.bar = "%s[%s%s]%s" % (foreword,
+                                   backchar if pulse else forechar,
+                                   backchar * (width - 3),
+                                   afterword)
+        self.printbar = self.bar   # Printable text, with padding to clear previous
+        self.progresschar = itertools.cycle("-\\|/")
+        self.is_running = False
+        if static or not pulse: self.update(value, draw=static)
+
+
+    def update(self, value=None, draw=True):
+        """Updates the progress bar value, and refreshes by default."""
+        if value is not None: self.value = min(self.max, max(self.min, value))
+        afterword = self.aftertemplate.format(**vars(self))
+        if self.static:
+            if afterword.strip(): ConsolePrinter.print(afterword.strip())
+            return
+
+        w_full = self.width - 2
+        if self.pulse:
+            if self.pulse_pos is None:
+                bartext = "%s[%s]%s" % (self.foreword,
+                                        self.forechar * (self.width - 2),
+                                        afterword)
+            else:
+                dash = self.forechar * max(1, (self.width - 2) / 7)
+                pos = self.pulse_pos
+                if pos < len(dash):
+                    dash = dash[:pos]
+                elif pos >= self.width - 1:
+                    dash = dash[:-(pos - self.width - 2)]
+
+                bar = "[%s]" % (self.backchar * w_full)
+                # Write pulse dash into the middle of the bar
+                pos1 = min(self.width - 1, pos + 1)
+                bar = bar[:pos1 - len(dash)] + dash + bar[pos1:]
+                bartext = "%s%s%s" % (self.foreword, bar, afterword)
+                self.pulse_pos = (self.pulse_pos + 1) % (self.width + 2)
+        else:
+            percent = int(round(100.0 * self.value / (self.max or 1)))
+            percent = 99 if percent == 100 and self.value < self.max else percent
+            w_done = max(1, int(round((percent / 100.0) * w_full)))
+            # Build bar outline, animate by cycling last char from progress chars
+            char_last = self.forechar
+            if draw and w_done < w_full: char_last = next(self.progresschar)
+            bartext = "%s[%s%s%s]%s" % (
+                       self.foreword, self.forechar * (w_done - 1), char_last,
+                       self.backchar * (w_full - w_done), afterword)
+            # Write percentage into the middle of the bar
+            centertxt = " %2d%% " % percent
+            pos = len(self.foreword) + int(self.width / 2 - len(centertxt) / 2)
+            bartext = bartext[:pos] + centertxt + bartext[pos + len(centertxt):]
+            self.percent = percent
+        self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
+        self.bar, prevbar = bartext, self.bar
+        if draw and prevbar != self.bar: self.draw()
+
+
+    def draw(self):
+        """Prints the progress bar, from the beginning of the current line."""
+        if self.static: return
+        ConsolePrinter.print("\r" + self.printbar, __end=" ")
+        if len(self.printbar) != len(self.bar):
+            self.printbar = self.bar # Discard padding to clear previous
+            ConsolePrinter.print("\r" + self.printbar, __end=" ")
+
+
+    def run(self):
+        if self.static: return # No running progress
+        self.is_running = True
+        while self.is_running:
+            if not self.pause: self.update(self.value)
+            time.sleep(self.interval)
+
+
+    def stop(self):
+        self.is_running = False
 
 
 

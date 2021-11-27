@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -247,6 +247,9 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
+        dict(args=["--write-progress"], dest="PROGRESS", action="store_true",
+             help="show progress bar when writing to file without console output"),
+
         dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
              help="path to custom template to use for HTML output"),
 
@@ -346,6 +349,9 @@ def validate_args(args):
 
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = args.VERBOSE or not args.CONSOLE
+
+    # Show progress bar only if no console output
+    args.PROGRESS = args.PROGRESS and not args.CONSOLE
 
     # Print filename prefix on each console message line if not single specific file
     args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1

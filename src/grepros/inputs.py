@@ -8,10 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
+from __future__ import print_function
 import copy
 import collections
 import datetime
@@ -22,7 +23,7 @@ except ImportError: import Queue as queue  # Py2
 import threading
 import time
 
-from . common import ConsolePrinter, drop_zeros, filter_dict, find_files, \
+from . common import ConsolePrinter, ProgressBar, drop_zeros, filter_dict, find_files, \
                      format_bytes, format_stamp, format_timedelta
 from . import rosapi
 
@@ -37,7 +38,7 @@ class SourceBase(object):
         """
         @param   args              arguments object like argparse.Namespace
         @param   args.START_TIME   earliest timestamp of messages to scan
-                     .END_TIME     latest timestamp of messages to scan
+        @param   args.END_TIME     latest timestamp of messages to scan
         """
         self._args = copy.deepcopy(args)
         # {topic: ["pkg/MsgType", ]} searched in current source
@@ -47,6 +48,8 @@ class SourceBase(object):
         self.sink = None
         ## All topics in source, as {(topic, "pkg/MsgType"): total message count or None}
         self.topics = {}
+        ## ProgressBar instance, if any
+        self.bar = None
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -63,6 +66,10 @@ class SourceBase(object):
         """Shuts down input, closing any files or connections."""
         self.topics.clear()
         self._topics.clear()
+        if self.bar:
+            self.bar.pulse_pos = None
+            self.bar.update()
+            self.bar, _ = None, self.bar.stop()
 
     def close_batch(self):
         """Shuts down input batch if any (like bagfile), else all input."""
@@ -141,6 +148,7 @@ class BagSource(SourceBase):
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
         @param   args.OUTFILE       output bagfile, to skip in input files
+        @param   args.PROGRESS      whether to print progress bar
         """
         super(BagSource, self).__init__(args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -159,7 +167,7 @@ class BagSource(SourceBase):
         names, paths = self._args.FILES, self._args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
         for filename in find_files(names, paths, exts, skip_exts, recurse=self._args.RECURSE):
-            if not self._configure(filename) or not self._topics:
+            if not self._running or not self._configure(filename) or not self._topics:
                 continue  # for filename
 
             topicsets = [self._topics]
@@ -171,11 +179,12 @@ class BagSource(SourceBase):
                     for t in tt: typetopics.setdefault(t, []).append(n)
                 topicsets = [{n: [t] for n in nn} for t, nn in sorted(typetopics.items())]
 
+            self._init_progress()
             for topics in topicsets:
                 for topic, msg, stamp in self._produce(topics):
                     yield topic, msg, stamp
                 if not self._running:
-                    return
+                    break  # for topics
         self._running = False
 
     def validate(self):
@@ -276,6 +285,7 @@ class BagSource(SourceBase):
                 continue  # for topic
 
             self._status = None
+            self.bar and self.bar.update(value=sum(self._counts.values()))
             yield topic, msg, stamp
 
             if self._status and self._args.AFTER and not self._sticky \
@@ -286,6 +296,15 @@ class BagSource(SourceBase):
                 for entry in self._produce({topic: typename}, continue_from):
                     yield entry
                 self._sticky = False
+
+    def _init_progress(self):
+        """Initializes progress bar, if any, for current bag."""
+        if self._args.PROGRESS and not self.bar:
+            self._ensure_totals()
+            self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}({max:,d})")
+            afterword = os.path.basename(self._filename)
+            self.bar.afterword, self.bar.max = afterword, sum(self.topics.values())
+            self.bar.update(value=0)
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
@@ -352,6 +371,7 @@ class TopicSource(SourceBase):
         @param   args.END_INDEX       message index within topic to stop at
         @param   args.QUEUE_SIZE_IN   subscriber queue size
         @param   args.ROS_TIME_IN     stamp messages with ROS time instead of wall time
+        @param   args.PROGRESS        whether to print progress bar
         """
         super(TopicSource, self).__init__(args)
         self._running = False  # Whether is in process of yielding messages from topics
@@ -370,8 +390,12 @@ class TopicSource(SourceBase):
             t.daemon = True
             t.start()
 
+        total = 0
+        self._init_progress()
         while self._running:
             topic, msg, stamp = self._queue.get()
+            total += bool(topic)
+            self._update_progress(total, self._running and bool(topic))
             if topic:
                 yield topic, msg, stamp
         self._queue = None
@@ -436,6 +460,22 @@ class TopicSource(SourceBase):
                                                queue_size=self._args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
             self.topics[topickey] = None
+
+    def _init_progress(self):
+        """Initializes progress bar, if any."""
+        if self._args.PROGRESS and not self.bar:
+            self.bar = ProgressBar(afterword="ROS%s live" % os.getenv("ROS_VERSION"),
+                                   aftertemplate=" {afterword} ({value:,d})", pulse=True)
+            self.bar.start()
+
+    def _update_progress(self, count, running=True):
+        """Updates progress bar, if any."""
+        if self.bar:
+            afterword = "ROS{0} live, {1:,d} messages".format(os.getenv("ROS_VERSION"), count)
+            self.bar.afterword = afterword
+            if not running:
+                self.bar.pause, self.bar.pulse_pos = True, None
+            self.bar.update(count)
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
