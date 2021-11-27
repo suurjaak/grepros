@@ -553,6 +553,41 @@ def parse_datetime(text):
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
 
 
+def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
+    """
+    Returns the word as 'count words', or '1 word' if count is 1,
+    or 'words' if count omitted.
+
+    @param   items      item collection or count,
+                        or None to get just the plural of the word
+    @param   numbers    if False, count is omitted from final result
+    @param   single     prefix to use for word if count is 1, e.g. "a"
+    @param   sep        thousand-separator to use for count
+    @param   pref       prefix to prepend to count, e.g. "~150"
+    @param   suf        suffix to append to count, e.g. "150+"
+    """
+    count   = len(items) if hasattr(items, "__len__") else items or 0
+    isupper = word[-1:].isupper()
+    suffix = "es" if word and word[-1:].lower() in "xyz" \
+             and not word[-2:].lower().endswith("ay") \
+             else "s" if word else ""
+    if isupper: suffix = suffix.upper()
+    if count != 1 and "es" == suffix and "y" == word[-1:].lower():
+        word = word[:-1] + ("I" if isupper else "i")
+    result = word + ("" if 1 == count else suffix)
+    if numbers and items is not None:
+        if 1 == count: fmtcount = single
+        elif not count: fmtcount = "0"
+        elif sep: fmtcount = "".join([
+            x + (sep if i and not i % 3 else "") for i, x in enumerate(str(count)[::-1])
+        ][::-1])
+        else: fmtcount = str(count)
+
+        fmtcount = pref + fmtcount + suf
+        result = "%s %s" % (single if 1 == count else fmtcount, result)
+    return result.strip()
+
+
 def quote(name, force=False):
     """
     Returns name in quotes and proper-escaped for SQLite queries.

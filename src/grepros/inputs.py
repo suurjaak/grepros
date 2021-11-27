@@ -24,7 +24,7 @@ import threading
 import time
 
 from . common import ConsolePrinter, ProgressBar, drop_zeros, filter_dict, find_files, \
-                     format_bytes, format_stamp, format_timedelta
+                     format_bytes, format_stamp, format_timedelta, plural
 from . import rosapi
 
 
@@ -433,7 +433,7 @@ class TopicSource(SourceBase):
             result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
         if "ROS_DOMAIN_ID" in metadata:
             result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
-        result += ", %s topic(s) initially" % metadata["tcount"]
+        result += ", %s initially" % plural("topic", metadata["tcount"])
         return result
 
     def is_processable(self, topic, index, stamp, msg):
@@ -471,7 +471,7 @@ class TopicSource(SourceBase):
     def _update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS{0} live, {1:,d} messages".format(os.getenv("ROS_VERSION"), count)
+            afterword = "ROS%s live, %s" % (os.getenv("ROS_VERSION"), plural("message", count))
             self.bar.afterword = afterword
             if not running:
                 self.bar.pause, self.bar.pulse_pos = True, None

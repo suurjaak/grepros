@@ -28,8 +28,8 @@ import threading
 
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, format_bytes, merge_spans, quote, unique_path, wildcard_to_regex
+from . common import ConsolePrinter, MatchMarkers, TextWrapper, filter_fields, format_bytes, \
+                     merge_spans, plural, quote, unique_path, wildcard_to_regex
 from . import rosapi
 from . vendor import step
 
@@ -390,8 +390,9 @@ class BagSink(SinkBase):
         self._bag and self._bag.close()
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
-                                 sum(self._counts.values()), len(self._counts), self._args.OUTFILE,
+            ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
+                                 plural("message", sum(self._counts.values())),
+                                 plural("topic", len(self._counts)), self._args.OUTFILE,
                                  format_bytes(os.path.getsize(self._args.OUTFILE)))
         super(BagSink, self).close()
 
@@ -433,12 +434,14 @@ class CsvSink(SinkBase):
         if not self._close_printed and self._counts:
             self._close_printed = True
             sizes = {t: os.path.getsize(n) for t, n in names.items()}
-            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to files ({2}):",
-                                 sum(self._counts.values()), len(self._counts),
+            ConsolePrinter.debug("Wrote %s in %s to file (%s):",
+                                 plural("message", sum(self._counts.values())),
+                                 plural("topic", len(self._counts)),
                                  format_bytes(sum(sizes.values())))
             for topic, name in names.items():
-                ConsolePrinter.debug("- %s (%s, %s message(s))", name,
-                                    format_bytes(sizes[topic]), self._counts[topic])
+                ConsolePrinter.debug("- %s (%s, %s)", name,
+                                    format_bytes(sizes[topic]),
+                                    plural("message", self._counts[topic]))
         super(CsvSink, self).close()
 
     def _make_writer(self, topic, msg):
@@ -567,8 +570,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
             writer.is_alive() and writer.join()
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
-                                 sum(self._counts.values()), len(self._counts), self._filename,
+            ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
+                                 plural("message", sum(self._counts.values())),
+                                 plural("topic", len(self._counts)), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
         super(HtmlSink, self).close()
 
@@ -767,8 +771,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
             self._db = None
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote {0:,d} message(s) in {1:,d} topic(s) to {2} ({3}).",
-                                 sum(self._counts.values()), len(self._counts), self._filename,
+            ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
+                                 plural("message", sum(self._counts.values())),
+                                 plural("topic", len(self._counts)), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
 
 
@@ -980,8 +985,9 @@ class TopicSink(SinkBase):
         """Shuts down publishers."""
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Published %s message(s) to %s topic(s).",
-                                 sum(self._counts.values()), len(set(self._pubs.values())))
+            ConsolePrinter.debug("Published %s to %s.",
+                                 plural("message", sum(self._counts.values())),
+                                 plural("topic", len(set(self._pubs.values()))))
         for t in list(self._pubs):
             pub = self._pubs.pop(t)
             # ROS1 prints errors when closing a publisher with subscribers
