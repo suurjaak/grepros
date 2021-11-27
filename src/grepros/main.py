@@ -63,6 +63,9 @@ print only header stamp and values:
 Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
     grepros --live --topic *lidar* --max-per-topic 1
+
+Export all bag messages to SQLite, print only export progress:
+    grepros -n my.bag --no-console-output --write my.bag.sqlite --write-progress
     """,
 
     "arguments": [

@@ -85,6 +85,10 @@ Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \
     grepros --live --topic *lidar* --max-per-topic 1
 
+Export all bag messages to SQLite, print only export progress:
+
+    grepros -n my.bag --no-console-output --write my.bag.sqlite --write-progress
+
 
 Patterns use Python regular expression syntax, message matches if all match.
 '*' wildcards in other arguments use simple globbing as zero or more characters,
@@ -203,27 +207,32 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write my.bag
+    --write my.bag [--write-format bag]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
 it is appended to. 
 
+Specifying `--write-format bag` is not required
+if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
+
 
 ### csv
 
-    --write my.csv --write-format csv
+    --write my.csv [--write-format csv]
 
 Write messages to CSV files, each topic to a separate file, named
-`my.__topic__name__.csv` for `/topic/name`.
+`my.full__topic__name.csv` for `/full/topic/name`.
 
 Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
+Specifying `--write-format csv` is not required if the filename ends with `.csv`.
+
 
 ### html
 
-    --write my.html --write-format html
+    --write my.html [--write-format html]
 
 Write messages to an HTML file, with a linked table of contents,
 message type definitions, and a topically traversable message list.
@@ -232,6 +241,8 @@ message type definitions, and a topically traversable message list.
 
 Note: resulting file may be large, and take a long time to open in browser. 
 
+Specifying `--write-format html` is not required if the filename ends with `.htm` or `.html`.
+
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
     --write-format-template /my/html.template
@@ -239,7 +250,7 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
 
 ### sqlite
 
-    --write my.db --write-format sqlite
+    --write my.sqlite {--write-format sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -247,6 +258,9 @@ If the database already exists, it is appended to.
 
 Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts.
+
+Specifying `--write-format sqlite` is not required
+if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
 
