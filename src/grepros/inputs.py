@@ -156,7 +156,7 @@ class BagSource(SourceBase):
         self._sticky    = False  # Scanning a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
-        self._counts    = collections.defaultdict(int)  # {(topic, type): count processed}
+        self._counts    = collections.Counter()  # {(topic, type): count processed}
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
@@ -270,7 +270,7 @@ class BagSource(SourceBase):
 
     def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
-        counts = collections.defaultdict(int)
+        counts = collections.Counter()
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
                 break  # for topic

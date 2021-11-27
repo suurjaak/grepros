@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    22.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -49,7 +49,7 @@ class Searcher(object):
         # {(topic, type): {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
         # {(topic, type): {None: count processed, True: count matched, False: count emitted as context}}
-        self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))
+        self._counts   = collections.defaultdict(collections.Counter)
         # {(topic, type): {message ID: True if matched else False if emitted else None}
         self._statuses = collections.defaultdict(collections.OrderedDict)
         # {(topic, type): (message hash over all fields used in matching)}
