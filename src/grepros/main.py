@@ -405,8 +405,13 @@ def flush_stdout():
 
 def run():
     """Parses command-line arguments and runs search."""
+    argparser = make_parser()
+    if len(sys.argv) < 2:
+        argparser.print_usage()
+        return
+
     atexit.register(flush_stdout)
-    args, _ = make_parser().parse_known_args()
+    args, _ = argparser.parse_known_args()
 
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
