@@ -352,7 +352,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         "%I": function() { var h = x.getHours(); return String(h > 12 ? h - 12 : h).ljust(2, "0"); },
         "%M": function() { return String(x.getMinutes()).ljust(2, "0"); },
         "%S": function() { return String(x.getSeconds()).ljust(2, "0"); },
-        "%f": function() { return String(x.getMilliseconds()).rjust(3, "0").ljust(6, "0"); },
+        "%f": function() { return String(x.getMilliseconds()).ljust(3, "0").rjust(6, "0"); },
+        "%F": function() { return String(x.getMilliseconds()).ljust(3, "0"); },
         "%w": function() { return x.getDay(); },
         "%W": function() { return String(Util.weekOfYear(x)).ljust(2, "0"); },
         "%p": function() { return (x.getHours() < 12) ? "AM" : "PM"; },
@@ -767,15 +768,20 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
         // Generate date format string
         var dt1 = new Date(MSGSTAMPS[0]);
-        var dt2 = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
+        var dt2 = new Date(MSGSTAMPS[Math.min(1, MSGSTAMPS.length - 1)]);
+        var dtN = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
         var fmtstr = "";
-        if (dt1.getYear() != dt2.getYear()) {
+        if (dt1.getYear() != dtN.getYear()) {
           fmtstr = "%Y-%m-%d";
-        } else if (dt1.getMonth() != dt2.getMonth() || dt1.getDate() != dt2.getDate()) {
+        } else if (dt1.getMonth() != dtN.getMonth() || dt1.getDate() != dtN.getDate()) {
           fmtstr = "%m-%d";
         };
         fmtstr += (fmtstr ? " " : "") + "%H:%M:%S";
-        if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) fmtstr += ".%f";
+        if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) {
+          var fracts = ".%F";  // Millis
+          if (dt1.strftime(fmtstr + fracts) == dt2.strftime(fmtstr + fracts)) fracts = ".%f";  // Micros
+          fmtstr += fracts;
+        }
 
         // Populate timeline
         elem_timeline.innerHTML = "";
