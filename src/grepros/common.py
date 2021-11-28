@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -103,10 +103,11 @@ class ConsolePrinter(object):
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
         if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
-        print(pref + text + suff, end=end, file=fileobj)
-        fileobj is sys.stdout and not fileobj.isatty() and fileobj.flush()
+
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
         cls._LINEOPEN = "\n" not in end
+        print(pref + text + suff, end=end, file=fileobj)
+        not fileobj.isatty() and fileobj.flush()
 
 
     @classmethod
@@ -175,7 +176,7 @@ class ProgressBar(threading.Thread):
         if not pulse: self.update(value, draw=False)
 
 
-    def update(self, value=None, draw=True):
+    def update(self, value=None, draw=True, flush=False):
         """Updates the progress bar value, and refreshes by default."""
         if value is not None: self.value = min(self.max, max(self.min, value))
         afterword = self.aftertemplate.format(**vars(self))
@@ -216,15 +217,16 @@ class ProgressBar(threading.Thread):
             self.percent = percent
         self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
         self.bar, prevbar = bartext, self.bar
-        if draw and prevbar != self.bar: self.draw()
+        if draw and prevbar != self.bar: self.draw(flush)
 
 
-    def draw(self):
+    def draw(self, flush=False):
         """Prints the progress bar, from the beginning of the current line."""
         ConsolePrinter.print("\r" + self.printbar, __end=" ")
         if len(self.printbar) != len(self.bar):  # Draw twice to position caret at true content end
             self.printbar = self.bar
             ConsolePrinter.print("\r" + self.printbar, __end=" ")
+        if flush: ConsolePrinter.print()
 
 
     def run(self):

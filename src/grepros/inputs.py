@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -68,7 +68,7 @@ class SourceBase(object):
         self._topics.clear()
         if self.bar:
             self.bar.pulse_pos = None
-            self.bar.update()
+            self.bar.update(flush=True)
             self.bar, _ = None, self.bar.stop()
 
     def close_batch(self):
