@@ -206,6 +206,10 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       padding:                5px;
       z-index:                1;
     }
+    #timeline > span:first-child {
+      cursor:                 pointer;
+      display:                block;
+    }
     #timeline span.toggle {
       position:               absolute;
       top:                    5px;
@@ -306,26 +310,6 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
   </style>
   <script>
-    var TOPICS    = {};  // {topic: [type, ]}
-    var TOPICKEYS = [];  // [[topic, type], ]
-    var SCHEMAS   = {};  // {type: schema}
-    var FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
-    var LASTMSGS  = {};  // {[topic, type]: {id, dt}}
-    var MSGCOUNTS = {};  // {[topic, type]: count}
-%if timeline:
-
-    var MSGIDS            = [];    // [id, ]
-    var MSGSTAMPS         = [];    // [dtstr, ] indexes correspond to MSGIDS
-    var MSG_TIMELINES     = {};    // {message ID: timeline index}
-    var scroll_highlights = {};    // {row ID: highlight}
-    var scroll_timer      = null;  // setTimeout ID
-    var scroll_timeline   = true;  // Whether to scroll timeline on scrolling messages
-    var scroll_history    = [window.scrollY, window.scrollY];  // Last scroll positions
-%endif
-
-    var sort_col       = 0;     // Current sort column index in toc
-    var sort_direction = true;  // Ascending
-
 
     /**
      * Adds positional formatting with {#index}-parameters to JavaScript String.
@@ -336,9 +320,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         while (i--) s = s.replace(new RegExp("\\\\{" + i + "\\\\}", "g"), arguments[i]);
         return s;
     };
-
-
 %if timeline:
+
+
     /** Adds right-justifying to JavaScript String. */
     String.prototype.rjust = function(len, char) {
       len = this.length < len ? len - this.length : 0;
@@ -377,172 +361,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       for (var f in FMTERS) result = result.replace(new RegExp(f, "g"), FMTERS[f]);
       return result.replace(/~~~~~~~~~~/g, "%");  // Restore literal %-s
     };
-
-
 %endif
-    /** Registers entry in a topic. */
-    function registerTopic(topic, type, schema, id, dt) {
-      var topickey = [topic, type];
-      TOPICKEYS.push(topickey);
-      SCHEMAS[type] = schema;
-      registerMessage(null, id, dt, topic, type);
-    }
-
-
-    /** Registers message. */
-    function registerMessage(topicindex, id, dt, topic, type) {
-      var topickey = (topic && type) ? [topic, type] : TOPICKEYS[topicindex];
-      if (!FIRSTMSGS[topickey]) {
-        FIRSTMSGS[topickey] = {"id": id, "dt": dt};
-        (TOPICS[topic] = TOPICS[topic] || []).push(type);
-      };
-      LASTMSGS[topickey] = {"id": id, "dt": dt};
-      MSGCOUNTS[topickey] = (MSGCOUNTS[topickey] || 0) + 1;
-%if timeline:
-      MSGIDS.push(id);
-      MSGSTAMPS.push(dt);
-%endif
-    }
-
-
-    /** Shows popup with message type definition. */
-    function showSchema(type, evt) {
-      var elem = document.getElementById("overlay");
-      elem.classList.remove("hidden");
-      var text = SCHEMAS[type].split("\\n").map(function(line) {
-        if (!line.match(/^w?string [^#]*=/))  // String constant lines cannot have comments
-          return line.replace(/#.*$/g, '<span class="comment">$&</span>');
-        return line;
-      }).join("\\n");
-      text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
-      text = text.replace(/\\n/g, "<br />");
-      elem.getElementsByClassName("title")[0].innerText = type + ":";
-      elem.getElementsByClassName("content")[0].innerHTML = text;
-      evt && evt.stopPropagation && evt.stopPropagation();
-      return false;
-    }
-
-
-    /** Toggles message collapsed or maximized. */
-    function toggleMessage(id, evt) {
-      var elem_meta = document.getElementById(id);
-      var elem_msg  = document.getElementById(id + "msg");
-      elem_meta.classList.toggle("collapsed");
-      elem_msg .classList.toggle("collapsed");
-      evt && evt.stopPropagation && evt.stopPropagation();
-      return false;
-    }
-
-
-    /** Handler for clicking message header, uncollapses if collapsed. */
-    function onMessageHeader(id, event) {
-      var elem = document.getElementById(id);
-      if (elem.classList.contains("collapsed")) toggleMessage(id, event);
-    }
-
-
-    /** Toggles all messages collapsed or maximized. */
-    function toggleAllMessages(evt) {
-      var elem_table = document.getElementById("messages");
-      var rows = elem_table.getElementsByTagName("tr");
-      var method = (rows[0].classList.contains("collapsed")) ? "remove" : "add";
-      [].slice.call(rows).forEach(function(v) { v.classList[method]("collapsed"); });
-      evt && evt.stopPropagation && evt.stopPropagation();
-      return false;
-    }
-
-
-    /** Toggles class on ID-d element, and toggle-element if any. */
-    function toggleClass(id, cls, elem_toggle) {
-      var elem = document.getElementById(id);
-      if (elem) {
-        elem.classList.toggle(cls);
-        if (elem_toggle) elem_toggle.classList.toggle(cls);
-      };
-      return false;
-    }
-
-
-    /** Toggles overlay popup on or off. */
-    var toggleOverlay = function(evt) {
-      document.getElementById("overlay").classList.toggle("hidden");
-      evt && evt.preventDefault();
-    };
-
-
-    /** Goes to previous or next message in same topic. */
-    function gotoSibling(id_source, direction, elem_link) {
-      if (elem_link && elem_link.classList.contains("disabled")) return;
-      var elem_source = document.getElementById(id_source);
-      if (elem_source) {
-        var selectors = [].slice.call(elem_source.classList).filter(function(v) { return v.match(/\\//); });
-        var adjacent = (direction < 0) ? "previousElementSibling" : "nextElementSibling";
-        var elem_sibling = elem_source[adjacent];
-        var found = false;
-        while (elem_sibling) {
-          if (selectors.every(function(v) { return elem_sibling.classList.contains(v); })) {
-            gotoMessage(elem_sibling.id);
-            found = true;
-            break;  // while
-          };
-          elem_sibling = elem_sibling[adjacent];
-        }
-        if (!found && elem_link) {
-          elem_link.classList.add("disabled");
-          elem_link.title = "No more messages in topic";
-        };
-      };
-      return false;
-    }
-
-
-    /** Scrolls to specified message, unhides and uncollapses it, and highlights it briefly. */
-    function gotoMessage(id) {
-      var elem_meta = document.getElementById(id);
-      var elem_msg  = document.getElementById(id + "msg");
-      if (elem_meta && elem_msg) {
-        ["collapsed", "hidden", "highlight"].forEach(function(cls) {
-          elem_meta.classList.remove(cls); elem_msg.classList.remove(cls);
-        });
-        elem_meta.scrollIntoView();
-        window.requestAnimationFrame && window.requestAnimationFrame(function() {
-          elem_meta.classList.add("highlight"); elem_msg.classList.add("highlight");
-          window.setTimeout(function() {
-            elem_meta.classList.remove("highlight"); elem_msg.classList.remove("highlight");
-          }, 1500);
-        });
-      };
-      return false;
-    }
-
-
-    /** Shows or hides all message rows. */
-    function enableTopics(elem_cb) {
-      var toggler = elem_cb.checked ? "remove" : "add";
-      var rows = document.querySelectorAll("#messages tbody tr");
-      [].slice.call(rows).forEach(function(x) { x.classList[toggler]("hidden"); });
-      var cbs = document.querySelectorAll("#toc tbody input[type=checkbox]");
-      [].slice.call(cbs).forEach(function(x) { x.checked = elem_cb.checked; });
-    }
-
-
-    /** Shows or hides topic message rows. */
-    function enableTopic(topic, type, elem_cb) {
-      var toggler = elem_cb.checked ? "remove" : "add";
-      var selectors = [topic, type].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
-      var rows = document.querySelectorAll("#messages tbody tr.meta");
-      for (var i = 0; i < rows.length; i++) {
-        var elem_tr = rows[i];
-        if (selectors.every(function(v) { return elem_tr.classList.contains(v); })) {
-          elem_tr.classList[toggler]("hidden");
-          selectors.length && elem_tr.nextElementSibling.classList[toggler]("hidden");
-        };
-      };
-    }
 
 
     /** Returns a new DOM tag with specified body (text or node, or list of) and attributes. */
-    function createElement(name, body, opts) {
+    var createElement = function(name, body, opts) {
       var result = document.createElement(name);
       var elems = Array.isArray(body) ? body : [body];
       for (var i = 0; i < elems.length; i++) {
@@ -555,268 +378,503 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     };
 
 
-    /** Sorts table of contents by column. */
-    function sort(col) {
-      var elem_table = document.getElementById("toc");
-      var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
-      var elems_tr   = elem_tbody.getElementsByTagName("tr");
-      if (!elems_tr.length) return false;
+    /** Returns full height of an element, including paddings, margins, and border. */
+    var getOuterHeight = function(elem) {
+      // This is deliberately excluding margin for our calculations, since we are using
+      // offsetTop which is including margin.
+      var height = elem.clientHeight;
+      var computedStyle = window.getComputedStyle(elem);
+      height += parseInt(computedStyle.borderTopWidth, 10);
+      height += parseInt(computedStyle.borderBottomWidth, 10);
+      height += parseInt(computedStyle.marginTop, 10);
+      height += parseInt(computedStyle.marginBottom, 10);
+      return height;
+    };
 
-      if (col == sort_col && !sort_direction)
-        sort_col = 0, sort_direction = true;
-      else if (col == sort_col)
-        sort_direction = !sort_direction;
-      else
-        sort_col = col, sort_direction = true;
 
-      var elems_tr = elem_tbody.getElementsByTagName("tr");
-      var rows = [];
-      for (var i = 0, ll = elems_tr.length; i != ll; rows.push(elems_tr[i++]));
-      rows.sort(cmp_node);
-      for (var i = 0; i < rows.length; i++) elem_tbody.appendChild(rows[i]);
-      var linklist = document.getElementsByClassName("sort");
-      for (var i = 0; i < linklist.length; i++) {
-        linklist[i].classList.remove("asc");
-        linklist[i].classList.remove("desc");
-        if (i + 1 == sort_col) linklist[i].classList.add(sort_direction ? "asc" : "desc")
+    /** Returns element bounding box height: paddings, margins, and border. */
+    var getBoxHeight = function(elem) {
+      var height = elem.clientHeight;
+      var computedStyle = window.getComputedStyle(elem);
+      height -= parseInt(computedStyle.paddingTop, 10);
+      height -= parseInt(computedStyle.paddingBottom, 10);
+      return getOuterHeight(elem) - height;
+    };
+
+
+    /** Toggles class on ID-d element, and toggle-element if any. */
+    var toggleClass = function(id, cls, elem_toggle) {
+      var elem = document.getElementById(id);
+      if (elem) {
+        elem.classList.toggle(cls);
+        if (elem_toggle) elem_toggle.classList.toggle(cls);
       };
       return false;
     };
 
 
-    /** Returns node child content comparison result, -1, 0 or 1. */
-    var cmp_node = function(a, b) {
-      var v1 = a.children[sort_col] ? a.children[sort_col].innerText.toLowerCase() : "";
-      var v2 = b.children[sort_col] ? b.children[sort_col].innerText.toLowerCase() : "";
-      var result = String(v1).localeCompare(String(v2), undefined, {numeric: true});
-      return cmp(v1, v2) * (sort_direction ? 1 : -1);
-    };
+    /** Encapsulates messages table handling. */
+    var Messages = new function() {
+      var self = this;
+
+      var TOPICS    = self.TOPICS    = {};  // {topic: [type, ]}
+      var TOPICKEYS = self.TOPICKEYS = [];  // [[topic, type], ]
+      var SCHEMAS   = self.SCHEMAS   = {};  // {type: schema}
+      var FIRSTMSGS = self.FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
+      var LASTMSGS  = self.LASTMSGS  = {};  // {[topic, type]: {id, dt}}
+      var MSGCOUNTS = self.MSGCOUNTS = {};  // {[topic, type]: count}
 
 
-    /** Returns string comparison result, -1, 0 or 1. */
-    var cmp = function(a, b) {
-      return String(a).localeCompare(String(b), undefined, {numeric: true});
-    };
+      /** Registers entry in a topic. */
+      self.registerTopic = function(topic, type, schema, id, dt) {
+        var topickey = [topic, type];
+        TOPICKEYS.push(topickey);
+        SCHEMAS[type] = schema;
+        self.registerMessage(null, id, dt, topic, type);
+      };
 
 
-    /** Builds the table of contents. */
-    var populateToc = function() {
-      var elem_table = document.getElementById("toc");
-      elem_table.querySelector("th").appendChild(
-        createElement("input", null, {"type": "checkbox", "checked": "checked",
-                                      "title": "Toggle visibility of all topic messages",
-                                      "onclick": "return enableTopics(this)"})
-      );
+      /** Registers message. */
+      self.registerMessage = function(topicindex, id, dt, topic, type) {
+        var topickey = (topic && type) ? [topic, type] : TOPICKEYS[topicindex];
+        if (!FIRSTMSGS[topickey]) {
+          FIRSTMSGS[topickey] = {"id": id, "dt": dt};
+          (TOPICS[topic] = TOPICS[topic] || []).push(type);
+        };
+        LASTMSGS[topickey] = {"id": id, "dt": dt};
+        MSGCOUNTS[topickey] = (MSGCOUNTS[topickey] || 0) + 1;
+        Timeline && Timeline.registerMessage(id, dt);
+      };
 
-      var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
-      Object.keys(TOPICS).sort(cmp).forEach(function(topic, i) {
-        TOPICS[topic].sort(cmp).forEach(function(type, j) {
-          var topickey = [topic, type];
-          var id0 = FIRSTMSGS[topickey]["id"], id1 = LASTMSGS[topickey]["id"];
-          var dt0 = FIRSTMSGS[topickey]["dt"], dt1 = LASTMSGS[topickey]["dt"];
-          var elem_row = document.createElement("tr");
-          var id_cb = "cb_topic_{0}_{1}".format(i, j);
-          var elem_cb = createElement("input", null, {"type": "checkbox", "checked": "checked", "id": id_cb,
-                                                      "title": "Toggle topic messages visibility",
-                                                      "onclick": "return enableTopic('{0}', '{1}', this)".format(topic, type)});
-          elem_row.appendChild(createElement("td", elem_cb));
-          elem_row.appendChild(createElement("td", createElement("label", topic, {"for": id_cb})));
-          var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show type definition",
-                                                    "onclick": "return showSchema('{0}')".format(type)});
-          elem_row.appendChild(createElement("td", elem_type));
-          elem_row.appendChild(createElement("td", (MSGCOUNTS[topickey]).toLocaleString("en")));
-          var elem_first = createElement("a", dt0, {"href": "#" + id0, "title": "Go to first message in topic",
-                                                    "onclick": "return gotoMessage('{0}')".format(id0)});
-          elem_row.appendChild(createElement("td", elem_first))
-          if (id0 != id1) {
-            var elem_last = createElement("a", dt1, {"href": "#" + id1, "title": "Go to last message in topic",
-                                                     "onclick": "return gotoMessage('{0}')".format(id1)});
-            elem_row.appendChild(createElement("td", elem_last))
+
+      /** Shows popup with message type definition. */
+      self.showSchema = function(type, evt) {
+        var elem = document.getElementById("overlay");
+        elem.classList.remove("hidden");
+        var text = SCHEMAS[type].split("\\n").map(function(line) {
+          if (!line.match(/^w?string [^#]*=/))  // String constant lines cannot have comments
+            return line.replace(/#.*$/g, '<span class="comment">$&</span>');
+          return line;
+        }).join("\\n");
+        text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
+        text = text.replace(/\\n/g, "<br />");
+        elem.getElementsByClassName("title")[0].innerText = type + ":";
+        elem.getElementsByClassName("content")[0].innerHTML = text;
+        evt && evt.stopPropagation && evt.stopPropagation();
+        return false;
+      };
+
+
+      /** Toggles message collapsed or maximized. */
+      self.toggleMessage = function(id, evt) {
+        var elem_meta = document.getElementById(id);
+        var elem_msg  = document.getElementById(id + "msg");
+        elem_meta.classList.toggle("collapsed");
+        elem_msg .classList.toggle("collapsed");
+        evt && evt.stopPropagation && evt.stopPropagation();
+        return false;
+      };
+
+
+      /** Handler for clicking message header, uncollapses if collapsed. */
+      self.onClickHeader = function(id, event) {
+        var elem = document.getElementById(id);
+        if (elem.classList.contains("collapsed")) self.toggleMessage(id, event);
+      };
+
+
+      /** Toggles all messages collapsed or maximized. */
+      self.toggleAllMessages = function(evt) {
+        var elem_table = document.getElementById("messages");
+        var rows = elem_table.getElementsByTagName("tr");
+        var method = (rows[0].classList.contains("collapsed")) ? "remove" : "add";
+        [].slice.call(rows).forEach(function(v) { v.classList[method]("collapsed"); });
+        evt && evt.stopPropagation && evt.stopPropagation();
+        return false;
+      };
+
+
+      /** Toggles overlay popup on or off. */
+      self.toggleOverlay = function(evt) {
+        document.getElementById("overlay").classList.toggle("hidden");
+        evt && evt.preventDefault();
+      };
+
+
+      /** Goes to previous or next message in same topic. */
+      self.gotoSibling = function(id_source, direction, elem_link) {
+        if (elem_link && elem_link.classList.contains("disabled")) return;
+        var elem_source = document.getElementById(id_source);
+        if (elem_source) {
+          var selectors = [].slice.call(elem_source.classList).filter(function(v) { return v.match(/\\//); });
+          var adjacent = (direction < 0) ? "previousElementSibling" : "nextElementSibling";
+          var elem_sibling = elem_source[adjacent];
+          var found = false;
+          while (elem_sibling) {
+            if (selectors.every(function(v) { return elem_sibling.classList.contains(v); })) {
+              self.gotoMessage(elem_sibling.id);
+              found = true;
+              break;  // while
+            };
+            elem_sibling = elem_sibling[adjacent];
+          }
+          if (!found && elem_link) {
+            elem_link.classList.add("disabled");
+            elem_link.title = "No more messages in topic";
           };
-          elem_tbody.appendChild(elem_row);
+        };
+        return false;
+      };
+
+
+      /** Scrolls to specified message, unhides and uncollapses it, and highlights it briefly. */
+      self.gotoMessage = function(id) {
+        var elem_meta = document.getElementById(id);
+        var elem_msg  = document.getElementById(id + "msg");
+        if (elem_meta && elem_msg) {
+          ["collapsed", "hidden", "highlight"].forEach(function(cls) {
+            elem_meta.classList.remove(cls); elem_msg.classList.remove(cls);
+          });
+          elem_meta.scrollIntoView();
+          window.requestAnimationFrame && window.requestAnimationFrame(function() {
+            elem_meta.classList.add("highlight"); elem_msg.classList.add("highlight");
+            window.setTimeout(function() {
+              elem_meta.classList.remove("highlight"); elem_msg.classList.remove("highlight");
+            }, 1500);
+          });
+        };
+        return false;
+      };
+
+    };
+
+
+    /** Encapsulates table of contents handling. */
+    var TOC = new function() {
+      var self = this;
+
+      var sort_col       = 1;     // Current sort column index in toc
+      var sort_direction = true;  // Ascending
+
+
+      /** Shows or hides all message rows. */
+      self.enableTopics = function(elem_cb) {
+        var toggler = elem_cb.checked ? "remove" : "add";
+        var rows = document.querySelectorAll("#messages tbody tr");
+        [].slice.call(rows).forEach(function(x) { x.classList[toggler]("hidden"); });
+        var cbs = document.querySelectorAll("#toc tbody input[type=checkbox]");
+        [].slice.call(cbs).forEach(function(x) { x.checked = elem_cb.checked; });
+      }
+
+
+      /** Shows or hides topic message rows. */
+      self.enableTopic = function(topic, type, elem_cb) {
+        var toggler = elem_cb.checked ? "remove" : "add";
+        var selectors = [topic, type].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
+        var rows = document.querySelectorAll("#messages tbody tr.meta");
+        for (var i = 0; i < rows.length; i++) {
+          var elem_tr = rows[i];
+          if (selectors.every(function(v) { return elem_tr.classList.contains(v); })) {
+            elem_tr.classList[toggler]("hidden");
+            selectors.length && elem_tr.nextElementSibling.classList[toggler]("hidden");
+          };
+        };
+      }
+
+
+      /** Sorts table of contents by column. */
+      self.sort = function(col) {
+        var elem_table = document.getElementById("toc");
+        var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
+        var elems_tr   = elem_tbody.getElementsByTagName("tr");
+        if (!elems_tr.length) return false;
+
+        if (col == sort_col && !sort_direction)
+          sort_col = 0, sort_direction = true;
+        else if (col == sort_col)
+          sort_direction = !sort_direction;
+        else
+          sort_col = col, sort_direction = true;
+
+        var elems_tr = elem_tbody.getElementsByTagName("tr");
+        var rows = [];
+        for (var i = 0, ll = elems_tr.length; i != ll; rows.push(elems_tr[i++]));
+        rows.sort(self.cmp_node);
+        for (var i = 0; i < rows.length; i++) elem_tbody.appendChild(rows[i]);
+        var linklist = document.getElementsByClassName("sort");
+        for (var i = 0; i < linklist.length; i++) {
+          linklist[i].classList.remove("asc");
+          linklist[i].classList.remove("desc");
+          if (i + 1 == sort_col) linklist[i].classList.add(sort_direction ? "asc" : "desc")
+        };
+        return false;
+      };
+
+
+      /** Returns node child content comparison result, -1, 0 or 1. */
+      self.cmp_node = function(a, b) {
+        var v1 = a.children[sort_col] ? a.children[sort_col].innerText.toLowerCase() : "";
+        var v2 = b.children[sort_col] ? b.children[sort_col].innerText.toLowerCase() : "";
+        var result = String(v1).localeCompare(String(v2), undefined, {numeric: true});
+        return self.cmp(v1, v2) * (sort_direction ? 1 : -1);
+      };
+
+
+      /** Returns string comparison result, -1, 0 or 1. */
+      self.cmp = function(a, b) {
+        return String(a).localeCompare(String(b), undefined, {numeric: true});
+      };
+
+
+      /** Builds the table of contents. */
+      self.init = function() {
+        var elem_table = document.getElementById("toc");
+        elem_table.querySelector("th").appendChild(
+          createElement("input", null, {"type": "checkbox", "checked": "checked",
+                                        "title": "Toggle visibility of all topic messages",
+                                        "onclick": "return TOC.enableTopics(this)"})
+        );
+
+        var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
+        Object.keys(Messages.TOPICS).sort(self.cmp).forEach(function(topic, i) {
+          Messages.TOPICS[topic].sort(self.cmp).forEach(function(type, j) {
+            var topickey = [topic, type];
+            var id0 = Messages.FIRSTMSGS[topickey]["id"], id1 = Messages.LASTMSGS[topickey]["id"];
+            var dt0 = Messages.FIRSTMSGS[topickey]["dt"], dt1 = Messages.LASTMSGS[topickey]["dt"];
+            var elem_row = document.createElement("tr");
+            var id_cb = "cb_topic_{0}_{1}".format(i, j);
+            var elem_cb = createElement("input", null, {"type": "checkbox", "checked": "checked", "id": id_cb,
+                                                        "title": "Toggle topic messages visibility",
+                                                        "onclick": "return TOC.enableTopic('{0}', '{1}', this)".format(topic, type)});
+            elem_row.appendChild(createElement("td", elem_cb));
+            elem_row.appendChild(createElement("td", createElement("label", topic, {"for": id_cb})));
+            var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show type definition",
+                                                      "onclick": "return Messages.showSchema('{0}')".format(type)});
+            elem_row.appendChild(createElement("td", elem_type));
+            elem_row.appendChild(createElement("td", (Messages.MSGCOUNTS[topickey]).toLocaleString("en")));
+            var elem_first = createElement("a", dt0, {"href": "#" + id0, "title": "Go to first message in topic",
+                                                      "onclick": "return Messages.gotoMessage('{0}')".format(id0)});
+            elem_row.appendChild(createElement("td", elem_first))
+            if (id0 != id1) {
+              var elem_last = createElement("a", dt1, {"href": "#" + id1, "title": "Go to last message in topic",
+                                                       "onclick": "return Messages.gotoMessage('{0}')".format(id1)});
+              elem_row.appendChild(createElement("td", elem_last))
+            };
+            elem_tbody.appendChild(elem_row);
+          });
         });
-      });
+      };
+
     };
 
 
-%if timeline:
-    /** Populates timeline structures and the timeline element. */
-    var populateTimeline = function() {
-      MSG_TIMELINES = {};
+    /** Encapsulates messages timeline handling. */
+    var Timeline = new function() {
+      var self = this;
 
-      var HEIGHT = window.innerHeight - 10 - 2 - 15;   // - div.padding - ul.padding - title height
-      var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
+      var MSGIDS            = [];    // [id, ]
+      var MSGSTAMPS         = [];    // [dtstr, ] indexes correspond to MSGIDS
+      var MSG_TIMELINES     = {};    // {message ID: timeline index}
+      var scroll_highlights = {};    // {row ID: highlight}
+      var scroll_timer      = null;  // setTimeout ID
+      var scroll_timeline   = true;  // Whether to scroll timeline on scrolling messages
+      var scroll_history    = [window.scrollY, window.scrollY]; // Last scroll positions
 
-      // Calculate a sensibly rounded interval
-      var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
-      var ROUNDINGS = [  // [[threshold in millis, rounding in millis], ]
-        [3600 * 1000, 3600 * 1000],  // >1h, round to 60m
-        [ 600 * 1000,  900 * 1000],  // 10m..60m, round to 15m
-        [ 300 * 1000,  600 * 1000],  // 5m..10m, round to 10m
-        [ 120 * 1000,  300 * 1000],  // 2m..5m, round to 5m
-        [  60 * 1000,  120 * 1000],  // 1m..2m, round to 2m
-        [  30 * 1000,   60 * 1000],  // 30s..1m, round to 1m
-        [  10 * 1000,   30 * 1000],  // 10s..30s, round to 30s
-        [   5 * 1000,   10 * 1000],  // 5s..10s, round to 10s
-        [   2 * 1000,    5 * 1000],  // 2s..5s, round to 5s
-        [   1 * 1000,    2 * 1000],  // 1s..2s, round to 2s
-        [        500,    1 * 1000],  // 500ms..1s, round to 1s
-        [        100,         100],  // 100ms..500ms, round to 100
-        [          5,          10],  // 5ms..100ms, round to 10
-        [          2,           5],  // 2ms..5ms, round to 5
-        [          1,           1],  // 1ms..2ms, round to 2
-      ];
-      var rounded = false;
-      for (var i = 0; i < ROUNDINGS.length; i++) {
-        var threshold = ROUNDINGS[i][0], modulo = ROUNDINGS[i][1];
-        if (entryspan > threshold) {
-          entryspan += modulo - entryspan % modulo;
-          rounded = true;
-          break;  // for i
-        };
+
+      /** Populates timeline and sets up scroll highlighting. */
+      self.init = function() {
+        self.populate();
+        self.initHighlight();
+
+        var timeout = null;
+        var height  = window.innerHeight;
+        window.addEventListener("resize", function() {
+          clearTimeout(timeout);
+          timeout = setTimeout(function() {
+            if (height != window.innerHeight) self.populate();
+            height = window.innerHeight;
+          }, 250);
+        });
       };
-      if (!rounded) entryspan = 1;
 
-      // Assemble timeline entries
-      var timeentry = new Date(MSGSTAMPS[0]);
-      timeentry = new Date(+timeentry - (+timeentry % entryspan));
-      var timelines = [timeentry];
-      var indexids = {};  // [+dt: first message ID]
-      var counts   = {};  // {+dt: message count}
-      for (var i = 0; i < MSGSTAMPS.length; i++) {
-        var dt = new Date(MSGSTAMPS[i]);
-        if (!i || +dt >= +timeentry + +entryspan) {
-          while (i && +dt >= +timeentry + +entryspan) {
-            timeentry = new Date(+timeentry + +entryspan);
-            timelines.push(timeentry);
+
+      /** Register message ID and timestamp for timeline. */
+      self.registerMessage = function(id, dt) {
+        MSGIDS.push(id);
+        MSGSTAMPS.push(dt.replace(" ", "T"));  // Ensure ISO format
+      };
+
+
+      /** Populates timeline structures and the timeline element. */
+      self.populate = function() {
+        var elem_container = document.querySelector("#timeline");
+        var elem_timeline  = document.querySelector("#timeline ul");
+        var elem_title     = document.querySelector("#timeline span");
+        elem_container.classList.remove("hidden");
+
+        var HEIGHT = window.innerHeight - getBoxHeight(elem_container) - getBoxHeight(elem_timeline) - getOuterHeight(elem_title);
+        var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
+
+        // Calculate a sensibly rounded interval
+        var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
+        var ROUNDINGS = [ // [[threshold in millis, rounding in millis], ]
+          [3600 * 1000, 3600 * 1000],  // >1h, round to 60m
+          [ 600 * 1000,  900 * 1000],  // 10m..60m, round to 15m
+          [ 300 * 1000,  600 * 1000],  // 5m..10m, round to 10m
+          [ 120 * 1000,  300 * 1000],  // 2m..5m, round to 5m
+          [  60 * 1000,  120 * 1000],  // 1m..2m, round to 2m
+          [  30 * 1000,   60 * 1000],  // 30s..1m, round to 1m
+          [  10 * 1000,   30 * 1000],  // 10s..30s, round to 30s
+          [   5 * 1000,   10 * 1000],  // 5s..10s, round to 10s
+          [   2 * 1000,    5 * 1000],  // 2s..5s, round to 5s
+          [   1 * 1000,    2 * 1000],  // 1s..2s, round to 2s
+          [        500,    1 * 1000],  // 500ms..1s, round to 1s
+          [        100,         100],  // 100ms..500ms, round to 100
+          [          5,          10],  // 5ms..100ms, round to 10
+          [          2,           5],  // 2ms..5ms, round to 5
+          [          1,           1],  // 1ms..2ms, round to 2
+        ];
+        var rounded = false;
+        for (var i = 0; i < ROUNDINGS.length; i++) {
+          var threshold = ROUNDINGS[i][0], modulo = ROUNDINGS[i][1];
+          if (entryspan > threshold) {
+            entryspan += modulo - entryspan % modulo;
+            rounded = true;
+            break;  // for i
           };
-          indexids[+timeentry] = MSGIDS[i];
         };
-        counts[+timeentry] = (counts[+timeentry] || 0) + 1;
-        MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
-      };
+        if (!rounded) entryspan = 1;
 
-      // Generate date format string
-      var dt1 = new Date(MSGSTAMPS[0]);
-      var dt2 = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
-      var fmtstr = "";
-      if (dt1.getYear() != dt2.getYear()) {
-        fmtstr = "%Y-%m-%d";
-      } else if (dt1.getMonth() != dt2.getMonth() || dt1.getDate() != dt2.getDate()) {
-        fmtstr = "%m-%d";
-      };
-      fmtstr += (fmtstr ? " " : "") + "%H:%M:%S";
-      if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) fmtstr += ".%f";
-
-      // Populate timeline
-      var elem_timeline = document.querySelector("#timeline ul");
-      elem_timeline.innerHTML = "";
-      for (var i = 0; i < timelines.length; i++) {
-        var dt = timelines[i];
-        var attr = !counts[+dt] ? {"class": "time"} :
-                                  {"title": "Go to first message in time span", "href": "javascript;",
-                                   "onclick": "return gotoMessage({0})".format(indexids[+dt])};
-        var elem_time  = createElement(counts[+dt] ? "a" : "span", dt.strftime(fmtstr), attr);
-        var elem_count = counts[+dt] ? createElement("span", (counts[+dt]).toLocaleString("en"), {"class": "count"}) : null;
-        var elem_li    = createElement("li", [elem_time, elem_count], {"id": "timeline_" + i});
-        elem_timeline.appendChild(elem_li);
-      };
-      elem_timeline.parentNode.classList.remove("hidden");
-    };
-
-
-    /** Attaches scroll observer to message rows. */
-    var initTimelineHighlight = function() {
-      if (!window.IntersectionObserver) return;
-        
-      var scroll_options = {"root": null, "threshold": [0, 1]};
-      var scroll_observer = new IntersectionObserver(onScrollMessages, scroll_options);
-
-      var items = Array.prototype.slice.call(document.querySelectorAll("#timeline ul li"));
-      items.forEach(function(x) { x.children.length > 1 && x.addEventListener("click", onClickTimeline); });
-
-      var rows = Array.prototype.slice.call(document.querySelectorAll("#messages tbody tr"));
-      rows.forEach(scroll_observer.observe.bind(scroll_observer));
-    };
-
-
-    /** Highlights timeline for messages in view, scrolls to highlights. */
-    var highlightTimeline  = function() {
-      scroll_timer = null;
-
-      var on = {}, off = {};    // {"timeline_x": true}
-      var msg_highlights = {};  // {message ID: do_highlight}
-      var msg_rows       = {};  // {message ID: [row ID, ]}
-      var row_ids = Object.keys(scroll_highlights);
-      for (var i = 0; i < row_ids.length; i++) {
-        var msg_id = row_ids[i].replace(/\D/g, "");
-        msg_highlights[msg_id] = msg_highlights[msg_id] || scroll_highlights[row_ids[i]];
-        (msg_rows[msg_id] = msg_rows[msg_id] || []).push(row_ids[i]);
-      };
-      var msg_ids = Object.keys(msg_highlights);
-      for (var i = 0; i < msg_ids.length; i++) {
-        var msg_id = msg_ids[i], into_view = msg_highlights[msg_id];
-        if (!into_view) for (var j = 0; j < msg_rows[msg_id].length; j++) {
-          delete scroll_highlights[msg_rows[msg_id][j]];
+        // Assemble timeline entries
+        var timeentry = new Date(MSGSTAMPS[0]);
+        timeentry = new Date(+timeentry - (+timeentry % entryspan));
+        var timelines = [timeentry];
+        var indexids = {};  // [+dt: first message ID]
+        var counts   = {};  // {+dt: message count}
+        MSG_TIMELINES = {};
+        for (var i = 0; i < MSGSTAMPS.length; i++) {
+          var dt = new Date(MSGSTAMPS[i]);
+          if (!i || +dt >= +timeentry + +entryspan) {
+            while (i && +dt >= +timeentry + +entryspan) {
+              timeentry = new Date(+timeentry + +entryspan);
+              timelines.push(timeentry);
+            };
+            indexids[+timeentry] = MSGIDS[i];
+          };
+          counts[+timeentry] = (counts[+timeentry] || 0) + 1;
+          MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
         };
-        (into_view ? on : off)["timeline_" + MSG_TIMELINES[msg_id]] = true;
+
+        // Generate date format string
+        var dt1 = new Date(MSGSTAMPS[0]);
+        var dt2 = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
+        var fmtstr = "";
+        if (dt1.getYear() != dt2.getYear()) {
+          fmtstr = "%Y-%m-%d";
+        } else if (dt1.getMonth() != dt2.getMonth() || dt1.getDate() != dt2.getDate()) {
+          fmtstr = "%m-%d";
+        };
+        fmtstr += (fmtstr ? " " : "") + "%H:%M:%S";
+        if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) fmtstr += ".%f";
+
+        // Populate timeline
+        elem_timeline.innerHTML = "";
+        for (var i = 0; i < timelines.length; i++) {
+          var dt = timelines[i];
+          var attr = !counts[+dt] ? {"class": "time"} :
+                                    {"title": "Go to first message in time span", "href": "javascript;",
+                                     "onclick": "return Messages.gotoMessage({0})".format(indexids[+dt])};
+          var elem_time  = createElement(counts[+dt] ? "a" : "span", dt.strftime(fmtstr), attr);
+          var elem_count = counts[+dt] ? createElement("span", (counts[+dt]).toLocaleString("en"), {"class": "count"}) : null;
+          var elem_li    = createElement("li", [elem_time, elem_count], {"id": "timeline_" + i});
+          elem_timeline.appendChild(elem_li);
+        };
       };
-      Object.keys(on).forEach(function(x) { delete off[x]; });
-      var elems_off = Object.keys(off).map(document.getElementById.bind(document)).filter(Boolean),
-          elems_on  = Object.keys(on ).map(document.getElementById.bind(document)).filter(Boolean);
-      elems_off.forEach(function(x) { x.classList.remove("highlight"); });
-      elems_on. forEach(function(x) { x.classList.add   ("highlight"); });
-      if (!scroll_timeline || !elems_on.length) return;
 
-      var container = elems_on[0].parentElement,
-          viewport  = [container.scrollTop, container.scrollTop + container.clientHeight],
-          downward  = scroll_history[1] > scroll_history[0],
-          anchor    = elems_on[downward ? elems_on.length - 1 : 0];
-      anchor = (downward ? anchor.nextElementSibling : anchor.previousElementSibling) || anchor;
-      if (anchor.offsetTop >= viewport[0] && anchor.offsetTop + anchor.offsetHeight <= viewport[1]) return;
-      container.scrollTop = Math.max(0, anchor.offsetTop - (downward ? container.clientHeight - anchor.offsetHeight : 0));
+
+      /** Attaches scroll observer to message rows. */
+      self.initHighlight = function() {
+        if (!window.IntersectionObserver) return;
+          
+        var scroll_options = {"root": null, "threshold": [0, 1]};
+        var scroll_observer = new IntersectionObserver(self.onScrollMessages, scroll_options);
+
+        var items = Array.prototype.slice.call(document.querySelectorAll("#timeline ul li"));
+        items.forEach(function(x) { x.children.length > 1 && x.addEventListener("click", self.onClick); });
+
+        var rows = Array.prototype.slice.call(document.querySelectorAll("#messages tbody tr"));
+        rows.forEach(scroll_observer.observe.bind(scroll_observer));
+      };
+
+
+      /** Highlights timeline for messages in view, scrolls to highlights. */
+      self.highlight = function() {
+        scroll_timer = null;
+
+        var on = {}, off = {};    // {"timeline_x": true}
+        var msg_highlights = {};  // {message ID: do_highlight}
+        var msg_rows       = {};  // {message ID: [row ID, ]}
+        var row_ids = Object.keys(scroll_highlights);
+        for (var i = 0; i < row_ids.length; i++) {
+          var msg_id = row_ids[i].replace(/\D/g, "");
+          msg_highlights[msg_id] = msg_highlights[msg_id] || scroll_highlights[row_ids[i]];
+          (msg_rows[msg_id] = msg_rows[msg_id] || []).push(row_ids[i]);
+        };
+        var msg_ids = Object.keys(msg_highlights);
+        for (var i = 0; i < msg_ids.length; i++) {
+          var msg_id = msg_ids[i], into_view = msg_highlights[msg_id];
+          if (!into_view) for (var j = 0; j < msg_rows[msg_id].length; j++) {
+            delete scroll_highlights[msg_rows[msg_id][j]];
+          };
+          (into_view ? on : off)["timeline_" + MSG_TIMELINES[msg_id]] = true;
+        };
+        Object.keys(on).forEach(function(x) { delete off[x]; });
+        var elems_off = Object.keys(off).map(document.getElementById.bind(document)).filter(Boolean),
+            elems_on  = Object.keys(on ).map(document.getElementById.bind(document)).filter(Boolean);
+        elems_off.forEach(function(x) { x.classList.remove("highlight"); });
+        elems_on. forEach(function(x) { x.classList.add   ("highlight"); });
+        if (!scroll_timeline || !elems_on.length) return;
+
+        var container = elems_on[0].parentElement,
+            viewport  = [container.scrollTop, container.scrollTop + container.clientHeight],
+            downward  = scroll_history[1] > scroll_history[0],
+            anchor    = elems_on[downward ? elems_on.length - 1 : 0];
+        anchor = (downward ? anchor.nextElementSibling : anchor.previousElementSibling) || anchor;
+        if (anchor.offsetTop >= viewport[0] && anchor.offsetTop + anchor.offsetHeight <= viewport[1]) return;
+        container.scrollTop = Math.max(0, anchor.offsetTop - (downward ? container.clientHeight - anchor.offsetHeight : 0));
+      };
+
+
+      /** Cancels scrolling timeline on ensuring messages-viewport change. */
+      self.onClick = function() {
+        scroll_timeline = false;
+        window.setTimeout(function() { scroll_timeline = true; }, 500);
+        return true;
+      };
+
+
+      /** Queues scrolled messages for highlighting timeline. */
+      self.onScrollMessages = function(entries) {
+        if (!document.querySelector("#timeline li")) return;
+
+        scroll_history = [scroll_history[1], window.scrollY];
+        if (scroll_timeline !== false)
+          scroll_timeline = ("none" != document.getElementById("timeline").style.display) ? true : null;
+        if (scroll_timeline === null) return;
+
+        entries.forEach(function(entry) {
+          scroll_highlights[entry.target.id] = entry.isIntersecting;
+        });
+        scroll_timer = scroll_timer || window.setTimeout(self.highlight , 100);
+      };
+
     };
 
 
-    /** Cancels scrolling timeline on ensuring messages-viewport change. */
-    var onClickTimeline = function() {
-      scroll_timeline = false;
-      window.setTimeout(function() { scroll_timeline = true; }, 500);
-      return true;
-    };
-
-
-    /** Queues scrolled messages for highlighting timeline. */
-    var onScrollMessages = function(entries) {
-      if (!document.querySelector("#timeline li")) return;
-
-      scroll_history = [scroll_history[1], window.scrollY];
-      if (scroll_timeline !== false)
-        scroll_timeline = ("none" != document.getElementById("timeline").style.display) ? true : null;
-      if (scroll_timeline === null) return;
-
-      entries.forEach(function(entry) {
-        scroll_highlights[entry.target.id] = entry.isIntersecting;
-      });
-      scroll_timer = scroll_timer || window.setTimeout(highlightTimeline , 100);
-    };
-
-%endif
     window.addEventListener("DOMContentLoaded", function() {
-      populateToc();
+      TOC.init()
 %if timeline:
-      populateTimeline();
-      initTimelineHighlight();
-
-      var timeout = null;
-      var height  = window.innerHeight;
-      window.addEventListener("resize", function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(function() {
-          if (height != window.innerHeight) populateTimeline();
-          height = window.innerHeight;
-        }, 250);
-      });
+      Timeline.init();
 %endif
     });
 
@@ -841,7 +899,7 @@ Command: {{ " ".join(args) }}
         <tr>
           <th></th>
 %for i, name in enumerate(["topic", "type", "count", "first", "last"], 1):
-          <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="sort({{ i + 1 }})">{{ name.capitalize() }}</span></th>
+          <th><a class="sort" href="javascript:;" title="Sort by {{ name }}" onclick="TOC.sort({{ i }})">{{ name.capitalize() }}</span></th>
 %endfor
         </tr>
       </thead>
@@ -860,17 +918,18 @@ Command: {{ " ".join(args) }}
   </div>
 </div>
 <script>
-  document.getElementById("overlayclose").addEventListener("click", toggleOverlay);
-  document.getElementById("overshadow").addEventListener("click", toggleOverlay);
+  document.getElementById("overlayclose").addEventListener("click", Messages.toggleOverlay);
+  document.getElementById("overshadow").addEventListener("click", Messages.toggleOverlay);
   document.body.addEventListener("keydown", function(evt) {
-    if (evt.keyCode == 27 && !document.getElementById("overlay").classList.contains("hidden")) toggleOverlay();
+    if (evt.keyCode == 27 && !document.getElementById("overlay").classList.contains("hidden")) Messages.toggleOverlay();
   });
 </script>
 
 
 <div id="timeline" class="hidden">
-  Timeline:
-  <span title="Toggle timeline" class="toggle" onclick="return toggleClass('timeline', 'collapsed', this)"></span>
+  <span title="Toggle timeline" onclick="return toggleClass('timeline', 'collapsed', document.getElementById('toggle_timeline'))">
+    Timeline: <span id="toggle_timeline" class="toggle"></span>
+  </span>
   <ul></ul>
 </div>
 
@@ -886,7 +945,7 @@ Command: {{ " ".join(args) }}
       <th>Type</th>
       <th>Datetime</th>
       <th>Timestamp</th>
-      <th><span class="toggle all" title="Toggle all messages" onclick="return toggleAllMessages()"></span></th>
+      <th><span class="toggle all" title="Toggle all messages" onclick="return Messages.toggleAllMessages()"></span></th>
     </tr></thead>
     <tbody>
 <%
@@ -898,17 +957,17 @@ selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 meta = source.get_message_meta(topic, index, stamp, msg)
 topickey = (topic, meta["type"])
     %>
-    <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }}" id="{{ i }}" onclick="return onMessageHeader({{ i }}, event)">
+    <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }}" id="{{ i }}" onclick="return Messages.onClickHeader({{ i }}, event)">
       <td>
         {{ "{0:,d}".format(index) }}{{ ("/{0:,d}".format(meta["total"])) if "total" in meta else "" }}
         <span class="index">{{ i }}</span>
       </td>
       <td>{{ topic }}</td>
-      <td><a title="Show type definition" href="javascript:;" onclick="return showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
+      <td><a title="Show type definition" href="javascript:;" onclick="return Messages.showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
       <td>{{ meta["dt"] }}</td>
       <td>{{ meta["stamp"] }}</td>
       <td>
-        <span class="toggle" title="Toggle message" onclick="return toggleMessage({{ i }}, event)"></span>
+        <span class="toggle" title="Toggle message" onclick="return Messages.toggleMessage({{ i }}, event)"></span>
       </td>
     </tr>
     <tr id="{{ i }}msg" class="message">
@@ -917,14 +976,14 @@ topickey = (topic, meta["type"])
         <span class="data">{{! sink.format_message(match or msg, highlight=bool(match)) }}</span>
     %if topickey in topic_idx:
         <span class="prev" title="Go to previous message"
-              onclick="return gotoSibling({{ i }}, -1, this)"></span>
+              onclick="return Messages.gotoSibling({{ i }}, -1, this)"></span>
     %endif
         <span class="next" title="Go to next message in topic"
-              onclick="return gotoSibling({{ i }}, +1, this)"></span>
+              onclick="return Messages.gotoSibling({{ i }}, +1, this)"></span>
     %if topickey in topic_idx:
-        <script> registerMessage('{{ topic_idx[topickey] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+        <script> Messages.registerMessage('{{ topic_idx[topickey] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
     %else:
-        <script> registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+        <script> Messages.registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, '{{ meta["dt"] }}'); </script>
     %endif
       </td>
     </tr>
