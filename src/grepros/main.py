@@ -8,12 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
 import argparse
 import atexit
+import collections
 import os
 import re
 import sys
@@ -37,7 +38,7 @@ Search for "my text" in all bags under current directory and subdirectories:
     grepros -r "my text"
 
 Print 30 lines of the first message from each live ROS topic:
-    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
+    grepros --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
@@ -61,12 +62,16 @@ print only header stamp and values:
 
 Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
-    grepros ".*" --live --topic *lidar* --max-per-topic 1
+    grepros --live --topic *lidar* --max-per-topic 1
+
+Export all bag messages to SQLite, print only export progress:
+    grepros -n my.bag --no-console-output --write my.bag.sqlite --progress 2>/dev/null
     """,
 
     "arguments": [
-        dict(args=["PATTERNS"], nargs="+", metavar="PATTERN",
+        dict(args=["PATTERNS"], nargs="*", metavar="PATTERN",
              help="pattern(s) to find in message field values,\n"
+                  "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
                   "(name may be a nested.path)"),
 
@@ -99,9 +104,9 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="write matched messages to specified output file"),
 
         dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "csv", "html", "sqlite"], default="bag",
-             help='output format (default "bag"),\n'
-                  "bag or database appended to if file already exists"),
+             choices=["bag", "csv", "html", "sqlite"],
+             help="output format, auto-detected from OUTFILE extension if not given,\n"
+                  "bag or database will be appended to if file already exists"),
     ],
 
     "groups": {"Filtering": [
@@ -211,26 +216,26 @@ Print first message from each lidar topic on host 1.2.3.4:
              help="print only the fields where PATTERNs find a match"),
 
         dict(args=["-la", "--lines-around-match"],
-             metavar="NUM", dest="LINES_AROUND_MATCH", type=int,
+             dest="LINES_AROUND_MATCH", metavar="NUM", type=int,
              help="print only matched fields and NUM message lines\n"
                   "around match"),
 
         dict(args=["-lf", "--lines-per-field"],
-             metavar="NUM", dest="MAX_FIELD_LINES", type=int,
+             dest="MAX_FIELD_LINES", metavar="NUM", type=int,
              help="maximum number of lines to print per field"),
 
         dict(args=["-l0", "--start-line"],
-             metavar="NUM", dest="START_LINE", type=int,
+             dest="START_LINE", metavar="NUM", type=int,
              help="message line number to start printing from\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-l1", "--end-line"],
-             metavar="NUM", dest="END_LINE", type=int,
+             dest="END_LINE", metavar="NUM", type=int,
              help="message line number to stop printing at\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-lm", "--lines-per-message"],
-             metavar="NUM", dest="MAX_MESSAGE_LINES", type=int,
+             dest="MAX_MESSAGE_LINES", metavar="NUM", type=int,
              help="maximum number of lines to print per message"),
 
         dict(args=["--match-wrapper"],
@@ -260,6 +265,9 @@ Print first message from each lidar topic on host 1.2.3.4:
 
         dict(args=["--no-console-output"], dest="CONSOLE", action="store_false",
              help="do not print matches to console"),
+
+        dict(args=["--progress"], dest="PROGRESS", action="store_true",
+             help="show progress bar when not printing matches to console"),
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
@@ -345,9 +353,16 @@ def validate_args(args):
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = args.VERBOSE or not args.CONSOLE
 
+    # Show progress bar only if no console output
+    args.PROGRESS = args.PROGRESS and not args.CONSOLE
+
     # Print filename prefix on each console message line if not single specific file
     args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
                                              or args.PATHS or any("*" in x for x in args.FILES))
+
+    for k, v in vars(args).items():  # Drop duplicates from list values
+        if isinstance(v, list):
+            setattr(args, k, list(collections.OrderedDict((x, None) for x in v)))
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
         if v is None: continue  # for v, n
@@ -365,7 +380,7 @@ def validate_args(args):
         if not os.path.isfile(args.OUTFILE_TEMPLATE):
             errors.append("Template does not exist: %s." % args.OUTFILE_TEMPLATE)
 
-    for v in args.PATTERNS:
+    for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.RAW else v)
@@ -390,8 +405,13 @@ def flush_stdout():
 
 def run():
     """Parses command-line arguments and runs search."""
+    argparser = make_parser()
+    if len(sys.argv) < 2:
+        argparser.print_usage()
+        return
+
     atexit.register(flush_stdout)
-    args, _ = make_parser().parse_known_args()
+    args, _ = argparser.parse_known_args()
 
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
@@ -403,9 +423,11 @@ def run():
         if not validate_args(args):
             sys.exit(1)
 
-        cls = inputs.TopicSource if args.LIVE else inputs.BagSource
-        source, sink = cls(args), outputs.MultiSink(args)
-        if not source.validate() or not sink.validate():
+        source = (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+        if not source.validate():
+            sys.exit(1)
+        sink = outputs.MultiSink(args)
+        if not sink.validate():
             sys.exit(1)
 
         thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))

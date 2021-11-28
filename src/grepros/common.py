@@ -9,18 +9,21 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
+import itertools
 import math
 import os
 import random
 import re
 import shutil
 import sys
+import threading
+import time
 try: import curses
 except ImportError: curses = None
 
@@ -48,11 +51,13 @@ class ConsolePrinter(object):
     DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
     ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
 
-    COLOR = None     ## Whether using colors in output
+    COLOR = None       ## Whether using colors in output
 
-    WIDTH = 80       ## Console width in characters, updated from shutil and curses
+    WIDTH = 80         ## Console width in characters, updated from shutil and curses
 
-    PRINTS = {}      ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    PRINTS = {}        ## {sys.stdout: number of texts printed, sys.stderr: ..}
+
+    _LINEOPEN = False  ## Whether last print was without linefeed
 
     @classmethod
     def configure(cls, args):
@@ -88,7 +93,7 @@ class ConsolePrinter(object):
     @classmethod
     def print(cls, text="", *args, **kwargs):
         """Prints text, formatted with args and kwargs."""
-        fileobj = kwargs.pop("__file", sys.stdout)
+        fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
         text = str(text)
         try: text = text % args if args else text
@@ -97,9 +102,12 @@ class ConsolePrinter(object):
         except Exception: pass
         try: text = text.format(*args, **kwargs) if args or kwargs else text
         except Exception: pass
-        print(pref + text + suff, file=fileobj)
-        fileobj is sys.stdout and not fileobj.isatty() and fileobj.flush()
+        if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
+
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
+        cls._LINEOPEN = "\n" not in end
+        print(pref + text + suff, end=end, file=fileobj)
+        not fileobj.isatty() and fileobj.flush()
 
 
     @classmethod
@@ -118,6 +126,118 @@ class ConsolePrinter(object):
         """
         KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+
+class ProgressBar(threading.Thread):
+    """
+    A simple ASCII progress bar with a ticker thread
+
+    Drawn like
+    '[---------\   36%            ] Progressing text..'.
+    or for pulse mode
+    '[    ----                    ] Progressing text..'.
+    """
+
+    def __init__(self, max=100, value=0, min=0, width=30, forechar="-",
+                 backchar=" ", foreword="", afterword="", interval=1,
+                 pulse=False, aftertemplate=" {afterword}"):
+        """
+        Creates a new progress bar, without drawing it yet.
+
+        @param   max            progress bar maximum value, 100%
+        @param   value          progress bar initial value
+        @param   min            progress bar minimum value, for 0%
+        @param   width          progress bar width (in characters)
+        @param   forechar       character used for filling the progress bar
+        @param   backchar       character used for filling the background
+        @param   foreword       text in front of progress bar
+        @param   afterword      text after progress bar
+        @param   interval       ticker thread interval, in seconds
+        @param   pulse          ignore value-min-max, use constant pulse instead
+        @param   counts         print value and nax afterword
+        @param   aftertemplate  afterword format() template, populated with vars(self)
+        """
+        threading.Thread.__init__(self)
+        for k, v in locals().items(): setattr(self, k, v) if "self" != k else 0
+        afterword = aftertemplate.format(**vars(self))
+        self.daemon    = True   # Daemon threads do not keep application running
+        self.percent   = None   # Current progress ratio in per cent
+        self.value     = None   # Current progress bar value
+        self.pause     = False  # Whether drawing is currently paused
+        self.pulse_pos = 0      # Current pulse position
+        self.bar = "%s[%s%s]%s" % (foreword,
+                                   backchar if pulse else forechar,
+                                   backchar * (width - 3),
+                                   afterword)
+        self.printbar = self.bar   # Printable text, with padding to clear previous
+        self.progresschar = itertools.cycle("-\\|/")
+        self.is_running = False
+        if not pulse: self.update(value, draw=False)
+
+
+    def update(self, value=None, draw=True, flush=False):
+        """Updates the progress bar value, and refreshes by default."""
+        if value is not None: self.value = min(self.max, max(self.min, value))
+        afterword = self.aftertemplate.format(**vars(self))
+        w_full = self.width - 2
+        if self.pulse:
+            if self.pulse_pos is None:
+                bartext = "%s[%s]%s" % (self.foreword,
+                                        self.forechar * (self.width - 2),
+                                        afterword)
+            else:
+                dash = self.forechar * max(1, (self.width - 2) / 7)
+                pos = self.pulse_pos
+                if pos < len(dash):
+                    dash = dash[:pos]
+                elif pos >= self.width - 1:
+                    dash = dash[:-(pos - self.width - 2)]
+
+                bar = "[%s]" % (self.backchar * w_full)
+                # Write pulse dash into the middle of the bar
+                pos1 = min(self.width - 1, pos + 1)
+                bar = bar[:pos1 - len(dash)] + dash + bar[pos1:]
+                bartext = "%s%s%s" % (self.foreword, bar, afterword)
+                self.pulse_pos = (self.pulse_pos + 1) % (self.width + 2)
+        else:
+            percent = int(round(100.0 * self.value / (self.max or 1)))
+            percent = 99 if percent == 100 and self.value < self.max else percent
+            w_done = max(1, int(round((percent / 100.0) * w_full)))
+            # Build bar outline, animate by cycling last char from progress chars
+            char_last = self.forechar
+            if draw and w_done < w_full: char_last = next(self.progresschar)
+            bartext = "%s[%s%s%s]%s" % (
+                       self.foreword, self.forechar * (w_done - 1), char_last,
+                       self.backchar * (w_full - w_done), afterword)
+            # Write percentage into the middle of the bar
+            centertxt = " %2d%% " % percent
+            pos = len(self.foreword) + int(self.width / 2 - len(centertxt) / 2)
+            bartext = bartext[:pos] + centertxt + bartext[pos + len(centertxt):]
+            self.percent = percent
+        self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
+        self.bar, prevbar = bartext, self.bar
+        if draw and prevbar != self.bar: self.draw(flush)
+
+
+    def draw(self, flush=False):
+        """Prints the progress bar, from the beginning of the current line."""
+        ConsolePrinter.print("\r" + self.printbar, __end=" ")
+        if len(self.printbar) != len(self.bar):  # Draw twice to position caret at true content end
+            self.printbar = self.bar
+            ConsolePrinter.print("\r" + self.printbar, __end=" ")
+        if flush: ConsolePrinter.print()
+
+
+    def run(self):
+        self.is_running = True
+        while self.is_running:
+            if not self.pause: self.update(self.value)
+            time.sleep(self.interval)
+
+
+    def stop(self):
+        self.is_running = False
 
 
 
@@ -430,6 +550,41 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
+    """
+    Returns the word as 'count words', or '1 word' if count is 1,
+    or 'words' if count omitted.
+
+    @param   items      item collection or count,
+                        or None to get just the plural of the word
+    @param   numbers    if False, count is omitted from final result
+    @param   single     prefix to use for word if count is 1, e.g. "a"
+    @param   sep        thousand-separator to use for count
+    @param   pref       prefix to prepend to count, e.g. "~150"
+    @param   suf        suffix to append to count, e.g. "150+"
+    """
+    count   = len(items) if hasattr(items, "__len__") else items or 0
+    isupper = word[-1:].isupper()
+    suffix = "es" if word and word[-1:].lower() in "xyz" \
+             and not word[-2:].lower().endswith("ay") \
+             else "s" if word else ""
+    if isupper: suffix = suffix.upper()
+    if count != 1 and "es" == suffix and "y" == word[-1:].lower():
+        word = word[:-1] + ("I" if isupper else "i")
+    result = word + ("" if 1 == count else suffix)
+    if numbers and items is not None:
+        if 1 == count: fmtcount = single
+        elif not count: fmtcount = "0"
+        elif sep: fmtcount = "".join([
+            x + (sep if i and not i % 3 else "") for i, x in enumerate(str(count)[::-1])
+        ][::-1])
+        else: fmtcount = str(count)
+
+        fmtcount = pref + fmtcount + suf
+        result = "%s %s" % (single if 1 == count else fmtcount, result)
+    return result.strip()
 
 
 def quote(name, force=False):

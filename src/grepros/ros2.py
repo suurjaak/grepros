@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    18.11.2021
+@modified    19.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -152,6 +152,11 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                 mytype, mycount = canonical(row["type"]), countmap.get(row["id"], DEFAULTCOUNT)
                 topicmap[row["name"]] = TopicTuple(msg_type=mytype, message_count=mycount)
         return ResultTuple(topics=topicmap)
+
+
+    def get_message_class(self, typename):
+        """Returns ROS2 message type class."""
+        return get_message_class(typename)
 
 
     def get_message_definition(self, msg_or_type):

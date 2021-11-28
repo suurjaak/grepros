@@ -12,10 +12,10 @@ to a bagfile or as HTML/CSV/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
+In ROS1, messages can be grepped even if Python packages for message types are not installed.
 Using ROS1 live topics requires ROS master to be running.
 
-Using ROS2 requires Python packages for message types to be available in path;
-in ROS1 messages can be grepped even if the packages are not installed.
+Using ROS2 requires Python packages for message types to be available in path.
 
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
@@ -40,6 +40,7 @@ in ROS1 messages can be grepped even if the packages are not installed.
 - [Matching and filtering](#matching-and-filtering)
   - [Limits](#limits)
   - [Filtering](#filtering)
+- [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
 
@@ -53,7 +54,7 @@ Search for "my text" in all bags under current directory and subdirectories:
 
 Print 30 lines of the first message from each live ROS topic:
 
-    grepros ".*" --max-per-topic 1 --lines-per-message 30 --live
+    grepros --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-insensitive) in my.bag:
 
@@ -83,12 +84,19 @@ print only header stamp and values:
 Print first message from each lidar topic on host 1.2.3.4:
 
     ROS_MASTER_URI=http://1.2.3.4::11311 \
-    grepros ".*" --live --topic *lidar* --max-per-topic 1
+    grepros --live --topic *lidar* --max-per-topic 1
+
+Export all bag messages to SQLite, print only export progress:
+
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
 
 
 Patterns use Python regular expression syntax, message matches if all match.
 '*' wildcards in other arguments use simple globbing as zero or more characters,
 target matches if any value matches.
+
+Note that some expressions may need to be quoted to avoid shell auto-unescaping
+or auto-expanding them, e.g. `linear.x=2.?5` should be given as `"linear.x=2\.?5"`.
 
 
 Installation
@@ -194,37 +202,47 @@ Manage color output:
     --color auto    (auto-detect terminal support)
     --color never   (disable colors)
 
+Note that when paging color output with `more` or `less`, the pager needs to
+accept raw control characters (`more -f` or `less -R`).
+
 
 ### bag
 
-    --write my.bag
+    --write my.bag [--write-format bag]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
 it is appended to. 
 
+Specifying `--write-format bag` is not required
+if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
+
 
 ### csv
 
-    --write my.csv --write-format csv
+    --write my.csv [--write-format csv]
 
 Write messages to CSV files, each topic to a separate file, named
-`my.__topic__name__.csv` for `/topic/name`.
+`my.full__topic__name.csv` for `/full/topic/name`.
 
 Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
+Specifying `--write-format csv` is not required if the filename ends with `.csv`.
+
 
 ### html
 
-    --write my.html --write-format html
+    --write my.html [--write-format html]
 
 Write messages to an HTML file, with a linked table of contents,
-message type definitions, and a topically traversable message list.
+message timeline, message type definitions, and a topically traversable message list.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
 
 Note: resulting file may be large, and take a long time to open in browser. 
+
+Specifying `--write-format html` is not required if the filename ends with `.htm` or `.html`.
 
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
@@ -233,7 +251,7 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
 
 ### sqlite
 
-    --write my.db --write-format sqlite
+    --write my.sqlite [--write-format sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -241,6 +259,9 @@ If the database already exists, it is appended to.
 
 Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts.
+
+Specifying `--write-format sqlite` is not required
+if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
 
@@ -307,6 +328,7 @@ Matching and filtering
 ----------------------
 
 Any number of patterns can be specified, message matches if all patterns find a match.
+If no patterns are given, any message matches.
 
 Match messages containing any of the words:
 
@@ -316,9 +338,9 @@ Match messages where `frame_id` contains "world":
 
     frame_id=world
 
-Match anything (note that * wildcards need to quoted to stop shell from auto-expanding them):
+Match messages where `header.frame_id` is present:
 
-    ".*"
+    header.frame_id=.*
 
 Match as plaintext, not Python regular expression patterns:
 
@@ -414,12 +436,13 @@ Stop scanning at a specific message index in topic:
     --end-index   10  (1-based index)
 
 
-Command-line arguments
-----------------------
+All command-line arguments
+--------------------------
 
 ```
 positional arguments:
   PATTERN               pattern(s) to find in message field values,
+                        all messages match if not given,
                         can specify message field as NAME=PATTERN
                         (name may be a nested.path)
 
@@ -433,8 +456,8 @@ optional arguments:
   --publish             publish matched messages to live ROS topics
   --write OUTFILE       write matched messages to specified output file
   --write-format {bag,csv,html,sqlite}
-                        output format (default "bag"),
-                        bag or database appended to if file already exists
+                        output format, auto-detected from OUTFILE extension if not given,
+                        bag or database will be appended to if file already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -525,6 +548,7 @@ Output control:
   --no-meta             do not print source and message metainfo to console
   --no-filename         do not print bag filename prefix on each console message line
   --no-console-output   do not print matches to console
+  --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
                         for publishing and bag writing
 

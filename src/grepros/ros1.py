@@ -8,15 +8,18 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    14.11.2021
+@modified    26.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
 import collections
 import io
 import os
+import re
 import time
 
+try: import embag
+except ImportError: embag = None
 import genpy
 import genpy.dynamic
 import rosbag
@@ -24,7 +27,7 @@ import roslib
 import rospy
 
 from . common import ConsolePrinter, MatchMarkers
-from . rosapi import parse_definition_subtypes
+from . rosapi import ROS_BUILTIN_TYPES, parse_definition_subtypes
 
 
 ## Bagfile extensions to seek
@@ -36,6 +39,9 @@ SKIP_EXTENSIONS = (".bag.orig.active", )
 ## ROS1 time/duration types
 ROS_TIME_TYPES = ["time", "duration"]
 
+## ROS1 time/duration type names to type classes
+ROS_TIME_TYPES_MAP = {"time": rospy.Time, "duration": rospy.Duration}
+
 ## {"pkg/msg/Msg": message type class}
 TYPECLASSES = {}
 
@@ -44,6 +50,146 @@ SLEEP_INTERVAL = 0.5
 
 ## rospy.MasterProxy instance
 master = None
+
+
+class EmbagReader(object):
+    """embag reader interface, partially mimicking rosbag.Bag."""
+
+
+    def __init__(self, filename):
+        self._topics   = {}  # {topic: [typename, ]}
+        self._counts   = {}  # {(topic, typename): message count}
+        self._types    = {}  # {typename: message type class}
+        self._hashdefs = {}  # {message type definition MD5 hash: typename}
+        self._typedefs = {}  # {typename: type definition text}
+        self._view = embag.View(filename)
+
+        ## Bagfile path
+        self.filename = filename
+
+        self._configure()
+
+
+    def get_message_count(self):
+        """Returns the number of messages in the bag."""
+        return sum(self._counts.values())
+
+
+    def get_start_time(self):
+        """Returns the start time of the bag, as UNIX timestamp."""
+        return self._view.getStartTime().to_sec()
+
+
+    def get_end_time(self):
+        """Returns the end time of the bag, as UNIX timestamp."""
+        return self._view.getEndTime().to_sec()
+
+
+    def get_type_and_topic_info(self):
+        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})."""
+        TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
+        ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
+        topicmap = {}
+        for topic, typenames in self._topics.items():
+            for typename in typenames:
+                topickey = (topic, typename)
+                topicmap[topic] = TopicTuple(typename, self._counts.get(topickey, 0))
+        return ResultTuple(topics=topicmap)
+
+
+    def get_message_class(self, typename):
+        """
+        Returns rospy message class for typename, or None if unknown type.
+
+        Generates class dynamically if not already generated.
+        """
+        if typename not in self._types and typename in self._typedefs:
+            for n, t in genpy.dynamic.generate_dynamic(typename, self._typedefs[typename]).items():
+                self._types[n] = t
+        return self._types.get(typename)
+
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS1 message type definition full text, including subtype definitions."""
+        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+        return self._typedefs.get(typename) or get_message_definition(typename)
+
+
+    def read_messages(self, topics=None, start_time=None, end_time=None):
+        """
+        Yields messages from the bag, optionally filtered by topic and timestamp.
+
+        @param   topics      list of topics or a single topic to filter by, if at all
+        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
+        @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @return              (topic, msg, rclpy.time.Time)
+        """
+        topics = topics if isinstance(topics, list) else [topics] if topics else []
+        for m in self._view.getMessages(topics) if topics else self._view.getMessages():
+            if start_time is not None and start_time > m.timestamp.to_sec():
+                continue  # for m
+            if end_time is not None and end_time < m.timestamp.to_sec():
+                continue  # for m
+
+            typename = self._hashdefs[m.md5]
+            msg = self._populate_message(self.get_message_class(typename)(), m.data())
+            yield m.topic, msg, rospy.Time(m.timestamp.secs, m.timestamp.nsecs)
+
+
+    def close(self):
+        """Closes the bag file."""
+        if self._view:
+            del self._view
+            self._view = None
+
+
+    @property
+    def size(self):
+        """Returns current file size."""
+        return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+
+
+    def _configure(self):
+        """Populates bag metainfo."""
+        connections = self._view.connectionsByTopic()
+        for topic in self._view.topics():
+            for conn in connections.get(topic, ()):
+                typename, topickey = conn.type, (topic, conn.type)
+                self._topics.setdefault(topic, []).append(typename)
+                self._counts[topickey] = self._counts.get(topickey, 0) + conn.message_count
+                self._hashdefs[conn.md5sum] = typename
+                self._typedefs[typename] = conn.message_definition
+                for n, d in parse_definition_subtypes(conn.message_definition).items():
+                    self._typedefs.setdefault(n, d)
+
+
+    def _populate_message(self, msg, embagval):
+        """Returns the ROS1 message populated from a corresponding embag.RosValue."""
+        for name, typename in get_message_fields(msg).items():
+            v, scalarname = embagval.get(name), scalar(typename)
+            if typename in ROS_BUILTIN_TYPES:      # Single built-in type
+                msgv = getattr(embagval, name)
+            elif scalarname in ROS_BUILTIN_TYPES:  # List of built-in types
+                msgv = list(v)
+            elif typename in ROS_TIME_TYPES:              # Single temporal type
+                msgv = ROS_TIME_TYPES_MAP[typename](*self._parse_time(v))
+            elif scalarname in ROS_TIME_TYPES:            # List of temporal types
+                cls = ROS_TIME_TYPES_MAP[scalarname]
+                msgv = [cls(*self._parse_time(x)) for x in v]
+            elif typename == scalarname:                  # Single subtype
+                msgv = self._populate_message(self.get_message_class(typename)(), v)
+            else:                                         # List of subtypes
+                cls = self.get_message_class(scalarname)
+                msgv = [self._populate_message(cls(), x) for x in v]
+            setattr(msg, name, msgv)
+        return msg
+
+
+    def _parse_time(self, embagval):
+        """Returns (seconds, nanoseconds) from embag.RosValue representing time or duration."""
+        m = re.search(r"(\d+)s (\d+)ns", str(embagval))
+        return int(m.group(1)), int(m.group(2))
+
 
 
 def init_node(name):
@@ -98,7 +244,14 @@ def validate(live=False):
 
 
 def create_bag_reader(filename):
-    """Returns a rosbag.Bag, supplemented with get_message_definition()."""
+    """
+    Returns EmbagReader if embag available else rosbag.Bag.
+
+    rosbag.Bag is supplemented with get_message_class() and get_message_definition().
+    """
+    if False and embag:  # @todo enable when embag fixes its memory leak
+        return EmbagReader(filename)
+
     DEFINITIONS = {}
     def get_bag_message_definition(msg_or_type):
         """Returns ROS1 message type definition full text from bag, including subtype definitions."""
@@ -116,6 +269,7 @@ def create_bag_reader(filename):
         return DEFINITIONS.get(typename)
 
     bag = rosbag.Bag(filename, skip_index=True)
+    bag.get_message_class = get_message_class
     bag.get_message_definition = get_bag_message_definition
     return bag
 
@@ -154,8 +308,8 @@ def create_anymsg_subscriber(topic, typename, handler, queue_size):
             return
         if typename not in TYPECLASSES:
             typedef = msg._connection_header["message_definition"]
-            cls = genpy.dynamic.generate_dynamic(typename, typedef)[typename]
-            TYPECLASSES[typename] = cls
+            for name, cls in genpy.dynamic.generate_dynamic(typename, typedef).items():
+                TYPECLASSES.setdefault(name, cls)
         handler(TYPECLASSES[typename]().deserialize(msg._buff))
 
     return rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)

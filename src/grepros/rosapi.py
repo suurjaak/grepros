@@ -95,8 +95,9 @@ def create_bag_reader(filename):
     """
     Returns an object for reading ROS bags.
 
-    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
-    Supplemented with get_message_definition().
+    Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
+    if using embag in ROS1, or using ROS2.
+    Supplemented with get_message_class() and get_message_definition().
     """
     return realapi.create_bag_reader(filename)
 

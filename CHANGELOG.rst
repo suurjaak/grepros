@@ -2,6 +2,18 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.5 (2021-11-28)
+-------------------
+* add --progress option
+* match anything by default if no patterns given
+* add timeline to HTML output
+* auto-detect output format from given filename
+* fix breaking too early on --max-per-topic
+* fix adding topic views to existing SQLite output database
+* fix error on adding message type tables for empty list values in SQLite output
+* fix sorting table of contents in HTML output
+* do not auto-expand table of contents in HTML output
+
 0.2.4 (2021-11-18)
 -------------------
 * skip retrieving full message counts from ROS2 bag before any match

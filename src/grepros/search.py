@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    14.11.2021
+@modified    27.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -22,6 +22,9 @@ from . import rosapi
 
 class Searcher(object):
     """ROS message grepper."""
+
+    ## Match patterns for global any-match
+    ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
 
     def __init__(self, args):
@@ -46,7 +49,7 @@ class Searcher(object):
         # {(topic, type): {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
         # {(topic, type): {None: count processed, True: count matched, False: count emitted as context}}
-        self._counts   = collections.defaultdict(lambda: collections.defaultdict(int))
+        self._counts   = collections.defaultdict(collections.Counter)
         # {(topic, type): {message ID: True if matched else False if emitted else None}
         self._statuses = collections.defaultdict(collections.OrderedDict)
         # {(topic, type): (message hash over all fields used in matching)}
@@ -69,13 +72,13 @@ class Searcher(object):
             d.clear()
         source.bind(sink), sink.bind(source)
 
-        counter, total, batch = 0, 0, None
+        counter, total, batch, any_matched = 0, 0, None, False
         for topic, msg, stamp in source.read():
             if batch != source.get_batch():
                 total += sum(x[True] for x in self._counts.values())
                 for d in (self._counts, self._messages, self._stamps, self._statuses, self._hashes):
                     d.clear()
-                counter, batch = 0, source.get_batch()
+                counter, batch, any_matched = 0, source.get_batch(), False
 
             msgid = counter = counter + 1
             topickey = (topic, rosapi.get_message_type(msg))
@@ -100,10 +103,12 @@ class Searcher(object):
                     sink.emit(topic, i, s, m, None)
                     self._statuses[topickey][msgid2] = False
             source.notify(matched)
+            any_matched = any_matched or bool(matched)
 
             self._prune_data(topickey)
-            if self._is_max_done(source):
-                break  # for topic, msg, stamp
+            if any_matched and self._is_max_done(source):
+                sink.flush()
+                source.close_batch()
 
         source.close(), sink.close()
         return total + sum(x[True] for x in self._counts.values())
@@ -161,6 +166,8 @@ class Searcher(object):
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
             if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
+        if not self._args.PATTERNS:  # Add match-all pattern
+            contents.append(self.ANY_MATCHES[0])
         self._patterns["content"] = contents
 
         selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
@@ -184,20 +191,18 @@ class Searcher(object):
 
     def _is_max_done(self, source):
         """Returns whether max match count has been reached (and message after-context emitted)."""
-        result, is_maxed, is_maxable = False, False, False
+        result, is_maxed = False, False
         if self._args.MAX_MATCHES:
             is_maxed = sum(vv[True] for vv in self._counts.values()) >= self._args.MAX_MATCHES
         if not is_maxed and self._args.MAX_TOPIC_MATCHES:
-            if self._args.MAX_TOPICS:
-                if len([k for k, vv in self._counts.items() if vv[True]]) >= self._args.MAX_TOPICS:
-                    is_maxable = True
-            else:
-                is_maxable = source.is_static
-            is_maxed = is_maxable and any(vv[True] for vv in self._counts.values()) and \
-                       all(vv[True] >= self._args.MAX_TOPIC_MATCHES
-                           for vv in self._counts.values() if vv[True])
+            count_required = self._args.MAX_TOPICS or len(source.topics)
+            count_maxed = sum(vv[True] >= self._args.MAX_TOPIC_MATCHES
+                              or source.topics.get(k) and vv[None] >= source.topics[k]
+                              for k, vv in self._counts.items())
+            is_maxed = (count_maxed >= count_required)
         if is_maxed:
-            result = not any(self._has_in_window(k, self._args.AFTER, status=True, full=True)
+            result = not self._args.AFTER or \
+                     not any(self._has_in_window(k, self._args.AFTER, status=True, full=True)
                              for k in self._counts)
         return result
 
@@ -237,7 +242,7 @@ class Searcher(object):
         def decorate_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = rosapi.get_message_fields(obj)  # Returns obj if not a ROS message
+            fieldmap = fieldmap0 = rosapi.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
                 fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
@@ -256,6 +261,9 @@ class Searcher(object):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
+            if not top and not matched and not selects and not fieldmap0 \
+            and set(self._patterns["content"]) == set(self.ANY_MATCHES):  # Ensure Empty any-match
+                matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
             return obj
 
         if self._brute_prechecks:
