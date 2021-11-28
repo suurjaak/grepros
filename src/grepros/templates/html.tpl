@@ -238,6 +238,13 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       font-size:              0.8em;
       color:                  lightgray;
     }
+    #timeline ul li.highlight {
+      filter:                 brightness(1.1);
+      font-weight:            bold;
+    }
+    #timeline ul li.highlight .count {
+      color:                  white;
+    }
     #timeline.collapsed {
       bottom:                 unset;
     }
@@ -306,8 +313,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     var LASTMSGS  = {};  // {[topic, type]: {id, dt}}
     var MSGCOUNTS = {};  // {[topic, type]: count}
 %if timeline:
-    var MSGIDS    = [];  // [id, ]
-    var MSGSTAMPS = [];  // [dtstr, ] indexes correspond to MSGIDS
+
+    var MSGIDS            = [];    // [id, ]
+    var MSGSTAMPS         = [];    // [dtstr, ] indexes correspond to MSGIDS
+    var MSG_TIMELINES     = {};    // {message ID: timeline index}
+    var scroll_highlights = {};    // {row ID: highlight}
+    var scroll_timer      = null;  // setTimeout ID
+    var scroll_timeline   = true;  // Whether to scroll timeline on scrolling messages
+    var scroll_history    = [window.scrollY, window.scrollY];  // Last scroll positions
 %endif
 
     var sort_col       = 0;     // Current sort column index in toc
@@ -344,7 +357,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
     /** Adds basic numeric strftime formatting to JavaScript Date, local time. */
     Date.prototype.strftime = function(format) {
-      var result = format.replace(/%%/g, "~~~~~~~~~~"); // Temp-replace literal %
+      var result = format.replace(/%%/g, "~~~~~~~~~~");  // Temp-replace literal %
       var x = this;
       var FMTERS = {
         "%d": function() { return String(x.getDate()).ljust(2, "0"); },
@@ -362,7 +375,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         "%P": function() { return (x.getHours() < 12) ? "am" : "pm"; },
       };
       for (var f in FMTERS) result = result.replace(new RegExp(f, "g"), FMTERS[f]);
-      return result.replace(/~~~~~~~~~~/g, "%"); // Restore literal %-s
+      return result.replace(/~~~~~~~~~~/g, "%");  // Restore literal %-s
     };
 
 
@@ -629,12 +642,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 %if timeline:
     /** Populates timeline structures and the timeline element. */
     var populateTimeline = function() {
+      MSG_TIMELINES = {};
+
       var HEIGHT = window.innerHeight - 10 - 2 - 15;   // - div.padding - ul.padding - title height
       var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
 
       // Calculate a sensibly rounded interval
       var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
-      var ROUNDINGS = [ // [[threshold in millis, rounding in millis], ]
+      var ROUNDINGS = [  // [[threshold in millis, rounding in millis], ]
         [3600 * 1000, 3600 * 1000],  // >1h, round to 60m
         [ 600 * 1000,  900 * 1000],  // 10m..60m, round to 15m
         [ 300 * 1000,  600 * 1000],  // 5m..10m, round to 10m
@@ -678,6 +693,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           indexids[+timeentry] = MSGIDS[i];
         };
         counts[+timeentry] = (counts[+timeentry] || 0) + 1;
+        MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
       };
 
       // Generate date format string
@@ -702,18 +718,96 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
                                    "onclick": "return gotoMessage({0})".format(indexids[+dt])};
         var elem_time  = createElement(counts[+dt] ? "a" : "span", dt.strftime(fmtstr), attr);
         var elem_count = counts[+dt] ? createElement("span", (counts[+dt]).toLocaleString("en"), {"class": "count"}) : null;
-        var elem_li    = createElement("li", [elem_time, elem_count]);
+        var elem_li    = createElement("li", [elem_time, elem_count], {"id": "timeline_" + i});
         elem_timeline.appendChild(elem_li);
       };
       elem_timeline.parentNode.classList.remove("hidden");
     };
 
 
+    /** Attaches scroll observer to message rows. */
+    var initTimelineHighlight = function() {
+      if (!window.IntersectionObserver) return;
+        
+      var scroll_options = {"root": null, "threshold": [0, 1]};
+      var scroll_observer = new IntersectionObserver(onScrollMessages, scroll_options);
+
+      var items = Array.prototype.slice.call(document.querySelectorAll("#timeline ul li"));
+      items.forEach(function(x) { x.children.length > 1 && x.addEventListener("click", onClickTimeline); });
+
+      var rows = Array.prototype.slice.call(document.querySelectorAll("#messages tbody tr"));
+      rows.forEach(scroll_observer.observe.bind(scroll_observer));
+    };
+
+
+    /** Highlights timeline for messages in view, scrolls to highlights. */
+    var highlightTimeline  = function() {
+      scroll_timer = null;
+
+      var on = {}, off = {};    // {"timeline_x": true}
+      var msg_highlights = {};  // {message ID: do_highlight}
+      var msg_rows       = {};  // {message ID: [row ID, ]}
+      var row_ids = Object.keys(scroll_highlights);
+      for (var i = 0; i < row_ids.length; i++) {
+        var msg_id = row_ids[i].replace(/\D/g, "");
+        msg_highlights[msg_id] = msg_highlights[msg_id] || scroll_highlights[row_ids[i]];
+        (msg_rows[msg_id] = msg_rows[msg_id] || []).push(row_ids[i]);
+      };
+      var msg_ids = Object.keys(msg_highlights);
+      for (var i = 0; i < msg_ids.length; i++) {
+        var msg_id = msg_ids[i], into_view = msg_highlights[msg_id];
+        if (!into_view) for (var j = 0; j < msg_rows[msg_id].length; j++) {
+          delete scroll_highlights[msg_rows[msg_id][j]];
+        };
+        (into_view ? on : off)["timeline_" + MSG_TIMELINES[msg_id]] = true;
+      };
+      Object.keys(on).forEach(function(x) { delete off[x]; });
+      var elems_off = Object.keys(off).map(document.getElementById.bind(document)).filter(Boolean),
+          elems_on  = Object.keys(on ).map(document.getElementById.bind(document)).filter(Boolean);
+      elems_off.forEach(function(x) { x.classList.remove("highlight"); });
+      elems_on. forEach(function(x) { x.classList.add   ("highlight"); });
+      if (!scroll_timeline || !elems_on.length) return;
+
+      var container = elems_on[0].parentElement,
+          viewport  = [container.scrollTop, container.scrollTop + container.clientHeight],
+          downward  = scroll_history[1] > scroll_history[0],
+          anchor    = elems_on[downward ? elems_on.length - 1 : 0];
+      anchor = (downward ? anchor.nextElementSibling : anchor.previousElementSibling) || anchor;
+      if (anchor.offsetTop >= viewport[0] && anchor.offsetTop + anchor.offsetHeight <= viewport[1]) return;
+      container.scrollTop = Math.max(0, anchor.offsetTop - (downward ? container.clientHeight - anchor.offsetHeight : 0));
+    };
+
+
+    /** Cancels scrolling timeline on ensuring messages-viewport change. */
+    var onClickTimeline = function() {
+      scroll_timeline = false;
+      window.setTimeout(function() { scroll_timeline = true; }, 500);
+      return true;
+    };
+
+
+    /** Queues scrolled messages for highlighting timeline. */
+    var onScrollMessages = function(entries) {
+      if (!document.querySelector("#timeline li")) return;
+
+      scroll_history = [scroll_history[1], window.scrollY];
+      if (scroll_timeline !== false)
+        scroll_timeline = ("none" != document.getElementById("timeline").style.display) ? true : null;
+      if (scroll_timeline === null) return;
+
+      entries.forEach(function(entry) {
+        scroll_highlights[entry.target.id] = entry.isIntersecting;
+      });
+      scroll_timer = scroll_timer || window.setTimeout(highlightTimeline , 100);
+    };
+
 %endif
     window.addEventListener("DOMContentLoaded", function() {
       populateToc();
 %if timeline:
       populateTimeline();
+      initTimelineHighlight();
+
       var timeout = null;
       var height  = window.innerHeight;
       window.addEventListener("resize", function() {
