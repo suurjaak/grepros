@@ -40,6 +40,7 @@ Using ROS2 requires Python packages for message types to be available in path.
 - [Matching and filtering](#matching-and-filtering)
   - [Limits](#limits)
   - [Filtering](#filtering)
+- [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
 
@@ -235,7 +236,7 @@ Specifying `--write-format csv` is not required if the filename ends with `.csv`
     --write my.html [--write-format html]
 
 Write messages to an HTML file, with a linked table of contents,
-message type definitions, and a topically traversable message list.
+message timeline, message type definitions, and a topically traversable message list.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
 
@@ -250,7 +251,7 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
 
 ### sqlite
 
-    --write my.sqlite {--write-format sqlite]
+    --write my.sqlite [--write-format sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -435,12 +436,13 @@ Stop scanning at a specific message index in topic:
     --end-index   10  (1-based index)
 
 
-Command-line arguments
-----------------------
+All command-line arguments
+--------------------------
 
 ```
 positional arguments:
   PATTERN               pattern(s) to find in message field values,
+                        all messages match if not given,
                         can specify message field as NAME=PATTERN
                         (name may be a nested.path)
 

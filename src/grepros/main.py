@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -73,7 +73,7 @@ Export all bag messages to SQLite, print only export progress:
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
-                  "(name may be a nested.path);"),
+                  "(name may be a nested.path)"),
 
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
