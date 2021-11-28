@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    25.11.2021
+@modified    28.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -629,7 +629,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 %if timeline:
     /** Populates timeline structures and the timeline element. */
     var populateTimeline = function() {
-      var NUM = 30;  // @todo from window height mebbe
+      var HEIGHT = window.innerHeight - 10 - 2 - 15;   // - div.padding - ul.padding - title height
+      var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
 
       // Calculate a sensibly rounded interval
       var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
@@ -659,14 +660,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           break;  // for i
         };
       };
-      if (!rounded) entryspan = 1000;
+      if (!rounded) entryspan = 1;
 
       // Assemble timeline entries
       var timeentry = new Date(MSGSTAMPS[0]);
       timeentry = new Date(+timeentry - (+timeentry % entryspan));
       var timelines = [timeentry];
-      var indexids = {};  // [dt: first message ID]
-      var counts   = {};  // {dt: message count}
+      var indexids = {};  // [+dt: first message ID]
+      var counts   = {};  // {+dt: message count}
       for (var i = 0; i < MSGSTAMPS.length; i++) {
         var dt = new Date(MSGSTAMPS[i]);
         if (!i || +dt >= +timeentry + +entryspan) {
@@ -674,9 +675,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
             timeentry = new Date(+timeentry + +entryspan);
             timelines.push(timeentry);
           };
-          indexids[timeentry] = MSGIDS[i];
+          indexids[+timeentry] = MSGIDS[i];
         };
-        counts[timeentry] = (counts[timeentry] || 0) + 1;
+        counts[+timeentry] = (counts[+timeentry] || 0) + 1;
       };
 
       // Generate date format string
@@ -693,13 +694,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
       // Populate timeline
       var elem_timeline = document.querySelector("#timeline ul");
+      elem_timeline.innerHTML = "";
       for (var i = 0; i < timelines.length; i++) {
         var dt = timelines[i];
-        var attr = !counts[dt] ? {"class": "time"} :
-                                 {"title": "Go to first message in time span", "href": "javascript;",
-                                  "onclick": "return gotoMessage({0})".format(indexids[dt])};
-        var elem_time  = createElement(counts[dt] ? "a" : "span", dt.strftime(fmtstr), attr);
-        var elem_count = counts[dt] ? createElement("span", (counts[dt]).toLocaleString("en"), {"class": "count"}) : null;
+        var attr = !counts[+dt] ? {"class": "time"} :
+                                  {"title": "Go to first message in time span", "href": "javascript;",
+                                   "onclick": "return gotoMessage({0})".format(indexids[+dt])};
+        var elem_time  = createElement(counts[+dt] ? "a" : "span", dt.strftime(fmtstr), attr);
+        var elem_count = counts[+dt] ? createElement("span", (counts[+dt]).toLocaleString("en"), {"class": "count"}) : null;
         var elem_li    = createElement("li", [elem_time, elem_count]);
         elem_timeline.appendChild(elem_li);
       };
@@ -712,6 +714,15 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       populateToc();
 %if timeline:
       populateTimeline();
+      var timeout = null;
+      var height  = window.innerHeight;
+      window.addEventListener("resize", function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+          if (height != window.innerHeight) populateTimeline();
+          height = window.innerHeight;
+        }, 250);
+      });
 %endif
     });
 

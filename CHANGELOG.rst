@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.5 (2021-11-27)
+0.2.5 (2021-11-28)
 -------------------
 * add --progress option
 * match anything by default if no patterns given
