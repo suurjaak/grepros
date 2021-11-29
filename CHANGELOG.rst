@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.6 (2021-11-29)
+-------------------
+* use up to nanosecond precision in HTML output timeline
+
 0.2.5 (2021-11-28)
 -------------------
 * add --progress option
