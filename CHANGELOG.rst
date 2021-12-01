@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.6 (2021-11-29)
+0.2.6 (2021-12-01)
 -------------------
 * use up to nanosecond precision in HTML output timeline
+* fix potential error on using --max-per-topic with live topics
 
 0.2.5 (2021-11-28)
 -------------------
