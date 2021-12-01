@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    01.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -32,7 +32,7 @@ class SourceBase(object):
     """Message producer base class."""
 
     ## Template for message metainfo line
-    MESSAGE_META_TEMPLATE = "{topic} {index} ({type}  {dt}  {stamp})"
+    MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
     def __init__(self, args):
         """
