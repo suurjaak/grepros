@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    14.11.2021
+@modified    01.12.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -59,7 +59,7 @@ def init_node(name=None):
 
 def shutdown_node():
     """Shuts down live ROS node."""
-    realapi.shutdown_node()
+    realapi and realapi.shutdown_node()
 
 
 def validate(live=False):
