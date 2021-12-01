@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    29.11.2021
+@modified    30.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -760,33 +760,28 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           [  60 * 1000000000,  120 * 1000000000],  // 1m..2m, round to 2m
           [  30 * 1000000000,   60 * 1000000000],  // 30s..1m, round to 1m
           [  10 * 1000000000,   30 * 1000000000],  // 10s..30s, round to 30s
-          [   5 * 1000000000,   10 * 1000000000],  // 5s..10s, round to 10s
-          [   2 * 1000000000,    5 * 1000000000],  // 2s..5s, round to 5s
-          [   1 * 1000000000,    2 * 1000000000],  // 1s..2s, round to 2s
-          [        500000000,    1 * 1000000000],  // 500ms..1s, round to 1s
-          [        100000000,         100000000],  // 100ms..500ms, round to 100
-          [          5000000,          10000000],  // 5ms..100ms, round to 10
-          [          2000000,           5000000],  // 2ms..5ms, round to 5ms
-          [          1000000,           1000000],  // 1ms..2ms, round to 2ms
-          [           500000,           1000000],  // 500us..1ms, round to 1ms
-          [           100000,            100000],  // 100us..500us, round to 100
-          [             5000,             10000],  // 5us..100us, round to 10
-          [             2000,              5000],  // 2us..5us, round to 5us
-          [             1000,              1000],  // 1us..2us, round to 2us
-          [              500,              1000],  // 500ns..1us, round to 1us
-          [              100,               100],  // 100ns..500ns, round to 100
-          [                5,                10],  // 5ns..100ns, round to 10
-          [                2,                 5],  // 2ns..5ns, round to 5ns
-          [                1,                 1],  // 1ns..2ns, round to 2ns
+        ];
+        var MAGNITUDE_ROUNDINGS = [ // [[seconds/millis/micros/nanos threshold, rounding], ]
+          [5,   10],    // 5..10, round to 10
+          [2,    5],    // 2..5, round to 5
+          [1,    2],    // 1..2, round to 2
+          [0.5,  1],    // 0.5..1, round to 1
+          [0.1,  0.1],  // 0.1s..0.5, round to 0.1
         ];
         var rounded = false;
-        for (var i = 0; i < ROUNDINGS.length; i++) {
-          var threshold = ROUNDINGS[i][0], modulo = ROUNDINGS[i][1];
-          if (entryspan_ns > threshold) {
-            entryspan_ns += modulo - entryspan_ns % modulo;
-            rounded = true;
-            break;  // for i
+        var magnitude = null;
+        while (!rounded && (!magnitude || magnitude >= 1)) {
+          var roundings = magnitude ? MAGNITUDE_ROUNDINGS : ROUNDINGS;
+          for (var i = 0; i < roundings.length; i++) {
+            var threshold = roundings[i][0], modulo = roundings[i][1];
+            if (magnitude) { threshold = threshold * magnitude, modulo = modulo * magnitude; };
+            if (threshold >= 1 && entryspan_ns > threshold) {
+              entryspan_ns += modulo - entryspan_ns % modulo;
+              rounded = true;
+              break;  // for i
+            };
           };
+          magnitude = (magnitude == null) ? 10**9 : magnitude / 1000;
         };
         if (!rounded) entryspan_ns = 1;
 
