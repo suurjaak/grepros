@@ -9,10 +9,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    01.12.2021
+@modified    03.12.2021
 ------------------------------------------------------------------------------
 """
 import datetime
+import decimal
 import hashlib
 import os
 import re
@@ -97,7 +98,7 @@ def create_bag_reader(filename):
 
     Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
     if using embag in ROS1, or using ROS2.
-    Supplemented with get_message_class() and get_message_definition().
+    Supplemented with get_message_class(), get_message_definition() and get_message_type_hash().
     """
     return realapi.create_bag_reader(filename)
 
@@ -146,6 +147,11 @@ def get_message_definition(msg_or_type):
     return realapi.get_message_definition(msg_or_type)
 
 
+def get_message_type_hash(msg_or_type):
+    """Returns ROS message type MD5 hash."""
+    return realapi.get_message_type_hash(msg_or_type)
+
+
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS message, else {}."""
     return realapi.get_message_fields(val)
@@ -182,6 +188,11 @@ def is_ros_message(val, ignore_time=False):
     @param  ignore_time  whether to ignore ROS time/duration types
     """
     return realapi.is_ros_message(val, ignore_time)
+
+
+def is_ros_time(val):
+    """Returns whether value is a ROS2 time/duration."""
+    return realapi.is_ros_time(val)
 
 
 def iter_message_fields(msg, top=()):
@@ -262,6 +273,21 @@ def make_message_hash(msg, include=(), exclude=()):
     return hasher.hexdigest()
 
 
+def message_to_dict(msg):
+    """Returns ROS message as nested Python dictionary."""
+    result = {} if is_ros_message(msg) else msg
+    for name, typename in get_message_fields(msg).items():
+        v = get_message_value(msg, name, typename)
+        if is_ros_time(v):
+            v = dict(zip(["secs", "nsecs"], divmod(to_nsec(v), 10**9)))
+        elif isinstance(v, (list, tuple)):
+            v = [message_to_dict(x) for x in v]
+        elif is_ros_message(v):
+            v = message_to_dict(v)
+        result[name] = v
+    return result
+
+
 def parse_definition_subtypes(typedef):
     """
     Returns subtype names and type definitions from a full message definition.
@@ -303,6 +329,13 @@ def to_datetime(val):
     """Returns value as datetime.datetime if value is ROS time/duration, else value."""
     sec = realapi.to_sec(val)
     return datetime.datetime.fromtimestamp(sec) if sec is not val else val
+
+
+def to_decimal(val):
+    """Returns value as decimal.Decimal if value is ROS time/duration, else value."""
+    if is_ros_time(val):
+        return decimal.Decimal("%d.%09d" % (divmod(to_nsec(val), 10**9)))
+    return val
 
 
 def to_nsec(val):

@@ -129,19 +129,19 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args              arguments object like argparse.Namespace
-        @param   args.META         whether to print metainfo
-        @param   args.OUTFILE      name of SQLite file to write,
-                                   will be appended to if exists
-        @param   args.WRAP_WIDTH   character width to wrap message YAML output at
-        @param   args.VERBOSE      whether to print debug information
+        @param   args               arguments object like argparse.Namespace
+        @param   args.META          whether to print metainfo
+        @param   args.DUMP_TARGET   name of SQLite file to write,
+                                    will be appended to if exists
+        @param   args.WRAP_WIDTH    character width to wrap message YAML output at
+        @param   args.VERBOSE       whether to print debug information
         """
         args = TextSinkMixin.make_full_yaml_args(args)
 
         super(SqliteSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
-        self._filename      = args.OUTFILE
+        self._filename      = args.DUMP_TARGET
         self._db            = None   # sqlite3.Connection
         self._close_printed = False
 

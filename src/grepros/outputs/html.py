@@ -41,16 +41,16 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                    arguments object like argparse.Namespace
-        @param   args.META               whether to print metainfo
-        @param   args.OUTFILE            name of HTML file to write,
-                                         will add counter like .2 to filename if exists
-        @param   args.OUTFILE_TEMPLATE   path to custom HTML template, if any
-        @param   args.VERBOSE            whether to print debug information
-        @param   args.MATCH_WRAPPER      string to wrap around matched values,
-                                         both sides if one value, start and end if more than one,
-                                         or no wrapping if zero values
-        @param   args.ORDERBY            "topic" or "type" if any to group results by
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.META            whether to print metainfo
+        @param   args.DUMP_TARGET     name of HTML file to write,
+                                      will add counter like .2 to filename if exists
+        @param   args.DUMP_TEMPLATE   path to custom HTML template, if any
+        @param   args.VERBOSE         whether to print debug information
+        @param   args.MATCH_WRAPPER   string to wrap around matched values,
+                                      both sides if one value, start and end if more than one,
+                                      or no wrapping if zero values
+        @param   args.ORDERBY         "topic" or "type" if any to group results by
         """
         args = copy.deepcopy(args)
         args.WRAP_WIDTH = self.WRAP_WIDTH
@@ -59,9 +59,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
         self._queue    = queue.Queue()
-        self._writer   = None          # threading.Thread running _stream()
-        self._filename = args.OUTFILE  # Filename base, will be made unique
-        self._template_path = args.OUTFILE_TEMPLATE or self.TEMPLATE_PATH
+        self._writer   = None              # threading.Thread running _stream()
+        self._filename = args.DUMP_TARGET  # Filename base, will be made unique
+        self._template_path = args.DUMP_TEMPLATE or self.TEMPLATE_PATH
         self._close_printed = False
 
         WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]

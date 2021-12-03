@@ -18,6 +18,7 @@ from .. import rosapi
 from . base     import SinkBase, TextSinkMixin, ConsoleSink, BagSink, TopicSink
 from . csv      import CsvSink
 from . html     import HtmlSink
+from . postgres import PostgresSink
 from . sqlite   import SqliteSink
 
 
@@ -28,17 +29,18 @@ class MultiSink(SinkBase):
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
     ## Autobinding between argument flags+subflags and sink classes
-    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {
-        "bag": BagSink, "csv": CsvSink, "html": HtmlSink, "sqlite": SqliteSink,
+    SUBFLAG_CLASSES = {"DUMP_TARGET": {"DUMP_FORMAT": {
+        "bag": BagSink, "csv": CsvSink, "html": HtmlSink,
+        "postgres": PostgresSink, "sqlite": SqliteSink,
     }}}
 
     def __init__(self, args):
         """
-        @param   args                  arguments object like argparse.Namespace
-        @param   args.CONSOLE          print matches to console
-        @param   args.OUTFILE          write matches to output file
-        @param   args.OUTFILE_FORMAT   output file format, "bag" or "html"
-        @param   args.PUBLISH          publish matches to live topics
+        @param   args               arguments object like argparse.Namespace
+        @param   args.CONSOLE       print matches to console
+        @param   args.DUMP_TARGET   write matches to output file
+        @param   args.DUMP_FORMAT   output file format, "bag" or "html"
+        @param   args.PUBLISH       publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
 

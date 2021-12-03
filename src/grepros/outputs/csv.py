@@ -31,17 +31,17 @@ class CsvSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
-        @param   args.OUTFILE   base name of CSV file to write,
-                                will add topic name like "name.__my__topic.csv" for "/my/topic",
-                                will add counter like "name.__my__topic.2.csv" if exists
-        @param   args.VERBOSE   whether to print debug information
+        @param   args               arguments object like argparse.Namespace
+        @param   args.DUMP_TARGET   base name of CSV file to write,
+                                    will add topic name like "name.__my__topic.csv" for "/my/topic",
+                                    will add counter like "name.__my__topic.2.csv" if exists
+        @param   args.VERBOSE       whether to print debug information
         """
         super(CsvSink, self).__init__(args)
-        self._filebase      = args.OUTFILE  # Filename base, will be made unique
-        self._files         = {}            # {topic: file()}
-        self._writers       = {}            # {topic: csv.writer}
-        self._lasttopic     = None          # Last topic emitted
+        self._filebase      = args.DUMP_TARGET  # Filename base, will be made unique
+        self._files         = {}                # {topic: file()}
+        self._writers       = {}                # {topic: csv.writer}
+        self._lasttopic     = None              # Last topic emitted
         self._close_printed = False
 
         atexit.register(self.close)

@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.2.6 (2021-12-01)
+0.2.6 (2021-12-03)
 -------------------
+* add --write-format postgres
 * use up to nanosecond precision in HTML output timeline
 * fix potential error on using --max-per-topic with live topics
 

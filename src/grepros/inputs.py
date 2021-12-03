@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.12.2021
+@modified    03.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -105,6 +105,10 @@ class SourceBase(object):
         """Returns ROS message type definition full text, including subtype definitions."""
         return rosapi.get_message_definition(msg_or_type)
 
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS message type MD5 hash."""
+        return rosapi.get_message_type_hash(msg_or_type)
+
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
         if self._args.START_TIME and stamp < self._args.START_TIME:
@@ -147,7 +151,7 @@ class BagSource(SourceBase):
         @param   args.END_INDEX     message index within topic to stop at
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
-        @param   args.OUTFILE       output bagfile, to skip in input files
+        @param   args.DUMP_TARGET   output bagfile, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
         """
         super(BagSource, self).__init__(args)
@@ -245,6 +249,11 @@ class BagSource(SourceBase):
         return self._bag.get_message_definition(msg_or_type) or \
                rosapi.get_message_definition(msg_or_type)
 
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS message type MD5 hash."""
+        return self._bag.get_message_type_hash(msg_or_type) or \
+               rosapi.get_message_type_hash(msg_or_type)
+
     def notify(self, status):
         """Reports match status of last produced message."""
         self._status = bool(status)
@@ -322,7 +331,8 @@ class BagSource(SourceBase):
         self._totals_ok = False
         self._counts.clear()
         self.topics.clear()
-        if self._args.OUTFILE and os.path.realpath(self._args.OUTFILE) == os.path.realpath(filename):
+        if self._args.DUMP_TARGET \
+        and os.path.realpath(self._args.DUMP_TARGET) == os.path.realpath(filename):
             return False
         try:
             bag = rosapi.create_bag_reader(filename)

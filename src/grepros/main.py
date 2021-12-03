@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    03.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -64,8 +64,11 @@ Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
     grepros --live --topic *lidar* --max-per-topic 1
 
-Export all bag messages to SQLite, print only export progress:
-    grepros -n my.bag --no-console-output --write my.bag.sqlite --progress 2>/dev/null
+Export all bag messages to SQLite and Postgres, print only export progress:
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
+
+    grepros -n my.bag --write postgresql://user@host/dbname \\
+            --no-console-output --progress 2>/dev/null
     """,
 
     "arguments": [
@@ -100,13 +103,13 @@ Export all bag messages to SQLite, print only export progress:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="OUTFILE", default="",
+        dict(args=["--write"], dest="DUMP_TARGET", metavar="TARGET", default="",
              help="write matched messages to specified output file"),
 
-        dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "csv", "html", "sqlite"],
-             help="output format, auto-detected from OUTFILE extension if not given,\n"
-                  "bag or database will be appended to if file already exists"),
+        dict(args=["--write-format"], dest="DUMP_FORMAT",
+             choices=["bag", "csv", "html", "postgres", "sqlite"],
+             help="output format, auto-detected from TARGET if not given,\n"
+                  "bag or database will be appended to if it already exists"),
     ],
 
     "groups": {"Filtering": [
@@ -250,7 +253,7 @@ Export all bag messages to SQLite, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
+        dict(args=["--write-format-template"], dest="DUMP_TEMPLATE", metavar="PATH",
              help="path to custom template to use for HTML output"),
 
         dict(args=["--color"], dest="COLOR",
@@ -376,9 +379,9 @@ def validate_args(args):
     if not any(getattr(args, n, None) for n in OUTFLAGS):
         errors.append("No output configured.")
 
-    if args.OUTFILE and "html" == args.OUTFILE_FORMAT and args.OUTFILE_TEMPLATE:
-        if not os.path.isfile(args.OUTFILE_TEMPLATE):
-            errors.append("Template does not exist: %s." % args.OUTFILE_TEMPLATE)
+    if args.DUMP_TARGET and "html" == args.DUMP_FORMAT and args.DUMP_TEMPLATE:
+        if not os.path.isfile(args.DUMP_TEMPLATE):
+            errors.append("Template does not exist: %s." % args.DUMP_TEMPLATE)
 
     for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"

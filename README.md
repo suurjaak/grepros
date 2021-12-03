@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or as HTML/CSV/SQLite, or published to live topics.
+to a bagfile or as HTML/CSV/Postgres/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -34,6 +34,7 @@ Using ROS2 requires Python packages for message types to be available in path.
   - [bag](#bag)
   - [csv](#csv)
   - [html](#html)
+  - [postgres](#postgres)
   - [sqlite](#sqlite)
   - [live](#live)
   - [console / html message formatting](#console--html-message-formatting)
@@ -86,9 +87,12 @@ Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \
     grepros --live --topic *lidar* --max-per-topic 1
 
-Export all bag messages to SQLite, print only export progress:
+Export all bag messages to SQLite and Postgres, print only export progress:
 
     grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
+
+    grepros -n my.bag --write postgresql://user@host/dbname \
+            --no-console-output --progress 2>/dev/null
 
 
 Patterns use Python regular expression syntax, message matches if all match.
@@ -247,6 +251,31 @@ Specifying `--write-format html` is not required if the filename ends with `.htm
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
     --write-format-template /my/html.template
+
+
+### postgres
+
+    --write postgresql://username@host/dbname [--write-format postgres]
+
+Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
+table `topics` with a list of topics, message types and definitions,
+and table `meta` with table/column name changes from shortening, if any
+(Postgres name length is limited to 63 characters).
+
+ROS primitive types are inserted as Postgres data types (time/duration types as NUMERIC),
+uint8[] arrays as BYTEA, other primitive arrays as ARRAY, and arrays of subtypes as JSONB.
+
+If the database already exists, it is appended to. If there are conflicting message types
+(same package and name but different definition), table name becomes "pkg/MsgType (md5hash)".
+
+Specifying `--write-format postgres` is not required if the parameter uses the
+Postgres URI scheme `postgresql://`.
+
+Parameter can also use the Postgres keyword=value format,
+e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
+Standard Postgres environment variables are also supported (PGPASSWORD et al).
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
 
 
 ### sqlite
@@ -454,10 +483,10 @@ optional arguments:
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write OUTFILE       write matched messages to specified output file
-  --write-format {bag,csv,html,sqlite}
-                        output format, auto-detected from OUTFILE extension if not given,
-                        bag or database will be appended to if file already exists
+  --write TARGET        write matched messages to specified output file
+  --write-format {bag,csv,html,postgres,sqlite}
+                        output format, auto-detected from TARGET if not given,
+                        bag or database will be appended to if it already exists
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -541,7 +570,7 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-format-template OUTFILE_TEMPLATE
+  --write-format-template PATH
                         path to custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")

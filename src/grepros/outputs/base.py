@@ -353,10 +353,10 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
-        @param   args.META      whether to print metainfo
-        @param   args.OUTFILE   name of ROS bagfile to create or append to
-        @param   args.VERBOSE   whether to print debug information
+        @param   args               arguments object like argparse.Namespace
+        @param   args.META          whether to print metainfo
+        @param   args.DUMP_TARGET   name of ROS bagfile to create or append to
+        @param   args.VERBOSE       whether to print debug information
         """
         super(BagSink, self).__init__(args)
         self._bag = None
@@ -368,10 +368,12 @@ class BagSink(SinkBase):
         """Writes message to output bagfile."""
         if not self._bag:
             if self._args.VERBOSE:
-                sz = os.path.isfile(self._args.OUTFILE) and os.path.getsize(self._args.OUTFILE)
+                sz = os.path.isfile(self._args.DUMP_TARGET) and \
+                     os.path.getsize(self._args.DUMP_TARGET)
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
-                                     self._args.OUTFILE, (" (%s)" % format_bytes(sz)) if sz else "")
-            self._bag = rosapi.create_bag_writer(self._args.OUTFILE)
+                                     self._args.DUMP_TARGET,
+                                     (" (%s)" % format_bytes(sz)) if sz else "")
+            self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
         if topic not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
@@ -390,8 +392,8 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._args.OUTFILE,
-                                 format_bytes(os.path.getsize(self._args.OUTFILE)))
+                                 plural("topic", len(self._counts)), self._args.DUMP_TARGET,
+                                 format_bytes(os.path.getsize(self._args.DUMP_TARGET)))
         super(BagSink, self).close()
 
     @classmethod
