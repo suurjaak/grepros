@@ -15,7 +15,6 @@ Released under the BSD License.
 import atexit
 import collections
 import json
-import re
 
 try:
     import psycopg2
@@ -98,12 +97,6 @@ class PostgresSink(SinkBase):
     VALUES (%(type)s, %(parent)s, %(name)s, %(pg_name)s)
     """
 
-    ## SQL statement template for inserting message types
-    INSERT_MESSAGE_TYPE = """
-    INSERT INTO %(type)s (_topic, _topic_id, _timestamp%(cols)s)
-    VALUES (%%(_topic)s, %%(_topic_id)s, %%(_timestamp)s%(vals)s)
-    """
-
     ## Default columns for pkg/MsgType tables
     MESSAGE_TYPE_BASECOLS = [("_topic",      "TEXT"),
                              ("_topic_id",   "BIGINT"),
@@ -124,8 +117,9 @@ class PostgresSink(SinkBase):
         self._cursor        = None   # psycopg2.cursor
         self._close_printed = False
 
-        self._topics = {}  # {(topic, typehash): {topics-row}}
-        self._metas  = {}  # {(type, parent): {name: pg_name}}
+        self._topics    = {}  # {(topic, typehash): {topics-row}}
+        self._metas     = {}  # {(type, parent): {name: pg_name}}
+        self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._schema = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
@@ -156,9 +150,11 @@ class PostgresSink(SinkBase):
             self._cursor = None
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s in %s to Postgres database %r.",
+            target = self._args.DUMP_TARGET
+            if not target.startswith("postgresql://"): target = repr(target)
+            ConsolePrinter.debug("Wrote %s in %s to Postgres database %s.",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._args.DUMP_TARGET)
+                                 plural("topic", len(self._counts)), target)
 
 
     def _init_db(self):
@@ -237,9 +233,8 @@ class PostgresSink(SinkBase):
         typehash   = self.source.get_message_type_hash(msg)
         topic_id   = self._topics[(topic, typehash)]["id"]
         table_name = self._topics[(topic, typehash)]["table_name"]
-        args = dict(_timestamp=rosapi.to_decimal(stamp), _topic=topic, _topic_id=topic_id)
+        sql, args = self._sql_cache.get(table_name), []
 
-        cols, vals = [], []
         for p, v, t in self._iter_fields(msg):
             scalart = rosapi.scalar(t)
             if isinstance(v, (list, tuple)):
@@ -250,22 +245,18 @@ class PostgresSink(SinkBase):
                 elif "BYTEA" == self.COMMON_TYPES.get(t):
                     v = psycopg2.Binary(bytes(bytearray(v)))  
                 else:
-                    v = list(v)
-            else:
-                if rosapi.is_ros_time(v):
-                    v = rosapi.to_decimal(v)
-                elif t not in rosapi.ROS_BUILTIN_TYPES:
-                    v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
+                    v = list(v)  # psycopg2 does not handle tuples
+            elif rosapi.is_ros_time(v):
+                v = rosapi.to_decimal(v)
+            elif t not in rosapi.ROS_BUILTIN_TYPES:
+                v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
+            args.append(v)
+        args = tuple(args + [topic, topic_id, rosapi.to_decimal(stamp)])
 
-            cols += [".".join(p)]
-            vals += [re.sub(r"\W", "_", cols[-1])]
-            args[vals[-1]] = v
-        inter = ", " if cols else ""
-        fargs = dict(type=quote(table_name),
-                     cols=inter + ", ".join(quote(self._pg_name(c, table_name)) for c in cols),
-                     vals=inter + ", ".join("%%(%s)s" % c for c in vals))
-        sql = self.INSERT_MESSAGE_TYPE % fargs
-        self._cursor.execute(sql, args)
+        if not sql:
+            sql = "INSERT INTO %s VALUES (%s)" % (quote(table_name), ", ".join(["%s"] * len(args)))
+            self._sql_cache[table_name] = sql
+        self._cursor.execute(self._cursor.mogrify(sql, args))
 
 
     def _make_table_name(self, typename, typehash):

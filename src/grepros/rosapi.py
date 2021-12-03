@@ -275,14 +275,14 @@ def make_message_hash(msg, include=(), exclude=()):
 
 def message_to_dict(msg):
     """Returns ROS message as nested Python dictionary."""
-    result = {} if is_ros_message(msg) else msg
-    for name, typename in get_message_fields(msg).items():
-        v = get_message_value(msg, name, typename)
-        if is_ros_time(v):
-            v = dict(zip(["secs", "nsecs"], divmod(to_nsec(v), 10**9)))
+    result = {} if realapi.is_ros_message(msg) else msg
+    for name, typename in realapi.get_message_fields(msg).items():
+        v = realapi.get_message_value(msg, name, typename)
+        if realapi.is_ros_time(v):
+            v = dict(zip(["secs", "nsecs"], divmod(realapi.to_nsec(v), 10**9)))
         elif isinstance(v, (list, tuple)):
             v = [message_to_dict(x) for x in v]
-        elif is_ros_message(v):
+        elif realapi.is_ros_message(v):
             v = message_to_dict(v)
         result[name] = v
     return result
