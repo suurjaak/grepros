@@ -28,7 +28,10 @@ from . base import SinkBase, TextSinkMixin
 
 
 class HtmlSink(SinkBase, TextSinkMixin):
-    """Writes messages to bagfile."""
+    """Writes messages to an HTML file."""
+
+    ## Auto-detection file extensions
+    FILE_EXTENSIONS = (".htm", ".html")
 
     ## HTML template path
     TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html.tpl")

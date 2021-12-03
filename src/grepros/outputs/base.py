@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Outputs for search results.
+Main outputs for search results.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -29,6 +29,9 @@ from .. import rosapi
 
 class SinkBase(object):
     """Output base class."""
+
+    ## Auto-detection file extensions for subclasses, as (".ext", )
+    FILE_EXTENSIONS = ()
 
     def __init__(self, args):
         """
@@ -79,6 +82,12 @@ class SinkBase(object):
     def thread_excepthook(self, exc):
         """Handles exception, used by background threads."""
         ConsolePrinter.error(exc)
+
+    @classmethod
+    def autodetect(cls, dump_target):
+        """Returns true if dump_target is recognizable as output for this sink class."""
+        ext = os.path.splitext(dump_target or "")[-1].lower()
+        return ext in cls.FILE_EXTENSIONS
 
 
 class TextSinkMixin(object):
@@ -284,7 +293,6 @@ class ConsoleSink(SinkBase, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
 
-
     def __init__(self, args):
         """
         @param   args                       arguments object like argparse.Namespace
@@ -386,6 +394,11 @@ class BagSink(SinkBase):
                                  format_bytes(os.path.getsize(self._args.OUTFILE)))
         super(BagSink, self).close()
 
+    @classmethod
+    def autodetect(cls, dump_target):
+        """Returns true if dump_target is recognizable as a ROS bag."""
+        ext = os.path.splitext(dump_target or "")[-1].lower()
+        return ext in rosapi.BAG_EXTENSIONS
 
 
 class TopicSink(SinkBase):

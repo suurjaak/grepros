@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sqlite output for search results.
+SQLite output for search results.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -40,6 +40,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
       selecting from the message type table
 
     """
+
+    ## Auto-detection file extensions
+    FILE_EXTENSIONS = (".sqlite", ".sqlite3")
 
     ## SQL statements for populating database base schema
     BASE_SCHEMA = """

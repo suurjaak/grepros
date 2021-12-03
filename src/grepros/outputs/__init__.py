@@ -15,10 +15,10 @@ Released under the BSD License.
 import os
 
 from .. import rosapi
-from . base   import SinkBase, TextSinkMixin, ConsoleSink, BagSink, TopicSink
-from . csv    import CsvSink
-from . html   import HtmlSink
-from . sqlite import SqliteSink
+from . base     import SinkBase, TextSinkMixin, ConsoleSink, BagSink, TopicSink
+from . csv      import CsvSink
+from . html     import HtmlSink
+from . sqlite   import SqliteSink
 
 
 class MultiSink(SinkBase):
@@ -28,14 +28,9 @@ class MultiSink(SinkBase):
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
     ## Autobinding between argument flags+subflags and sink classes
-    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {"bag": BagSink, "html":   HtmlSink,
-                                                      "csv": CsvSink, "sqlite": SqliteSink}}}
-
-    ## Autobinding between flag value file extension and subflags
-    SUBFLAG_AUTODETECTS = {"OUTFILE": {"OUTFILE_FORMAT": {
-        "bag":  lambda: rosapi.BAG_EXTENSIONS, "csv": (".csv", ),  # Need late binding
-        "html": (".htm", ".html"),             "sqlite": (".sqlite", ".sqlite3")}
-    }}
+    SUBFLAG_CLASSES = {"OUTFILE": {"OUTFILE_FORMAT": {
+        "bag": BagSink, "csv": CsvSink, "html": HtmlSink, "sqlite": SqliteSink,
+    }}}
 
     def __init__(self, args):
         """
@@ -51,25 +46,21 @@ class MultiSink(SinkBase):
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
                       if getattr(args, flag, None)]
         for flag, opts in self.SUBFLAG_CLASSES.items():
-            if not getattr(args, flag, None): continue  # for glag
+            cls = None
+            for subflag, binding in opts.items() if getattr(args, flag, None) else ():
+                cls = getattr(args, subflag, None) and binding.get(getattr(args, subflag, None))
 
-            found = None
-            for subflag, binding in opts.items():
-                ext = os.path.splitext(getattr(args, flag))[-1].lower()
-                found = False if getattr(args, subflag, None) else None
-                for cls in filter(bool, [binding.get(getattr(args, subflag, None))]):
-                    self.sinks += [cls(args)]
-                    found = True
-                    break  # for cls
-                if found is None and subflag in self.SUBFLAG_AUTODETECTS.get(flag, {}):
-                    subopts = self.SUBFLAG_AUTODETECTS[flag][subflag]
-                    subflagval = next((k for k, v in subopts.items()
-                                       if ext in (v() if callable(v) else v)), None)
-                    if subflagval in opts[subflag]:
-                        cls = opts[subflag][subflagval]
-                        self.sinks += [cls(args)]
-                        found = True
-            if not found:
+                for sinkcls in binding.values() if not cls else ():
+                    if callable(getattr(sinkcls, "autodetect", None)):
+                        cls = sinkcls.autodetect(getattr(args, flag)) and sinkcls
+                        if cls:
+                            break  # for sinkcls
+                if cls:
+                    break  # for subflag
+            if cls:
+                self.sinks += [cls(args)]
+                break  # for flag
+            elif getattr(args, flag, None):
                 raise Exception("Unknown output format.")
 
     def emit_meta(self):

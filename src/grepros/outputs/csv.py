@@ -26,6 +26,9 @@ from . base import SinkBase
 class CsvSink(SinkBase):
     """Writes messages to CSV files, each topic to a separate file."""
 
+    ## Auto-detection file extensions
+    FILE_EXTENSIONS = (".csv", )
+
     def __init__(self, args):
         """
         @param   args           arguments object like argparse.Namespace
