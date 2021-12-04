@@ -107,6 +107,13 @@ class PostgresSink(SinkBase):
     WHERE id = %(id)s
     """
 
+    ## SQL statement for creating a table for type
+    CREATE_TYPE_TABLE = """
+    DROP TABLE IF EXISTS %(name)s CASCADE;
+
+    CREATE TABLE %(name)s (%(cols)s);
+    """
+
     ## SQL statement for creating a view for topic
     CREATE_TOPIC_VIEW = """
     DROP VIEW IF EXISTS %(name)s;
@@ -200,8 +207,11 @@ class PostgresSink(SinkBase):
             metakey = (row["type"], row["parent"])
             self._metas.setdefault(metakey, {})[row["name"]] = row["pg_name"]
 
-        cursor.execute("SELECT * FROM information_schema.columns WHERE table_schema = 'public' "
-                       "ORDER BY table_name, CAST(dtd_identifier AS INTEGER)")
+        cursor.execute("SELECT c.table_name, c.column_name, c.data_type "
+                       "FROM information_schema.columns c INNER JOIN information_schema.tables t "
+                       "ON t.table_name = c.table_name "
+                       "WHERE c.table_schema = current_schema() AND t.table_type = 'BASE TABLE' "
+                       "ORDER BY c.table_name, CAST(c.dtd_identifier AS INTEGER)")
         for row in cursor.fetchall():
             if "/" not in row["table_name"]:
                 continue  # for row
@@ -263,7 +273,7 @@ class PostgresSink(SinkBase):
             cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
                             [t for _, t in cols])) + self.MESSAGE_TYPE_BASECOLS
             coldefs = ["%s %s" % (quote(n), t) for n, t in cols]
-            sql = "CREATE TABLE %s (%s)" % (quote(table_name), ", ".join(coldefs))
+            sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
             self._cursor.execute(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
 
