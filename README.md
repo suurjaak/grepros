@@ -580,7 +580,9 @@ Output control:
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
-                        for publishing and bag writing
+                        for publishing and writing
+  --no-verbose          do not print status messages during console output
+                        for publishing and writing
 
 Bag input control:
   -n [FILE [FILE ...]], --filename [FILE [FILE ...]]

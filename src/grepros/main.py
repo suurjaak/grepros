@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -274,7 +274,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
-                  "for publishing and bag writing"),
+                  "for publishing and writing"),
+
+        dict(args=["--no-verbose"], dest="SKIP_VERBOSE", action="store_true",
+             help="do not print status messages during console output\n"
+                  "for publishing and writing"),
 
     ], "Bag input control": [
 
@@ -354,7 +358,7 @@ def validate_args(args):
         args.BEFORE = args.AFTER = args.CONTEXT
 
     # Default to printing metadata for publish/write if no console output
-    args.VERBOSE = args.VERBOSE or not args.CONSOLE
+    args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
 
     # Show progress bar only if no console output
     args.PROGRESS = args.PROGRESS and not args.CONSOLE
