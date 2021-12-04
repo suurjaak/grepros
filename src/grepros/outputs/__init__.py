@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -96,3 +96,7 @@ class MultiSink(SinkBase):
         """Flushes all sinks."""
         for sink in self.sinks:
             sink.flush()
+
+    def is_highlighting(self):
+        """Returns whether any sink requires highlighted matches."""
+        return any(s.is_highlighting() for s in self.sinks)

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.html
@@ -111,6 +111,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
         text = "".join(self._tag_repls.get(x) or step.escape_html(x)
                        for x in self._tag_rgx.split(text))
         return text
+
+    def is_highlighting(self):
+        """Returns True (requires highlighted matches)."""
+        return True
 
     def _stream(self):
         """Writer-loop, streams HTML template to file."""

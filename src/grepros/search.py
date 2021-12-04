@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    27.11.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -56,6 +56,8 @@ class Searcher(object):
         self._hashes = collections.defaultdict(set)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
+        self._source = None  # SourceBase instance
+        self._sink   = None  # SinkBase instance
 
         self._parse_patterns()
 
@@ -70,6 +72,7 @@ class Searcher(object):
         """
         for d in (self._messages, self._stamps, self._counts, self._statuses, self._hashes):
             d.clear()
+        self._source, self._sink = source, sink
         source.bind(sink), sink.bind(source)
 
         counter, total, batch, any_matched = 0, 0, None, False
@@ -87,7 +90,7 @@ class Searcher(object):
             self._stamps  [topickey][msgid] = stamp
             self._statuses[topickey][msgid] = None
 
-            matched = self._is_processable(source, topic, stamp, msg) and self.get_match(msg)
+            matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
             if matched:
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
@@ -106,7 +109,7 @@ class Searcher(object):
             any_matched = any_matched or bool(matched)
 
             self._prune_data(topickey)
-            if any_matched and self._is_max_done(source):
+            if any_matched and self._is_max_done():
                 sink.flush()
                 source.close_batch()
 
@@ -114,7 +117,7 @@ class Searcher(object):
         return total + sum(x[True] for x in self._counts.values())
 
 
-    def _is_processable(self, source, topic, stamp, msg):
+    def _is_processable(self, topic, stamp, msg):
         """
         Returns whether processing current message in topic is acceptable:
         that topic or total maximum count has not been reached,
@@ -131,7 +134,7 @@ class Searcher(object):
             topics_matched = [k for k, vv in self._counts.items() if vv[True]]
             if topickey not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
                 return False
-        if not source.is_processable(topic, self._counts[topickey][None], stamp, msg):
+        if not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
         if self._args.UNIQUE:
             include, exclude = self._patterns["select"], self._patterns["noselect"]
@@ -189,15 +192,15 @@ class Searcher(object):
         return result
 
 
-    def _is_max_done(self, source):
+    def _is_max_done(self):
         """Returns whether max match count has been reached (and message after-context emitted)."""
         result, is_maxed = False, False
         if self._args.MAX_MATCHES:
             is_maxed = sum(vv[True] for vv in self._counts.values()) >= self._args.MAX_MATCHES
         if not is_maxed and self._args.MAX_TOPIC_MATCHES:
-            count_required = self._args.MAX_TOPICS or len(source.topics)
+            count_required = self._args.MAX_TOPICS or len(self._source.topics)
             count_maxed = sum(vv[True] >= self._args.MAX_TOPIC_MATCHES
-                              or source.topics.get(k) and vv[None] >= source.topics[k]
+                              or self._source.topics.get(k) and vv[None] >= self._source.topics[k]
                               for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)
         if is_maxed:
@@ -219,6 +222,7 @@ class Searcher(object):
         Returns transformed message if all patterns find a match in message, else None.
 
         Matching field values are converted to strings and surrounded by markers.
+        Returns original message if any-match and sink does not require highlighting.
         """
 
         def wrap_matches(v, top, is_collection=False):
@@ -261,10 +265,15 @@ class Searcher(object):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
-            if not top and not matched and not selects and not fieldmap0 \
-            and set(self._patterns["content"]) == set(self.ANY_MATCHES):  # Ensure Empty any-match
+            if not top and not matched and not selects and not fieldmap0 and not self._args.INVERT \
+            and set(self._patterns["content"]) <= set(self.ANY_MATCHES):  # Ensure Empty any-match
                 matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
             return obj
+
+        if not self._sink.is_highlighting() \
+        and not self._patterns["select"] and not self._patterns["noselect"] \
+        and not self._args.INVERT and set(self._patterns["content"]) <= set(self.ANY_MATCHES):
+            return msg  # Skip decorating if highlighting not required and message matches
 
         if self._brute_prechecks:
             text  = "\n".join("%r" % (v, ) for _, v in rosapi.iter_message_fields(msg))

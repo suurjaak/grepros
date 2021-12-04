@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -82,6 +82,10 @@ class SinkBase(object):
     def thread_excepthook(self, exc):
         """Handles exception, used by background threads."""
         ConsolePrinter.error(exc)
+
+    def is_highlighting(self):
+        """Returns whether this sink requires highlighted matches."""
+        return False
 
     @classmethod
     def autodetect(cls, dump_target):
@@ -345,6 +349,11 @@ class ConsoleSink(SinkBase, TextSinkMixin):
             sep and ConsolePrinter.print(sep)
         ConsolePrinter.print(self.format_message(match or msg, highlight=bool(match)))
         super(ConsoleSink, self).emit(topic, index, stamp, msg, match)
+
+
+    def is_highlighting(self):
+        """Returns True (requires highlighted matches)."""
+        return True
 
 
 
