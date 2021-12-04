@@ -140,6 +140,7 @@ class PostgresSink(SinkBase):
         self._topics    = {}  # {(topic, typehash): {topics-row}}
         self._metas     = {}  # {(type, parent): {name: pg_name}}
         self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
+        self._sql_queue = {}  # {SQL: [(args), ]}
         self._schema = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
@@ -164,6 +165,8 @@ class PostgresSink(SinkBase):
     def close(self):
         """Closes Postgres connection, if any."""
         if self._db:
+            for sql in list(self._sql_queue):
+                psycopg2.extras.execute_batch(self._cursor, sql, self._sql_queue.pop(sql))
             self._db.commit()
             self._cursor.close()
             self._db.close()
@@ -293,9 +296,14 @@ class PostgresSink(SinkBase):
         if not sql:
             sql = "INSERT INTO %s VALUES (%s)" % (quote(table_name), ", ".join(["%s"] * len(args)))
             self._sql_cache[table_name] = sql
-        self._cursor.execute(self._cursor.mogrify(sql, args))
-        if self.COMMIT_INTERVAL and not sum(self._counts.values()) % self.COMMIT_INTERVAL:
-            self._db.commit()
+        if self.COMMIT_INTERVAL:
+            self._sql_queue.setdefault(sql, []).append(args)
+            do_commit = sum(len(v) for v in self._sql_queue.values()) > self.COMMIT_INTERVAL
+            for sql in list(self._sql_queue) if do_commit else ():
+                psycopg2.extras.execute_batch(self._cursor, sql, self._sql_queue.pop(sql))
+            do_commit and self._db.commit()
+        else:
+            self._cursor.execute(sql, args)
 
 
     def _make_name(self, category, name, typehash):
