@@ -80,14 +80,15 @@ class PostgresSink(SinkBase):
       type                 TEXT NOT NULL,
       definition           TEXT NOT NULL,
       md5                  TEXT NOT NULL,
-      table_name           TEXT NOT NULL
+      table_name           TEXT NOT NULL,
+      view_name            TEXT NOT NULL
     );
     """
 
     ## SQL statement for inserting topics
     INSERT_TOPIC = """
-    INSERT INTO topics (name, type, definition, md5, table_name)
-    VALUES (%(name)s, %(type)s, %(definition)s, %(md5)s, %(table_name)s)
+    INSERT INTO topics (name, type, definition, md5, table_name, view_name)
+    VALUES (%(name)s, %(type)s, %(definition)s, %(md5)s, %(table_name)s, '')
     RETURNING id
     """
 
@@ -95,6 +96,22 @@ class PostgresSink(SinkBase):
     INSERT_META = """
     INSERT INTO meta (type, parent, name, pg_name)
     VALUES (%(type)s, %(parent)s, %(name)s, %(pg_name)s)
+    """
+
+    ## SQL statement for updating view name in topic
+    UPDATE_TOPIC = """
+    UPDATE topics SET view_name = %(view_name)s
+    WHERE id = %(id)s
+    """
+
+    ## SQL statement for creating a view for topic
+    CREATE_TOPIC_VIEW = """
+    DROP VIEW IF EXISTS %(name)s;
+
+    CREATE VIEW %(name)s AS
+    SELECT %(cols)s
+    FROM %(type)s
+    WHERE _topic = %(topic)s;
     """
 
     ## Default columns for pkg/MsgType tables
@@ -137,7 +154,6 @@ class PostgresSink(SinkBase):
         if not self._db:
             self._init_db()
         self._process_topic(topic, msg)
-        self._process_type(topic, msg)
         self._process_message(topic, msg, stamp)
         super(PostgresSink, self).emit(topic, index, stamp, msg, match)
 
@@ -188,13 +204,14 @@ class PostgresSink(SinkBase):
 
 
     def _process_topic(self, topic, msg):
-        """Inserts topics-row if not already existing."""
+        """Inserts topics-row and creates view `/topic/name` if not already existing."""
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         topickey = (topic, typehash)
-        if topickey not in self._topics:
+        is_new = topickey not in self._topics
+        if is_new:
             msgdef = self.source.get_message_definition(typename)
-            table_name = self._make_table_name(typename, typehash)
+            table_name = self._make_name("table", typename, typehash)
             targs = dict(name=topic, type=typename, definition=msgdef,
                          md5=typehash, table_name=table_name)
             if self._args.VERBOSE:
@@ -202,6 +219,20 @@ class PostgresSink(SinkBase):
             self._cursor.execute(self.INSERT_TOPIC, targs)
             targs["id"] = self._cursor.fetchone()["id"]
             self._topics[topickey] = targs
+
+        self._process_type(topic, msg)
+
+        if is_new:
+            view_name = self._make_name("view", topic, typehash)
+            cols = [c for c in self._schema[(typename, typehash)]
+                    if c not in ("_topic", "_topic_id")]
+            vargs = dict(name=quote(view_name), cols=", ".join(map(quote, cols)),
+                         type=quote(self._topics[topickey]["table_name"]), topic=repr(topic))
+            sql = self.CREATE_TOPIC_VIEW % vargs
+            self._cursor.execute(sql)
+
+            self._topics[topickey]["view_name"] = view_name
+            self._cursor.execute(self.UPDATE_TOPIC, self._topics[topickey])
 
 
     def _process_type(self, topic, msg):
@@ -221,8 +252,8 @@ class PostgresSink(SinkBase):
                     coltype = "JSONB"
                 cols += [(".".join(path), coltype)]
             cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
-                            [t for _, t in cols]))
-            coldefs = ["%s %s" % (quote(n), t) for n, t in cols + self.MESSAGE_TYPE_BASECOLS]
+                            [t for _, t in cols])) + self.MESSAGE_TYPE_BASECOLS
+            coldefs = ["%s %s" % (quote(n), t) for n, t in cols]
             sql = "CREATE TABLE %s (%s)" % (quote(table_name), ", ".join(coldefs))
             self._cursor.execute(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
@@ -259,20 +290,21 @@ class PostgresSink(SinkBase):
         self._cursor.execute(self._cursor.mogrify(sql, args))
 
 
-    def _make_table_name(self, typename, typehash):
-        """Returns valid unique name for type table, inserting meta-row if necessary."""
-        result = typename
+    def _make_name(self, category, name, typehash):
+        """Returns valid unique name for table/view, inserting meta-row if necessary."""
+        result = name
         if len(result) > self.MAX_NAME_LEN:
             result = result[:self.MAX_NAME_LEN - 2] + ".."
-        if result in set(x["table_name"] for x in self._topics.values() if x["md5"] != typehash):
-            result = typename[:self.MAX_NAME_LEN - len(typehash) - 3]
+        if result in set(sum(([x["table_name"], x["view_name"]]
+                              for x in self._topics.values() if x["md5"] != typehash), [])):
+            result = name[:self.MAX_NAME_LEN - len(typehash) - 3]
             if len(result) + len(typehash) > self.MAX_NAME_LEN:
-                result = "%s.." % (typename[:self.MAX_NAME_LEN - len(typehash) - 5])
+                result = "%s.." % (name[:self.MAX_NAME_LEN - len(typehash) - 5])
             result = "%s (%s)" % (result, typehash)
-        if result != typename:
-            meta = {"type": "table", "parent": None, "name": typename, "pg_name": result}
+        if result != name:
+            meta = {"type": category, "parent": None, "name": name, "pg_name": result}
             self._cursor.execute(self.INSERT_META, meta)
-            self._metas.setdefault(("table", None), {})[typename] = result
+            self._metas.setdefault((category, None), {})[name] = result
         return result
 
 
@@ -295,12 +327,6 @@ class PostgresSink(SinkBase):
             self._cursor.execute(self.INSERT_META, meta)
             self._metas.setdefault(("column", table_name), {})[meta["name"]] = meta["pg_name"]
         return list(result)
-
-
-    def _pg_name(self, name, parent=None):
-        """Returns table or column name in database."""
-        metakey = ("column" if parent else "table", parent)
-        return self._metas.get(metakey, {}).get(name, name)
 
 
     def _iter_fields(self, msg, top=()):

@@ -258,15 +258,16 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
     --write postgresql://username@host/dbname [--write-format postgres]
 
 Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
-table `topics` with a list of topics, message types and definitions,
-and table `meta` with table/column name changes from shortening, if any
+and views `/full/topic/name` for each topic. 
+Plus table `topics` with a list of topics, message types and definitions,
+and table `meta` with table/view/column name changes from shortenings and conflicts, if any
 (Postgres name length is limited to 63 characters).
 
 ROS primitive types are inserted as Postgres data types (time/duration types as NUMERIC),
 uint8[] arrays as BYTEA, other primitive arrays as ARRAY, and arrays of subtypes as JSONB.
 
-If the database already exists, it is appended to. If there are conflicting message types
-(same package and name but different definition), table name becomes "pkg/MsgType (md5hash)".
+If the database already exists, it is appended to. If there are conflicting names
+(same package and name but different definition), table/view name becomes "name (md5hash)".
 
 Specifying `--write-format postgres` is not required if the parameter uses the
 Postgres URI scheme `postgresql://`.
