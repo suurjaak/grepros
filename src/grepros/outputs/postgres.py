@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -52,6 +52,9 @@ class PostgresSink(SinkBase):
 
     ## Max table/column name length in Postgres
     MAX_NAME_LEN = 63
+
+    ## Number of emits between commits; 0 is autocommit
+    COMMIT_INTERVAL = 100
 
     ## Mapping from ROS common types to Postgres types
     COMMON_TYPES = {
@@ -161,6 +164,8 @@ class PostgresSink(SinkBase):
     def close(self):
         """Closes Postgres connection, if any."""
         if self._db:
+            self._db.commit()
+            self._cursor.close()
             self._db.close()
             self._db = None
             self._cursor = None
@@ -179,7 +184,7 @@ class PostgresSink(SinkBase):
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
         self._db = psycopg2.connect(self._args.DUMP_TARGET,
                                     cursor_factory=psycopg2.extras.RealDictCursor)
-        self._db.autocommit = True
+        self._db.autocommit = not self.COMMIT_INTERVAL
         cursor = self._cursor = self._db.cursor()
         cursor.execute(self.BASE_SCHEMA)
 
@@ -233,6 +238,7 @@ class PostgresSink(SinkBase):
 
             self._topics[topickey]["view_name"] = view_name
             self._cursor.execute(self.UPDATE_TOPIC, self._topics[topickey])
+            if self.COMMIT_INTERVAL: self._db.commit()
 
 
     def _process_type(self, topic, msg):
@@ -288,6 +294,8 @@ class PostgresSink(SinkBase):
             sql = "INSERT INTO %s VALUES (%s)" % (quote(table_name), ", ".join(["%s"] * len(args)))
             self._sql_cache[table_name] = sql
         self._cursor.execute(self._cursor.mogrify(sql, args))
+        if self.COMMIT_INTERVAL and not sum(self._counts.values()) % self.COMMIT_INTERVAL:
+            self._db.commit()
 
 
     def _make_name(self, category, name, typehash):
