@@ -8,12 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import array
 import collections
+import hashlib
 import os
 import re
 import sqlite3
@@ -29,7 +30,7 @@ import rclpy.time
 import rosidl_runtime_py.utilities
 
 from . common import ConsolePrinter, MatchMarkers
-from . rosapi import ROS_BUILTIN_TYPES
+from . import rosapi
 
 
 ## Bagfile extensions to seek
@@ -47,6 +48,9 @@ ROS_TIME_CLASSES = (builtin_interfaces.msg.Time, builtin_interfaces.msg.Duration
 
 ## {"pkg/msg/Msg": message type definition full text with subtypes}
 DEFINITIONS = {}
+
+## {"pkg/msg/Msg": message type definition MD5 hash}
+TYPEHASHES = {}
 
 ## Data Distribution Service types to ROS builtins
 DDS_TYPES = {"boolean":             "bool",
@@ -421,7 +425,7 @@ def get_message_definition(msg_or_type):
                     if not line or not line[0].isalpha():
                         continue  # for line
                     linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
-                    if linetype in ROS_BUILTIN_TYPES:
+                    if linetype in rosapi.ROS_BUILTIN_TYPES:
                         continue  # for line
                     linetype = linetype if "/" in linetype else \
                                "%s/%s" % (myname.rsplit("/", 1)[0], linetype)
@@ -438,8 +442,38 @@ def get_message_definition(msg_or_type):
 
 def get_message_type_hash(msg_or_type):
     """Returns ROS2 message type MD5 hash."""
-    msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
-    return "@todo"
+    typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+    typename = canonical(typename)
+    if typename not in TYPEHASHES:
+        FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+        STR_CONST_RGX = re.compile("^w?string\s+([^\s=#]+)\s*=")
+        msgdef, lines, pkg = get_message_definition(typename), [], typename.rsplit("/", 1)[0]
+
+        # First pass: write constants
+        for line in msgdef.splitlines():
+            if set(line) == set("="):  # Subtype separator
+                break  # for line
+            if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+            match = FIELD_RGX.match(line)
+            if match and match.group(3):
+                lines.append("%s %s=%s" % (match.group(1), match.group(2), match.group(4).strip()))
+        # Second pass: write fields and subtype hashes
+        for line in msgdef.splitlines():
+            if set(line) == set("="):  # Subtype separator
+                break  # for line
+            if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+            match = FIELD_RGX.match(line)
+            if match and not match.group(3):  # Not constant
+                scalartype, namestr = scalar(match.group(1)), match.group(2)
+                if scalartype in rosapi.ROS_COMMON_TYPES:
+                    typestr = match.group(1)
+                    if match.group(5): namestr = (namestr + " " + match.group(6)).strip()
+                else:
+                    subtype = scalartype if "/" in scalartype else "%s/%s" % (pkg, scalartype)
+                    typestr = get_message_type_hash(subtype)
+                lines.append("%s %s" % (typestr, namestr))
+        TYPEHASHES[typename] = hashlib.md5("\n".join(lines).encode()).hexdigest()
+    return TYPEHASHES[typename]
 
 
 def get_message_fields(val):
@@ -525,7 +559,7 @@ def make_full_typename(typename):
 def scalar(typename):
     """
     Returns scalar type from ROS2 message data type
-    
+
     Like "uint8" from "uint8[]", or "string" from "string<=10[<=5]".
     Returns type unchanged if not a collection or bounded type.
     """
