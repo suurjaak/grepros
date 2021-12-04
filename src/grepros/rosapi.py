@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.12.2021
+@modified    04.12.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -280,10 +280,10 @@ def message_to_dict(msg):
         v = realapi.get_message_value(msg, name, typename)
         if realapi.is_ros_time(v):
             v = dict(zip(["secs", "nsecs"], divmod(realapi.to_nsec(v), 10**9)))
-        elif isinstance(v, (list, tuple)):
-            v = [message_to_dict(x) for x in v]
         elif realapi.is_ros_message(v):
             v = message_to_dict(v)
+        elif isinstance(v, (list, tuple)) and realapi.scalar(typename) not in ROS_BUILTIN_TYPES:
+            v = [message_to_dict(x) for x in v]
         result[name] = v
     return result
 
