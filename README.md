@@ -42,6 +42,7 @@ Using ROS2 requires Python packages for message types to be available in path.
   - [Limits](#limits)
   - [Filtering](#filtering)
   - [Conditions](#conditions)
+- [Plugins](#plugins)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -289,7 +290,9 @@ and nested type, and views `/full/topic/name` for each topic.
 If the database already exists, it is appended to.
 
 Output is compatible with ROS2 `.db3` bagfiles, supplemented with
-full message YAMLs, and message type definition texts.
+full message YAMLs, and message type definition texts. Note that a database
+dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
+due to breaking changes in ROS2 standard built-in and message types.
 
 Specifying `--write-format sqlite` is not required
 if the filename ends with `.sqlite` or `.sqlite3`.
@@ -502,6 +505,22 @@ Condition namespace:
 Condition is automatically false if trying to access attributes of a message not yet received.
 
 
+Plugins
+-------
+
+    --plugin some.python.module some.other.module.Class
+
+Load one or more Python modules or classes as plugins.
+Supported (but not required) plugin interface methods:
+
+- `init(args)`: invoked at startup with command-line arguments
+- `load(category, args)`: invoked with category "search" or "source" or "sink",
+                          using returned value if not None
+
+Plugins are free to modify `grepros` internals, like adding command-line arguments
+to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
+
+
 All command-line arguments
 --------------------------
 
@@ -524,6 +543,8 @@ optional arguments:
   --write-format {bag,csv,html,postgres,sqlite}
                         output format, auto-detected from TARGET if not given,
                         bag or database will be appended to if it already exists
+  --plugin PLUGIN [PLUGIN ...]
+                        load a Python module or class as plugin
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]

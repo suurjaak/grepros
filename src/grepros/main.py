@@ -20,7 +20,7 @@ import re
 import sys
 
 from . import __version__, inputs, outputs, search
-from . common import ConsolePrinter, parse_datetime
+from . common import ConsolePrinter, Plugins, parse_datetime
 
 
 ## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
@@ -110,6 +110,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              choices=["bag", "csv", "html", "postgres", "sqlite"],
              help="output format, auto-detected from TARGET if not given,\n"
                   "bag or database will be appended to if it already exists"),
+
+        dict(args=["--plugin"],
+             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
+             help="load a Python module or class as plugin"),
     ],
 
     "groups": {"Filtering": [
@@ -387,10 +391,6 @@ def validate_args(args):
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" % 
                                             (n.lower().replace("_", " "), v))
 
-    OUTFLAGS = list(outputs.MultiSink.FLAG_CLASSES) + list(outputs.MultiSink.SUBFLAG_CLASSES)
-    if not any(getattr(args, n, None) for n in OUTFLAGS):
-        errors[""].append("No output configured.")
-
     if args.DUMP_TARGET and "html" == args.DUMP_FORMAT and args.DUMP_TEMPLATE:
         if not os.path.isfile(args.DUMP_TEMPLATE):
             errors[""].append("Template does not exist: %s." % args.DUMP_TEMPLATE)
@@ -427,8 +427,15 @@ def flush_stdout():
         except (Exception, KeyboardInterrupt): pass
 
 
+def preload_plugins():
+    """Imports and initializes plugins from arguments."""
+    if "--plugin" in sys.argv:
+        Plugins.configure(make_parser().parse_known_args()[0])
+
+
 def run():
     """Parses command-line arguments and runs search."""
+    preload_plugins()
     argparser = make_parser()
     if len(sys.argv) < 2:
         argparser.print_usage()
@@ -447,16 +454,19 @@ def run():
         if not validate_args(args):
             sys.exit(1)
 
-        source = (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+        source = Plugins.load("source", args) or \
+                 (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
+        sink.sinks.extend(filter(bool, [Plugins.load("sink", args)]))
         if not sink.validate():
             sys.exit(1)
 
         thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
-        search.Searcher(args).search(source, sink)
+        searcher = Plugins.load("search", args) or search.Searcher(args)
+        searcher.search(source, sink)
     except BREAK_EXS:
         try: sink and sink.close()
         except (Exception, KeyboardInterrupt): pass

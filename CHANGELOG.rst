@@ -7,6 +7,7 @@ Changelog for package grepros
 * add --write-format postgres
 * add --no-verbose option
 * add --condition option
+* add --plugin option
 * add wildcard support to fields in "field=PATTERN"
 * use up to nanosecond precision in HTML output timeline
 * highlight empty arrays on any-match regardless of type

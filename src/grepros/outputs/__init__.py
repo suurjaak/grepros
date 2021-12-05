@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.12.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
 import os
 
 from .. import rosapi
+from .. common import ConsolePrinter
 from . base     import SinkBase, TextSinkMixin, ConsoleSink, BagSink, TopicSink
 from . csv      import CsvSink
 from . html     import HtmlSink
@@ -85,7 +86,9 @@ class MultiSink(SinkBase):
 
     def validate(self):
         """Returns whether prerequisites are met for all sinks."""
-        return all([sink.validate() for sink in self.sinks])
+        if not self.sinks:
+            ConsolePrinter.error("No output configured.")
+        return bool(self.sinks) and all([sink.validate() for sink in self.sinks])
 
     def close(self):
         """Closes all sinks."""
