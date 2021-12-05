@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or as HTML/CSV/Postgres/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/Postgres/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -97,7 +97,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
 
 Patterns use Python regular expression syntax, message matches if all match.
-'*' wildcards in other arguments use simple globbing as zero or more characters,
+'*' wildcards use simple globbing as zero or more characters,
 target matches if any value matches.
 
 Note that some expressions may need to be quoted to avoid shell auto-unescaping
@@ -510,7 +510,7 @@ positional arguments:
   PATTERN               pattern(s) to find in message field values,
                         all messages match if not given,
                         can specify message field as NAME=PATTERN
-                        (name may be a nested.path)
+                        (supports nested.paths and * wildcards)
 
 optional arguments:
   -h, --help            show this help message and exit

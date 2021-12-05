@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    04.12.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -43,7 +43,8 @@ class Searcher(object):
         @param   args.NOSELECT_FIELDS     message fields to skip in matching
         """
         self._args     = copy.deepcopy(args)
-        self._patterns = {}  # {key: [(() if any field else ('nested', 'path'), re.Pattern), ]}
+        # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
+        self._patterns = {}
         # {(topic, type): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
         # {(topic, type): {message ID: ROS time}}
@@ -165,7 +166,8 @@ class Searcher(object):
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
             v = (re.escape(v) if self._args.RAW else v) + ("|^$" if v in ("''", '""') else "")
-            path = tuple(path.split(".")) if path else ()
+            path = re.compile(r"(^|\.)%s($|\.)" % ".*".join(map(re.escape, path.split("*")))) \
+                   if path else ()
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
             if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
@@ -230,8 +232,9 @@ class Searcher(object):
             spans = []
             # Omit collection brackets from match unless empty: allow matching "[]"
             v1 = v2 = v[1:-1] if is_collection and v != "[]" else v
+            topstr = ".".join(top)
             for i, (path, p) in enumerate(self._patterns["content"]):
-                if not path or any(path == top[j:j + len(path)] for j in range(len(top))):
+                if not path or path.search(topstr):
                     for match in (m for m in p.finditer(v1) if not v1 or m.start() != m.end()):
                         matched[i] = True
                         spans.append(match.span())

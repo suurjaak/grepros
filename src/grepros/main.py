@@ -28,7 +28,7 @@ ARGUMENTS = {
     "description": "Searches through messages in ROS bag files or live topics.",
     "epilog":      """
 PATTERNs use Python regular expression syntax, message matches if all match.
-* wildcards in other arguments use simple globbing as zero or more characters,
+* wildcards use simple globbing as zero or more characters,
 target matches if any value matches.
  
 
@@ -76,7 +76,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
-                  "(name may be a nested.path)"),
+                  "(supports nested.paths and * wildcards)"),
 
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
