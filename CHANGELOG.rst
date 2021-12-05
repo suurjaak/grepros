@@ -11,6 +11,7 @@ Changelog for package grepros
 * use up to nanosecond precision in HTML output timeline
 * fix potential error on using --max-per-topic with live topics
 * fix detecting ROS2 bags
+* fix using --progress with --live
 
 0.2.5 (2021-11-28)
 -------------------

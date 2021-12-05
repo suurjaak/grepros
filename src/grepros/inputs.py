@@ -699,7 +699,7 @@ class TopicSource(SourceBase, ConditionMixin):
         """Initializes progress bar, if any."""
         if self._args.PROGRESS and not self.bar:
             self.bar = ProgressBar(afterword="ROS%s live" % os.getenv("ROS_VERSION"),
-                                   aftertemplate=" {afterword} ({value:,d})", pulse=True)
+                                   aftertemplate=" {afterword}", pulse=True)
             self.bar.start()
 
     def _update_progress(self, count, running=True):

@@ -172,7 +172,6 @@ class ProgressBar(threading.Thread):
         self.printbar = self.bar   # Printable text, with padding to clear previous
         self.progresschar = itertools.cycle("-\\|/")
         self.is_running = False
-        if not pulse: self.update(value, draw=False)
 
 
     def update(self, value=None, draw=True, flush=False):
