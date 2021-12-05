@@ -9,6 +9,7 @@ Changelog for package grepros
 * add --condition option
 * add wildcard support to fields in "field=PATTERN"
 * use up to nanosecond precision in HTML output timeline
+* highlight empty arrays on any-match regardless of type
 * fix potential error on using --max-per-topic with live topics
 * fix detecting ROS2 bags
 * fix using --progress with --live

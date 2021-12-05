@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.12.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -192,8 +192,8 @@ class TextSinkMixin(object):
             # default_style='"' avoids trailing "...\n"
             return yaml.safe_dump(val, default_style='"', width=sys.maxsize).rstrip("\n")
         if isinstance(val, (list, tuple)):
-            if not val:
-                return "[]"
+            if not val or self._wrapper.strlen(val) == 2:
+                return val or "[]"
             if "string" == rosapi.scalar(typename):
                 yaml_str = yaml.safe_dump(val).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
@@ -220,7 +220,7 @@ class TextSinkMixin(object):
                     self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
                     self._wrapper.break_long_words = not is_num
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
-                    if is_strlist: v = "\n" + v
+                    if is_strlist and self._wrapper.strlen(v) > 2: v = "\n" + v
                 vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
             return ("\n" if indent and vals else "") + "\n".join(vals)
 

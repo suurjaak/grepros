@@ -257,7 +257,7 @@ class Searcher(object):
                 is_collection = isinstance(v, (list, tuple))
                 if rosapi.is_ros_message(v):
                     decorate_message(v, path)
-                elif is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
+                elif v and is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
                     rosapi.set_message_value(obj, k, [decorate_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
