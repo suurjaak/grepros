@@ -10,6 +10,7 @@ Changelog for package grepros
 * add wildcard support to fields in "field=PATTERN"
 * use up to nanosecond precision in HTML output timeline
 * fix potential error on using --max-per-topic with live topics
+* fix detecting ROS2 bags
 
 0.2.5 (2021-11-28)
 -------------------

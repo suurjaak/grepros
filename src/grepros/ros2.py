@@ -34,7 +34,7 @@ from . import rosapi
 
 
 ## Bagfile extensions to seek
-BAG_EXTENSIONS  = (".db3")
+BAG_EXTENSIONS  = (".db3", )
 
 ## Bagfile extensions to skip
 SKIP_EXTENSIONS = ()
