@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    03.12.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
@@ -219,7 +219,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._process_type(typename, msg)
 
         if topic not in self._schema["view"] or typename not in self._schema["view"][topic]:
-            cols = ["_id", "_dt"] + list(self._schema["table"][typename])
+            cols = list(self._schema["table"][typename]) + ["_dt", "_id"]
             fargs = dict(topic=quote(topic), cols=", ".join(map(quote, cols)), type=quote(typename))
             suffix = " (%s)" % typename if topic in self._schema["view"] else ""
             fargs["name"] = quote(topic + suffix)
