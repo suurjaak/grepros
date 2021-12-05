@@ -200,7 +200,7 @@ class Searcher(object):
         if not is_maxed and self._args.MAX_TOPIC_MATCHES:
             count_required = self._args.MAX_TOPICS or len(self._source.topics)
             count_maxed = sum(vv[True] >= self._args.MAX_TOPIC_MATCHES
-                              or self._source.topics.get(k) and vv[None] >= self._source.topics[k]
+                              or vv[None] >= (self._source.topics.get(k) or 0)
                               for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)
         if is_maxed:

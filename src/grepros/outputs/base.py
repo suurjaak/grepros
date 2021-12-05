@@ -263,7 +263,7 @@ class TextSinkMixin(object):
         if "never" != args.COLOR:
             self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT,
                                  "ll0":  ConsolePrinter.STYLE_LOWLIGHT,
-                                 "pfx0": ConsolePrinter.STYLE_SPECIAL, # Content line prefix start
+                                 "pfx0": ConsolePrinter.STYLE_SPECIAL,  # Content line prefix start
                                  "sep0": ConsolePrinter.STYLE_SPECIAL2})
             self._styles.default_factory = lambda: ConsolePrinter.STYLE_RESET
 
