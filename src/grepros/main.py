@@ -443,7 +443,7 @@ def run():
 
     source, sink = None, None
     try:
-        ConsolePrinter.configure(args)
+        ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
         if not validate_args(args):
             sys.exit(1)
 

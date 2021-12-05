@@ -60,22 +60,21 @@ class ConsolePrinter(object):
     _LINEOPEN = False  ## Whether last print was without linefeed
 
     @classmethod
-    def configure(cls, args):
+    def configure(cls, color):
         """
         Initializes terminal for color output, or disables color output if unsupported.
 
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.COLOR           "never", "always", or "auto" for when supported by TTY
+        @param   color  True / False / None for auto-detect from TTY support
         """
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
-        cls.COLOR = ("never" != args.COLOR)
+        cls.COLOR = (color is not False)
         try:
             curses.setupterm()
             if cls.COLOR and not sys.stdout.isatty():
                 raise Exception()
         except Exception:
-            cls.COLOR = ("always" == args.COLOR)
+            cls.COLOR = bool(color)
         try:
             if sys.stdout.isatty() or cls.COLOR:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
