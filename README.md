@@ -41,6 +41,7 @@ Using ROS2 requires Python packages for message types to be available in path.
 - [Matching and filtering](#matching-and-filtering)
   - [Limits](#limits)
   - [Filtering](#filtering)
+  - [Conditions](#conditions)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -89,10 +90,10 @@ Print first message from each lidar topic on host 1.2.3.4:
 
 Export all bag messages to SQLite and Postgres, print only export progress:
 
-    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
 
     grepros -n my.bag --write postgresql://user@host/dbname \
-            --no-console-output --progress 2>/dev/null
+            --no-console-output --no-verbose --progress
 
 
 Patterns use Python regular expression syntax, message matches if all match.
@@ -287,7 +288,7 @@ Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
 If the database already exists, it is appended to.
 
-Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
+Output is compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts.
 
 Specifying `--write-format sqlite` is not required
@@ -323,10 +324,10 @@ Set maximum number of lines to output per message field:
 
     --lines-per-field 2
 
-Start outputting from, or stop outputting at, message line number:
+Start message output from, or stop output at, message line number:
 
-    --start-line  2   (1-based if positive
-    --end-line   -2   (count back from total if negative)
+    --start-line  2   # (1-based if positive
+    --end-line   -2   # (count back from total if negative)
 
 Output only the fields where patterns find a match:
 
@@ -346,7 +347,7 @@ Skip outputting specific message fields (supports nested.paths and * wildcards):
 
 Wrap matches in custom texts:
 
-    --match-wrapper $$$
+    --match-wrapper @@@
     --match-wrapper "<<<<" ">>>>"
 
 Set custom width for wrapping message YAML printed to console (auto-detected from terminal by default):
@@ -443,27 +444,62 @@ taking `--select-field` and `--no-select-field` into account (per each file if b
 
 Start scanning from a specific timestamp:
 
-    -t0          2021-11     (using partial ISO datetime)
-    --start-time 1636900000  (using UNIX timestamp)
-    --start-time +100        (seconds from bag start time, or from script startup time if live input)
-    --start-time -100        (seconds from bag end time, or script startup time if live input)
+    -t0          2021-11     # (using partial ISO datetime)
+    --start-time 1636900000  # (using UNIX timestamp)
+    --start-time +100        # (seconds from bag start time, or from script startup time if live input)
+    --start-time -100        # (seconds from bag end time, or script startup time if live input)
 
 Stop scanning at a specific timestamp:
 
-    -t1        2021-11     (using partial ISO datetime)
-    --end-time 1636900000  (using UNIX timestamp)
-    --end-time +100        (seconds from bag start time, or from script startup time if live input)
-    --end-time -100        (seconds from bag end time, or from script startup time if live input)
+    -t1        2021-11     # (using partial ISO datetime)
+    --end-time 1636900000  # (using UNIX timestamp)
+    --end-time +100        # (seconds from bag start time, or from script startup time if live input)
+    --end-time -100        # (seconds from bag end time, or from script startup time if live input)
 
 Start scanning from a specific message index in topic:
 
-    -n0           -100  (counts back from topic total message count in bag)
-    --start-index   10  (1-based index)
+    -n0           -100  # (counts back from topic total message count in bag)
+    --start-index   10  # (1-based index)
 
 Stop scanning at a specific message index in topic:
 
-    -n1         -100  (counts back from topic total message count in bag)
-    --end-index   10  (1-based index)
+    -n1         -100  # (counts back from topic total message count in bag)
+    --end-index   10  # (1-based index)
+
+## Conditions
+
+    --condition "PYTHON EXPRESSION"
+
+Specify one or more Python expressions that must evaluate as true to search
+encountered messages. Expressions can access topics, by name or * wildcard,
+and refer to message fields directly.
+
+    # (Match while last message in '/robot/enabled' has data=true)
+    --condition "<topic /robot/enabled>.data"
+
+    # (Match if at least 10 messages have been encountered in /robot/alerts)
+    --condition "len(<topic /robot/alerts>) > 10"
+
+    # (Match if last two messages in /robot/mode have equal .value)
+    --condition "<topic /robot/mode>[-2].value == <topic /robot/mode>[-1].value"
+
+    # (Match while control is enabled and robot is moving straight and level)
+    --condition "<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0" \
+                "and <topic */cmd_vel>.angular.z < 0.02"
+
+Condition namespace:
+
+- `msg`:                    current message from data source
+- `topic`:                  full name of current message topic
+- `<topic /my/topic>`:      topic by full name or * wildcard
+- `len(<topic ..>)`:        number of messages encountered in topic
+- `bool(<topic ..>)`:       has any message been encountered in topic
+- `<topic ..>.xyz`:         attribute `xyz` of last message in topic
+- `<topic ..>[index]`:      topic message at position
+                            (from first encountered if index >= 0, last encountered if < 0)
+- `<topic ..>[index].xyz`:  attribute `xyz` of topic message at position
+
+Condition is automatically false if trying to access attributes of a message not yet received.
 
 
 All command-line arguments
@@ -498,6 +534,12 @@ Filtering:
                         ROS message types to scan if not all (supports * wildcards)
   -nd TYPE [TYPE ...], --no-type TYPE [TYPE ...]
                         ROS message types to skip (supports * wildcards)
+  --condition CONDITION [CONDITION ...]
+                        extra conditions to require for matching messages,
+                        as ordinary Python expressions, can refer to last messages
+                        in topics as <topic /my/topic>; topic name can contain wildcards.
+                        E.g. --condition "<topic /robot/enabled>.data" matches
+                        messages only while last message in '/robot/enabled' has data=true.
   -t0 TIME, --start-time TIME
                         earliest timestamp of messages to scan
                         as relative seconds if signed,

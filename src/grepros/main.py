@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.12.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -65,10 +65,10 @@ Print first message from each lidar topic on host 1.2.3.4:
     grepros --live --topic *lidar* --max-per-topic 1
 
 Export all bag messages to SQLite and Postgres, print only export progress:
-    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
 
     grepros -n my.bag --write postgresql://user@host/dbname \\
-            --no-console-output --progress 2>/dev/null
+            --no-console-output --no-verbose --progress
     """,
 
     "arguments": [
@@ -129,6 +129,14 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["-nd", "--no-type"],
              dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[],
              help="ROS message types to skip (supports * wildcards)"),
+
+        dict(args=["--condition"],
+             dest="CONDITIONS", metavar="CONDITION", nargs="+", default=[],
+             help="extra conditions to require for matching messages,\n"
+                  "as ordinary Python expressions, can refer to last messages\n"
+                  "in topics as {topic /my/topic}; topic name can contain wildcards.\n"
+                  'E.g. --condition "{topic /robot/enabled}.data" matches\n'
+                  "messages only while last message in '/robot/enabled' has data=true."),
 
         dict(args=["-t0", "--start-time"],
              dest="START_TIME", metavar="TIME",
@@ -353,7 +361,7 @@ def validate_args(args):
 
     @param   args  arguments object like argparse.Namespace
     """
-    errors, re_errors = [], []
+    errors = collections.defaultdict(list)  # {category: [error, ]}
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
@@ -376,31 +384,40 @@ def validate_args(args):
         try: v = float(v)
         except Exception: pass
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
-        except Exception: errors.append("Invalid ISO datetime for %s: %s" % 
-                                        (n.lower().replace("_", " "), v))
+        except Exception: errors[""].append("Invalid ISO datetime for %s: %s" % 
+                                            (n.lower().replace("_", " "), v))
 
     OUTFLAGS = list(outputs.MultiSink.FLAG_CLASSES) + list(outputs.MultiSink.SUBFLAG_CLASSES)
     if not any(getattr(args, n, None) for n in OUTFLAGS):
-        errors.append("No output configured.")
+        errors[""].append("No output configured.")
 
     if args.DUMP_TARGET and "html" == args.DUMP_FORMAT and args.DUMP_TEMPLATE:
         if not os.path.isfile(args.DUMP_TEMPLATE):
-            errors.append("Template does not exist: %s." % args.DUMP_TEMPLATE)
+            errors[""].append("Template does not exist: %s." % args.DUMP_TEMPLATE)
 
     for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.RAW else v)
         except Exception as e:
-            re_errors.append("'%s': %s" % (v, e))
+            errors["Invalid regular expression"].append("'%s': %s" % (v, e))
 
-    for err in errors:
+    for v in args.CONDITIONS:
+        v = inputs.ConditionMixin.TOPIC_RGX.sub("dummy", v)
+        try: compile(v, "", "eval")
+        except SyntaxError as e:
+            errors["Invalid condition"].append("'%s': %s at %schar %s" % 
+                (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
+        except Exception as e:
+            errors["Invalid condition"].append("'%s': %s" % (v, e))
+
+    for err in errors.get("", []):
         ConsolePrinter.error(err)
-    if re_errors:
-        ConsolePrinter.error("Invalid regular expression")
-        for err in re_errors:
+    for category in filter(bool, errors):
+        ConsolePrinter.error(category)
+        for err in errors[category]:
             ConsolePrinter.error("  %s" % err)
-    return not errors and not re_errors
+    return not errors
 
 
 def flush_stdout():

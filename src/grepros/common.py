@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -187,7 +187,7 @@ class ProgressBar(threading.Thread):
                                         self.forechar * (self.width - 2),
                                         afterword)
             else:
-                dash = self.forechar * max(1, (self.width - 2) / 7)
+                dash = self.forechar * max(1, int((self.width - 2) / 7))
                 pos = self.pulse_pos
                 if pos < len(dash):
                     dash = dash[:pos]
@@ -650,6 +650,11 @@ def unique_path(pathname, empty_ok=False):
     return result
 
 
-def wildcard_to_regex(text):
-    """Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I)."""
-    return re.compile(".*".join(map(re.escape, text.split("*"))), re.I)
+def wildcard_to_regex(text, end=False):
+    """
+    Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I).
+
+    @param   end  whether pattern should match until end (adds $)
+    """
+    suff = "$" if end else ""
+    return re.compile(".*".join(map(re.escape, text.split("*"))) + suff, re.I)
