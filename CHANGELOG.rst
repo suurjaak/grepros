@@ -4,6 +4,10 @@ Changelog for package grepros
 
 0.3.0 (2021-12-05)
 -------------------
+* fix highlighting subtype arrays
+
+0.3.0 (2021-12-05)
+-------------------
 * add --write-format postgres
 * add --no-verbose option
 * add --condition option

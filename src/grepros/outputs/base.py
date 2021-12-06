@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.12.2021
+@modified    06.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -192,8 +192,8 @@ class TextSinkMixin(object):
             # default_style='"' avoids trailing "...\n"
             return yaml.safe_dump(val, default_style='"', width=sys.maxsize).rstrip("\n")
         if isinstance(val, (list, tuple)):
-            if not val or self._wrapper.strlen(val) == 2:
-                return val or "[]"
+            if not val:
+                return "[]"
             if "string" == rosapi.scalar(typename):
                 yaml_str = yaml.safe_dump(val).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
