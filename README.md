@@ -252,7 +252,7 @@ Specifying `--write-format html` is not required if the filename ends with `.htm
 
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
-    --write-format-template /my/html.template
+    --write-option template=/my/html.template
 
 
 ### postgres
@@ -279,6 +279,10 @@ e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
 Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
+
+A custom transaction size can be specified (default is 100; 0 is autocommit):
+
+    --write-option commit_interval=NUM
 
 
 ### sqlite
@@ -634,8 +638,11 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-format-template PATH
-                        path to custom template to use for HTML output
+  --write-option [KEY=VALUE [KEY=VALUE ...]]
+                        write options as key=value pairs, supported flags:
+                          template=/my/path.tpl - custom template to use for HTML output
+                          commit_interval=NUM - transaction size for Postgres output
+                                                (default 100, 0 is autocommit)
   --color {auto,always,never}
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console

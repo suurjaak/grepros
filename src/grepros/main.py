@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.12.2021
+@modified    06.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -265,8 +265,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-format-template"], dest="DUMP_TEMPLATE", metavar="PATH",
-             help="path to custom template to use for HTML output"),
+        dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
+             default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
+             help="write options as key=value pairs, supported flags:\n"
+                  "  template=/my/path.tpl - custom template to use for HTML output\n"
+                  "  commit_interval=NUM - transaction size for Postgres output\n"
+                  "                        (default 100, 0 is autocommit)"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
@@ -369,6 +373,9 @@ def validate_args(args):
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
+    # Turn [["key", "value"], ] into a dictionary
+    args.DUMP_OPTIONS = dict(args.DUMP_OPTIONS)
+
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
 
@@ -390,10 +397,6 @@ def validate_args(args):
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" % 
                                             (n.lower().replace("_", " "), v))
-
-    if args.DUMP_TARGET and "html" == args.DUMP_FORMAT and args.DUMP_TEMPLATE:
-        if not os.path.isfile(args.DUMP_TEMPLATE):
-            errors[""].append("Template does not exist: %s." % args.DUMP_TEMPLATE)
 
     for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"

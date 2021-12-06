@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.12.2021
+@modified    06.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -310,9 +310,9 @@ class TextWrapper(object):
         return len(v) - sum(v.count(s) * (len(s) - l) for s, l in self.customs.items())
 
 
-    def isblank(self, v):
-        """Returns whether string is empty or all whitespace, using custom substring widths."""
-        return not self.custom_rgx.sub(lambda m: "X" * self.customs[m.group()], v).strip()
+    def strip(self, v):
+        """Returns string with custom substrings and whitespace stripped."""
+        return self.custom_rgx.sub("", v).strip()
 
 
     def _wrap_chunks(self, chunks):
@@ -326,7 +326,7 @@ class TextWrapper(object):
             indent = self.subsequent_indent if lines else ""
             width = self.width - self.strlen(indent)
 
-            if self.drop_whitespace and lines and self.isblank(chunks[-1]):
+            if self.drop_whitespace and lines and not self.strip(chunks[-1]):
                 del chunks[-1]  # Drop initial whitespace on subsequent lines
 
             while chunks:
@@ -342,14 +342,14 @@ class TextWrapper(object):
                 self._handle_long_word(chunks, cur_line, cur_len, width)
                 cur_len = sum(map(self.strlen, cur_line))
 
-            if self.drop_whitespace and cur_line and self.isblank(cur_line[-1]):
+            if self.drop_whitespace and cur_line and not self.strip(cur_line[-1]):
                 cur_len -= len(cur_line[-1])  # Drop line last whitespace chunk
                 del cur_line[-1]
 
             if cur_line:
                 if (self.max_lines is None or len(lines) + 1 < self.max_lines
                 or (not chunks or self.drop_whitespace
-                    and len(chunks) == 1 and self.isblank(chunks[0])) \
+                    and len(chunks) == 1 and not self.strip(chunks[0])) \
                 and cur_len <= width):  # Current line ok
                     lines.append(indent + "".join(cur_line))
                     continue  # while chunks
@@ -357,7 +357,7 @@ class TextWrapper(object):
                 continue  # while chunks
 
             while cur_line:  # Truncate for max_lines
-                if not self.isblank(cur_line[-1]):
+                if self.strip(cur_line[-1]):
                     if cur_len + placeholder_len <= width:
                         lines.append(indent + "".join(cur_line))
                         break  # while cur_line
