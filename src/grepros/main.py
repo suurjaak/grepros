@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -20,7 +20,7 @@ import re
 import sys
 
 from . import __version__, inputs, outputs, search
-from . common import ConsolePrinter, parse_datetime
+from . common import ConsolePrinter, Plugins, parse_datetime
 
 
 ## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
@@ -28,7 +28,7 @@ ARGUMENTS = {
     "description": "Searches through messages in ROS bag files or live topics.",
     "epilog":      """
 PATTERNs use Python regular expression syntax, message matches if all match.
-* wildcards in other arguments use simple globbing as zero or more characters,
+* wildcards use simple globbing as zero or more characters,
 target matches if any value matches.
  
 
@@ -64,8 +64,11 @@ Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
     grepros --live --topic *lidar* --max-per-topic 1
 
-Export all bag messages to SQLite, print only export progress:
-    grepros -n my.bag --no-console-output --write my.bag.sqlite --progress 2>/dev/null
+Export all bag messages to SQLite and Postgres, print only export progress:
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
+
+    grepros -n my.bag --write postgresql://user@host/dbname \\
+            --no-console-output --no-verbose --progress
     """,
 
     "arguments": [
@@ -73,7 +76,7 @@ Export all bag messages to SQLite, print only export progress:
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
-                  "(name may be a nested.path)"),
+                  "(supports nested.paths and * wildcards)"),
 
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
@@ -100,13 +103,17 @@ Export all bag messages to SQLite, print only export progress:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="OUTFILE", default="",
+        dict(args=["--write"], dest="DUMP_TARGET", metavar="TARGET", default="",
              help="write matched messages to specified output file"),
 
-        dict(args=["--write-format"], dest="OUTFILE_FORMAT",
-             choices=["bag", "csv", "html", "sqlite"],
-             help="output format, auto-detected from OUTFILE extension if not given,\n"
-                  "bag or database will be appended to if file already exists"),
+        dict(args=["--write-format"], dest="DUMP_FORMAT",
+             choices=["bag", "csv", "html", "postgres", "sqlite"],
+             help="output format, auto-detected from TARGET if not given,\n"
+                  "bag or database will be appended to if it already exists"),
+
+        dict(args=["--plugin"],
+             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
+             help="load a Python module or class as plugin"),
     ],
 
     "groups": {"Filtering": [
@@ -126,6 +133,14 @@ Export all bag messages to SQLite, print only export progress:
         dict(args=["-nd", "--no-type"],
              dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[],
              help="ROS message types to skip (supports * wildcards)"),
+
+        dict(args=["--condition"],
+             dest="CONDITIONS", metavar="CONDITION", nargs="+", default=[],
+             help="extra conditions to require for matching messages,\n"
+                  "as ordinary Python expressions, can refer to last messages\n"
+                  "in topics as {topic /my/topic}; topic name can contain wildcards.\n"
+                  'E.g. --condition "{topic /robot/enabled}.data" matches\n'
+                  "messages only while last message in '/robot/enabled' has data=true."),
 
         dict(args=["-t0", "--start-time"],
              dest="START_TIME", metavar="TIME",
@@ -250,7 +265,7 @@ Export all bag messages to SQLite, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-format-template"], dest="OUTFILE_TEMPLATE",
+        dict(args=["--write-format-template"], dest="DUMP_TEMPLATE", metavar="PATH",
              help="path to custom template to use for HTML output"),
 
         dict(args=["--color"], dest="COLOR",
@@ -271,7 +286,11 @@ Export all bag messages to SQLite, print only export progress:
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
-                  "for publishing and bag writing"),
+                  "for publishing and writing"),
+
+        dict(args=["--no-verbose"], dest="SKIP_VERBOSE", action="store_true",
+             help="do not print status messages during console output\n"
+                  "for publishing and writing"),
 
     ], "Bag input control": [
 
@@ -346,12 +365,12 @@ def validate_args(args):
 
     @param   args  arguments object like argparse.Namespace
     """
-    errors, re_errors = [], []
+    errors = collections.defaultdict(list)  # {category: [error, ]}
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
     # Default to printing metadata for publish/write if no console output
-    args.VERBOSE = args.VERBOSE or not args.CONSOLE
+    args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
 
     # Show progress bar only if no console output
     args.PROGRESS = args.PROGRESS and not args.CONSOLE
@@ -369,31 +388,36 @@ def validate_args(args):
         try: v = float(v)
         except Exception: pass
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
-        except Exception: errors.append("Invalid ISO datetime for %s: %s" % 
-                                        (n.lower().replace("_", " "), v))
+        except Exception: errors[""].append("Invalid ISO datetime for %s: %s" % 
+                                            (n.lower().replace("_", " "), v))
 
-    OUTFLAGS = list(outputs.MultiSink.FLAG_CLASSES) + list(outputs.MultiSink.SUBFLAG_CLASSES)
-    if not any(getattr(args, n, None) for n in OUTFLAGS):
-        errors.append("No output configured.")
-
-    if args.OUTFILE and "html" == args.OUTFILE_FORMAT and args.OUTFILE_TEMPLATE:
-        if not os.path.isfile(args.OUTFILE_TEMPLATE):
-            errors.append("Template does not exist: %s." % args.OUTFILE_TEMPLATE)
+    if args.DUMP_TARGET and "html" == args.DUMP_FORMAT and args.DUMP_TEMPLATE:
+        if not os.path.isfile(args.DUMP_TEMPLATE):
+            errors[""].append("Template does not exist: %s." % args.DUMP_TEMPLATE)
 
     for v in args.PATTERNS if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.RAW else v)
         except Exception as e:
-            re_errors.append("'%s': %s" % (v, e))
+            errors["Invalid regular expression"].append("'%s': %s" % (v, e))
 
-    for err in errors:
+    for v in args.CONDITIONS:
+        v = inputs.ConditionMixin.TOPIC_RGX.sub("dummy", v)
+        try: compile(v, "", "eval")
+        except SyntaxError as e:
+            errors["Invalid condition"].append("'%s': %s at %schar %s" % 
+                (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
+        except Exception as e:
+            errors["Invalid condition"].append("'%s': %s" % (v, e))
+
+    for err in errors.get("", []):
         ConsolePrinter.error(err)
-    if re_errors:
-        ConsolePrinter.error("Invalid regular expression")
-        for err in re_errors:
+    for category in filter(bool, errors):
+        ConsolePrinter.error(category)
+        for err in errors[category]:
             ConsolePrinter.error("  %s" % err)
-    return not errors and not re_errors
+    return not errors
 
 
 def flush_stdout():
@@ -403,8 +427,15 @@ def flush_stdout():
         except (Exception, KeyboardInterrupt): pass
 
 
+def preload_plugins():
+    """Imports and initializes plugins from arguments."""
+    if "--plugin" in sys.argv:
+        Plugins.configure(make_parser().parse_known_args()[0])
+
+
 def run():
     """Parses command-line arguments and runs search."""
+    preload_plugins()
     argparser = make_parser()
     if len(sys.argv) < 2:
         argparser.print_usage()
@@ -419,20 +450,23 @@ def run():
 
     source, sink = None, None
     try:
-        ConsolePrinter.configure(args)
+        ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
         if not validate_args(args):
             sys.exit(1)
 
-        source = (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+        source = Plugins.load("source", args) or \
+                 (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
+        sink.sinks.extend(filter(bool, [Plugins.load("sink", args)]))
         if not sink.validate():
             sys.exit(1)
 
         thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
-        search.Searcher(args).search(source, sink)
+        searcher = Plugins.load("search", args) or search.Searcher(args)
+        searcher.search(source, sink)
     except BREAK_EXS:
         try: sink and sink.close()
         except (Exception, KeyboardInterrupt): pass

@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    05.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
+import importlib
 import itertools
 import math
 import os
@@ -60,22 +61,21 @@ class ConsolePrinter(object):
     _LINEOPEN = False  ## Whether last print was without linefeed
 
     @classmethod
-    def configure(cls, args):
+    def configure(cls, color):
         """
         Initializes terminal for color output, or disables color output if unsupported.
 
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.COLOR           "never", "always", or "auto" for when supported by TTY
+        @param   color  True / False / None for auto-detect from TTY support
         """
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
-        cls.COLOR = ("never" != args.COLOR)
+        cls.COLOR = (color is not False)
         try:
             curses.setupterm()
             if cls.COLOR and not sys.stdout.isatty():
                 raise Exception()
         except Exception:
-            cls.COLOR = ("always" == args.COLOR)
+            cls.COLOR = bool(color)
         try:
             if sys.stdout.isatty() or cls.COLOR:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
@@ -173,7 +173,6 @@ class ProgressBar(threading.Thread):
         self.printbar = self.bar   # Printable text, with padding to clear previous
         self.progresschar = itertools.cycle("-\\|/")
         self.is_running = False
-        if not pulse: self.update(value, draw=False)
 
 
     def update(self, value=None, draw=True, flush=False):
@@ -187,7 +186,7 @@ class ProgressBar(threading.Thread):
                                         self.forechar * (self.width - 2),
                                         afterword)
             else:
-                dash = self.forechar * max(1, (self.width - 2) / 7)
+                dash = self.forechar * max(1, int((self.width - 2) / 7))
                 pos = self.pulse_pos
                 if pos < len(dash):
                     dash = dash[:pos]
@@ -394,6 +393,73 @@ class TextWrapper(object):
             reversed_chunks[-1] = text[break_pos:]
         elif not cur_line:
             cur_line.append(reversed_chunks.pop())
+
+
+
+class Plugins(object):
+    """Simple plugin interface, loads and inits plugin modules, provides core methods."""
+
+    ## {"some.module": <module 'some.module' from ..>}
+    PLUGINS = {}
+
+
+    @classmethod
+    def configure(cls, args):
+        """
+        Imports plugin Python packages, invokes init(args) if any, raises on error.
+
+        @param   args           arguments object like argparse.Namespace
+        @param   args.PLUGINS   list of Python modules or classes to import,
+                                 as ["my.module", "other.module.SomeClass", ]
+        """
+        for name in (n for n in args.PLUGINS if n not in cls.PLUGINS):
+            try:
+                plugin = cls.import_item(name)
+                if callable(getattr(plugin, "init", None)): plugin.init(args)
+                cls.PLUGINS[name] = plugin
+            except Exception:
+                ConsolePrinter.error("Error loading plugin %s.", name)
+                raise
+
+
+    @classmethod
+    def load(cls, category, args):
+        """
+        Returns a plugin category instance loaded from any configured plugin, or None.
+
+        @param   category  item category like "source", "sink", or "search"
+        @param   args      arguments object like argparse.Namespace
+        """
+        for name, plugin in cls.PLUGINS.items():
+            if callable(getattr(plugin, "load", None)):
+                try:
+                    result = plugin.load(category, args)
+                    if result is not None:
+                        return result
+                except Exception:
+                    ConsolePrinter.error("Error invoking %s.load(%r, args).", name, category)
+                    raise
+                
+
+    @classmethod
+    def import_item(cls, name):
+        """
+        Returns imported module, or identifier from imported namespace; raises on error.
+
+        @param   name  Python module name like "my.module"
+                       or module namespace identifier like "my.module.Class"
+        """
+        result, parts = None, name.split(".")
+        for i, item in enumerate(parts):
+            path, success = ".".join(parts[:i + 1]), False
+            try: result, success = importlib.import_module(path), True
+            except ImportError: pass
+            if not success and i:
+                try: result, success = getattr(result, item), True
+                except AttributeError: pass
+            if not success:
+                raise ImportError("No module or identifier named %r" % path)
+        return result
 
 
 
@@ -650,6 +716,11 @@ def unique_path(pathname, empty_ok=False):
     return result
 
 
-def wildcard_to_regex(text):
-    """Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I)."""
-    return re.compile(".*".join(map(re.escape, text.split("*"))), re.I)
+def wildcard_to_regex(text, end=False):
+    """
+    Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I).
+
+    @param   end  whether pattern should match until end (adds $)
+    """
+    suff = "$" if end else ""
+    return re.compile(".*".join(map(re.escape, text.split("*"))) + suff, re.I)

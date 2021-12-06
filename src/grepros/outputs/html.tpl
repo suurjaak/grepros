@@ -14,11 +14,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    28.11.2021
+@modified    30.11.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
-from grepros import __version__
+from grepros import __version__, rosapi
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M") 
 sourcemeta = source.get_meta()
@@ -320,7 +320,6 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         while (i--) s = s.replace(new RegExp("\\\\{" + i + "\\\\}", "g"), arguments[i]);
         return s;
     };
-%if timeline:
 
 
     /** Adds right-justifying to JavaScript String. */
@@ -352,8 +351,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         "%I": function() { var h = x.getHours(); return String(h > 12 ? h - 12 : h).ljust(2, "0"); },
         "%M": function() { return String(x.getMinutes()).ljust(2, "0"); },
         "%S": function() { return String(x.getSeconds()).ljust(2, "0"); },
-        "%f": function() { return String(x.getMilliseconds()).ljust(3, "0").rjust(6, "0"); },
+        "%f": function() { return String(Math.floor(x.getNanoseconds() / 1000)).ljust(6, "0"); },
         "%F": function() { return String(x.getMilliseconds()).ljust(3, "0"); },
+        "%n": function() { return String(x.getNanoseconds()).ljust(9, "0"); },
         "%w": function() { return x.getDay(); },
         "%W": function() { return String(Util.weekOfYear(x)).ljust(2, "0"); },
         "%p": function() { return (x.getHours() < 12) ? "AM" : "PM"; },
@@ -362,7 +362,18 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       for (var f in FMTERS) result = result.replace(new RegExp(f, "g"), FMTERS[f]);
       return result.replace(/~~~~~~~~~~/g, "%");  // Restore literal %-s
     };
-%endif
+
+
+    /** Adds nanosecond support to JavaScript Date. */
+    Date.prototype.setNanoseconds = function(ns) {
+      this._nanoseconds = ns;
+      this.setMilliseconds(ns / 1000000);
+    };
+    Date.prototype.getNanoseconds = function() {
+      if (this._nanoseconds === undefined)
+        this._nanoseconds = this.getMilliseconds() * 1000000;
+      return this._nanoseconds;
+    };
 
 
     /** Returns a new DOM tag with specified body (text or node, or list of) and attributes. */
@@ -376,6 +387,18 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       };
       Object.keys(opts || {}).forEach(function(x) { result.setAttribute(x, opts[x]); });
       return result;
+    };
+
+
+    /**
+     * Returns formatted timestamp for [seconds, nanoseconds],
+     * format defaulting to "%Y-%m-%d %H:%M:%s.%f",
+     * with trailing zeros stripped from ending fractional seconds.
+     */
+    var formatStamp = function(secs_nsecs, format) {
+      format = format || "%Y-%m-%d %H:%M:%s.%f";
+      var result = makeDate(secs_nsecs).strftime(format);
+      return RegExp("((%f)|(%n))$", "i").test(format) ? result.replace(/\\.?0+$/, "") : result;
     };
 
 
@@ -403,6 +426,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     };
 
 
+    /** Returns JavaScript Date with nanosecond precision. */
+    var makeDate = function(secs_nsecs) {
+      var dt = new Date(secs_nsecs[0] * 1000);
+      dt.setNanoseconds(secs_nsecs[1]);
+      return dt;
+    };
+
+
     /** Toggles class on ID-d element, and toggle-element if any. */
     var toggleClass = function(id, cls, elem_toggle) {
       var elem = document.getElementById(id);
@@ -427,24 +458,25 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
       /** Registers entry in a topic. */
-      self.registerTopic = function(topic, type, schema, id, dt) {
+      self.registerTopic = function(topic, type, schema, id, secs_nsecs) {
         var topickey = [topic, type];
         TOPICKEYS.push(topickey);
         SCHEMAS[type] = schema;
-        self.registerMessage(null, id, dt, topic, type);
+        self.registerMessage(null, id, secs_nsecs, topic, type);
       };
 
 
       /** Registers message. */
-      self.registerMessage = function(topicindex, id, dt, topic, type) {
+      self.registerMessage = function(topicindex, id, secs_nsecs, topic, type) {
         var topickey = (topic && type) ? [topic, type] : TOPICKEYS[topicindex];
+        var dt = formatStamp(secs_nsecs);
         if (!FIRSTMSGS[topickey]) {
           FIRSTMSGS[topickey] = {"id": id, "dt": dt};
           (TOPICS[topic] = TOPICS[topic] || []).push(type);
         };
         LASTMSGS[topickey] = {"id": id, "dt": dt};
         MSGCOUNTS[topickey] = (MSGCOUNTS[topickey] || 0) + 1;
-        Timeline && Timeline.registerMessage(id, dt);
+        Timeline && Timeline.registerMessage(id, secs_nsecs);
       };
 
 
@@ -674,7 +706,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       var self = this;
 
       var MSGIDS            = [];    // [id, ]
-      var MSGSTAMPS         = [];    // [dtstr, ] indexes correspond to MSGIDS
+      var MSGSTAMPS         = [];    // [[secs, nanosecs], ] indexes correspond to MSGIDS
       var MSG_TIMELINES     = {};    // {message ID: timeline index}
       var scroll_highlights = {};    // {row ID: highlight}
       var scroll_timer      = null;  // setTimeout ID
@@ -700,9 +732,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
       /** Register message ID and timestamp for timeline. */
-      self.registerMessage = function(id, dt) {
+      self.registerMessage = function(id, secs_nsecs) {
         MSGIDS.push(id);
-        MSGSTAMPS.push(dt.replace(" ", "T"));  // Ensure ISO format
+        MSGSTAMPS.push(secs_nsecs);
       };
 
 
@@ -717,81 +749,110 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
 
         // Calculate a sensibly rounded interval
-        var entryspan = (new Date(MSGSTAMPS[MSGSTAMPS.length - 1]) - new Date(MSGSTAMPS[0])) / NUM;
-        var ROUNDINGS = [ // [[threshold in millis, rounding in millis], ]
-          [3600 * 1000, 3600 * 1000],  // >1h, round to 60m
-          [ 600 * 1000,  900 * 1000],  // 10m..60m, round to 15m
-          [ 300 * 1000,  600 * 1000],  // 5m..10m, round to 10m
-          [ 120 * 1000,  300 * 1000],  // 2m..5m, round to 5m
-          [  60 * 1000,  120 * 1000],  // 1m..2m, round to 2m
-          [  30 * 1000,   60 * 1000],  // 30s..1m, round to 1m
-          [  10 * 1000,   30 * 1000],  // 10s..30s, round to 30s
-          [   5 * 1000,   10 * 1000],  // 5s..10s, round to 10s
-          [   2 * 1000,    5 * 1000],  // 2s..5s, round to 5s
-          [   1 * 1000,    2 * 1000],  // 1s..2s, round to 2s
-          [        500,    1 * 1000],  // 500ms..1s, round to 1s
-          [        100,         100],  // 100ms..500ms, round to 100
-          [          5,          10],  // 5ms..100ms, round to 10
-          [          2,           5],  // 2ms..5ms, round to 5
-          [          1,           1],  // 1ms..2ms, round to 2
+        var st1 = MSGSTAMPS[0], stN = MSGSTAMPS[MSGSTAMPS.length - 1];  // [seconds, nanoseconds], 
+        var st2 = MSGSTAMPS[Math.min(1, MSGSTAMPS.length - 1)];
+        var entryspan_ns = ((stN[0] - st1[0]) * 10**9 + (stN[1] - st1[1])) / NUM;  // Ensure max precision
+        var ROUNDINGS = [ // [[threshold in nanos, rounding in nanos], ]
+          [3600 * 1000000000, 3600 * 1000000000],  // >1h, round to 60m
+          [ 600 * 1000000000,  900 * 1000000000],  // 10m..60m, round to 15m
+          [ 300 * 1000000000,  600 * 1000000000],  // 5m..10m, round to 10m
+          [ 120 * 1000000000,  300 * 1000000000],  // 2m..5m, round to 5m
+          [  60 * 1000000000,  120 * 1000000000],  // 1m..2m, round to 2m
+          [  30 * 1000000000,   60 * 1000000000],  // 30s..1m, round to 1m
+          [  10 * 1000000000,   30 * 1000000000],  // 10s..30s, round to 30s
+        ];
+        var MAGNITUDE_ROUNDINGS = [ // [[seconds/millis/micros/nanos threshold, rounding], ]
+          [5,   10],    // 5..10, round to 10
+          [2,    5],    // 2..5, round to 5
+          [1,    2],    // 1..2, round to 2
+          [0.5,  1],    // 0.5..1, round to 1
+          [0.1,  0.1],  // 0.1s..0.5, round to 0.1
         ];
         var rounded = false;
-        for (var i = 0; i < ROUNDINGS.length; i++) {
-          var threshold = ROUNDINGS[i][0], modulo = ROUNDINGS[i][1];
-          if (entryspan > threshold) {
-            entryspan += modulo - entryspan % modulo;
-            rounded = true;
-            break;  // for i
+        var magnitude = null;
+        while (!rounded && (!magnitude || magnitude >= 1)) {
+          var roundings = magnitude ? MAGNITUDE_ROUNDINGS : ROUNDINGS;
+          for (var i = 0; i < roundings.length; i++) {
+            var threshold = roundings[i][0], modulo = roundings[i][1];
+            if (magnitude) { threshold = threshold * magnitude, modulo = modulo * magnitude; };
+            if (threshold >= 1 && entryspan_ns > threshold) {
+              entryspan_ns += modulo - entryspan_ns % modulo;
+              rounded = true;
+              break;  // for i
+            };
           };
+          magnitude = (magnitude == null) ? 10**9 : magnitude / 1000;
         };
-        if (!rounded) entryspan = 1;
+        if (!rounded) entryspan_ns = 1;
+
+        /** Returns [s1+s2, ns1+ns2] from [s1, ns2] and [s2, ns2]. */
+        var add = function(secs_nsecs1, secs_nsecs2) {
+          var s = secs_nsecs1[0] + secs_nsecs2[0], ns = secs_nsecs1[1] +  secs_nsecs2[1];
+          return (ns > 10**9) ? [s + 1, ns - 10**9] : [s, ns];
+        };
+        /** Returns [secs, nsecs] rounded lower. */
+        var round = function(secs_nsecs, nsecs) {
+          var s = secs_nsecs[0], ns = secs_nsecs[1];
+          if (nsecs > 10**9) { s -= s % Math.floor(nsecs / 10**9); ns = 0; }
+          else { ns -= ns % nsecs; };
+          return [s, ns];
+        };
+        /** Returns whether first stamp is equal to or greater than the second. */
+        var is_not_less = function(secs_nsecs1, secs_nsecs2) {
+          return secs_nsecs1[0] > secs_nsecs2[0] || (secs_nsecs1[0] == secs_nsecs2[0] && secs_nsecs1[1] > secs_nsecs2[1]);
+        };
 
         // Assemble timeline entries
-        var timeentry = new Date(MSGSTAMPS[0]);
-        timeentry = new Date(+timeentry - (+timeentry % entryspan));
+        var timeentry = round(MSGSTAMPS[0], entryspan_ns);
+        var entryspan = [Math.floor(entryspan_ns / 10**9), entryspan_ns % 10**9];
+        var nextentry = add(timeentry, entryspan);
         var timelines = [timeentry];
-        var indexids = {};  // [+dt: first message ID]
-        var counts   = {};  // {+dt: message count}
+        var indexids = {};  // [secs_nsecs: first message ID]
+        var counts   = {};  // {secs_nsecs: message count}
         MSG_TIMELINES = {};
         for (var i = 0; i < MSGSTAMPS.length; i++) {
-          var dt = new Date(MSGSTAMPS[i]);
-          if (!i || +dt >= +timeentry + +entryspan) {
-            while (i && +dt >= +timeentry + +entryspan) {
-              timeentry = new Date(+timeentry + +entryspan);
+          var st = MSGSTAMPS[i];
+          if (!i || is_not_less(st, nextentry)) {
+            while (i && is_not_less(st, nextentry)) {
+              timeentry = nextentry;
               timelines.push(timeentry);
+              nextentry = add(timeentry, entryspan);
             };
-            indexids[+timeentry] = MSGIDS[i];
+            indexids[timeentry] = MSGIDS[i];
           };
-          counts[+timeentry] = (counts[+timeentry] || 0) + 1;
+          counts[timeentry] = (counts[timeentry] || 0) + 1;
           MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
         };
 
         // Generate date format string
-        var dt1 = new Date(MSGSTAMPS[0]);
-        var dt2 = new Date(MSGSTAMPS[Math.min(1, MSGSTAMPS.length - 1)]);
-        var dtN = new Date(MSGSTAMPS[MSGSTAMPS.length - 1]);
+        var dt1 = makeDate(timelines[0]);
+        var dt2 = makeDate(timelines[Math.min(1, timelines.length - 1)]);
+        var dtN = makeDate(timelines[timelines.length - 1]);
         var fmtstr = "";
         if (dt1.getYear() != dtN.getYear()) {
           fmtstr = "%Y-%m-%d";
-        } else if (dt1.getMonth() != dtN.getMonth() || dt1.getDate() != dtN.getDate()) {
+        } else if (dt1.getMonth() != dtN.getMonth()) {
+          fmtstr = "%m-%d";
+        } else if (dt1.getDate() != dtN.getDate() || +dtN - +dt1 > 24 * 3600000) {
           fmtstr = "%m-%d";
         };
         fmtstr += (fmtstr ? " " : "") + "%H:%M:%S";
         if (dt1.strftime(fmtstr) == dt2.strftime(fmtstr)) {
           var fracts = ".%F";  // Millis
           if (dt1.strftime(fmtstr + fracts) == dt2.strftime(fmtstr + fracts)) fracts = ".%f";  // Micros
+          if (dt1.strftime(fmtstr + fracts) == dt2.strftime(fmtstr + fracts)) fracts = ".%n";  // Nanos
           fmtstr += fracts;
-        }
+        };
 
         // Populate timeline
         elem_timeline.innerHTML = "";
         for (var i = 0; i < timelines.length; i++) {
-          var dt = timelines[i];
-          var attr = !counts[+dt] ? {"class": "time"} :
+          var st = timelines[i];
+          var attr = !counts[st] ? {"class": "time"} :
                                     {"title": "Go to first message in time span", "href": "javascript;",
-                                     "onclick": "return Messages.gotoMessage({0})".format(indexids[+dt])};
-          var elem_time  = createElement(counts[+dt] ? "a" : "span", dt.strftime(fmtstr), attr);
-          var elem_count = counts[+dt] ? createElement("span", (counts[+dt]).toLocaleString("en"), {"class": "count"}) : null;
+                                     "onclick": "return Messages.gotoMessage({0})".format(indexids[st])};
+          var elem_time  = createElement(counts[st] ? "a" : "span", makeDate(st).strftime(fmtstr), attr);
+          var elem_count = counts[st] ? createElement("span", (counts[st]).toLocaleString("en"), {"class": "count"}) : null;
           var elem_li    = createElement("li", [elem_time, elem_count], {"id": "timeline_" + i});
           elem_timeline.appendChild(elem_li);
         };
@@ -960,6 +1021,7 @@ selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %>
 %for i, (topic, index, stamp, msg, match) in enumerate(messages, 1):
     <%
+secs, nsecs = divmod(rosapi.to_nsec(stamp), 10**9)
 meta = source.get_message_meta(topic, index, stamp, msg)
 topickey = (topic, meta["type"])
     %>
@@ -987,9 +1049,9 @@ topickey = (topic, meta["type"])
         <span class="next" title="Go to next message in topic"
               onclick="return Messages.gotoSibling({{ i }}, +1, this)"></span>
     %if topickey in topic_idx:
-        <script> Messages.registerMessage('{{ topic_idx[topickey] }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+        <script> Messages.registerMessage('{{ topic_idx[topickey] }}', {{ i }}, {{ [secs, nsecs] }}); </script>
     %else:
-        <script> Messages.registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, '{{ meta["dt"] }}'); </script>
+        <script> Messages.registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, {{ [secs, nsecs] }}); </script>
     %endif
       </td>
     </tr>

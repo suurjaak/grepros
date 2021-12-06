@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    26.11.2021
+@modified    03.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -113,6 +113,13 @@ class EmbagReader(object):
         """Returns ROS1 message type definition full text, including subtype definitions."""
         typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
         return self._typedefs.get(typename) or get_message_definition(typename)
+
+
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS1 message type MD5 hash."""
+        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+        md5 = next((h for h, t in self._hashdefs.items() if t == typename), None)
+        return md5 or get_message_type_hash(msg_or_type)
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None):
@@ -271,6 +278,7 @@ def create_bag_reader(filename):
     bag = rosbag.Bag(filename, skip_index=True)
     bag.get_message_class = get_message_class
     bag.get_message_definition = get_bag_message_definition
+    bag.get_message_type_hash = get_message_type_hash
     return bag
 
 
@@ -349,6 +357,12 @@ def get_message_definition(msg_or_type):
     return msg_or_cls._full_text
 
 
+def get_message_type_hash(msg_or_type):
+    """Returns ROS message type MD5 hash."""
+    msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
+    return msg_or_cls._md5sum
+
+
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS1 message, else {}."""
     names = getattr(val, "__slots__", [])
@@ -395,6 +409,11 @@ def is_ros_message(val, ignore_time=False):
     @param  ignore_time  whether to ignore ROS1 time/duration types
     """
     return isinstance(val, genpy.Message if ignore_time else (genpy.Message, genpy.TVal))
+
+
+def is_ros_time(val, ignore_time=False):
+    """Returns whether value is a ROS1 time/duration."""
+    return isinstance(val, genpy.TVal)
 
 
 def make_duration(secs=0, nsecs=0):

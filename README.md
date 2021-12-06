@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or as HTML/CSV/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/Postgres/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -34,12 +34,15 @@ Using ROS2 requires Python packages for message types to be available in path.
   - [bag](#bag)
   - [csv](#csv)
   - [html](#html)
+  - [postgres](#postgres)
   - [sqlite](#sqlite)
   - [live](#live)
   - [console / html message formatting](#console--html-message-formatting)
 - [Matching and filtering](#matching-and-filtering)
   - [Limits](#limits)
   - [Filtering](#filtering)
+  - [Conditions](#conditions)
+- [Plugins](#plugins)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -86,13 +89,16 @@ Print first message from each lidar topic on host 1.2.3.4:
     ROS_MASTER_URI=http://1.2.3.4::11311 \
     grepros --live --topic *lidar* --max-per-topic 1
 
-Export all bag messages to SQLite, print only export progress:
+Export all bag messages to SQLite and Postgres, print only export progress:
 
-    grepros -n my.bag --write my.bag.sqlite --no-console-output --progress 2>/dev/null
+    grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
+
+    grepros -n my.bag --write postgresql://user@host/dbname \
+            --no-console-output --no-verbose --progress
 
 
 Patterns use Python regular expression syntax, message matches if all match.
-'*' wildcards in other arguments use simple globbing as zero or more characters,
+'*' wildcards use simple globbing as zero or more characters,
 target matches if any value matches.
 
 Note that some expressions may need to be quoted to avoid shell auto-unescaping
@@ -249,6 +255,32 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
     --write-format-template /my/html.template
 
 
+### postgres
+
+    --write postgresql://username@host/dbname [--write-format postgres]
+
+Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
+and views `/full/topic/name` for each topic. 
+Plus table `topics` with a list of topics, message types and definitions,
+and table `meta` with table/view/column name changes from shortenings and conflicts, if any
+(Postgres name length is limited to 63 characters).
+
+ROS primitive types are inserted as Postgres data types (time/duration types as NUMERIC),
+uint8[] arrays as BYTEA, other primitive arrays as ARRAY, and arrays of subtypes as JSONB.
+
+If the database already exists, it is appended to. If there are conflicting names
+(same package and name but different definition), table/view name becomes "name (md5hash)".
+
+Specifying `--write-format postgres` is not required if the parameter uses the
+Postgres URI scheme `postgresql://`.
+
+Parameter can also use the Postgres keyword=value format,
+e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
+Standard Postgres environment variables are also supported (PGPASSWORD et al).
+
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
+
+
 ### sqlite
 
     --write my.sqlite [--write-format sqlite]
@@ -257,8 +289,10 @@ Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
 If the database already exists, it is appended to.
 
-Output is fully compatible with ROS2 `.db3` bagfiles, supplemented with
-full message YAMLs, and message type definition texts.
+Output is compatible with ROS2 `.db3` bagfiles, supplemented with
+full message YAMLs, and message type definition texts. Note that a database
+dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
+due to breaking changes in ROS2 standard built-in and message types.
 
 Specifying `--write-format sqlite` is not required
 if the filename ends with `.sqlite` or `.sqlite3`.
@@ -293,10 +327,10 @@ Set maximum number of lines to output per message field:
 
     --lines-per-field 2
 
-Start outputting from, or stop outputting at, message line number:
+Start message output from, or stop output at, message line number:
 
-    --start-line  2   (1-based if positive
-    --end-line   -2   (count back from total if negative)
+    --start-line  2   # (1-based if positive
+    --end-line   -2   # (count back from total if negative)
 
 Output only the fields where patterns find a match:
 
@@ -316,7 +350,7 @@ Skip outputting specific message fields (supports nested.paths and * wildcards):
 
 Wrap matches in custom texts:
 
-    --match-wrapper $$$
+    --match-wrapper @@@
     --match-wrapper "<<<<" ">>>>"
 
 Set custom width for wrapping message YAML printed to console (auto-detected from terminal by default):
@@ -413,27 +447,78 @@ taking `--select-field` and `--no-select-field` into account (per each file if b
 
 Start scanning from a specific timestamp:
 
-    -t0          2021-11     (using partial ISO datetime)
-    --start-time 1636900000  (using UNIX timestamp)
-    --start-time +100        (seconds from bag start time, or from script startup time if live input)
-    --start-time -100        (seconds from bag end time, or script startup time if live input)
+    -t0          2021-11     # (using partial ISO datetime)
+    --start-time 1636900000  # (using UNIX timestamp)
+    --start-time +100        # (seconds from bag start time, or from script startup time if live input)
+    --start-time -100        # (seconds from bag end time, or script startup time if live input)
 
 Stop scanning at a specific timestamp:
 
-    -t1        2021-11     (using partial ISO datetime)
-    --end-time 1636900000  (using UNIX timestamp)
-    --end-time +100        (seconds from bag start time, or from script startup time if live input)
-    --end-time -100        (seconds from bag end time, or from script startup time if live input)
+    -t1        2021-11     # (using partial ISO datetime)
+    --end-time 1636900000  # (using UNIX timestamp)
+    --end-time +100        # (seconds from bag start time, or from script startup time if live input)
+    --end-time -100        # (seconds from bag end time, or from script startup time if live input)
 
 Start scanning from a specific message index in topic:
 
-    -n0           -100  (counts back from topic total message count in bag)
-    --start-index   10  (1-based index)
+    -n0           -100  # (counts back from topic total message count in bag)
+    --start-index   10  # (1-based index)
 
 Stop scanning at a specific message index in topic:
 
-    -n1         -100  (counts back from topic total message count in bag)
-    --end-index   10  (1-based index)
+    -n1         -100  # (counts back from topic total message count in bag)
+    --end-index   10  # (1-based index)
+
+## Conditions
+
+    --condition "PYTHON EXPRESSION"
+
+Specify one or more Python expressions that must evaluate as true to search
+encountered messages. Expressions can access topics, by name or * wildcard,
+and refer to message fields directly.
+
+    # (Match while last message in '/robot/enabled' has data=true)
+    --condition "<topic /robot/enabled>.data"
+
+    # (Match if at least 10 messages have been encountered in /robot/alerts)
+    --condition "len(<topic /robot/alerts>) > 10"
+
+    # (Match if last two messages in /robot/mode have equal .value)
+    --condition "<topic /robot/mode>[-2].value == <topic /robot/mode>[-1].value"
+
+    # (Match while control is enabled and robot is moving straight and level)
+    --condition "<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0" \
+                "and <topic */cmd_vel>.angular.z < 0.02"
+
+Condition namespace:
+
+- `msg`:                    current message from data source
+- `topic`:                  full name of current message topic
+- `<topic /my/topic>`:      topic by full name or * wildcard
+- `len(<topic ..>)`:        number of messages encountered in topic
+- `bool(<topic ..>)`:       has any message been encountered in topic
+- `<topic ..>.xyz`:         attribute `xyz` of last message in topic
+- `<topic ..>[index]`:      topic message at position
+                            (from first encountered if index >= 0, last encountered if < 0)
+- `<topic ..>[index].xyz`:  attribute `xyz` of topic message at position
+
+Condition is automatically false if trying to access attributes of a message not yet received.
+
+
+Plugins
+-------
+
+    --plugin some.python.module some.other.module.Class
+
+Load one or more Python modules or classes as plugins.
+Supported (but not required) plugin interface methods:
+
+- `init(args)`: invoked at startup with command-line arguments
+- `load(category, args)`: invoked with category "search" or "source" or "sink",
+                          using returned value if not None
+
+Plugins are free to modify `grepros` internals, like adding command-line arguments
+to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
 
 
 All command-line arguments
@@ -444,7 +529,7 @@ positional arguments:
   PATTERN               pattern(s) to find in message field values,
                         all messages match if not given,
                         can specify message field as NAME=PATTERN
-                        (name may be a nested.path)
+                        (supports nested.paths and * wildcards)
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -454,10 +539,12 @@ optional arguments:
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write OUTFILE       write matched messages to specified output file
-  --write-format {bag,csv,html,sqlite}
-                        output format, auto-detected from OUTFILE extension if not given,
-                        bag or database will be appended to if file already exists
+  --write TARGET        write matched messages to specified output file
+  --write-format {bag,csv,html,postgres,sqlite}
+                        output format, auto-detected from TARGET if not given,
+                        bag or database will be appended to if it already exists
+  --plugin PLUGIN [PLUGIN ...]
+                        load a Python module or class as plugin
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -468,6 +555,12 @@ Filtering:
                         ROS message types to scan if not all (supports * wildcards)
   -nd TYPE [TYPE ...], --no-type TYPE [TYPE ...]
                         ROS message types to skip (supports * wildcards)
+  --condition CONDITION [CONDITION ...]
+                        extra conditions to require for matching messages,
+                        as ordinary Python expressions, can refer to last messages
+                        in topics as <topic /my/topic>; topic name can contain wildcards.
+                        E.g. --condition "<topic /robot/enabled>.data" matches
+                        messages only while last message in '/robot/enabled' has data=true.
   -t0 TIME, --start-time TIME
                         earliest timestamp of messages to scan
                         as relative seconds if signed,
@@ -541,7 +634,7 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-format-template OUTFILE_TEMPLATE
+  --write-format-template PATH
                         path to custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
@@ -550,7 +643,9 @@ Output control:
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
-                        for publishing and bag writing
+                        for publishing and writing
+  --no-verbose          do not print status messages during console output
+                        for publishing and writing
 
 Bag input control:
   -n [FILE [FILE ...]], --filename [FILE [FILE ...]]
