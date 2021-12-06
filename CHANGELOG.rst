@@ -2,8 +2,11 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.0 (2021-12-05)
+0.3.1 (2021-12-06)
 -------------------
+* add --write-option template=/my/html.template, for HTML output
+* add --write-option commit_interval=NUM, for Postgres output
+* drop --write-format-template
 * fix highlighting subtype arrays
 
 0.3.0 (2021-12-05)

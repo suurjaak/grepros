@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    04.12.2021
+@modified    06.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -133,10 +133,11 @@ class PostgresSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
-        @param   args.DUMP_TARGET   Postgres connection string postgresql://user@host/db
-        @param   args.META          whether to print metainfo
-        @param   args.VERBOSE       whether to print debug information
+        @param   args                arguments object like argparse.Namespace
+        @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
+        @param   args.DUMP_OPTIONS   {"commit_interval": transaction size (0 is autocommit)}
+        @param   args.META           whether to print metainfo
+        @param   args.VERBOSE        whether to print debug information
         """
         super(PostgresSink, self).__init__(args)
 
@@ -154,10 +155,20 @@ class PostgresSink(SinkBase):
 
 
     def validate(self):
-        """Returns whether Postgres driver is available."""
-        if not psycopg2:
+        """
+        Returns whether Postgres driver is available,
+        and args.DUMP_OPTIONS["commit_interval"] has valid value, if any.
+        """
+        driver_ok, config_ok = bool(psycopg2), True
+        if "commit_interval" in self._args.DUMP_OPTIONS:
+            try: config_ok = int(self._args.DUMP_OPTIONS["commit_interval"]) >= 0
+            except Exception: config_ok = False
+        if not driver_ok:
             ConsolePrinter.error("psycopg2 not available: cannot write to Postgres.")
-        return bool(psycopg2)
+        if not config_ok:
+            ConsolePrinter.error("Invalid commit interval for Postgres: %r.",
+                                 self._args.DUMP_OPTIONS["commit_interval"])
+        return driver_ok and config_ok
 
 
     def emit(self, topic, index, stamp, msg, match):
@@ -192,6 +203,8 @@ class PostgresSink(SinkBase):
         """Opens the database file, and populates schema if not already existing."""
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+        if "commit_interval" in self._args.DUMP_OPTIONS:
+            self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit_interval"])
         self._db = psycopg2.connect(self._args.DUMP_TARGET,
                                     cursor_factory=psycopg2.extras.RealDictCursor)
         self._db.autocommit = not self.COMMIT_INTERVAL

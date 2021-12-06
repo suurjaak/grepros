@@ -266,9 +266,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "0 disables (defaults to detected terminal width)"),
 
         dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
-             nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
+             default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
              help="write options as key=value pairs, supported flags:\n"
-                  "  template=/my/path.tpl - custom template to use for HTML output"),
+                  "  template=/my/path.tpl - custom template to use for HTML output\n"
+                  "  commit_interval=NUM - transaction size for Postgres output\n"
+                  "                        (default 100, 0 is autocommit)"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
