@@ -220,7 +220,7 @@ class TextSinkMixin(object):
                     self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
                     self._wrapper.break_long_words = not is_num
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
-                    if is_strlist and self._wrapper.strlen(v) > 2: v = "\n" + v
+                    if is_strlist and self._wrapper.strip(v) != "[]": v = "\n" + v
                 vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
             return ("\n" if indent and vals else "") + "\n".join(vals)
 
