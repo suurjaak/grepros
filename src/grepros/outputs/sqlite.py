@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    05.12.2021
+@modified    08.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
@@ -35,7 +35,10 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     plus:
     - table "pkg/MsgType" for each message type, with detailed fields,
-      and array fields to linking to subtypes
+      and JSON fields for arrays of nested subtypes,
+      with foreign keys if nesting else subtype values as JSON dictionaries;
+      plus underscore-prefixed fields for metadata, like `_topic` as the topic name.
+      If not nesting, only topic message type tables are created.
     - view "/topic/full/name" for each topic,
       selecting from the message type table
 
@@ -133,6 +136,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
         @param   args.META          whether to print metainfo
         @param   args.DUMP_TARGET   name of SQLite file to write,
                                     will be appended to if exists
+        @param   args.DUMP_OPTIONS  {"nesting": "lists" to recursively insert lists
+                                                of nested types, or "all" for any nesting)}
         @param   args.WRAP_WIDTH    character width to wrap message YAML output at
         @param   args.VERBOSE       whether to print debug information
         """
@@ -145,13 +150,29 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._db            = None   # sqlite3.Connection
         self._close_printed = False
 
+        # Whether to create tables and rows for nested message types,
+        # "lists" if to do this only for lists of nested types, or
+        # "all" for any nested type, including those fully flattened into parent fields.
+        # In parent, nested lists are inserted as foreign keys instead of formatted values.
+        self._nesting = args.DUMP_OPTIONS.get("nesting")
+
         self._topics = {}  # {(topic, typename): {topics-row}}
         self._types  = {}  # {typename: {types-row}}
         # {"view": {topic: {typename: True}}, "table": {typename: {cols}}}
         self._schema = collections.defaultdict(dict)
 
-        self._format_repls.update({k: "" for k in self._format_repls})
+        self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
         atexit.register(self.close)
+
+
+    def validate(self):
+        """Returns whether args.DUMP_OPTIONS["nesting"] has valid value, if any."""
+        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "lists", "all"):
+            ConsolePrinter.error("Invalid nesting-option for SQLite: %r. "
+                                 "Choose one of {lists,all}.",
+                                 self._args.DUMP_OPTIONS["nesting"])
+            return False
+        return True
 
 
     def emit(self, topic, index, stamp, msg, match):
@@ -236,17 +257,17 @@ class SqliteSink(SinkBase, TextSinkMixin):
             msgdef = self.source.get_message_definition(typename)
             targs = dict(type=typename, definition=msgdef, subtypes={})
             self._types[typename] = targs
-            for path, submsgs, subtype in self._iter_fields(msg, messages_only=True):
-                subtype = rosapi.scalar(subtype)
-                targs["subtypes"][".".join(path)] = subtype
-
+            nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+            for path, submsgs, subtype in nesteds:
+                scalartype = rosapi.scalar(subtype)
+                if subtype == scalartype and "all" != self._nesting:
+                    continue  # for path
+                targs["subtypes"][".".join(path)] = scalartype
                 if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
-                elif not submsgs: submsgs = [rosapi.get_message_class(subtype)()]
-                for submsg in submsgs:
-                    submsg = submsg or self.source.get_message_class(subtype)()  # List may be empty
-                    self._process_type(subtype, submsg)
+                for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
+                    self._process_type(scalartype, submsg)
 
-            targs["id"] = self._db.execute(self.INSERT_TYPE, targs).lastrowid
+            self._types[typename]["id"] = self._db.execute(self.INSERT_TYPE, targs).lastrowid
 
         if typename not in self._schema["table"]:
             cols = []
@@ -272,7 +293,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def _populate_type(self, topic, typename, msg, stamp, parent_type=None, parent_id=None):
         """
-        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message.
+        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message
+        if nesting enabled.
 
         Returns inserted ID.
         """
@@ -282,7 +304,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
         cols, vals = [], []
         for p, v, t in self._iter_fields(msg):
             if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
-                continue  # for p, v, t
+                if self._nesting: continue  # for p, v, t
+                else: v = [rosapi.message_to_dict(x) for x in v]
             cols += [".".join(p)]
             vals += [re.sub(r"\W", "_", cols[-1])]
             args[vals[-1]] = v
@@ -292,20 +315,23 @@ class SqliteSink(SinkBase, TextSinkMixin):
         sql = self.INSERT_MESSAGE_TYPE % fargs
         myid = args["_id"] = self._db.execute(sql, args).lastrowid
 
-        subids = {}  # {path: [ids]}
-        for subpath, submsgs, subtype in self._iter_fields(msg, messages_only=True):
-            subtype = rosapi.scalar(subtype)
+        subids = {}  # {message field path: [ids]}
+        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        for subpath, submsgs, subtype in nesteds:
+            scalartype = rosapi.scalar(subtype)
+            if subtype == scalartype and "all" != self._nesting:
+                continue  # for subpath
             if isinstance(submsgs, (list, tuple)):
                 subids[subpath] = []
             for submsg in submsgs if isinstance(submsgs, (list, tuple)) else [submsgs]:
-                subid = self._populate_type(topic, subtype, submsg, stamp, typename, myid)
+                subid = self._populate_type(topic, scalartype, submsg, stamp, typename, myid)
                 if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:
             sql = "UPDATE %s SET " % quote(typename)
-            for i, (path, subids) in enumerate(subids.items()):
+            for i, (path, ids) in enumerate(subids.items()):
                 sql += "%s%s = :%s" % (", " if i else "", quote(".".join(path)), "_".join(path))
-                args["_".join(path)] = subids
+                args["_".join(path)] = ids
             sql += " WHERE _id = :_id"
             self._db.execute(sql, args)
         return myid

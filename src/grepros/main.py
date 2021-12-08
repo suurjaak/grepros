@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.12.2021
+@modified    08.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -270,7 +270,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="write options as key=value pairs, supported flags:\n"
                   "  template=/my/path.tpl - custom template to use for HTML output\n"
                   "  commit_interval=NUM - transaction size for Postgres output\n"
-                  "                        (default 100, 0 is autocommit)"),
+                  "                        (default 100, 0 is autocommit)\n"
+                  "  nesting=lists|all - create tables for nested message types\n"
+                  "                      in Postgres/SQLite output,\n"
+                  '                      only for arrays if "lists" else for any nested types\n'
+                  "                      (array fields in parent will be populated with foreign keys\n"
+                  "                       instead of formatted nested values)"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",

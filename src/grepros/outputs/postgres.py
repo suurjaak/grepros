@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    06.12.2021
+@modified    08.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -43,8 +43,9 @@ class PostgresSink(SinkBase):
     - table "pkg/MsgType" for each topic message type, with detailed fields,
       BYTEA fields for uint8[], array fields for scalar list attributes,
       and JSONB fields for lists of ROS messages;
-      plus `_topic` as the topic name, `_topic_id` as link to `topics.id`
-      and `_timestamp`
+      with foreign keys if nesting else subtype values as JSON dictionaries;
+      plus underscore-prefixed fields for metadata, like `_topic` as the topic name.
+      If not nesting, only topic message type tables are created.
 
     If a message type table already exists but for a type with a different MD5 hash,
     the new table will have its MD5 hash appended to end, as "pkg/MsgType (hash)".
@@ -55,6 +56,9 @@ class PostgresSink(SinkBase):
 
     ## Number of emits between commits; 0 is autocommit
     COMMIT_INTERVAL = 100
+
+    ## Sequence length per table to reserve for inserted message IDs
+    ID_SEQUENCE_STEP = 100
 
     ## Mapping from ROS common types to Postgres types
     COMMON_TYPES = {
@@ -86,6 +90,14 @@ class PostgresSink(SinkBase):
       table_name           TEXT NOT NULL,
       view_name            TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS types (
+      id                   BIGSERIAL PRIMARY KEY,
+      type                 TEXT NOT NULL,
+      definition           TEXT NOT NULL,
+      md5                  TEXT NOT NULL,
+      table_name           TEXT NOT NULL
+    );
     """
 
     ## SQL statement for inserting topics
@@ -96,6 +108,13 @@ class PostgresSink(SinkBase):
     """
 
     ## SQL statement for inserting types
+    INSERT_TYPE = """
+    INSERT INTO types (type, definition, md5, table_name)
+    VALUES (%(type)s, %(definition)s, %(md5)s, %(table_name)s)
+    RETURNING id
+    """
+
+    ## SQL statement for inserting metas for renames
     INSERT_META = """
     INSERT INTO meta (type, parent, name, pg_name)
     VALUES (%(type)s, %(parent)s, %(name)s, %(pg_name)s)
@@ -125,17 +144,21 @@ class PostgresSink(SinkBase):
     """
 
     ## Default columns for pkg/MsgType tables
-    MESSAGE_TYPE_BASECOLS = [("_topic",      "TEXT"),
-                             ("_topic_id",   "BIGINT"),
-                             ("_timestamp",  "NUMERIC"),
-                             ("_id",         "BIGSERIAL PRIMARY KEY"), ]
+    MESSAGE_TYPE_BASECOLS = [("_topic",       "TEXT"),
+                             ("_topic_id",    "BIGINT"),
+                             ("_timestamp",   "NUMERIC"),
+                             ("_id",          "BIGSERIAL PRIMARY KEY"),
+                             ("_parent_type", "TEXT"),
+                             ("_parent_id",   "BIGINT"), ]
 
 
     def __init__(self, args):
         """
         @param   args                arguments object like argparse.Namespace
         @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
-        @param   args.DUMP_OPTIONS   {"commit_interval": transaction size (0 is autocommit)}
+        @param   args.DUMP_OPTIONS   {"commit_interval": transaction size (0 is autocommit),
+                                     "nesting": "lists" to recursively insert lists
+                                                of nested types, or "all" for any nesting)}
         @param   args.META           whether to print metainfo
         @param   args.VERBOSE        whether to print debug information
         """
@@ -145,10 +168,18 @@ class PostgresSink(SinkBase):
         self._cursor        = None   # psycopg2.cursor
         self._close_printed = False
 
+        # Whether to create tables and rows for nested message types,
+        # "lists" if to do this only for lists of nested types, or
+        # "all" for any nested type, including those fully flattened into parent fields.
+        # In parent, nested lists are inserted as foreign keys instead of formatted values.
+        self._nesting = args.DUMP_OPTIONS.get("nesting")
+
         self._topics    = {}  # {(topic, typehash): {topics-row}}
+        self._types     = {}  # {(typename, typehash): {types-row}}
         self._metas     = {}  # {(type, parent): {name: pg_name}}
         self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._sql_queue = {}  # {SQL: [(args), ]}
+        self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
         self._schema = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
@@ -157,17 +188,22 @@ class PostgresSink(SinkBase):
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and args.DUMP_OPTIONS["commit_interval"] has valid value, if any.
+        and "commit_interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any.
         """
         driver_ok, config_ok = bool(psycopg2), True
         if "commit_interval" in self._args.DUMP_OPTIONS:
             try: config_ok = int(self._args.DUMP_OPTIONS["commit_interval"]) >= 0
             except Exception: config_ok = False
+            if not config_ok:
+                ConsolePrinter.error("Invalid commit interval for Postgres: %r.",
+                                     self._args.DUMP_OPTIONS["commit_interval"])
+        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "lists", "all"):
+            ConsolePrinter.error("Invalid nesting-option for Postgres: %r. "
+                                 "Choose one of {lists,all}.",
+                                 self._args.DUMP_OPTIONS["nesting"])
+            config_ok = False
         if not driver_ok:
             ConsolePrinter.error("psycopg2 not available: cannot write to Postgres.")
-        if not config_ok:
-            ConsolePrinter.error("Invalid commit interval for Postgres: %r.",
-                                 self._args.DUMP_OPTIONS["commit_interval"])
         return driver_ok and config_ok
 
 
@@ -215,6 +251,12 @@ class PostgresSink(SinkBase):
         for row in cursor.fetchall():
             topickey = (row["name"], row["md5"])
             self._topics[topickey] = row
+
+        cursor.execute("SELECT * FROM types")
+        for row in cursor.fetchall():
+            typekey = (row["type"], row["md5"])
+            self._types[typekey] = row
+
         cursor.execute("SELECT * FROM meta")
         for row in cursor.fetchall():
             metakey = (row["type"], row["parent"])
@@ -228,8 +270,8 @@ class PostgresSink(SinkBase):
         for row in cursor.fetchall():
             if "/" not in row["table_name"]:
                 continue  # for row
-            topic = next(x for x in self._topics.values() if x["table_name"] == row["table_name"])
-            schemakey = (topic["type"], topic["md5"])
+            typerow = next(x for x in self._types.values() if x["table_name"] == row["table_name"])
+            schemakey = (typerow["type"], typerow["md5"])
             self._schema.setdefault(schemakey, collections.OrderedDict())
             self._schema[schemakey][row["column_name"]] = row["data_type"]
 
@@ -272,8 +314,20 @@ class PostgresSink(SinkBase):
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         typekey  = (typename, typehash)
+
+        if typekey not in self._types:
+            msgdef = self.source.get_message_definition(typename)
+            table_name = self._make_name("table", typename, typehash)
+            targs = dict(type=typename, definition=msgdef,
+                         md5=typehash, table_name=table_name)
+            if self._args.VERBOSE:
+                ConsolePrinter.debug("Adding type %s.", typename)
+            self._cursor.execute(self.INSERT_TYPE, targs)
+            targs["id"] = self._cursor.fetchone()["id"]
+            self._types[typekey] = targs
+
         if typekey not in self._schema:
-            table_name = self._topics[(topic, typehash)]["table_name"]
+            table_name = self._types[typekey]["table_name"]
             cols = []
             for path, value, subtype in self._iter_fields(msg):
                 coltype = self.COMMON_TYPES.get(subtype)
@@ -290,12 +344,43 @@ class PostgresSink(SinkBase):
             self._cursor.execute(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
 
+            nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+            for path, submsgs, subtype in nesteds:
+                scalartype = rosapi.scalar(subtype)
+                if subtype == scalartype and "all" != self._nesting:
+                    continue  # for path
+                if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
+                for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
+                    self._process_type(topic, submsg)
+
 
     def _process_message(self, topic, msg, stamp):
-        """Inserts message to pkg/MsgType table."""
+        """
+        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message
+        if nesting enabled; commits transaction if interval due.
+        """
+        typename = rosapi.get_message_type(msg)
+        self._populate_type(topic, typename, msg, stamp)
+        if self.COMMIT_INTERVAL:
+            do_commit = sum(len(v) for v in self._sql_queue.values()) >= self.COMMIT_INTERVAL
+            for sql in list(self._sql_queue) if do_commit else ():
+                psycopg2.extras.execute_batch(self._cursor, sql, self._sql_queue.pop(sql))
+            do_commit and self._db.commit()
+
+
+    def _populate_type(self, topic, typename, msg, stamp,
+                       root_typehash=None, parent_type=None, parent_id=None):
+        """
+        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message
+        if nesting enabled.
+
+        Returns inserted ID.
+        """
+
         typehash   = self.source.get_message_type_hash(msg)
-        topic_id   = self._topics[(topic, typehash)]["id"]
-        table_name = self._topics[(topic, typehash)]["table_name"]
+        root_typehash = root_typehash or typehash
+        topic_id   = self._topics[(topic, root_typehash)]["id"]
+        table_name = self._types[(typename, typehash)]["table_name"]
         sql, args = self._sql_cache.get(table_name), []
 
         for p, v, t in self._iter_fields(msg):
@@ -304,29 +389,65 @@ class PostgresSink(SinkBase):
                 if v and rosapi.is_ros_time(v[0]):
                     v = [rosapi.to_decimal(x) for x in v]
                 elif scalart not in rosapi.ROS_BUILTIN_TYPES:
-                    v = psycopg2.extras.Json([rosapi.message_to_dict(m) for m in v], json.dumps)
+                    if self._nesting: v = None
+                    else:
+                        v = [rosapi.message_to_dict(m) for m in v]
+                        v = psycopg2.extras.Json(v, json.dumps)
                 elif "BYTEA" == self.COMMON_TYPES.get(t):
-                    v = psycopg2.Binary(bytes(bytearray(v)))  
+                    v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
                 else:
-                    v = list(v)  # psycopg2 does not handle tuples
+                    v = list(v)  # Values for psycopg2 cannot be tuples
             elif rosapi.is_ros_time(v):
                 v = rosapi.to_decimal(v)
             elif t not in rosapi.ROS_BUILTIN_TYPES:
                 v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
             args.append(v)
-        args = tuple(args + [topic, topic_id, rosapi.to_decimal(stamp)])
+        myid = self._get_next_id(table_name)
+        myargs = [topic, topic_id, rosapi.to_decimal(stamp), myid, parent_type, parent_id]
+        args = tuple(args + myargs)
 
         if not sql:
             sql = "INSERT INTO %s VALUES (%s)" % (quote(table_name), ", ".join(["%s"] * len(args)))
             self._sql_cache[table_name] = sql
+        self._ensure_execute(sql, args)
+
+        subids = {}  # {message field path: [ids]}
+        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        for subpath, submsgs, subtype in nesteds:
+            scalartype = rosapi.scalar(subtype)
+            if subtype == scalartype and "all" != self._nesting:
+                continue  # for subpath
+            if isinstance(submsgs, (list, tuple)):
+                subids[subpath] = []
+            for submsg in submsgs if isinstance(submsgs, (list, tuple)) else [submsgs]:
+                subid = self._populate_type(topic, scalartype, submsg, stamp,
+                                            root_typehash, typename, myid)
+                if isinstance(submsgs, (list, tuple)):
+                    subids[subpath].append(subid)
+        if subids:
+            args = [psycopg2.extras.Json(x, json.dumps) for x in subids.values()] + [myid]
+            sets = ["%s = %%s" % quote(".".join(p)) for p in subids]
+            sql  = "UPDATE %s SET %s WHERE _id = %%s" % (quote(table_name), ", ".join(sets))
+            self._ensure_execute(sql, args)
+        return myid
+
+
+    def _ensure_execute(self, sql, args):
+        """Executes SQL if in autocommit mode, else caches arguments for batch execution."""
         if self.COMMIT_INTERVAL:
             self._sql_queue.setdefault(sql, []).append(args)
-            do_commit = sum(len(v) for v in self._sql_queue.values()) > self.COMMIT_INTERVAL
-            for sql in list(self._sql_queue) if do_commit else ():
-                psycopg2.extras.execute_batch(self._cursor, sql, self._sql_queue.pop(sql))
-            do_commit and self._db.commit()
         else:
             self._cursor.execute(sql, args)
+
+
+    def _get_next_id(self, table):
+        """Returns next cached ID value, re-populating empty cache from sequence."""
+        if not self._id_queue.get(table):
+            sql = "SELECT nextval('%s') AS id" % quote("%s__id_seq" % table)
+            for _ in range(self.ID_SEQUENCE_STEP):
+                self._cursor.execute(sql)
+                self._id_queue[table].append(self._cursor.fetchone()["id"])
+        return self._id_queue[table].popleft()
 
 
     def _make_name(self, category, name, typehash):
@@ -334,7 +455,7 @@ class PostgresSink(SinkBase):
         result = name
         if len(result) > self.MAX_NAME_LEN:
             result = result[:self.MAX_NAME_LEN - 2] + ".."
-        if result in set(sum(([x["table_name"], x["view_name"]]
+        if result in set(sum(([x["table_name"], x.get("view_name")]
                               for x in self._topics.values() if x["md5"] != typehash), [])):
             result = name[:self.MAX_NAME_LEN - len(typehash) - 3]
             if len(result) + len(typehash) > self.MAX_NAME_LEN:
@@ -368,7 +489,7 @@ class PostgresSink(SinkBase):
         return list(result)
 
 
-    def _iter_fields(self, msg, top=()):
+    def _iter_fields(self, msg, messages_only=False, top=()):
         """
         Yields ((nested, path), value, typename) from ROS message.
 
@@ -378,11 +499,15 @@ class PostgresSink(SinkBase):
         fieldmap = rosapi.get_message_fields(msg)
         for k, t in fieldmap.items() if fieldmap != msg else ():
             v, path = rosapi.get_message_value(msg, k, t), top + (k, )
-            if not rosapi.is_ros_message(v, ignore_time=False):
+            is_true_msg, is_msg_or_time = (rosapi.is_ros_message(v, ignore_time=x) for x in (1, 0))
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
+            if (is_true_msg or is_sublist) if messages_only else not is_msg_or_time:
                 yield path, v, t
-            else:
-                for p2, v2, t2 in self._iter_fields(v, top=path):
+            if is_msg_or_time:
+                for p2, v2, t2 in self._iter_fields(v, messages_only, top=path):
                     yield p2, v2, t2
+
 
     @classmethod
     def autodetect(cls, dump_target):
