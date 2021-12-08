@@ -143,13 +143,25 @@ class PostgresSink(SinkBase):
     WHERE _topic = %(topic)s;
     """
 
+    ## SQL statement for selecting metainfo on pkg/MsgType table columns
+    SELECT_TYPE_COLUMNS = """
+    SELECT c.table_name, c.column_name, c.data_type
+    FROM   information_schema.columns c INNER JOIN information_schema.tables t
+    ON     t.table_name = c.table_name
+    WHERE  c.table_schema = current_schema() AND t.table_type = 'BASE TABLE' AND
+           c.table_name LIKE '%/%'
+    ORDER BY c.table_name, CAST(c.dtd_identifier AS INTEGER)
+    """
+
+    ## Default topic-related columns for pkg/MsgType tables
+    MESSAGE_TYPE_TOPICCOLS = [("_topic",       "TEXT"),
+                              ("_topic_id",    "BIGINT"), ]
     ## Default columns for pkg/MsgType tables
-    MESSAGE_TYPE_BASECOLS = [("_topic",       "TEXT"),
-                             ("_topic_id",    "BIGINT"),
-                             ("_timestamp",   "NUMERIC"),
-                             ("_id",          "BIGSERIAL PRIMARY KEY"),
-                             ("_parent_type", "TEXT"),
-                             ("_parent_id",   "BIGINT"), ]
+    MESSAGE_TYPE_BASECOLS  = [("_timestamp",   "NUMERIC"),
+                              ("_id",          "BIGSERIAL PRIMARY KEY"), ]
+    ## Additional default columns for pkg/MsgType tables with nesting output
+    MESSAGE_TYPE_NESTCOLS  = [("_parent_type", "TEXT"),
+                              ("_parent_id",   "BIGINT"), ]
 
 
     def __init__(self, args):
@@ -177,10 +189,11 @@ class PostgresSink(SinkBase):
         self._topics    = {}  # {(topic, typehash): {topics-row}}
         self._types     = {}  # {(typename, typehash): {types-row}}
         self._metas     = {}  # {(type, parent): {name: pg_name}}
+        self._chk_flags = {}  # {key: whether structures for key have been created}
         self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._sql_queue = {}  # {SQL: [(args), ]}
-        self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
-        self._schema = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
+        self._id_queue  = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
+        self._schema    = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
 
@@ -246,41 +259,63 @@ class PostgresSink(SinkBase):
         self._db.autocommit = not self.COMMIT_INTERVAL
         cursor = self._cursor = self._db.cursor()
         cursor.execute(self.BASE_SCHEMA)
+        self._load_schema()
+        self._nesting and self._ensure_columns(self.MESSAGE_TYPE_NESTCOLS)
 
-        cursor.execute("SELECT * FROM topics")
-        for row in cursor.fetchall():
+
+    def _load_schema(self):
+        """Populates instance attributes with schema metainfo."""
+        self._cursor.execute("SELECT * FROM topics")
+        for row in self._cursor.fetchall():
             topickey = (row["name"], row["md5"])
             self._topics[topickey] = row
 
-        cursor.execute("SELECT * FROM types")
-        for row in cursor.fetchall():
+        self._cursor.execute("SELECT * FROM types")
+        for row in self._cursor.fetchall():
             typekey = (row["type"], row["md5"])
             self._types[typekey] = row
 
-        cursor.execute("SELECT * FROM meta")
-        for row in cursor.fetchall():
+        self._cursor.execute("SELECT * FROM meta")
+        for row in self._cursor.fetchall():
             metakey = (row["type"], row["parent"])
             self._metas.setdefault(metakey, {})[row["name"]] = row["pg_name"]
 
-        cursor.execute("SELECT c.table_name, c.column_name, c.data_type "
-                       "FROM information_schema.columns c INNER JOIN information_schema.tables t "
-                       "ON t.table_name = c.table_name "
-                       "WHERE c.table_schema = current_schema() AND t.table_type = 'BASE TABLE' "
-                       "ORDER BY c.table_name, CAST(c.dtd_identifier AS INTEGER)")
-        for row in cursor.fetchall():
-            if "/" not in row["table_name"]:
-                continue  # for row
+        self._cursor.execute(self.SELECT_TYPE_COLUMNS)
+        for row in self._cursor.fetchall():
             typerow = next(x for x in self._types.values() if x["table_name"] == row["table_name"])
-            schemakey = (typerow["type"], typerow["md5"])
-            self._schema.setdefault(schemakey, collections.OrderedDict())
-            self._schema[schemakey][row["column_name"]] = row["data_type"]
+            typekey = (typerow["type"], typerow["md5"])
+            self._schema.setdefault(typekey, collections.OrderedDict())
+            self._schema[typekey][row["column_name"]] = row["data_type"]
+
+
+    def _ensure_columns(self, cols):
+        """Adds specified columns to any type tables lacking them."""
+        altered = False
+        for typekey, typecols in self._schema.items():
+            missing = [(c, t) for c, t in cols if c not in typecols]
+            if missing:
+                table_name = self._types[typekey]["table_name"]
+                actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
+                sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
+                self._cursor.execute(sql)
+                typecols.update(missing)
+                altered = True
+        if altered and self.COMMIT_INTERVAL: self._db.commit()
 
 
     def _process_topic(self, topic, msg):
-        """Inserts topics-row and creates view `/topic/name` if not already existing."""
+        """
+        Inserts topics-row and creates view `/topic/name` if not already existing.
+
+        Also creates types-row and pkg/MsgType table for this message if not existing.
+        If nesting enabled, creates types recursively.
+        """
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         topickey = (topic, typehash)
+        if topickey in self._chk_flags:
+            return
+
         is_new = topickey not in self._topics
         if is_new:
             msgdef = self.source.get_message_definition(typename)
@@ -296,9 +331,10 @@ class PostgresSink(SinkBase):
         self._process_type(topic, msg)
 
         if is_new:
+            BASECOLS = [c for c, _ in self.MESSAGE_TYPE_BASECOLS]
             view_name = self._make_name("view", topic, typehash)
             cols = [c for c in self._schema[(typename, typehash)]
-                    if c not in ("_topic", "_topic_id")]
+                    if not c.startswith("_") or c in BASECOLS]
             vargs = dict(name=quote(view_name), cols=", ".join(map(quote, cols)),
                          type=quote(self._topics[topickey]["table_name"]), topic=repr(topic))
             sql = self.CREATE_TOPIC_VIEW % vargs
@@ -310,10 +346,12 @@ class PostgresSink(SinkBase):
 
 
     def _process_type(self, topic, msg):
-        """Creates pkg/MsgType table if not already existing."""
+        """Creates types-row and pkg/MsgType table if not already existing."""
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         typekey  = (typename, typehash)
+        if typehash in self._chk_flags:
+            return
 
         if typekey not in self._types:
             msgdef = self.source.get_message_definition(typename)
@@ -338,20 +376,22 @@ class PostgresSink(SinkBase):
                     coltype = "JSONB"
                 cols += [(".".join(path), coltype)]
             cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
-                            [t for _, t in cols])) + self.MESSAGE_TYPE_BASECOLS
+                            [t for _, t in cols]))
+            cols += self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
             coldefs = ["%s %s" % (quote(n), t) for n, t in cols]
             sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
             self._cursor.execute(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
 
-            nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
-            for path, submsgs, subtype in nesteds:
-                scalartype = rosapi.scalar(subtype)
-                if subtype == scalartype and "all" != self._nesting:
-                    continue  # for path
-                if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
-                for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
-                    self._process_type(topic, submsg)
+        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        for path, submsgs, subtype in nesteds:
+            scalartype = rosapi.scalar(subtype)
+            if subtype == scalartype and "all" != self._nesting:
+                continue  # for path
+            if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
+            for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
+                self._process_type(topic, submsg)
 
 
     def _process_message(self, topic, msg, stamp):
@@ -371,12 +411,11 @@ class PostgresSink(SinkBase):
     def _populate_type(self, topic, typename, msg, stamp,
                        root_typehash=None, parent_type=None, parent_id=None):
         """
-        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message
-        if nesting enabled.
+        Inserts pkg/MsgType row for message.
 
-        Returns inserted ID.
+        If nesting is enabled, inserts sub-rows for subtypes in message,
+        and returns inserted ID.
         """
-
         typehash   = self.source.get_message_type_hash(msg)
         root_typehash = root_typehash or typehash
         topic_id   = self._topics[(topic, root_typehash)]["id"]
@@ -402,8 +441,9 @@ class PostgresSink(SinkBase):
             elif t not in rosapi.ROS_BUILTIN_TYPES:
                 v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
             args.append(v)
-        myid = self._get_next_id(table_name)
-        myargs = [topic, topic_id, rosapi.to_decimal(stamp), myid, parent_type, parent_id]
+        myargs = [topic, topic_id, rosapi.to_decimal(stamp)]
+        myid = self._get_next_id(table_name) if self._nesting else None
+        if self._nesting: myargs += [myid, parent_type, parent_id]
         args = tuple(args + myargs)
 
         if not sql:
