@@ -293,10 +293,10 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def _populate_type(self, topic, typename, msg, stamp, parent_type=None, parent_id=None):
         """
-        Inserts pkg/MsgType row for this message, and sub-rows for subtypes in message
-        if nesting enabled.
+        Inserts pkg/MsgType row for message.
 
-        Returns inserted ID.
+        If nesting is enabled, inserts sub-rows for subtypes in message,
+        and returns inserted ID.
         """
         args = dict(_topic=topic, _dt=rosapi.to_datetime(stamp),
                     _timestamp=rosapi.to_nsec(stamp),

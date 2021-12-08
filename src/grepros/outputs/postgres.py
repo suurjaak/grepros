@@ -55,7 +55,7 @@ class PostgresSink(SinkBase):
     MAX_NAME_LEN = 63
 
     ## Number of emits between commits; 0 is autocommit
-    COMMIT_INTERVAL = 100
+    COMMIT_INTERVAL = 1000
 
     ## Sequence length per table to reserve for inserted message IDs
     ID_SEQUENCE_STEP = 100
@@ -168,7 +168,7 @@ class PostgresSink(SinkBase):
         """
         @param   args                arguments object like argparse.Namespace
         @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
-        @param   args.DUMP_OPTIONS   {"commit_interval": transaction size (0 is autocommit),
+        @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                      "nesting": "lists" to recursively insert lists
                                                 of nested types, or "all" for any nesting)}
         @param   args.META           whether to print metainfo
@@ -201,15 +201,15 @@ class PostgresSink(SinkBase):
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and "commit_interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any.
+        and "commit-interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any.
         """
         driver_ok, config_ok = bool(psycopg2), True
-        if "commit_interval" in self._args.DUMP_OPTIONS:
-            try: config_ok = int(self._args.DUMP_OPTIONS["commit_interval"]) >= 0
+        if "commit-interval" in self._args.DUMP_OPTIONS:
+            try: config_ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
             except Exception: config_ok = False
             if not config_ok:
                 ConsolePrinter.error("Invalid commit interval for Postgres: %r.",
-                                     self._args.DUMP_OPTIONS["commit_interval"])
+                                     self._args.DUMP_OPTIONS["commit-interval"])
         if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "lists", "all"):
             ConsolePrinter.error("Invalid nesting-option for Postgres: %r. "
                                  "Choose one of {lists,all}.",
@@ -257,8 +257,8 @@ class PostgresSink(SinkBase):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
                 
-        if "commit_interval" in self._args.DUMP_OPTIONS:
-            self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit_interval"])
+        if "commit-interval" in self._args.DUMP_OPTIONS:
+            self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit-interval"])
         self._db = psycopg2.connect(self._args.DUMP_TARGET,
                                     cursor_factory=psycopg2.extras.RealDictCursor)
         self._db.autocommit = not self.COMMIT_INTERVAL

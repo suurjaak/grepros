@@ -269,7 +269,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
              help="write options as key=value pairs, supported flags:\n"
                   "  template=/my/path.tpl - custom template to use for HTML output\n"
-                  "  commit_interval=NUM - transaction size for Postgres output\n"
+                  "  commit-interval=NUM - transaction size for Postgres output\n"
                   "                        (default 100, 0 is autocommit)\n"
                   "  nesting=lists|all - create tables for nested message types\n"
                   "                      in Postgres/SQLite output,\n"
