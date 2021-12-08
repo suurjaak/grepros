@@ -236,9 +236,10 @@ class PostgresSink(SinkBase):
                 psycopg2.extras.execute_batch(self._cursor, sql, self._sql_queue.pop(sql))
             self._db.commit()
             self._cursor.close()
+            self._cursor = None
             self._db.close()
             self._db = None
-            self._cursor = None
+            self._id_queue.clear()
         if not self._close_printed and self._counts:
             self._close_printed = True
             target = self._args.DUMP_TARGET
@@ -252,6 +253,10 @@ class PostgresSink(SinkBase):
         """Opens the database file, and populates schema if not already existing."""
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+        for attr in (getattr(self, k) for k in dir(self)):
+            isinstance(attr, dict) and attr.clear()
+        self._close_printed = False
+                
         if "commit_interval" in self._args.DUMP_OPTIONS:
             self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit_interval"])
         self._db = psycopg2.connect(self._args.DUMP_TARGET,
