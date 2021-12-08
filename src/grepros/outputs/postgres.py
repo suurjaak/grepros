@@ -169,7 +169,7 @@ class PostgresSink(SinkBase):
         @param   args                arguments object like argparse.Namespace
         @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
         @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
-                                     "nesting": "lists" to recursively insert lists
+                                     "nesting": "array" to recursively insert arrays
                                                 of nested types, or "all" for any nesting)}
         @param   args.META           whether to print metainfo
         @param   args.VERBOSE        whether to print debug information
@@ -181,9 +181,9 @@ class PostgresSink(SinkBase):
         self._close_printed = False
 
         # Whether to create tables and rows for nested message types,
-        # "lists" if to do this only for lists of nested types, or
+        # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
-        # In parent, nested lists are inserted as foreign keys instead of formatted values.
+        # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
         self._topics    = {}  # {(topic, typehash): {topics-row}}
@@ -210,9 +210,9 @@ class PostgresSink(SinkBase):
             if not config_ok:
                 ConsolePrinter.error("Invalid commit interval for Postgres: %r.",
                                      self._args.DUMP_OPTIONS["commit-interval"])
-        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "lists", "all"):
+        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting-option for Postgres: %r. "
-                                 "Choose one of {lists,all}.",
+                                 "Choose one of {array,all}.",
                                  self._args.DUMP_OPTIONS["nesting"])
             config_ok = False
         if not driver_ok:

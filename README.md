@@ -292,7 +292,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=lists
+    --write-option nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -381,7 +381,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=lists
+    --write-option nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -787,9 +787,9 @@ Output control:
                           template=/my/path.tpl - custom template to use for HTML output
                           commit-interval=NUM - transaction size for Postgres output
                                                 (default 100, 0 is autocommit)
-                          nesting=lists|all - create tables for nested message types
+                          nesting=array|all - create tables for nested message types
                                               in Postgres/SQLite output,
-                                              only for arrays if "lists" else for any nested types
+                                              only for arrays if "array" else for any nested types
                                               (array fields in parent will be populated with foreign keys
                                                instead of formatted nested values)
   --color {auto,always,never}

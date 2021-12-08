@@ -136,7 +136,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         @param   args.META          whether to print metainfo
         @param   args.DUMP_TARGET   name of SQLite file to write,
                                     will be appended to if exists
-        @param   args.DUMP_OPTIONS  {"nesting": "lists" to recursively insert lists
+        @param   args.DUMP_OPTIONS  {"nesting": "array" to recursively insert arrays
                                                 of nested types, or "all" for any nesting)}
         @param   args.WRAP_WIDTH    character width to wrap message YAML output at
         @param   args.VERBOSE       whether to print debug information
@@ -151,9 +151,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._close_printed = False
 
         # Whether to create tables and rows for nested message types,
-        # "lists" if to do this only for lists of nested types, or
+        # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
-        # In parent, nested lists are inserted as foreign keys instead of formatted values.
+        # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
         self._topics = {}  # {(topic, typename): {topics-row}}
@@ -167,9 +167,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def validate(self):
         """Returns whether args.DUMP_OPTIONS["nesting"] has valid value, if any."""
-        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "lists", "all"):
+        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting-option for SQLite: %r. "
-                                 "Choose one of {lists,all}.",
+                                 "Choose one of {array,all}.",
                                  self._args.DUMP_OPTIONS["nesting"])
             return False
         return True
