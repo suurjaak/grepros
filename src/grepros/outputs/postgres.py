@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    08.12.2021
+@modified    09.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -36,8 +36,9 @@ class PostgresSink(SinkBase):
     Writes messages to a Postgres database.
 
     Output will have:
+    - table "topics", with topic and message type names
+    - table "types", with message type definitions
     - table "meta", with mappings between original names and names shortened for Postgres
-    - table "topics", with topic message type definitions
 
     plus:
     - table "pkg/MsgType" for each topic message type, with detailed fields,
@@ -46,6 +47,7 @@ class PostgresSink(SinkBase):
       with foreign keys if nesting else subtype values as JSON dictionaries;
       plus underscore-prefixed fields for metadata, like `_topic` as the topic name.
       If not nesting, only topic message type tables are created.
+    - view "/full/topic/name" for each topic, selecting from the message type table
 
     If a message type table already exists but for a type with a different MD5 hash,
     the new table will have its MD5 hash appended to end, as "pkg/MsgType (hash)".
@@ -85,7 +87,6 @@ class PostgresSink(SinkBase):
       id                   BIGSERIAL PRIMARY KEY,
       name                 TEXT NOT NULL,
       type                 TEXT NOT NULL,
-      definition           TEXT NOT NULL,
       md5                  TEXT NOT NULL,
       table_name           TEXT NOT NULL,
       view_name            TEXT NOT NULL
@@ -102,8 +103,8 @@ class PostgresSink(SinkBase):
 
     ## SQL statement for inserting topics
     INSERT_TOPIC = """
-    INSERT INTO topics (name, type, definition, md5, table_name, view_name)
-    VALUES (%(name)s, %(type)s, %(definition)s, %(md5)s, %(table_name)s, '')
+    INSERT INTO topics (name, type, md5, table_name, view_name)
+    VALUES (%(name)s, %(type)s, %(md5)s, %(table_name)s, '')
     RETURNING id
     """
 
@@ -189,7 +190,7 @@ class PostgresSink(SinkBase):
         self._topics    = {}  # {(topic, typehash): {topics-row}}
         self._types     = {}  # {(typename, typehash): {types-row}}
         self._metas     = {}  # {(type, parent): {name: pg_name}}
-        self._chk_flags = {}  # {key: whether structures for key have been created}
+        self._checkeds  = {}  # {topickey/typehash: whether existence checks are done}
         self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._sql_queue = {}  # {SQL: [(args), ]}
         self._id_queue  = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
@@ -318,15 +319,13 @@ class PostgresSink(SinkBase):
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         topickey = (topic, typehash)
-        if topickey in self._chk_flags:
+        if topickey in self._checkeds:
             return
 
         is_new = topickey not in self._topics
         if is_new:
-            msgdef = self.source.get_message_definition(typename)
             table_name = self._make_name("table", typename, typehash)
-            targs = dict(name=topic, type=typename, definition=msgdef,
-                         md5=typehash, table_name=table_name)
+            targs = dict(name=topic, type=typename, md5=typehash, table_name=table_name)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             self._cursor.execute(self.INSERT_TOPIC, targs)
@@ -348,6 +347,7 @@ class PostgresSink(SinkBase):
             self._topics[topickey]["view_name"] = view_name
             self._cursor.execute(self.UPDATE_TOPIC, self._topics[topickey])
             if self.COMMIT_INTERVAL: self._db.commit()
+        self._checkeds[topickey] = True
 
 
     def _process_type(self, topic, msg):
@@ -355,7 +355,7 @@ class PostgresSink(SinkBase):
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         typekey  = (typename, typehash)
-        if typehash in self._chk_flags:
+        if typehash in self._checkeds:
             return
 
         if typekey not in self._types:
@@ -397,6 +397,7 @@ class PostgresSink(SinkBase):
             if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
             for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
                 self._process_type(topic, submsg)
+        self._checkeds[typehash] = True
 
 
     def _process_message(self, topic, msg, stamp):
