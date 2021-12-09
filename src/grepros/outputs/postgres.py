@@ -332,7 +332,7 @@ class PostgresSink(SinkBase):
             targs["id"] = self._cursor.fetchone()["id"]
             self._topics[topickey] = targs
 
-        self._process_type(topic, msg)
+        self._process_type(msg)
 
         if is_new:
             BASECOLS = [c for c, _ in self.MESSAGE_TYPE_BASECOLS]
@@ -350,7 +350,7 @@ class PostgresSink(SinkBase):
         self._checkeds[topickey] = True
 
 
-    def _process_type(self, topic, msg):
+    def _process_type(self, msg):
         """Creates types-row and pkg/MsgType table if not already existing."""
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
@@ -372,7 +372,7 @@ class PostgresSink(SinkBase):
         if typekey not in self._schema:
             table_name = self._types[typekey]["table_name"]
             cols = []
-            for path, value, subtype in self._iter_fields(msg):
+            for path, value, subtype in rosapi.iter_message_fields(msg):
                 coltype = self.COMMON_TYPES.get(subtype)
                 scalartype = rosapi.scalar(subtype)
                 if not coltype and scalartype in self.COMMON_TYPES:
@@ -389,14 +389,14 @@ class PostgresSink(SinkBase):
             self._cursor.execute(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
 
-        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
             if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
             for submsg in submsgs[:1] or [rosapi.get_message_class(scalartype)()]:
-                self._process_type(topic, submsg)
+                self._process_type(submsg)
         self._checkeds[typehash] = True
 
 
@@ -428,7 +428,7 @@ class PostgresSink(SinkBase):
         table_name = self._types[(typename, typehash)]["table_name"]
         sql, args = self._sql_cache.get(table_name), []
 
-        for p, v, t in self._iter_fields(msg):
+        for p, v, t in rosapi.iter_message_fields(msg):
             scalart = rosapi.scalar(t)
             if isinstance(v, (list, tuple)):
                 if v and rosapi.is_ros_time(v[0]):
@@ -458,7 +458,7 @@ class PostgresSink(SinkBase):
         self._ensure_execute(sql, args)
 
         subids = {}  # {message field path: [ids]}
-        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for subpath, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
@@ -533,26 +533,6 @@ class PostgresSink(SinkBase):
             self._cursor.execute(self.INSERT_META, meta)
             self._metas.setdefault(("column", table_name), {})[meta["name"]] = meta["pg_name"]
         return list(result)
-
-
-    def _iter_fields(self, msg, messages_only=False, top=()):
-        """
-        Yields ((nested, path), value, typename) from ROS message.
-
-        @param  messages_only  whether to yield only values that are ROS messages themselves
-                               or lists of ROS messages, else will yield scalar and list values
-        """
-        fieldmap = rosapi.get_message_fields(msg)
-        for k, t in fieldmap.items() if fieldmap != msg else ():
-            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
-            is_true_msg, is_msg_or_time = (rosapi.is_ros_message(v, ignore_time=x) for x in (1, 0))
-            is_sublist = isinstance(v, (list, tuple)) and \
-                         rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
-            if (is_true_msg or is_sublist) if messages_only else not is_msg_or_time:
-                yield path, v, t
-            if is_msg_or_time:
-                for p2, v2, t2 in self._iter_fields(v, messages_only, top=path):
-                    yield p2, v2, t2
 
 
     @classmethod

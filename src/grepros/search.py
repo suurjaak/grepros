@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    05.12.2021
+@modified    09.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -279,7 +279,7 @@ class Searcher(object):
             return msg  # Skip decorating if highlighting not required and message matches
 
         if self._brute_prechecks:
-            text  = "\n".join("%r" % (v, ) for _, v in rosapi.iter_message_fields(msg))
+            text  = "\n".join("%r" % (v, ) for _, v, _ in rosapi.iter_message_fields(msg))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.12.2021
+@modified    09.12.2021
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -195,15 +195,33 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, top=()):
-    """Yields message scalar attribute values as ((nested, path), value)."""
-    for k, t in get_message_fields(msg).items():
-        v = get_message_value(msg, k, t)
-        if is_ros_message(v):
-            for p, v2 in iter_message_fields(v, top + (k, )):
-                yield p, v2
-        else:
-            yield top + (k, ), v
+def iter_message_fields(msg, messages_only=False, top=()):
+    """
+    Yields ((nested, path), value, typename) from ROS message.
+
+    @param  messages_only  whether to yield only values that are ROS messages themselves
+                           or lists of ROS messages, else will yield scalar and list values
+    """
+    fieldmap = realapi.get_message_fields(msg)
+    if fieldmap is msg: return
+    if messages_only:
+        for k, t in fieldmap.items():
+            v = realapi.get_message_value(msg, k, t)
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         realapi.scalar(t) not in ROS_COMMON_TYPES
+            if realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, True, top=top + (k, )):
+                    yield p2, v2, t2
+            if realapi.is_ros_message(v, ignore_time=True) or is_sublist:
+                yield top + (k, ), v, t
+    else:
+        for k, t in fieldmap.items():
+            v = realapi.get_message_value(msg, k, t)
+            if realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, top + (k, )):
+                    yield p2, v2, t2
+            else:
+                yield top + (k, ), v, t
 
 
 def make_bag_time(stamp, bag):

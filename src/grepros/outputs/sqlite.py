@@ -317,7 +317,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         if typekey not in self._schema:
             table_name = self._types[typekey]["table_name"]
             cols = []
-            for path, value, subtype in self._iter_fields(msg):
+            for path, value, subtype in rosapi.iter_message_fields(msg):
                 suffix = "[]" if isinstance(value, (list, tuple)) else ""
                 cols += [(".".join(path), quote(rosapi.scalar(subtype) + suffix))]
             cols += self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
@@ -328,7 +328,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
             self._schema[typekey] = collections.OrderedDict(cols)
 
         nested_tables = self._types[typename].get("nested_tables") or {}
-        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
@@ -374,7 +374,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
                     _timestamp=rosapi.to_nsec(stamp),
                     _parent_type=parent_type, _parent_id=parent_id)
         cols, vals = [], []
-        for p, v, t in self._iter_fields(msg):
+        for p, v, t in rosapi.iter_message_fields(msg):
             if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: continue  # for p, v, t
                 else: v = [rosapi.message_to_dict(x) for x in v]
@@ -388,7 +388,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         myid = args["_id"] = self._db.execute(sql, args).lastrowid
 
         subids = {}  # {message field path: [ids]}
-        nesteds = self._iter_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for subpath, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
@@ -417,23 +417,3 @@ class SqliteSink(SinkBase, TextSinkMixin):
                               for x in self._topics.values() if x["md5"] != typehash), [])):
             result = "%s (%s)" % (result, typehash)
         return result
-
-
-    def _iter_fields(self, msg, messages_only=False, top=()):
-        """
-        Yields ((nested, path), value, typename) from ROS message.
-
-        @param  messages_only  whether to yield only values that are ROS messages themselves
-                               or lists of ROS messages, else will yield scalar and list values
-        """
-        fieldmap = rosapi.get_message_fields(msg)
-        for k, t in fieldmap.items() if fieldmap != msg else ():
-            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
-            is_true_msg, is_msg_or_time = (rosapi.is_ros_message(v, ignore_time=x) for x in (1, 0))
-            is_sublist = isinstance(v, (list, tuple)) and \
-                         rosapi.scalar(t) not in rosapi.ROS_COMMON_TYPES
-            if (is_true_msg or is_sublist) if messages_only else not is_msg_or_time:
-                yield path, v, t
-            if is_msg_or_time:
-                for p2, v2, t2 in self._iter_fields(v, messages_only, top=path):
-                    yield p2, v2, t2
