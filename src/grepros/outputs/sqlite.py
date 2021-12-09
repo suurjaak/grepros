@@ -225,7 +225,6 @@ class SqliteSink(SinkBase, TextSinkMixin):
                                  format_bytes(os.path.getsize(self._filename)))
 
 
-
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
@@ -241,6 +240,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         self._db.executescript(self.BASE_SCHEMA)
         self._load_schema()
+        self._nesting and self._ensure_columns(self.MESSAGE_TYPE_NESTCOLS)
 
 
     def _load_schema(self):
@@ -408,6 +408,18 @@ class SqliteSink(SinkBase, TextSinkMixin):
             sql += " WHERE _id = :_id"
             self._db.execute(sql, args)
         return myid
+
+
+    def _ensure_columns(self, cols):
+        """Adds specified columns to any type tables lacking them."""
+        for typekey, typecols in self._schema.items():
+            missing = [(c, t) for c, t in cols if c not in typecols]
+            if not missing: continue  # for typekey
+            table_name = self._types[typekey]["table_name"]
+            actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
+            sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
+            self._db.execute(sql)
+            typecols.update(missing)
 
 
     def _make_name(self, category, name, typehash):
