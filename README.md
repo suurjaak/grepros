@@ -281,7 +281,7 @@ Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
 
-A custom transaction size can be specified (default is 100; 0 is autocommit):
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
     --write-option commit-interval=NUM
 
@@ -786,7 +786,7 @@ Output control:
                         write options as key=value pairs, supported flags:
                           template=/my/path.tpl - custom template to use for HTML output
                           commit-interval=NUM - transaction size for Postgres output
-                                                (default 100, 0 is autocommit)
+                                                (default 1000, 0 is autocommit)
                           nesting=array|all - create tables for nested message types
                                               in Postgres/SQLite output,
                                               only for arrays if "array" else for any nested types

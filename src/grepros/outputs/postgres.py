@@ -170,8 +170,8 @@ class PostgresSink(SinkBase):
         @param   args                arguments object like argparse.Namespace
         @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
         @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
-                                     "nesting": "array" to recursively insert arrays
-                                                of nested types, or "all" for any nesting)}
+                                      "nesting": "array" to recursively insert arrays
+                                                 of nested types, or "all" for any nesting)}
         @param   args.META           whether to print metainfo
         @param   args.VERBOSE        whether to print debug information
         """

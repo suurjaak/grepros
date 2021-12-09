@@ -270,7 +270,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="write options as key=value pairs, supported flags:\n"
                   "  template=/my/path.tpl - custom template to use for HTML output\n"
                   "  commit-interval=NUM - transaction size for Postgres output\n"
-                  "                        (default 100, 0 is autocommit)\n"
+                  "                        (default 1000, 0 is autocommit)\n"
                   "  nesting=array|all - create tables for nested message types\n"
                   "                      in Postgres/SQLite output,\n"
                   '                      only for arrays if "array" else for any nested types\n'
