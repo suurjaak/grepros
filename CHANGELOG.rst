@@ -6,7 +6,9 @@ Changelog for package grepros
 -------------------
 * add --write-option subtypes=array|all, for Postgres/SQLite output
 * rename --write-option commit_interval to commit-interval
+* add --write-option commit-interval support to SQLite output
 * raise Postgres default commit-interval from 100 to 1000
+* optimize SQLite output speed
 
 0.3.1 (2021-12-06)
 -------------------

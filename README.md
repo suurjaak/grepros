@@ -374,6 +374,10 @@ if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
 
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
+
+    --write-option commit-interval=NUM
+
 #### Nested messages
 
 Nested message types can be recursively populated to separate tables, linked
@@ -785,7 +789,7 @@ Output control:
   --write-option [KEY=VALUE [KEY=VALUE ...]]
                         write options as key=value pairs, supported flags:
                           template=/my/path.tpl - custom template to use for HTML output
-                          commit-interval=NUM - transaction size for Postgres output
+                          commit-interval=NUM - transaction size for Postgres/SQLite output
                                                 (default 1000, 0 is autocommit)
                           nesting=array|all - create tables for nested message types
                                               in Postgres/SQLite output,

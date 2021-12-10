@@ -47,6 +47,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".sqlite", ".sqlite3")
 
+    ## Number of emits between commits; 0 is autocommit
+    COMMIT_INTERVAL = 1000
+
     ## SQL statements for populating database base schema
     BASE_SCHEMA = """
     CREATE TABLE IF NOT EXISTS messages (
@@ -88,6 +91,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
     );
 
     CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
+
+    PRAGMA journal_mode = WAL;
     """
 
     ## SQL statement for inserting messages
@@ -183,6 +188,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._topics      = {}  # {(topic, typehash): {topics-row}}
         self._types       = {}  # {(typename, typehash): {types-row}}
         self._checkeds    = {}  # {topickey/typehash: whether existence checks are done}
+        self._sql_queue   = {}  # {SQL: [(args), ]}
         self._id_counters = {}  # {table next: max ID}
         self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
@@ -212,6 +218,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
     def close(self):
         """Closes output file, if any."""
         if self._db:
+            for sql in list(self._sql_queue):
+                self._db.executemany(sql, self._sql_queue.pop(sql))
             self._db.close()
             self._db = None
         if not self._close_printed and self._counts:
@@ -226,14 +234,18 @@ class SqliteSink(SinkBase, TextSinkMixin):
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        for d in (self._topics, self._types, self._checkeds, self._schema): d.clear()
+        for d in (self._topics, self._types, self._checkeds, self._id_counters, self._schema):
+            d.clear()
         self._close_printed = False
 
         if self._args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
-        self._db = sqlite3.connect(self._filename, isolation_level=None, check_same_thread=False)
+        if "commit-interval" in self._args.DUMP_OPTIONS:
+            self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit-interval"])
+        self._db = sqlite3.connect(self._filename, check_same_thread=False)
+        if not self.COMMIT_INTERVAL: self._db.isolation_level = None
         self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         self._db.executescript(self.BASE_SCHEMA)
         self._load_schema()
@@ -350,9 +362,14 @@ class SqliteSink(SinkBase, TextSinkMixin):
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
                      yaml=self.format_message(msg), data=rosapi.get_message_data(msg))
-        self._db.execute(self.INSERT_MESSAGE, margs)
-        self._db.execute(self.UPDATE_TOPIC,   margs)
+        self._ensure_execute(self.INSERT_MESSAGE, margs)
+        self._ensure_execute(self.UPDATE_TOPIC,   margs)
         self._populate_type(topic, typename, msg, stamp)
+        if self.COMMIT_INTERVAL:
+            do_commit = sum(len(v) for v in self._sql_queue.values()) >= self.COMMIT_INTERVAL
+            for sql in list(self._sql_queue) if do_commit else ():
+                self._db.executemany(sql, self._sql_queue.pop(sql))
+            do_commit and self._db.commit()
 
 
     def _populate_type(self, topic, typename, msg, stamp,
@@ -383,7 +400,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
             cols += [c for c, _ in self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS]
         args = tuple(args + myargs)
         sql = sql % (quote(table_name), ", ".join(map(quote, cols)), ", ".join(["?"] * len(args)))
-        myid = self._db.execute(sql, args).lastrowid
+        self._ensure_execute(sql, args)
 
         subids = {}  # {message field path: [ids]}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -402,7 +419,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
             args = list(subids.values()) + [myid]
             sets = ["%s = ?" % quote(".".join(p)) for p in subids]
             sql  = "UPDATE %s SET %s WHERE _id = ?" % (quote(table_name), ", ".join(sets))
-            self._db.execute(sql, args)
+            self._ensure_execute(sql, args)
         return myid
 
 
@@ -416,6 +433,14 @@ class SqliteSink(SinkBase, TextSinkMixin):
             sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
             self._db.execute(sql)
             typecols.update(missing)
+
+
+    def _ensure_execute(self, sql, args):
+        """Executes SQL if in autocommit mode, else caches arguments for batch execution."""
+        if self.COMMIT_INTERVAL:
+            self._sql_queue.setdefault(sql, []).append(args)
+        else:
+            self._db.execute(sql, args)
 
 
     def _get_next_id(self, table):
