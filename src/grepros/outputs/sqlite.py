@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.12.2021
+@modified    10.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
@@ -180,9 +180,10 @@ class SqliteSink(SinkBase, TextSinkMixin):
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
-        self._topics   = {}  # {(topic, typehash): {topics-row}}
-        self._types    = {}  # {(typename, typehash): {types-row}}
-        self._checkeds = {}  # {topickey/typehash: whether existence checks are done}
+        self._topics      = {}  # {(topic, typehash): {topics-row}}
+        self._types       = {}  # {(typename, typehash): {types-row}}
+        self._checkeds    = {}  # {topickey/typehash: whether existence checks are done}
+        self._id_counters = {}  # {table next: max ID}
         self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
@@ -367,21 +368,22 @@ class SqliteSink(SinkBase, TextSinkMixin):
         topic_id   = self._topics[(topic, root_typehash)]["id"]
         table_name = self._types[(typename, typehash)]["table_name"]
 
-        args = dict(_topic=topic, _topic_id=topic_id, _dt=rosapi.to_datetime(stamp),
-                    _timestamp=rosapi.to_nsec(stamp))
-        if self._nesting: args.update(_parent_type=parent_type, _parent_id=parent_id)
-        cols, vals = list(args), [re.sub(r"\W", "_", c) for c in args]
+        sql, cols, args = "INSERT INTO %s (%s) VALUES (%s)", [], []
         for p, v, t in rosapi.iter_message_fields(msg):
             if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
-                if self._nesting: continue  # for p, v, t
+                if self._nesting: v = []
                 else: v = [rosapi.message_to_dict(x) for x in v]
-            cols += [".".join(p)]
-            vals += [re.sub(r"\W", "_", cols[-1])]
-            args[vals[-1]] = v
-        fargs = dict(type=quote(table_name), cols=", ".join(map(quote, cols)),
-                     vals=", ".join(":" + c for c in vals))
-        sql = "INSERT INTO %(type)s (%(cols)s) VALUES (%(vals)s)" % fargs
-        myid = args["_id"] = self._db.execute(sql, args).lastrowid
+            cols.append(".".join(p))
+            args.append(v)
+        myargs = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_nsec(stamp)]
+        cols += [c for c, _ in self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS[:-1]]
+        myid = self._get_next_id(table_name) if self._nesting else None
+        if self._nesting:
+            myargs += [myid, parent_type, parent_id]
+            cols += [c for c, _ in self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS]
+        args = tuple(args + myargs)
+        sql = sql % (quote(table_name), ", ".join(map(quote, cols)), ", ".join(["?"] * len(args)))
+        myid = self._db.execute(sql, args).lastrowid
 
         subids = {}  # {message field path: [ids]}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -397,11 +399,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
                 if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:
-            sql = "UPDATE %s SET " % quote(typename)
-            for i, (path, ids) in enumerate(subids.items()):
-                sql += "%s%s = :%s" % (", " if i else "", quote(".".join(path)), "_".join(path))
-                args["_".join(path)] = ids
-            sql += " WHERE _id = :_id"
+            args = list(subids.values()) + [myid]
+            sets = ["%s = ?" % quote(".".join(p)) for p in subids]
+            sql  = "UPDATE %s SET %s WHERE _id = ?" % (quote(table_name), ", ".join(sets))
             self._db.execute(sql, args)
         return myid
 
@@ -416,6 +416,15 @@ class SqliteSink(SinkBase, TextSinkMixin):
             sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
             self._db.execute(sql)
             typecols.update(missing)
+
+
+    def _get_next_id(self, table):
+        """Returns next ID value for table, using simple auto-increment."""
+        if not self._id_counter.get(table):
+            sql = "SELECT COALESCE(MAX(id), 0) AS id FROM %s" % quote(table)
+            self._id_counter[table] = self._cursor.execute(sql).fetchone()["id"]
+        self._id_counter[table] += 1
+        return self._id_counter[table]
 
 
     def _make_name(self, category, name, typehash):
