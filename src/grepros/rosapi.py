@@ -218,7 +218,7 @@ def iter_message_fields(msg, messages_only=False, top=()):
         for k, t in fieldmap.items():
             v = realapi.get_message_value(msg, k, t)
             if realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, top + (k, )):
+                for p2, v2, t2 in iter_message_fields(v, top=top + (k, )):
                     yield p2, v2, t2
             else:
                 yield top + (k, ), v, t

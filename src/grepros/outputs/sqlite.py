@@ -77,7 +77,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
       serialization_format TEXT    DEFAULT "cdr",
       offered_qos_profiles TEXT    DEFAULT "",
 
-      md5                  TEXT NOT NULL,
+      table_name           TEXT    NOT NULL,
+      view_name            TEXT,
+      md5                  TEXT    NOT NULL,
       count                INTEGER NOT NULL DEFAULT 0,
       dt_first             TIMESTAMP,
       dt_last              TIMESTAMP,
@@ -85,7 +87,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
       timestamp_last       INTEGER
     );
 
-    CREATE INDEX timestamp_idx ON messages (timestamp ASC);
+    CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
     """
 
     ## SQL statement for inserting messages
@@ -112,8 +114,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     ## SQL statement for updating view name in topic
     UPDATE_TOPIC_VIEW = """
-    UPDATE topics SET view_name = %(view_name)s
-    WHERE id = %(id)s
+    UPDATE topics SET view_name = :view_name
+    WHERE id = :id
     """
 
     ## SQL statement for inserting types
@@ -137,12 +139,6 @@ class SqliteSink(SinkBase, TextSinkMixin):
     DROP TABLE IF EXISTS %(name)s;
 
     CREATE TABLE %(name)s (%(cols)s);
-    """
-
-    ## SQL statement template for inserting message types
-    INSERT_MESSAGE_TYPE = """
-    INSERT INTO %(type)s (_topic, _dt, _timestamp, _parent_type, _parent_id%(cols)s)
-    VALUES (:_topic, :_dt, :_timestamp, :_parent_type, :_parent_id%(vals)s)
     """
 
     ## Default topic-related columns for pkg/MsgType tables
@@ -223,13 +219,13 @@ class SqliteSink(SinkBase, TextSinkMixin):
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
+        super(SqliteSink, self).close()
 
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        for attr in (getattr(self, k) for k in dir(self)):
-            isinstance(attr, dict) and attr.clear()
+        for d in (self._topics, self._types, self._checkeds, self._schema): d.clear()
         self._close_printed = False
 
         if self._args.VERBOSE:
@@ -311,8 +307,8 @@ class SqliteSink(SinkBase, TextSinkMixin):
                          md5=typehash, table_name=table_name)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Adding type %s.", typename)
-            myid = self._db.execute(self.INSERT_TYPE, targs).lastrowid
-            self._types[typename]["id"] = myid
+            targs["id"] = self._db.execute(self.INSERT_TYPE, targs).lastrowid
+            self._types[typekey] = targs
 
         if typekey not in self._schema:
             table_name = self._types[typekey]["table_name"]
@@ -324,10 +320,10 @@ class SqliteSink(SinkBase, TextSinkMixin):
             if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
             coldefs = ["%s %s" % (quote(n), t) for n, t in cols]
             sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
-            self._db.execute(sql)
+            self._db.executescript(sql)
             self._schema[typekey] = collections.OrderedDict(cols)
 
-        nested_tables = self._types[typename].get("nested_tables") or {}
+        nested_tables = self._types[typekey].get("nested_tables") or {}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
@@ -340,15 +336,16 @@ class SqliteSink(SinkBase, TextSinkMixin):
                 self._process_type(submsg)
         if nested_tables:
             self._db.execute("UPDATE types SET nested_tables = ? WHERE id = ?",
-                             [nested_tables, self._types[typename]["id"]])
-            self._types[typename]["nested_tables"] = nested_tables
+                             [nested_tables, self._types[typekey]["id"]])
+            self._types[typekey]["nested_tables"] = nested_tables
         self._checkeds[typehash] = True
 
 
     def _process_message(self, topic, msg, stamp):
         """Inserts message to messages-table, and to pkg/MsgType tables."""
         typename = rosapi.get_message_type(msg)
-        topic_id = self._topics[(topic, typename)]["id"]
+        typehash   = self.source.get_message_type_hash(msg)
+        topic_id = self._topics[(topic, typehash)]["id"]
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
                      yaml=self.format_message(msg), data=rosapi.get_message_data(msg))
@@ -371,9 +368,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
         table_name = self._types[(typename, typehash)]["table_name"]
 
         args = dict(_topic=topic, _topic_id=topic_id, _dt=rosapi.to_datetime(stamp),
-                    _timestamp=rosapi.to_nsec(stamp),
-                    _parent_type=parent_type, _parent_id=parent_id)
-        cols, vals = [], []
+                    _timestamp=rosapi.to_nsec(stamp))
+        if self._nesting: args.update(_parent_type=parent_type, _parent_id=parent_id)
+        cols, vals = list(args), [re.sub(r"\W", "_", c) for c in args]
         for p, v, t in rosapi.iter_message_fields(msg):
             if isinstance(v, (list, tuple)) and rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: continue  # for p, v, t
@@ -381,10 +378,9 @@ class SqliteSink(SinkBase, TextSinkMixin):
             cols += [".".join(p)]
             vals += [re.sub(r"\W", "_", cols[-1])]
             args[vals[-1]] = v
-        inter = ", " if cols else ""
-        fargs = dict(type=quote(table_name), cols=inter + ", ".join(map(quote, cols)),
-                     vals=inter + ", ".join(":" + c for c in vals))
-        sql = self.INSERT_MESSAGE_TYPE % fargs
+        fargs = dict(type=quote(table_name), cols=", ".join(map(quote, cols)),
+                     vals=", ".join(":" + c for c in vals))
+        sql = "INSERT INTO %(type)s (%(cols)s) VALUES (%(vals)s)" % fargs
         myid = args["_id"] = self._db.execute(sql, args).lastrowid
 
         subids = {}  # {message field path: [ids]}

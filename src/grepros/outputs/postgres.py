@@ -248,13 +248,14 @@ class PostgresSink(SinkBase):
             ConsolePrinter.debug("Wrote %s in %s to Postgres database %s.",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)), target)
+        super(PostgresSink, self).close()
 
 
     def _init_db(self):
         """Opens the database file, and populates schema if not already existing."""
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
-        for attr in (getattr(self, k) for k in dir(self)):
+        for attr in (getattr(self, k, None) for k in dir(self) if not k.startswith("__")):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
                 
