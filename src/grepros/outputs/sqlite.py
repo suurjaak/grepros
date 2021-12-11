@@ -147,7 +147,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     ## Default topic-related columns for pkg/MsgType tables
     MESSAGE_TYPE_TOPICCOLS = [("_topic",       "TEXT"),
-                              ("_topic_id",    "BIGINT"), ]
+                              ("_topic_id",    "INTEGER"), ]
     ## Default columns for pkg/MsgType tables
     MESSAGE_TYPE_BASECOLS  = [("_dt",          "TIMESTAMP"),
                               ("_timestamp",   "INTEGER"),
@@ -190,20 +190,31 @@ class SqliteSink(SinkBase, TextSinkMixin):
         self._sql_queue     = {}  # {SQL: [(args), ]}
         self._id_counters   = {}  # {table next: max ID}
         self._nested_counts = {}  # {typehash: count}
-        self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
+        self._schema = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
         atexit.register(self.close)
 
 
     def validate(self):
-        """Returns whether args.DUMP_OPTIONS["nesting"] has valid value, if any."""
+        """
+        Returns whether args.DUMP_OPTIONS has valid values, if any.
+
+        Checks parameters "commit-interval" and "nesting".
+        """
+        config_ok = True
+        if "commit-interval" in self._args.DUMP_OPTIONS:
+            try: config_ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
+            except Exception: config_ok = False
+            if not config_ok:
+                ConsolePrinter.error("Invalid commit interval for SQLite: %r.",
+                                     self._args.DUMP_OPTIONS["commit-interval"])
         if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting-option for SQLite: %r. "
                                  "Choose one of {array,all}.",
                                  self._args.DUMP_OPTIONS["nesting"])
-            return False
-        return True
+            config_ok = False
+        return config_ok
 
 
     def emit(self, topic, index, stamp, msg, match):
@@ -276,7 +287,12 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
 
     def _process_topic(self, topic, msg):
-        """Inserts topic and message rows and tables and views if not already existing."""
+        """
+        Inserts topics-row and creates view `/topic/name` if not already existing.
+
+        Also creates types-row and pkg/MsgType table for this message if not existing.
+        If nesting enabled, creates types recursively.
+        """
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         topickey = (topic, typehash)
