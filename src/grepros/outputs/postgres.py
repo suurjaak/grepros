@@ -301,21 +301,6 @@ class PostgresSink(SinkBase):
             self._schema[typekey][row["column_name"]] = row["data_type"]
 
 
-    def _ensure_columns(self, cols):
-        """Adds specified columns to any type tables lacking them."""
-        altered = False
-        for typekey, typecols in self._schema.items():
-            missing = [(c, t) for c, t in cols if c not in typecols]
-            if not missing: continue  # for typekey
-            table_name = self._types[typekey]["table_name"]
-            actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
-            sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
-            self._cursor.execute(sql)
-            typecols.update(missing)
-            altered = True
-        altered and self._db.commit()
-
-
     def _process_topic(self, topic, msg):
         """
         Inserts topics-row and creates view `/topic/name` if not already existing.
@@ -484,6 +469,21 @@ class PostgresSink(SinkBase):
             sql  = "UPDATE %s SET %s WHERE _id = %%s" % (quote(table_name), ", ".join(sets))
             self._ensure_execute(sql, args)
         return myid
+
+
+    def _ensure_columns(self, cols):
+        """Adds specified columns to any type tables lacking them."""
+        altered = False
+        for typekey, typecols in self._schema.items():
+            missing = [(c, t) for c, t in cols if c not in typecols]
+            if not missing: continue  # for typekey
+            table_name = self._types[typekey]["table_name"]
+            actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
+            sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
+            self._cursor.execute(sql)
+            typecols.update(missing)
+            altered = True
+        altered and self._db.commit()
 
 
     def _ensure_execute(self, sql, args):
