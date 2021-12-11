@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    09.12.2021
+@modified    11.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -187,12 +187,13 @@ class PostgresSink(SinkBase):
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
-        self._topics    = {}  # {(topic, typehash): {topics-row}}
-        self._types     = {}  # {(typename, typehash): {types-row}}
-        self._metas     = {}  # {(type, parent): {name: pg_name}}
-        self._checkeds  = {}  # {topickey/typehash: whether existence checks are done}
-        self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
-        self._sql_queue = {}  # {SQL: [(args), ]}
+        self._topics        = {}  # {(topic, typehash): {topics-row}}
+        self._types         = {}  # {(typename, typehash): {types-row}}
+        self._metas         = {}  # {(type, parent): {name: pg_name}}
+        self._checkeds      = {}  # {topickey/typehash: whether existence checks are done}
+        self._sql_cache     = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
+        self._sql_queue     = {}  # {SQL: [(args), ]}
+        self._nested_counts = {}  # {typehash: count}
         self._id_queue  = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
         self._schema    = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
@@ -248,6 +249,10 @@ class PostgresSink(SinkBase):
             ConsolePrinter.debug("Wrote %s in %s to Postgres database %s.",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)), target)
+            if self._nested_counts:
+                ConsolePrinter.debug("Wrote %s in %s.",
+                                     plural("message", sum(self._nested_counts.values())),
+                                     plural("nested message type", self._nested_counts))
         super(PostgresSink, self).close()
 
 
@@ -266,6 +271,7 @@ class PostgresSink(SinkBase):
         self._db.autocommit = not self.COMMIT_INTERVAL
         cursor = self._cursor = self._db.cursor()
         cursor.execute(self.BASE_SCHEMA)
+        self._db.commit()
         self._load_schema()
         self._nesting and self._ensure_columns(self.MESSAGE_TYPE_NESTCOLS)
 
@@ -300,14 +306,14 @@ class PostgresSink(SinkBase):
         altered = False
         for typekey, typecols in self._schema.items():
             missing = [(c, t) for c, t in cols if c not in typecols]
-            if missing:
-                table_name = self._types[typekey]["table_name"]
-                actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
-                sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
-                self._cursor.execute(sql)
-                typecols.update(missing)
-                altered = True
-        if altered and self.COMMIT_INTERVAL: self._db.commit()
+            if not missing: continue  # for typekey
+            table_name = self._types[typekey]["table_name"]
+            actions = ", ".join("ADD COLUMN %s %s" % ct for ct in missing)
+            sql = "ALTER TABLE %s %s" % (quote(table_name), actions)
+            self._cursor.execute(sql)
+            typecols.update(missing)
+            altered = True
+        altered and self._db.commit()
 
 
     def _process_topic(self, topic, msg):
@@ -457,6 +463,7 @@ class PostgresSink(SinkBase):
             sql = "INSERT INTO %s VALUES (%s)" % (quote(table_name), ", ".join(["%s"] * len(args)))
             self._sql_cache[table_name] = sql
         self._ensure_execute(sql, args)
+        if parent_type: self._nested_counts[typehash] = self._nested_counts.get(typehash, 0) + 1
 
         subids = {}  # {message field path: [ids]}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    10.12.2021
+@modified    11.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
@@ -16,7 +16,6 @@ import atexit
 import collections
 import json
 import os
-import re
 import sqlite3
 
 from .. common import ConsolePrinter, format_bytes, plural, quote
@@ -185,11 +184,12 @@ class SqliteSink(SinkBase, TextSinkMixin):
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
-        self._topics      = {}  # {(topic, typehash): {topics-row}}
-        self._types       = {}  # {(typename, typehash): {types-row}}
-        self._checkeds    = {}  # {topickey/typehash: whether existence checks are done}
-        self._sql_queue   = {}  # {SQL: [(args), ]}
-        self._id_counters = {}  # {table next: max ID}
+        self._topics        = {}  # {(topic, typehash): {topics-row}}
+        self._types         = {}  # {(typename, typehash): {types-row}}
+        self._checkeds      = {}  # {topickey/typehash: whether existence checks are done}
+        self._sql_queue     = {}  # {SQL: [(args), ]}
+        self._id_counters   = {}  # {table next: max ID}
+        self._nested_counts = {}  # {typehash: count}
         self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
@@ -228,14 +228,18 @@ class SqliteSink(SinkBase, TextSinkMixin):
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
+            if self._nested_counts:
+                ConsolePrinter.debug("Wrote %s in %s.",
+                                     plural("message", sum(self._nested_counts.values())),
+                                     plural("nested message type", self._nested_counts))
         super(SqliteSink, self).close()
 
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        for d in (self._topics, self._types, self._checkeds, self._id_counters, self._schema):
-            d.clear()
+        for attr in (getattr(self, k, None) for k in dir(self) if not k.startswith("__")):
+            isinstance(attr, dict) and attr.clear()
         self._close_printed = False
 
         if self._args.VERBOSE:
@@ -401,6 +405,7 @@ class SqliteSink(SinkBase, TextSinkMixin):
         args = tuple(args + myargs)
         sql = sql % (quote(table_name), ", ".join(map(quote, cols)), ", ".join(["?"] * len(args)))
         self._ensure_execute(sql, args)
+        if parent_type: self._nested_counts[typehash] = self._nested_counts.get(typehash, 0) + 1
 
         subids = {}  # {message field path: [ids]}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -445,11 +450,11 @@ class SqliteSink(SinkBase, TextSinkMixin):
 
     def _get_next_id(self, table):
         """Returns next ID value for table, using simple auto-increment."""
-        if not self._id_counter.get(table):
+        if not self._id_counters.get(table):
             sql = "SELECT COALESCE(MAX(id), 0) AS id FROM %s" % quote(table)
-            self._id_counter[table] = self._cursor.execute(sql).fetchone()["id"]
-        self._id_counter[table] += 1
-        return self._id_counter[table]
+            self._id_counters[table] = self._db.execute(sql).fetchone()["id"]
+        self._id_counters[table] += 1
+        return self._id_counters[table]
 
 
     def _make_name(self, category, name, typehash):
