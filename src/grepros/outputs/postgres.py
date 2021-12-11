@@ -158,7 +158,8 @@ class PostgresSink(SinkBase):
     MESSAGE_TYPE_TOPICCOLS = [("_topic",       "TEXT"),
                               ("_topic_id",    "BIGINT"), ]
     ## Default columns for pkg/MsgType tables
-    MESSAGE_TYPE_BASECOLS  = [("_timestamp",   "NUMERIC"),
+    MESSAGE_TYPE_BASECOLS  = [("_dt",          "TIMESTAMP"),
+                              ("_timestamp",   "NUMERIC"),
                               ("_id",          "BIGSERIAL PRIMARY KEY"), ]
     ## Additional default columns for pkg/MsgType tables with nesting output
     MESSAGE_TYPE_NESTCOLS  = [("_parent_type", "TEXT"),
@@ -439,7 +440,7 @@ class PostgresSink(SinkBase):
             elif t not in rosapi.ROS_BUILTIN_TYPES:
                 v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
             args.append(v)
-        myargs = [topic, topic_id, rosapi.to_decimal(stamp)]
+        myargs = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_decimal(stamp)]
         myid = self._get_next_id(table_name) if self._nesting else None
         if self._nesting: myargs += [myid, parent_type, parent_id]
         args = tuple(args + myargs)
