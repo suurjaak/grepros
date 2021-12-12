@@ -189,7 +189,8 @@ class DataSinkBase(SinkBase):
 
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
-        for attr in (getattr(self, k, None) for k in dir(self) if not k.startswith("__")):
+        baseattrs = dir(SinkBase(None))
+        for attr in (getattr(self, k, None) for k in dir(self) if k not in baseattrs):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
 

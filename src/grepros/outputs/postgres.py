@@ -164,7 +164,7 @@ class PostgresSink(DataSinkBase):
         @param   args.VERBOSE        whether to print debug information
         """
         super(PostgresSink, self).__init__(args)
-        self._id_queue  = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
+        self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
 
 
     def validate(self):

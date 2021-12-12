@@ -159,8 +159,8 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
         super(SqliteSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
-        self._filename      = args.DUMP_TARGET
-        self._id_counters   = {}  # {table next: max ID}
+        self._filename    = args.DUMP_TARGET
+        self._id_counters = {}  # {table next: max ID}
 
         self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
 
