@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -40,7 +40,7 @@ class SinkBase(object):
         """
         self._args = copy.deepcopy(args)
         self._batch_meta = {}  # {source batch: "source metadata"}
-        self._counts     = {}  # {topic: count}
+        self._counts     = {}  # {(topic, typehash): count}
 
         ## inputs.SourceBase instance bound to this sink
         self.source = None
@@ -61,7 +61,8 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        self._counts[topic] = self._counts.get(topic, 0) + 1
+        topickey = (topic, self.source.get_message_type_hash(msg))
+        self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
         """Attaches source to sink."""
@@ -384,7 +385,8 @@ class BagSink(SinkBase):
                                      (" (%s)" % format_bytes(sz)) if sz else "")
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
-        if topic not in self._counts and self._args.VERBOSE:
+        topickey = (topic, self.source.get_message_type_hash(msg))
+        if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
         self._bag.write(topic, msg, stamp)
@@ -432,8 +434,8 @@ class TopicSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        key, cls = (topic, type(msg)), type(msg)
-        if key not in self._pubs:
+        topickey, cls = (topic, self.source.get_message_type_hash(msg)), type(msg)
+        if topickey not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
             if self._args.VERBOSE:
@@ -443,11 +445,10 @@ class TopicSink(SinkBase):
             if self._args.PUBLISH_FIXNAME:
                 pub = next((v for (_, c), v in self._pubs.items() if c == cls), None)
             pub = pub or rosapi.create_publisher(topic2, cls, queue_size=self._args.QUEUE_SIZE_OUT)
-            self._pubs[key] = pub
-            self._counts.setdefault(topic, 0)
+            self._pubs[topickey] = pub
 
-        self._counts[topic] += 1
-        self._pubs[key].publish(msg)
+        self._pubs[topickey].publish(msg)
+        super(TopicSink, self).emit(topic, index, stamp, msg, match)
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
@@ -465,8 +466,8 @@ class TopicSink(SinkBase):
             ConsolePrinter.debug("Published %s to %s.",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(set(self._pubs.values()))))
-        for t in list(self._pubs):
-            pub = self._pubs.pop(t)
+        for k in list(self._pubs):
+            pub = self._pubs.pop(k)
             # ROS1 prints errors when closing a publisher with subscribers
             not pub.get_num_connections() and pub.unregister()
         super(TopicSink, self).close()
