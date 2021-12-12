@@ -8,13 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    04.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import array
 import collections
-import hashlib
 import os
 import re
 import sqlite3
@@ -415,22 +414,20 @@ def get_message_definition(msg_or_type):
     typename = canonical(typename)
     if typename not in DEFINITIONS:
         try:
-            texts, files = collections.OrderedDict(), collections.OrderedDict()
-            files[typename] = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
-            while files:
-                myname, mypath = next(iter(files)), files.pop(next(iter(files)))
-                with open(mypath) as f:
-                    texts[myname] = f.read()
-                for line in texts[myname].splitlines():
-                    if not line or not line[0].isalpha():
-                        continue  # for line
-                    linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
-                    if linetype in rosapi.ROS_BUILTIN_TYPES:
-                        continue  # for line
-                    linetype = linetype if "/" in linetype else \
-                               "%s/%s" % (myname.rsplit("/", 1)[0], linetype)
-                    linedef = None if linetype in texts else get_message_definition(linetype)
-                    if linedef: texts[linetype] = linedef
+            texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
+            typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
+            with open(typepath) as f:
+                texts[typename] = f.read()
+            for line in texts[typename].splitlines():
+                if not line or not line[0].isalpha():
+                    continue  # for line
+                linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
+                if linetype in rosapi.ROS_BUILTIN_TYPES:
+                    continue  # for line
+                linetype = linetype if "/" in linetype else "std_msgs/Header" \
+                           if "Header" == linetype else "%s/%s" % (pkg, linetype)
+                linedef = None if linetype in texts else get_message_definition(linetype)
+                if linedef: texts[linetype] = linedef
             basedef = texts.pop(next(iter(texts)))
             subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
             DEFINITIONS[typename] = basedef + "\n".join(subdefs)
@@ -445,34 +442,8 @@ def get_message_type_hash(msg_or_type):
     typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
     typename = canonical(typename)
     if typename not in TYPEHASHES:
-        FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
-        STR_CONST_RGX = re.compile("^w?string\s+([^\s=#]+)\s*=")
-        msgdef, lines, pkg = get_message_definition(typename), [], typename.rsplit("/", 1)[0]
-
-        # First pass: write constants
-        for line in msgdef.splitlines():
-            if set(line) == set("="):  # Subtype separator
-                break  # for line
-            if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
-            match = FIELD_RGX.match(line)
-            if match and match.group(3):
-                lines.append("%s %s=%s" % (match.group(1), match.group(2), match.group(4).strip()))
-        # Second pass: write fields and subtype hashes
-        for line in msgdef.splitlines():
-            if set(line) == set("="):  # Subtype separator
-                break  # for line
-            if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
-            match = FIELD_RGX.match(line)
-            if match and not match.group(3):  # Not constant
-                scalartype, namestr = scalar(match.group(1)), match.group(2)
-                if scalartype in rosapi.ROS_COMMON_TYPES:
-                    typestr = match.group(1)
-                    if match.group(5): namestr = (namestr + " " + match.group(6)).strip()
-                else:
-                    subtype = scalartype if "/" in scalartype else "%s/%s" % (pkg, scalartype)
-                    typestr = get_message_type_hash(subtype)
-                lines.append("%s %s" % (typestr, namestr))
-        TYPEHASHES[typename] = hashlib.md5("\n".join(lines).encode()).hexdigest()
+        msgdef = get_message_definition(typename)
+        TYPEHASHES[typename] = rosapi.calculate_definition_hash(typename, msgdef)
     return TYPEHASHES[typename]
 
 
@@ -534,7 +505,7 @@ def is_ros_message(val, ignore_time=False):
     return is_message
 
 
-def is_ros_time(val, ignore_time=False):
+def is_ros_time(val):
     """Returns whether value is a ROS2 time/duration."""
     return isinstance(val, ROS_TIME_CLASSES)
 

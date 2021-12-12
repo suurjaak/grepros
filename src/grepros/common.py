@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -270,13 +270,14 @@ class TextWrapper(object):
         self.max_lines         = max_lines
         self.placeholder       = placeholder
 
-        self.customs    = {s: l for s, l in (custom_widths or {}).items() if s}
-        self.custom_rgx = re.compile("(%s)" % "|".join(re.escape(s) for s in self.customs))
-        self.disabled   = not self.width
-        self.minwidth   = 1 + self.strlen(self.subsequent_indent) \
-                            + self.strlen(self.placeholder if self.max_lines else "")
-        self.width      = max(self.width, self.minwidth)
-        self.realwidth  = self.width
+        self.customs     = {s: l for s, l in (custom_widths or {}).items() if s}
+        self.custom_lens = [(s, len(s) - l) for s, l in self.customs.items()]
+        self.custom_rgx  = re.compile("(%s)" % "|".join(re.escape(s) for s in self.customs))
+        self.disabled    = not self.width
+        self.minwidth    = 1 + self.strlen(self.subsequent_indent) \
+                             + self.strlen(self.placeholder if self.max_lines else "")
+        self.width       = max(self.width, self.minwidth)
+        self.realwidth   = self.width
 
 
     def wrap(self, text):
@@ -307,7 +308,7 @@ class TextWrapper(object):
 
     def strlen(self, v):
         """Returns length of string, using custom substring widths."""
-        return len(v) - sum(v.count(s) * (len(s) - l) for s, l in self.customs.items())
+        return len(v) - sum(v.count(s) * ld for s, ld in self.custom_lens)
 
 
     def strip(self, v):
@@ -320,11 +321,11 @@ class TextWrapper(object):
         lines = []
         chunks.reverse()  # Reverse for efficient popping
 
-        placeholder_len = self.strlen(self.placeholder)
+        placeholder_len, indent_len = self.strlen(self.placeholder), self.strlen(indent)
         while chunks:
             cur_line, cur_len = [], 0  # [chunk, ], sum(map(len, cur_line))
             indent = self.subsequent_indent if lines else ""
-            width = self.width - self.strlen(indent)
+            width = self.width - indent_len
 
             if self.drop_whitespace and lines and not self.strip(chunks[-1]):
                 del chunks[-1]  # Drop initial whitespace on subsequent lines
@@ -466,6 +467,13 @@ class Plugins(object):
 def drop_zeros(v, replace=""):
     """Drops or replaces trailing zeros and empty decimal separator, if any."""
     return re.sub(r"\.?0+$", lambda x: len(x.group()) * replace, str(v))
+
+
+def ellipsize(text, limit, ellipsis=".."):
+    """Returns text ellipsized if beyond limit."""
+    if limit <= 0 or len(text) < limit:
+        return text
+    return text[:max(0, limit - len(ellipsis))] + ellipsis
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
