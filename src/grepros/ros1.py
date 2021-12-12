@@ -26,7 +26,7 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, MatchMarkers
+from . common import ConsolePrinter, MatchMarkers, memoize
 from . rosapi import ROS_BUILTIN_TYPES, calculate_definition_hash, parse_definition_subtypes
 
 
@@ -376,6 +376,7 @@ def format_message_value(msg, name, value):
     return ("%%%ds" % (LENS[name] + EXTRA)) % v  # Default %10s/%9s for secs/nsecs
 
 
+@memoize
 def get_message_class(typename):
     """Returns ROS1 message class."""
     return roslib.message.get_message_class(typename)
@@ -463,6 +464,7 @@ def make_time(secs=0, nsecs=0):
     return rospy.Time(secs=secs, nsecs=nsecs)
 
 
+@memoize
 def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".

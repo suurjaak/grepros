@@ -28,7 +28,7 @@ import rclpy.serialization
 import rclpy.time
 import rosidl_runtime_py.utilities
 
-from . common import ConsolePrinter, MatchMarkers
+from . common import ConsolePrinter, MatchMarkers, memoize
 from . import rosapi
 
 
@@ -325,6 +325,7 @@ def validate(live=False):
     return not missing
 
 
+@memoize
 def canonical(typename):
     """
     Returns "pkg/Type" for "pkg/msg/Type", standardizes various ROS2 formats.
@@ -398,6 +399,7 @@ def format_message_value(msg, name, value):
     return ("%%%ds" % (LENS[name] + EXTRA)) % v  # Default %10s/%9s for secs/nanosecs
 
 
+@memoize
 def get_message_class(typename):
     """Returns ROS2 message class."""
     return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
@@ -527,6 +529,7 @@ def make_full_typename(typename):
     return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
 
 
+@memoize
 def scalar(typename):
     """
     Returns scalar type from ROS2 message data type

@@ -321,11 +321,11 @@ class TextWrapper(object):
         lines = []
         chunks.reverse()  # Reverse for efficient popping
 
-        placeholder_len, indent_len = self.strlen(self.placeholder), self.strlen(indent)
+        placeholder_len = self.strlen(self.placeholder)
         while chunks:
             cur_line, cur_len = [], 0  # [chunk, ], sum(map(len, cur_line))
             indent = self.subsequent_indent if lines else ""
-            width = self.width - indent_len
+            width = self.width - self.strlen(indent)
 
             if self.drop_whitespace and lines and not self.strip(chunks[-1]):
                 del chunks[-1]  # Drop initial whitespace on subsequent lines
@@ -603,6 +603,19 @@ def format_bytes(size, precision=2, inter=" "):
 def format_stamp(stamp):
     """Returns ISO datetime from UNIX timestamp."""
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
+
+
+def memoize(func):
+    """Returns a results-caching wrapper for the function."""
+    cache = {}
+    def inner(*args, **kwargs):
+        key = args + sum(kwargs.items(), ())
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
+    for attr in ("__module__", "__name__", "__doc__"):
+        setattr(inner, attr, getattr(func, attr))
+    return inner
 
 
 def merge_spans(spans):

@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields
+from . common import ConsolePrinter, filter_fields, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -93,6 +93,7 @@ def validate(live=False):
     return success
 
 
+@memoize
 def calculate_definition_hash(typename, msgdef, extradefs=()):
     """
     Returns MD5 hash for message type definition.
@@ -348,6 +349,7 @@ def message_to_dict(msg):
     return result
 
 
+@memoize
 def parse_definition_subtypes(typedef):
     """
     Returns subtype names and type definitions from a full message definition.
