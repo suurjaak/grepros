@@ -9,9 +9,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
+import collections
 import datetime
 import decimal
 import hashlib
@@ -19,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields
+from . common import ConsolePrinter, filter_fields, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -92,12 +93,54 @@ def validate(live=False):
     return success
 
 
+@memoize
+def calculate_definition_hash(typename, msgdef, extradefs=()):
+    """
+    Returns MD5 hash for message type definition.
+
+    @param   extradefs  additional subtype definitions as ((typename, msgdef), )
+    """
+    # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
+    FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    STR_CONST_RGX = re.compile("^w?string\s+([^\s=#]+)\s*=")
+    lines, pkg = [], typename.rsplit("/", 1)[0]
+    subtypedefs = dict(extradefs, **parse_definition_subtypes(msgdef))
+    extradefs = tuple(subtypedefs.items())
+
+    # First pass: write constants
+    for line in msgdef.splitlines():
+        if set(line) == set("="):  # Subtype separator
+            continue  # for line
+        # String constants cannot have line comments
+        if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+        match = FIELD_RGX.match(line)
+        if match and match.group(3):
+            lines.append("%s %s=%s" % (match.group(1), match.group(2), match.group(4).strip()))
+    # Second pass: write fields and subtype hashes
+    for line in msgdef.splitlines():
+        if set(line) == set("="):  # Subtype separator
+            break  # for line
+        if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+        match = FIELD_RGX.match(line)
+        if match and not match.group(3):  # Not constant
+            scalartype, namestr = scalar(match.group(1)), match.group(2)
+            if scalartype in ROS_COMMON_TYPES:
+                typestr = match.group(1)
+                if match.group(5): namestr = (namestr + " " + match.group(6)).strip()
+            else:
+                subtype = scalartype if "/" in scalartype else "std_msgs/Header" \
+                          if "Header" == scalartype else "%s/%s" % (pkg, scalartype)
+                typestr = calculate_definition_hash(subtype, subtypedefs[subtype], extradefs)
+            lines.append("%s %s" % (typestr, namestr))
+    return hashlib.md5("\n".join(lines).encode()).hexdigest()
+
+
 def create_bag_reader(filename):
     """
     Returns an object for reading ROS bags.
 
     Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
-    if using embag in ROS1, or using ROS2.
+    if using embag in ROS1, or if using ROS2.
     Supplemented with get_message_class(), get_message_definition() and get_message_type_hash().
     """
     return realapi.create_bag_reader(filename)
@@ -105,7 +148,7 @@ def create_bag_reader(filename):
 
 def create_bag_writer(filename):
     """
-    Returns an object for reading ROS bags.
+    Returns an object for writing ROS bags.
 
     Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
     """
@@ -195,15 +238,33 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, top=()):
-    """Yields message scalar attribute values as ((nested, path), value)."""
-    for k, t in get_message_fields(msg).items():
-        v = get_message_value(msg, k, t)
-        if is_ros_message(v):
-            for p, v2 in iter_message_fields(v, top + (k, )):
-                yield p, v2
-        else:
-            yield top + (k, ), v
+def iter_message_fields(msg, messages_only=False, top=()):
+    """
+    Yields ((nested, path), value, typename) from ROS message.
+
+    @param  messages_only  whether to yield only values that are ROS messages themselves
+                           or lists of ROS messages, else will yield scalar and list values
+    """
+    fieldmap = realapi.get_message_fields(msg)
+    if fieldmap is msg: return
+    if messages_only:
+        for k, t in fieldmap.items():
+            v = realapi.get_message_value(msg, k, t)
+            is_sublist = isinstance(v, (list, tuple)) and \
+                         realapi.scalar(t) not in ROS_COMMON_TYPES
+            if realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, True, top=top + (k, )):
+                    yield p2, v2, t2
+            if realapi.is_ros_message(v, ignore_time=True) or is_sublist:
+                yield top + (k, ), v, t
+    else:
+        for k, t in fieldmap.items():
+            v = realapi.get_message_value(msg, k, t)
+            if realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, top=top + (k, )):
+                    yield p2, v2, t2
+            else:
+                yield top + (k, ), v, t
 
 
 def make_bag_time(stamp, bag):
@@ -288,13 +349,14 @@ def message_to_dict(msg):
     return result
 
 
+@memoize
 def parse_definition_subtypes(typedef):
     """
     Returns subtype names and type definitions from a full message definition.
 
-    @return  {"pkg/MsgType": "definition for MsgType"}
+    @return  {"pkg/MsgType": "full definition for MsgType including subtypes"}
     """
-    result = {}  # {subtypename: subtypedef}
+    result = collections.OrderedDict()  # {subtypename: subtypedef}
     curtype, curlines = "", []
     rgx = re.compile(r"^((=+)|(MSG: (.+)))$")  # Group 2: separator, 4: new type
     for line in typedef.splitlines():
@@ -308,6 +370,21 @@ def parse_definition_subtypes(typedef):
             curlines.append(line)
     if curtype:
         result[curtype] = "\n".join(curlines)
+
+    # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
+    FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    for subtype, subdef in list(result.items()):
+        pkg = subtype.rsplit("/", 1)[0]
+        for line in subdef.splitlines():
+            m = FIELD_RGX.match(line)
+            if m and m.group(1):
+                scalartype, fulltype = realapi.scalar(m.group(1)), None
+                if scalartype not in ROS_COMMON_TYPES:
+                    fulltype = scalartype if "/" in scalartype else "std_msgs/Header" \
+                               if "Header" == scalartype else "%s/%s" % (pkg, scalartype)
+                if fulltype in result:
+                    addendum = "%s\nMSG: %s\n%s" % ("=" * 80, fulltype, result[fulltype])
+                    result[subtype] = result[subtype].rstrip() + ("\n\n%s\n" % addendum)
     return result
 
 

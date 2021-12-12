@@ -261,29 +261,100 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
 
 Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
 and views `/full/topic/name` for each topic. 
-Plus table `topics` with a list of topics, message types and definitions,
-and table `meta` with table/view/column name changes from shortenings and conflicts, if any
+Plus table `topics` with a list of topics, `types` with message types and definitions,
+and `meta` with table/view/column name changes from shortenings and conflicts, if any
 (Postgres name length is limited to 63 characters).
 
 ROS primitive types are inserted as Postgres data types (time/duration types as NUMERIC),
 uint8[] arrays as BYTEA, other primitive arrays as ARRAY, and arrays of subtypes as JSONB.
 
 If the database already exists, it is appended to. If there are conflicting names
-(same package and name but different definition), table/view name becomes "name (md5hash)".
+(same package and name but different message type definition),
+table/view name becomes "name (MD5 hash of type definition)".
 
 Specifying `--write-format postgres` is not required if the parameter uses the
 Postgres URI scheme `postgresql://`.
 
-Parameter can also use the Postgres keyword=value format,
+Parameter `--write` can also use the Postgres keyword=value format,
 e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
 Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
 
-A custom transaction size can be specified (default is 100; 0 is autocommit):
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
-    --write-option commit_interval=NUM
+    --write-option commit-interval=NUM
 
+#### Nested messages
+
+Nested message types can be recursively populated to separate tables, linked
+to parent messages via foreign keys.
+
+To recursively populate nested array fields:
+
+    --write-option nesting=array
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
+
+```sql
+CREATE TABLE "diagnostic_msgs/DiagnosticArray" (
+  "header.seq"          BIGINT,
+  "header.stamp.secs"   INTEGER,
+  "header.stamp.nsecs"  INTEGER,
+  "header.frame_id"     TEXT,
+  status                JSONB,       -- [_id from "diagnostic_msgs/DiagnosticStatus", ]
+  _topic                TEXT,
+  _timestamp            NUMERIC,
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,
+  _parent_id            BIGINT
+);
+
+CREATE TABLE "diagnostic_msgs/DiagnosticStatus" (
+  level                 SMALLINT,
+  name                  TEXT,
+  message               TEXT,
+  hardware_id           TEXT,
+  "values"              JSONB,       -- [_id from "diagnostic_msgs/KeyValue", ]
+  _topic                TEXT,        -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            NUMERIC,     -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,        -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            BIGINT       -- _id from "diagnostic_msgs/DiagnosticArray"
+);
+
+CREATE TABLE "diagnostic_msgs/KeyValue" (
+  "key"                 TEXT,
+  value                 TEXT,
+  _topic                TEXT,        -- _topic from "diagnostic_msgs/DiagnosticStatus"
+  _timestamp            NUMERIC,     -- _timestamp from "diagnostic_msgs/DiagnosticStatus"
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,        -- "diagnostic_msgs/DiagnosticStatus"
+  _parent_id            BIGINT       -- _id from "diagnostic_msgs/DiagnosticStatus"
+);
+```
+
+Without nesting, array field values are inserted as JSON with full subtype content.
+
+To recursively populate all nested message types:
+
+    --write-option nesting=all
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
+
+```sql
+CREATE TABLE "std_msgs/Header" (
+  seq                   BIGINT,
+  "stamp.secs"          INTEGER,
+  "stamp.nsecs"         INTEGER,
+  frame_id              TEXT,
+  _topic                TEXT,        -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            NUMERIC,     -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,       -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            BIGINT      -- _id from "diagnostic_msgs/DiagnosticArray"
+);
+```
 
 ### sqlite
 
@@ -296,12 +367,89 @@ If the database already exists, it is appended to.
 Output is compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts. Note that a database
 dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
-due to breaking changes in ROS2 standard built-in and message types.
+due to breaking changes in ROS2 standard built-in types and message types.
 
 Specifying `--write-format sqlite` is not required
 if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
+
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
+
+    --write-option commit-interval=NUM
+
+#### Nested messages
+
+Nested message types can be recursively populated to separate tables, linked
+to parent messages via foreign keys.
+
+To recursively populate nested array fields:
+
+    --write-option nesting=array
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
+
+```sql
+CREATE TABLE "diagnostic_msgs/DiagnosticArray" (
+  "header.seq"          INTEGER,
+  "header.stamp.secs"   INTEGER,
+  "header.stamp.nsecs"  INTEGER,
+  "header.frame_id"     TEXT,
+  -- [_id from "diagnostic_msgs/DiagnosticStatus", ]
+  status                "DIAGNOSTIC_MSGS/DIAGNOSTICSTATUS[]",
+  _topic                TEXT,
+  _timestamp            INTEGER,
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,
+  _parent_id            INTEGER
+);
+
+CREATE TABLE "diagnostic_msgs/DiagnosticStatus" (
+  level                 SMALLINT,
+  name                  TEXT,
+  message               TEXT,
+  hardware_id           TEXT,
+  -- [_id from "diagnostic_msgs/KeyValue", ]
+  "values"              "DIAGNOSTIC_MSGS/KEYVALUE[]",
+  _topic                TEXT,        -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            INTEGER,     -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,        -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            INTEGER      -- _id from "diagnostic_msgs/DiagnosticArray"
+);
+
+CREATE TABLE "diagnostic_msgs/KeyValue" (
+  "key"                 TEXT,
+  value                 TEXT,
+  _topic                TEXT,        -- _topic from "diagnostic_msgs/DiagnosticStatus"
+  _timestamp            INTEGER,     -- _timestamp from "diagnostic_msgs/DiagnosticStatus"
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,        -- "diagnostic_msgs/DiagnosticStatus"
+  _parent_id            INTEGER      -- _id from "diagnostic_msgs/DiagnosticStatus"
+);
+```
+
+Without nesting, array field values are inserted as YAML with full subtype content.
+
+To recursively populate all nested message types:
+
+    --write-option nesting=all
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
+
+```sql
+CREATE TABLE "std_msgs/Header" (
+  seq                   UINT32,
+  "stamp.secs"          INT32,
+  "stamp.nsecs"         INT32,
+  frame_id              TEXT,
+  _topic                STRING,      -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            INTEGER,     -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,       -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            INTEGER     -- _id from "diagnostic_msgs/DiagnosticArray"
+);
+```
 
 
 ### live
@@ -641,8 +789,13 @@ Output control:
   --write-option [KEY=VALUE [KEY=VALUE ...]]
                         write options as key=value pairs, supported flags:
                           template=/my/path.tpl - custom template to use for HTML output
-                          commit_interval=NUM - transaction size for Postgres output
-                                                (default 100, 0 is autocommit)
+                          commit-interval=NUM - transaction size for Postgres/SQLite output
+                                                (default 1000, 0 is autocommit)
+                          nesting=array|all - create tables for nested message types
+                                              in Postgres/SQLite output,
+                                              only for arrays if "array" else for any nested types
+                                              (array fields in parent will be populated with foreign keys
+                                               instead of formatted nested values)
   --color {auto,always,never}
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console

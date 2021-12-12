@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -269,8 +269,13 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
              help="write options as key=value pairs, supported flags:\n"
                   "  template=/my/path.tpl - custom template to use for HTML output\n"
-                  "  commit_interval=NUM - transaction size for Postgres output\n"
-                  "                        (default 100, 0 is autocommit)"),
+                  "  commit-interval=NUM - transaction size for Postgres/SQLite output\n"
+                  "                        (default 1000, 0 is autocommit)\n"
+                  "  nesting=array|all - create tables for nested message types\n"
+                  "                      in Postgres/SQLite output,\n"
+                  '                      only for arrays if "array" else for any nested types\n'
+                  "                      (array fields in parent will be populated with foreign keys\n"
+                  "                       instead of formatted nested values)"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
@@ -471,9 +476,9 @@ def run():
         searcher = Plugins.load("search", args) or search.Searcher(args)
         searcher.search(source, sink)
     except BREAK_EXS:
-        try: sink and sink.close()
-        except (Exception, KeyboardInterrupt): pass
         try: source and source.close()
+        except (Exception, KeyboardInterrupt): pass
+        try: sink and sink.close()
         except (Exception, KeyboardInterrupt): pass
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -26,8 +26,8 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, MatchMarkers
-from . rosapi import ROS_BUILTIN_TYPES, parse_definition_subtypes
+from . common import ConsolePrinter, MatchMarkers, memoize
+from . rosapi import ROS_BUILTIN_TYPES, calculate_definition_hash, parse_definition_subtypes
 
 
 ## Bagfile extensions to seek
@@ -50,6 +50,64 @@ SLEEP_INTERVAL = 0.5
 
 ## rospy.MasterProxy instance
 master = None
+
+
+class BagReader(rosbag.Bag):
+    """Add message type getters to rosbag.Bag."""
+
+
+    def __init__(self, *args, **kwargs):
+        super(BagReader, self).__init__(*args, **kwargs)
+        self.__types    = {}  # {typename: message type class}
+        self.__hashdefs = {}  # {message type definition MD5 hash: typename}
+        self.__typedefs = {}  # {typename: type definition text}
+
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
+        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+        self._ensure_type(typename)
+        return self.__typedefs.get(typename)
+
+
+    def get_message_class(self, typename):
+        """
+        Returns rospy message class for typename, or None if unknown type.
+
+        Generates class dynamically if not already generated.
+        """
+        self._ensure_type(typename)
+        if typename not in self.__types and typename in self.__typedefs:
+            for n, t in genpy.dynamic.generate_dynamic(typename, self.__typedefs[typename]).items():
+                self.__types[n] = t
+        return self.__types.get(typename) or get_message_class(typename)
+
+
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS1 message type MD5 hash."""
+        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
+        self._ensure_type(typename)
+        md5 = next((h for h, t in self.__hashdefs.items() if t == typename), None)
+        return md5 or get_message_type_hash(msg_or_type)
+
+
+    def _ensure_type(self, typename):
+        """Loads type information if not loaded."""
+        if not self.__typedefs:
+            for c in self._connections.values():
+                self.__typedefs[c.datatype] = c.msg_def
+                self.__hashdefs[c.md5sum] = c.datatype
+        if typename not in self.__typedefs:
+            for typedef in list(self.__typedefs.values()):
+                subdefs = tuple(parse_definition_subtypes(typedef).items())
+                self.__typedefs.update(subdefs)
+                for subtype, subdef in subdefs:
+                    md5 = calculate_definition_hash(subtype, subdef, subdefs)
+                    self.__hashdefs[md5] = subtype
+                if typename in subdefs:
+                    break  # for typedef
+            self.__typedefs.setdefault(typename, "")
+
 
 
 class EmbagReader(object):
@@ -106,7 +164,7 @@ class EmbagReader(object):
         if typename not in self._types and typename in self._typedefs:
             for n, t in genpy.dynamic.generate_dynamic(typename, self._typedefs[typename]).items():
                 self._types[n] = t
-        return self._types.get(typename)
+        return self._types.get(typename) or get_message_class(typename)
 
 
     def get_message_definition(self, msg_or_type):
@@ -254,32 +312,11 @@ def create_bag_reader(filename):
     """
     Returns EmbagReader if embag available else rosbag.Bag.
 
-    rosbag.Bag is supplemented with get_message_class() and get_message_definition().
+    Supplemented with get_message_class(), get_message_definition(), and get_message_type_hash().
     """
     if False and embag:  # @todo enable when embag fixes its memory leak
         return EmbagReader(filename)
-
-    DEFINITIONS = {}
-    def get_bag_message_definition(msg_or_type):
-        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
-        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        if not DEFINITIONS:
-            for c in bag._connections.values():
-                DEFINITIONS[c.datatype] = c.msg_def
-        if typename not in DEFINITIONS:
-            for typedef in list(DEFINITIONS.values()):
-                subdefs = parse_definition_subtypes(typedef)
-                DEFINITIONS.update(subdefs)
-                if typename in subdefs:
-                    break  # for typedef
-            DEFINITIONS.setdefault(typename, "")
-        return DEFINITIONS.get(typename)
-
-    bag = rosbag.Bag(filename, skip_index=True)
-    bag.get_message_class = get_message_class
-    bag.get_message_definition = get_bag_message_definition
-    bag.get_message_type_hash = get_message_type_hash
-    return bag
+    return BagReader(filename, skip_index=True)
 
 
 def create_bag_writer(filename):
@@ -339,6 +376,7 @@ def format_message_value(msg, name, value):
     return ("%%%ds" % (LENS[name] + EXTRA)) % v  # Default %10s/%9s for secs/nsecs
 
 
+@memoize
 def get_message_class(typename):
     """Returns ROS1 message class."""
     return roslib.message.get_message_class(typename)
@@ -411,7 +449,7 @@ def is_ros_message(val, ignore_time=False):
     return isinstance(val, genpy.Message if ignore_time else (genpy.Message, genpy.TVal))
 
 
-def is_ros_time(val, ignore_time=False):
+def is_ros_time(val):
     """Returns whether value is a ROS1 time/duration."""
     return isinstance(val, genpy.TVal)
 
@@ -426,6 +464,7 @@ def make_time(secs=0, nsecs=0):
     return rospy.Time(secs=secs, nsecs=nsecs)
 
 
+@memoize
 def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from "uint8[100]".

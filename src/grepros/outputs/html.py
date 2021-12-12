@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    06.12.2021
+@modified    12.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.html
@@ -150,7 +150,8 @@ class HtmlSink(SinkBase, TextSinkMixin):
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
-            if self._args.VERBOSE and topic not in self._counts:
+            topickey = (topic, self.source.get_message_type_hash(msg))
+            if self._args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
