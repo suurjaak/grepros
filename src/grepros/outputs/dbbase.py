@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.dbbase
@@ -293,12 +293,13 @@ class DataSinkBase(SinkBase):
                 cols += [(".".join(path), coltype)]
             cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
                             [t for _, t in cols]))
-            cols += self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
-            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
-            coldefs = ["%s %s" % (quote(n), quote(t, force=False)) for n, t in cols]
+            defcols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: defcols += self.MESSAGE_TYPE_NESTCOLS
+            coldefs  = ["%s %s" % (quote(n), quote(t, force=False)) for n, t in cols]
+            coldefs += ["%s %s" % (quote(n), t) for n, t in defcols]
             sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
             self._executescript(sql)
-            self._schema[typekey] = collections.OrderedDict(cols)
+            self._schema[typekey] = collections.OrderedDict(cols + defcols)
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
