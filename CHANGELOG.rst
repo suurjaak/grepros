@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.4 (2021-12-13)
+-------------------
+* speed up YAML formatting
+
 0.3.3 (2021-12-13)
 -------------------
 * fix errors in Postgres/SQLite output

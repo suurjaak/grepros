@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -251,6 +251,9 @@ class TextWrapper(object):
     ## Regex for breaking text at whitespace
     SPACE_RGX = re.compile(r"([%s]+)" % re.escape("\t\n\x0b\x0c\r "))
 
+    ## Max length of strlen cache
+    LENCACHEMAX = 10000
+
 
     def __init__(self, width=80, subsequent_indent="  ", break_long_words=True,
                  drop_whitespace=False, max_lines=None, placeholder=" ...", custom_widths=None):
@@ -270,6 +273,7 @@ class TextWrapper(object):
         self.max_lines         = max_lines
         self.placeholder       = placeholder
 
+        self.lencache    = {}
         self.customs     = {s: l for s, l in (custom_widths or {}).items() if s}
         self.custom_lens = [(s, len(s) - l) for s, l in self.customs.items()]
         self.custom_rgx  = re.compile("(%s)" % "|".join(re.escape(s) for s in self.customs))
@@ -297,6 +301,7 @@ class TextWrapper(object):
             result = result[:self.max_lines]
             if not result[-1].endswith(self.placeholder.lstrip()):
                 result[-1] += self.placeholder
+        if len(self.lencache)  > self.LENCACHEMAX:  self.lencache.clear()
         return result
 
 
@@ -308,7 +313,9 @@ class TextWrapper(object):
 
     def strlen(self, v):
         """Returns length of string, using custom substring widths."""
-        return len(v) - sum(v.count(s) * ld for s, ld in self.custom_lens)
+        if v not in self.lencache:
+            self.lencache[v] = len(v) - sum(v.count(s) * ld for s, ld in self.custom_lens)
+        return self.lencache[v]
 
 
     def strip(self, v):
