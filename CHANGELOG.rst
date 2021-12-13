@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.3 (2021-12-13)
+-------------------
+* fix errors in Postgres/SQLite output
+
 0.3.2 (2021-12-12)
 -------------------
 * rename --write-option commit_interval to commit-interval
