@@ -228,33 +228,6 @@ class TextSinkMixin(object):
         return str(val)
 
 
-    @classmethod
-    def make_full_yaml_args(cls, args):
-        """
-        Returns init arguments that provide message full YAMLs with no markers or colors.
-
-        @param   args                       arguments object like argparse.Namespace
-        @param   args.COLOR                 set to "never" in result
-        @param   args.PRINT_FIELDS          blanked to [] in result
-        @param   args.NOPRINT_FIELDS        blanked to [] in result
-        @param   args.MAX_FIELD_LINES       blanked to None in result
-        @param   args.START_LINE            blanked to None in result
-        @param   args.END_LINE              blanked to None in result
-        @param   args.MAX_MESSAGE_LINES     blanked to None in result
-        @param   args.LINES_AROUND_MATCH    blanked to None in result
-        @param   args.MATCHED_FIELDS_ONLY   blanked to False in result
-        @param   args.MATCH_WRAPPER         set to [""] in result
-        @param   args.WRAP_WIDTH            set to 120 in result
-        """
-        DEFAULTS = {"PRINT_FIELDS": [], "NOPRINT_FIELDS": [], "MAX_FIELD_LINES": None,
-                    "START_LINE": None, "END_LINE": None, "MAX_MESSAGE_LINES": None,
-                    "LINES_AROUND_MATCH": None, "MATCHED_FIELDS_ONLY": False,
-                    "COLOR": "never", "MATCH_WRAPPER": [""], "WRAP_WIDTH": 120}
-        args = copy.deepcopy(args)
-        for k, v in DEFAULTS.items(): setattr(args, k, v)
-        return args
-
-
     def _configure(self, args):
         """Initializes output settings."""
         prints, noprints = args.PRINT_FIELDS, args.NOPRINT_FIELDS

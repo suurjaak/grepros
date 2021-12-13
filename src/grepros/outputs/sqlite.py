@@ -8,23 +8,21 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
 import collections
-import copy
 import json
 import os
 import sqlite3
 
 from .. common import ConsolePrinter, format_bytes, quote
 from .. import rosapi
-from . base import TextSinkMixin
 from . dbbase import DataSinkBase
 
 
-class SqliteSink(DataSinkBase, TextSinkMixin):
+class SqliteSink(DataSinkBase):
     """
     Writes messages to an SQLite database.
 
@@ -151,18 +149,12 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
                                     will be appended to if exists
         @param   args.DUMP_OPTIONS  {"nesting": "array" to recursively insert arrays
                                                 of nested types, or "all" for any nesting)}
-        @param   args.WRAP_WIDTH    character width to wrap message YAML output at
         @param   args.VERBOSE       whether to print debug information
         """
-        args = TextSinkMixin.make_full_yaml_args(args)
-
         super(SqliteSink, self).__init__(args)
-        TextSinkMixin.__init__(self, args)
 
         self._filename    = args.DUMP_TARGET
         self._id_counters = {}  # {table next: max ID}
-
-        self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
 
 
     def _init_db(self):
@@ -173,9 +165,7 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
-        patterns, repls = (copy.deepcopy(x) for x in (self._patterns, self._format_repls))
         super(SqliteSink, self)._init_db()
-        self._patterns, self._format_repls = patterns, repls
 
 
     def _load_schema(self):
@@ -196,7 +186,7 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
         topic_id = self._topics[(topic, typehash)]["id"]
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=self.format_message(msg), data=rosapi.get_message_data(msg))
+                     yaml=str(msg), data=rosapi.get_message_data(msg))
         self._ensure_execute(self.INSERT_MESSAGE, margs)
         self._ensure_execute(self.UPDATE_TOPIC,   margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)
