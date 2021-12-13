@@ -5,6 +5,7 @@ Changelog for package grepros
 0.3.4 (2021-12-13)
 -------------------
 * speed up YAML formatting
+* fix no engine name in console texts for Postgres output
 
 0.3.3 (2021-12-13)
 -------------------
