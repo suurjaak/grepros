@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.4 (2021-12-13)
+0.3.4 (2021-12-14)
 -------------------
-* speed up SQLite output (~4x)
+* add --write-option message-yaml=true|false, for SQLite output
+* speed up SQLite output (~4-8x)
 * speed up YAML formatting (~2x)
 * fix no engine name in console texts for Postgres output
 

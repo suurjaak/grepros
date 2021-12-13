@@ -268,14 +268,17 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
              default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
              help="write options as key=value pairs, supported flags:\n"
-                  "  template=/my/path.tpl - custom template to use for HTML output\n"
-                  "  commit-interval=NUM - transaction size for Postgres/SQLite output\n"
-                  "                        (default 1000, 0 is autocommit)\n"
-                  "  nesting=array|all - create tables for nested message types\n"
-                  "                      in Postgres/SQLite output,\n"
-                  '                      only for arrays if "array" else for any nested types\n'
-                  "                      (array fields in parent will be populated with foreign keys\n"
-                  "                       instead of formatted nested values)"),
+                  "  commit-interval=NUM      transaction size for Postgres/SQLite output\n"
+                  "                           (default 1000, 0 is autocommit)\n"
+                  "  message-yaml=true|false  whether to populate table field messages.yaml\n"
+                  "                           in SQLite output (default true)\n"
+                  "  nesting=array|all        create tables for nested message types\n"
+                  "                           in Postgres/SQLite output,\n"
+                  '                           only for arrays if "array" \n'
+                  "                           else for any nested types\n"
+                  "                           (array fields in parent will be populated \n"
+                  "                            with foreign keys instead of messages as JSON)\n"
+                  "  template=/my/path.tpl    custom template to use for HTML output\n"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
