@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    13.12.2021
+@modified    14.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.dbbase
@@ -190,7 +190,8 @@ class DataSinkBase(SinkBase):
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
         baseattrs = dir(SinkBase(None))
-        for attr in (getattr(self, k, None) for k in dir(self) if k not in baseattrs):
+        for attr in (getattr(self, k, None) for k in dir(self)
+                     if not k.isupper() and k not in baseattrs):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
 
@@ -293,13 +294,12 @@ class DataSinkBase(SinkBase):
                 cols += [(".".join(path), coltype)]
             cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
                             [t for _, t in cols]))
-            defcols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
-            if self._nesting: defcols += self.MESSAGE_TYPE_NESTCOLS
-            coldefs  = ["%s %s" % (quote(n), quote(t, force=False)) for n, t in cols]
-            coldefs += ["%s %s" % (quote(n), t) for n, t in defcols]
+            cols += self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
+            coldefs  = ["%s %s" % (quote(n), t) for n, t in cols]
             sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
             self._executescript(sql)
-            self._schema[typekey] = collections.OrderedDict(cols + defcols)
+            self._schema[typekey] = collections.OrderedDict(cols)
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -493,7 +493,7 @@ class DataSinkBase(SinkBase):
     def _make_column_type(self, typename, value):
         """Returns column database type."""
         suffix = "[]" if isinstance(value, (list, tuple)) else ""
-        return rosapi.scalar(typename) + suffix
+        return quote(rosapi.scalar(typename) + suffix, force=False)
 
 
     def _make_column_value(self, value, typename=None):

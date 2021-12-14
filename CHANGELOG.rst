@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.5 (2021-12-14)
+-------------------
+* fix Postgres output not having content
+
 0.3.4 (2021-12-14)
 -------------------
 * add --write-option message-yaml=true|false, for SQLite output
