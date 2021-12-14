@@ -145,10 +145,10 @@ class DataSinkBase(SinkBase):
             try: config_ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
             except Exception: config_ok = False
             if not config_ok:
-                ConsolePrinter.error("Invalid commit interval for %s: %r.",
+                ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
                                      self.ENGINE, self._args.DUMP_OPTIONS["commit-interval"])
         if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
-            ConsolePrinter.error("Invalid nesting-option for %s: %r. "
+            ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
                                  self.ENGINE, self._args.DUMP_OPTIONS["nesting"])
             config_ok = False

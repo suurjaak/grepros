@@ -378,6 +378,11 @@ A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
     --write-option commit-interval=NUM
 
+By default, table `messages` is populated with full message YAMLs, unless:
+
+    --write-option message-yaml=false
+
+
 #### Nested messages
 
 Nested message types can be recursively populated to separate tables, linked
@@ -429,7 +434,7 @@ CREATE TABLE "diagnostic_msgs/KeyValue" (
 );
 ```
 
-Without nesting, array field values are inserted as YAML with full subtype content.
+Without nesting, array field values are inserted as JSON with full subtype content.
 
 To recursively populate all nested message types:
 
@@ -788,14 +793,17 @@ Output control:
                         0 disables (defaults to detected terminal width)
   --write-option [KEY=VALUE [KEY=VALUE ...]]
                         write options as key=value pairs, supported flags:
-                          template=/my/path.tpl - custom template to use for HTML output
-                          commit-interval=NUM - transaction size for Postgres/SQLite output
-                                                (default 1000, 0 is autocommit)
-                          nesting=array|all - create tables for nested message types
-                                              in Postgres/SQLite output,
-                                              only for arrays if "array" else for any nested types
-                                              (array fields in parent will be populated with foreign keys
-                                               instead of formatted nested values)
+                          commit-interval=NUM      transaction size for Postgres/SQLite output
+                                                   (default 1000, 0 is autocommit)
+                          message-yaml=true|false  whether to populate table field messages.yaml
+                                                   in SQLite output (default true)
+                          nesting=array|all        create tables for nested message types
+                                                   in Postgres/SQLite output,
+                                                   only for arrays if "array" 
+                                                   else for any nested types
+                                                   (array fields in parent will be populated 
+                                                    with foreign keys instead of messages as JSON)
+                          template=/my/path.tpl    custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console

@@ -8,28 +8,26 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.sqlite
 import collections
-import copy
 import json
 import os
 import sqlite3
 
 from .. common import ConsolePrinter, format_bytes, quote
 from .. import rosapi
-from . base import TextSinkMixin
 from . dbbase import DataSinkBase
 
 
-class SqliteSink(DataSinkBase, TextSinkMixin):
+class SqliteSink(DataSinkBase):
     """
     Writes messages to an SQLite database.
 
     Output will have:
-    - table "messages", with all messages as YAML and serialized binary
+    - table "messages", with all messages as serialized binary
     - table "types", with message definitions
     - table "topics", with topic information
 
@@ -145,24 +143,35 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
-        @param   args.META          whether to print metainfo
-        @param   args.DUMP_TARGET   name of SQLite file to write,
-                                    will be appended to if exists
-        @param   args.DUMP_OPTIONS  {"nesting": "array" to recursively insert arrays
-                                                of nested types, or "all" for any nesting)}
-        @param   args.WRAP_WIDTH    character width to wrap message YAML output at
-        @param   args.VERBOSE       whether to print debug information
+        @param   args                arguments object like argparse.Namespace
+        @param   args.META           whether to print metainfo
+        @param   args.DUMP_TARGET    name of SQLite file to write,
+                                     will be appended to if exists
+        @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+                                      "message-yaml": populate messages.yaml (default true),
+                                      "nesting": "array" to recursively insert arrays
+                                                 of nested types, or "all" for any nesting)}
+        @param   args.VERBOSE        whether to print debug information
         """
-        args = TextSinkMixin.make_full_yaml_args(args)
-
         super(SqliteSink, self).__init__(args)
-        TextSinkMixin.__init__(self, args)
 
         self._filename    = args.DUMP_TARGET
+        self._do_yaml     = (args.DUMP_OPTIONS.get("message-yaml") != "false")
         self._id_counters = {}  # {table next: max ID}
 
-        self._format_repls.update({k: "" for k in self._format_repls})  # Override TextSinkMixin
+
+    def validate(self):
+        """
+        Returns "commit-interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any;
+        parses "message-yaml" from args.DUMP_OPTIONS.
+        """
+        config_ok = super(SqliteSink, self).validate()
+        if self._args.DUMP_OPTIONS.get("message-yaml") not in ("true", "false"):
+            ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.ENGINE, self._args.DUMP_OPTIONS["message-yaml"])
+            config_ok = False
+        return config_ok
 
 
     def _init_db(self):
@@ -173,9 +182,7 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
-        patterns, repls = (copy.deepcopy(x) for x in (self._patterns, self._format_repls))
         super(SqliteSink, self)._init_db()
-        self._patterns, self._format_repls = patterns, repls
 
 
     def _load_schema(self):
@@ -196,7 +203,7 @@ class SqliteSink(DataSinkBase, TextSinkMixin):
         topic_id = self._topics[(topic, typehash)]["id"]
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=self.format_message(msg), data=rosapi.get_message_data(msg))
+                     yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
         self._ensure_execute(self.INSERT_MESSAGE, margs)
         self._ensure_execute(self.UPDATE_TOPIC,   margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)

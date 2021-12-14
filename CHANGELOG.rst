@@ -2,6 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.4 (2021-12-14)
+-------------------
+* add --write-option message-yaml=true|false, for SQLite output
+* speed up SQLite output (~4-8x)
+* speed up YAML formatting (~2x)
+* fix no engine name in console texts for Postgres output
+
 0.3.3 (2021-12-13)
 -------------------
 * fix errors in Postgres/SQLite output
@@ -12,7 +19,7 @@ Changelog for package grepros
 * raise Postgres default commit-interval from 100 to 1000
 * add --write-option commit-interval support to SQLite output
 * add --write-option subtypes=array|all, for Postgres/SQLite output
-* speed up SQLite output
+* speed up SQLite output (~2x)
 * refactor Postgres/SQLite sinks onto common base class
 
 0.3.1 (2021-12-06)

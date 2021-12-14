@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -167,7 +167,7 @@ class TextSinkMixin(object):
     def message_to_yaml(self, val, top=(), typename=None):
         """Returns ROS message or other value as YAML."""
         # Refactored from genpy.message.strify_message().
-        unquote = lambda v, t: v[1:-1] if "string" != t and v[:1] == v[-1:] == '"' else v
+        unquote = lambda v: v[1:-1] if v[:1] == v[-1:] == '"' else v
 
         def retag_match_lines(lines):
             """Adds match tags to lines where wrapping separated start and end."""
@@ -200,7 +200,7 @@ class TextSinkMixin(object):
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
             vals = [x for v in val for x in [self.message_to_yaml(v, top, typename)] if x]
             if rosapi.scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
-                return "[%s]" % ", ".join(unquote(str(v), typename) for v in vals)
+                return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
         if rosapi.is_ros_message(val):
             MATCHED_ONLY = self._args.MATCHED_FIELDS_ONLY and not self._args.LINES_AROUND_MATCH
@@ -212,7 +212,7 @@ class TextSinkMixin(object):
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:
                     continue  # for k, t
 
-                v = unquote(v, t)  # Strip quotes from non-string types cast to "<match>v</match>"
+                v = unquote(v) if "string" != t else v  # Unquote casts to "<match>v</match>"
                 if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
                     is_num = rosapi.scalar(t) in rosapi.ROS_NUMERIC_TYPES
@@ -226,33 +226,6 @@ class TextSinkMixin(object):
             return ("\n" if indent and vals else "") + "\n".join(vals)
 
         return str(val)
-
-
-    @classmethod
-    def make_full_yaml_args(cls, args):
-        """
-        Returns init arguments that provide message full YAMLs with no markers or colors.
-
-        @param   args                       arguments object like argparse.Namespace
-        @param   args.COLOR                 set to "never" in result
-        @param   args.PRINT_FIELDS          blanked to [] in result
-        @param   args.NOPRINT_FIELDS        blanked to [] in result
-        @param   args.MAX_FIELD_LINES       blanked to None in result
-        @param   args.START_LINE            blanked to None in result
-        @param   args.END_LINE              blanked to None in result
-        @param   args.MAX_MESSAGE_LINES     blanked to None in result
-        @param   args.LINES_AROUND_MATCH    blanked to None in result
-        @param   args.MATCHED_FIELDS_ONLY   blanked to False in result
-        @param   args.MATCH_WRAPPER         set to [""] in result
-        @param   args.WRAP_WIDTH            set to 120 in result
-        """
-        DEFAULTS = {"PRINT_FIELDS": [], "NOPRINT_FIELDS": [], "MAX_FIELD_LINES": None,
-                    "START_LINE": None, "END_LINE": None, "MAX_MESSAGE_LINES": None,
-                    "LINES_AROUND_MATCH": None, "MATCHED_FIELDS_ONLY": False,
-                    "COLOR": "never", "MATCH_WRAPPER": [""], "WRAP_WIDTH": 120}
-        args = copy.deepcopy(args)
-        for k, v in DEFAULTS.items(): setattr(args, k, v)
-        return args
 
 
     def _configure(self, args):

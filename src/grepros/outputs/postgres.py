@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    12.12.2021
+@modified    13.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -51,6 +51,9 @@ class PostgresSink(DataSinkBase):
     If a message type table already exists but for a type with a different MD5 hash,
     the new table will have its MD5 hash appended to end, as "pkg/MsgType (hash)".
     """
+
+    ## Database engine name
+    ENGINE = "Postgres"
 
     ## Max table/column name length in Postgres
     MAX_NAME_LEN = 63
