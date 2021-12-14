@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    13.12.2021
+@modified    14.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.postgres
@@ -262,6 +262,7 @@ class PostgresSink(DataSinkBase):
             v = rosapi.to_decimal(v)
         elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
             v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
+        return v
 
 
     def _make_db_label(self):
