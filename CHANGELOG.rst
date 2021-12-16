@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.6 (2021-12-15)
+-------------------
+* add Parquet plugin
+
 0.3.5 (2021-12-14)
 -------------------
 * fix Postgres output not having content
