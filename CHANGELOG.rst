@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.6 (2021-12-15)
+0.3.6 (2021-12-16)
 -------------------
 * add Parquet plugin
+* fix error in Postgres output if a nested JSON value is NaN
 
 0.3.5 (2021-12-14)
 -------------------

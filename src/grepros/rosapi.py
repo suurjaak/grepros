@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.12.2021
+@modified    16.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -334,8 +334,13 @@ def make_message_hash(msg, include=(), exclude=()):
     return hasher.hexdigest()
 
 
-def message_to_dict(msg):
-    """Returns ROS message as nested Python dictionary."""
+def message_to_dict(msg, replace=None):
+    """
+    Returns ROS message as nested Python dictionary.
+
+    @param   replace  mapping of {value: replaced value},
+                      e.g. {math.nan: None, math.inf: None}
+    """
     result = {} if realapi.is_ros_message(msg) else msg
     for name, typename in realapi.get_message_fields(msg).items():
         v = realapi.get_message_value(msg, name, typename)
@@ -343,8 +348,13 @@ def message_to_dict(msg):
             v = dict(zip(["secs", "nsecs"], divmod(realapi.to_nsec(v), 10**9)))
         elif realapi.is_ros_message(v):
             v = message_to_dict(v)
-        elif isinstance(v, (list, tuple)) and realapi.scalar(typename) not in ROS_BUILTIN_TYPES:
-            v = [message_to_dict(x) for x in v]
+        elif isinstance(v, (list, tuple)):
+            if realapi.scalar(typename) not in ROS_BUILTIN_TYPES:
+                v = [message_to_dict(x) for x in v]
+            elif replace:
+                v = [replace.get(x, x) for x in v]
+        elif replace:
+            v = replace.get(v, v)
         result[name] = v
     return result
 
