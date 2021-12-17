@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    16.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -99,8 +99,9 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
 
     def __init__(self, filename):
-        self._db        = None  # sqlite3.Connection instance
-        self._topics    = {}    # {name: {id, name, type}}
+        self._db     = None  # sqlite3.Connection instance
+        self._topics = {}    # {(topic, typename): {id, name, type}}
+        self._counts = {}    # {(topic, typename, typehash): message count}
 
         ## Bagfile path
         self.filename = filename
@@ -135,29 +136,33 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return None
 
 
-    def get_type_and_topic_info(self, counts=False):
+    def get_topic_info(self, counts=False):
         """
-        Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)}).
+        Returns topic and message type metainfo as {(topic, typename, typehash): count}.
 
         @param   counts  whether to return actual message counts instead of None
         """
         self._ensure_open()
-        TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
-        ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
-        topicmap, countmap = {}, {}
+        topickeys = {}  # {topic_id: (topic, typename, typehash)}
         DEFAULTCOUNT = 0 if counts else None
-        if counts and self._has_table("messages"):
-            msgcounts = self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
-                                         "GROUP BY topic_id").fetchall()
-            countmap = {x["topic_id"]: x["count"] for x in msgcounts}
-        if self._has_table("topics"):
+        if not self._counts and self._has_table("topics"):
             for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
-                mytype, mycount = canonical(row["type"]), countmap.get(row["id"], DEFAULTCOUNT)
-                topicmap[row["name"]] = TopicTuple(msg_type=mytype, message_count=mycount)
-        return ResultTuple(topics=topicmap)
+                topic, typename = row["name"], canonical(row["type"])
+                typehash = get_message_type_hash(typename)
+                self._topics[(topic, typename)] = row
+                self._counts[(topic, typename, typehash)] = DEFAULTCOUNT
+                topickeys[row["id"]] = (topic, typename, typehash)
+
+        if counts and self._has_table("messages") and not any(self._counts.values()):
+            for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
+                                        "GROUP BY topic_id").fetchall():
+                if row["topic_id"] in topickeys:
+                    self._counts[topickeys[row["topic_id"]]] = row["count"]
+
+        return dict(self._counts)
 
 
-    def get_message_class(self, typename):
+    def get_message_class(self, typename, typehash=None):
         """Returns ROS2 message type class."""
         return get_message_class(typename)
 
@@ -181,18 +186,15 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
         @return              (topic, msg, rclpy.time.Time)
         """
-        self._ensure_open()
-        if not self._has_table("messages"):
+        self.get_topic_info()
+        if not self._topics:
             return
-
-        sql = "SELECT id, name, type FROM topics"
-        self._topics = {r["name"]: r for r in self._db.execute(sql).fetchall()}
 
         sql, exprs, args = "SELECT * FROM messages", [], ()
         if topics:
             topics = topics if isinstance(topics, (list, tuple)) else [topics]
-            rows   = list(filter(bool, map(self._topics.get, topics)))
-            exprs += ["topic_id IN (%s)" % ", ".join("%s" % (x["id"], ) for x in rows)]
+            topic_ids = [x["id"] for (topic, _), x in self._topics.items() if topic in topics]
+            exprs += ["topic_id IN (%s)" % ", ".join(map(str, topic_ids))]
         if start_time is not None:
             exprs += ["timestamp >= ?"]
             args  += (start_time.nanoseconds, )
@@ -203,7 +205,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         sql += " ORDER BY timestamp"
 
         topicmap = {v["id"]: v for v in self._topics.values()}
-        msgtypes = {}  # {typename: cls}
+        msgtypes = {}  # {full typename: cls}
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
             topic, tname = tdata["name"], tdata["type"]
@@ -225,23 +227,22 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   stamp  rclpy.time.Time of message publication
         """
         self._ensure_open(populate=True)
-
-        if not self._topics:
-            sql = "SELECT id, name, type FROM topics"
-            self._topics = {r["name"]: r for r in self._db.execute(sql).fetchall()}
+        self.get_topic_info()
 
         cursor = self._db.cursor()
-        if topic not in self._topics:
-            typename = make_full_typename(get_message_type(msg))
+        typename = get_message_type(msg)
+        topickey = (topic, typename)
+        if topickey not in self._topics:
+            full_typename = make_full_typename(get_message_type(msg))
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
-            args = (topic, typename, "cdr", "")
+            args = (topic, full_typename, "cdr", "")
             cursor.execute(sql, args)
-            tdata = {"id": cursor.lastrowid, "name": topic, "type": typename}
-            self._topics[topic] = tdata
+            tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename}
+            self._topics[topickey] = tdata
 
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
-        args = (self._topics[topic]["id"], stamp.nanoseconds, get_message_data(msg))
+        args = (self._topics[topickey]["id"], stamp.nanoseconds, get_message_data(msg))
         cursor.execute(sql, args)
 
 
@@ -363,7 +364,7 @@ def create_bag_writer(filename):
 
 
 def create_publisher(topic, cls_or_typename, queue_size):
-    """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
+    """Returns an rclpy.Publisher instance, with .get_num_connections() and .unregister()."""
     cls = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
@@ -374,7 +375,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns an rclpy.Subscriber, with .unregister()."""
+    """Returns an rclpy.Subscription, with .unregister()."""
     cls = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)

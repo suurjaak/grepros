@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.base
@@ -40,7 +40,7 @@ class SinkBase(object):
         """
         self._args = copy.deepcopy(args)
         self._batch_meta = {}  # {source batch: "source metadata"}
-        self._counts     = {}  # {(topic, typehash): count}
+        self._counts     = {}  # {(topic, typename, typehash): count}
 
         ## inputs.SourceBase instance bound to this sink
         self.source = None
@@ -61,7 +61,7 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
@@ -358,7 +358,7 @@ class BagSink(SinkBase):
                                      (" (%s)" % format_bytes(sz)) if sz else "")
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
         if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
@@ -402,12 +402,15 @@ class TopicSink(SinkBase):
         @param   args.VERBOSE           whether to print debug information
         """
         super(TopicSink, self).__init__(args)
-        self._pubs = {}  # {(intopic, cls): ROS publisher}
+        self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        topickey, cls = (topic, self.source.get_message_type_hash(msg)), type(msg)
+        typename = self.source.get_message_type(msg)
+        typehash = self.source.get_message_type_hash(msg)
+        topickey = (topic, typename, typehash)
+        cls = self.source.get_message_class(typename, typehash)
         if topickey not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
@@ -429,7 +432,7 @@ class TopicSink(SinkBase):
         rosapi.init_node()
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
+        """Returns whether ROS environment is set for publishing, prints error if not."""
         return rosapi.validate(live=True)
 
     def close(self):
@@ -440,8 +443,6 @@ class TopicSink(SinkBase):
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(set(self._pubs.values()))))
         for k in list(self._pubs):
-            pub = self._pubs.pop(k)
-            # ROS1 prints errors when closing a publisher with subscribers
-            not pub.get_num_connections() and pub.unregister()
+            self._pubs.pop(k).unregister()
         super(TopicSink, self).close()
         rosapi.shutdown_node()

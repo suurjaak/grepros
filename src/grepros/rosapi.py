@@ -141,7 +141,9 @@ def create_bag_reader(filename, reindex=False):
 
     Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
     if using embag in ROS1, or if using ROS2.
-    Supplemented with get_message_class(), get_message_definition() and get_message_type_hash().
+
+    Supplemented with get_message_class(), get_message_definition(),
+    get_message_type_hash(), and get_topic_info().
 
     @param   reindex  reindex unindexed bag (ROS1 only), making a backup copy if indexed format
     """

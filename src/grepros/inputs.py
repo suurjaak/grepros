@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    16.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -45,11 +45,11 @@ class SourceBase(object):
         self._args = copy.deepcopy(args)
         # {topic: ["pkg/MsgType", ]} searched in current source
         self._topics = collections.defaultdict(list)
-        self._counts = collections.Counter()  # {(topic, type): count processed}
+        self._counts = collections.Counter()  # {(topic, typename, typehash): count processed}
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
-        ## All topics in source, as {(topic, "pkg/MsgType"): total message count or None}
+        ## All topics in source, as {(topic, typenane, typehash): total message count or None}
         self.topics = {}
         ## ProgressBar instance, if any
         self.bar = None
@@ -97,11 +97,12 @@ class SourceBase(object):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
         return dict(topic=topic, type=rosapi.get_message_type(msg), index=index,
+                    hash=self.get_message_type_hash(msg),
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)),
                     schema=rosapi.get_message_definition(msg))
 
-    def get_message_class(self, typename):
+    def get_message_class(self, typename, typehash=None):
         """Returns message type class."""
         return rosapi.get_message_class(typename)
 
@@ -207,8 +208,10 @@ class ConditionMixin(object):
         self._topic_states         = {}  # {topic: whether only used for condition, not matching}
         self._topics_per_condition = []  # [[topics in 1st condition], ]
         self._wildcard_topics      = {}  # {"/my/*/topic": re.Pattern}
-        self._firstmsgs = collections.defaultdict(collections.deque)  # {(topic, type): [1st, 2nd, ..]}
-        self._lastmsgs  = collections.defaultdict(collections.deque)  # {(topic, type): [.., last]}
+        # {(topic, typename, typehash): [1st, 2nd, ..]}
+        self._firstmsgs = collections.defaultdict(collections.deque)
+        # {(topic, typename, typehash): [.., last]}
+        self._lastmsgs  = collections.defaultdict(collections.deque)
         # {topic: (max positive index + 1, max abs(negative index) or 1)}
         self._topic_limits = collections.defaultdict(lambda: [1, 1])
 
@@ -224,9 +227,9 @@ class ConditionMixin(object):
         for i, (expr, code) in enumerate(self._conditions.items()):
             topics = self._topics_per_condition[i]
             wildcarded = [t for t in topics if t in self._wildcard_topics]
-            realcarded = {wt: [(t, c) for (t, c) in self._lastmsgs if p.match(t)]
+            realcarded = {wt: [(t, n, h) for (t, n, h) in self._lastmsgs if p.match(t)]
                           for wt in wildcarded for p in [self._wildcard_topics[wt]]}
-            variants = [[(wt, (t, c)) for (t, c) in tt] or [(wt, (wt, None))]
+            variants = [[(wt, (t, n, h)) for (t, n, h) in tt] or [(wt, (wt, None))]
                         for wt, tt in realcarded.items()]
             variants = variants or [[None]]  # Ensure one iteration if no wildcards to combine
 
@@ -274,7 +277,8 @@ class ConditionMixin(object):
         """Retains message for condition evaluation if in condition topic."""
         if self.is_conditions_topic(topic, pure=False):
             typename = rosapi.get_message_type(msg)
-            topickey = (topic, typename)
+            typehash = self.source.get_message_type_hash(msg)
+            topickey = (topic, typename, typehash)
             self._lastmsgs[topickey].append(msg)
             if len(self._lastmsgs[topickey]) > self._topic_limits[topic][-1]:
                 self._lastmsgs[topickey].popleft()
@@ -285,12 +289,12 @@ class ConditionMixin(object):
         """
         Returns Topic() by name.
 
-        @param   remap  optional remap dictionary as {topic1: (topic2, typename)}
+        @param   remap  optional remap dictionary as {topic1: (topic2, typename, typehash)}
         """
         if remap and topic in remap:
             topickey = remap[topic]
         else:
-            topickey = next(((t, c) for (t, c) in self._lastmsgs if t == topic), None)
+            topickey = next(((t, n, h) for (t, n, h) in self._lastmsgs if t == topic), None)
         if topickey not in self._counts:
             return self.Empty()
         c, f, l = (d[topickey] for d in (self._counts, self._firstmsgs, self._lastmsgs))
@@ -353,7 +357,7 @@ class BagSource(SourceBase, ConditionMixin):
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = copy.deepcopy(args)  # Original arguments
-        self._status    = None  # Match status of last produced message
+        self._status    = None   # Match status of last produced message
         self._sticky    = False  # Scanning a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
@@ -436,15 +440,16 @@ class BagSource(SourceBase, ConditionMixin):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
         self._ensure_totals()
-        msgtype = rosapi.get_message_type(msg)
-        return dict(topic=topic, type=msgtype, total=self.topics[(topic, msgtype)],
+        typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
+        return dict(topic=topic, type=typename, hash=typehash,
+                    total=self.topics[(topic, typename, typehash)],
                     dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                     stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
                     schema=self.get_message_definition(msg))
 
-    def get_message_class(self, typename):
+    def get_message_class(self, typename, typehash=None):
         """Returns ROS message type class."""
-        return self._bag.get_message_class(typename) or \
+        return self._bag.get_message_class(typename, typename) or \
                rosapi.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
@@ -468,7 +473,7 @@ class BagSource(SourceBase, ConditionMixin):
         Returns whether specified message in topic is in acceptable range,
         and all conditions, if any, evaluate as true.
         """
-        topickey = (topic, rosapi.get_message_type(msg))
+        topickey = (topic, rosapi.get_message_type(msg), self.get_message_type_hash(msg))
         if self._args.START_INDEX:
             self._ensure_totals()
             START = self._args.START_INDEX
@@ -495,7 +500,8 @@ class BagSource(SourceBase, ConditionMixin):
             if typename not in topics[topic]:
                 continue  # for topic
 
-            topickey = (topic, typename)
+            typehash = self.get_message_type_hash(msg)
+            topickey = (topic, typename, typehash)
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
@@ -521,14 +527,15 @@ class BagSource(SourceBase, ConditionMixin):
             self._ensure_totals()
             self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
             self.bar.afterword = os.path.basename(self._filename)
-            self.bar.max = sum(self.topics[(t, d)] for t, dd in self._topics.items() for d in dd)
+            self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items() if t == t_ and n in nn)
+                               for t_, nn in self._topics.items())
             self.bar.update(value=0)
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
         if not self._totals_ok:  # Must be ros2.Bag
-            for k, v in self._bag.get_type_and_topic_info(counts=True).topics.items():
-                self.topics[(k, v.msg_type)] = v.message_count
+            for (t, n, h), c in self._bag.get_topic_info(counts=True).items():
+                self.topics[(t, n, h)] = c
             self._totals_ok = True
 
     def _configure(self, filename):
@@ -553,9 +560,9 @@ class BagSource(SourceBase, ConditionMixin):
         self._filename = filename
 
         dct = fulldct = {}  # {topic: [typename, ]}
-        for k, v in bag.get_type_and_topic_info().topics.items():
-            dct.setdefault(k, []).append(v.msg_type)
-            self.topics[(k, v.msg_type)] = v.message_count
+        for (t, n, h), c in bag.get_topic_info().items():
+            dct.setdefault(t, []).append(n)
+            self.topics[(t, n, h)] = c
         self._totals_ok = not any(v is None for v in self.topics.values())
         for topic in self.conditions_get_topics():
             self.conditions_set_topic_state(topic, True)
@@ -606,7 +613,7 @@ class TopicSource(SourceBase, ConditionMixin):
         ConditionMixin.__init__(self, args)
         self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, ROS time)]
-        self._subs    = {}     # {(topic, type): ROS subscriber}
+        self._subs    = {}     # {(topic, typename, typehash): ROS subscriber}
 
         self._configure()
 
@@ -627,7 +634,8 @@ class TopicSource(SourceBase, ConditionMixin):
             total += bool(topic)
             self._update_progress(total, self._running and bool(topic))
             if topic:
-                self._counts[(topic, rosapi.get_message_type(msg))] += 1
+                typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
+                self._counts[(topic, typename, typehash)] += 1
                 self.conditions_register_message(topic, msg)
                 if not self.is_conditions_topic(topic, pure=True):
                     yield topic, msg, stamp
@@ -684,7 +692,8 @@ class TopicSource(SourceBase, ConditionMixin):
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in rosapi.get_topic_types():
-            topickey = (topic, typename)
+            typehash = rosapi.get_message_type_hash(typename)
+            topickey = (topic, typename, typehash)
             if topickey in self.topics:
                 continue  # for topic
             dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)

@@ -71,60 +71,49 @@ class BagReader(rosbag.Bag):
             BagReader.reindex(filename, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
-        self.__topics     = {}  # {topic: typename}
-        self.__types      = {}  # {typename: message type class}
-        self.__typehashes = {}  # {typename: type definition MD5 hash}
-        self.__typedefs   = {}  # {typename: type definition text}
-        self.__parseds    = {}  # {typename: whether definition has been parsed for subtypes}
+        self.__topics     = {}  # {(topic, typename, typehash): message count}
+        self.__types      = {}  # {(typename, typehash): message type class}
+        self.__typedefs   = {}  # {(typename, typehash): type definition text}
+        self.__parseds    = {}  # {(typename, typehash): whether subtype definitions parsed}
 
-        self.__populate_defs()
+        self.__populate_meta()
 
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS1 message type definition full text from bag, including subtype definitions."""
-        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        return self.__typedefs.get(typename)
+        if is_ros_message(msg_or_type):
+            return self.__typedefs.get((msg_or_type._type, msg_or_type._md5sum))
+        typename = msg_or_type
+        return next((d for (n, h), d in self.__typedefs.items() if n == typename), None)
 
 
-    def get_message_class(self, typename):
+    def get_message_class(self, typename, typehash=None):
         """
         Returns rospy message class for typename, or None if unknown type.
 
         Generates class dynamically if not already generated.
+
+        @param   typehash  message type definition hash, if any
         """
-        self.__ensure_type(typename)
-        if typename not in self.__types and typename in self.__typedefs:
-            for n, t in genpy.dynamic.generate_dynamic(typename, self.__typedefs[typename]).items():
-                self.__types[n] = t
-        return self.__types.get(typename) or get_message_class(typename)
+        typekey = (typename, typehash)
+        self.__ensure_typedef(typename, typehash)
+        if typekey not in self.__types and typekey in self.__typedefs:
+            for n, c in genpy.dynamic.generate_dynamic(typename, self.__typedefs[typekey]).items():
+                self.__types[(n, c._md5sum)] = c
+        return self.__types.get(typekey) or get_message_class(typename)
 
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS1 message type MD5 hash."""
-        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        return self.__typehashes.get(typename) or get_message_type_hash(msg_or_type)
+        if is_ros_message(msg_or_type): return msg_or_type._md5sum
+        typename = msg_or_type
+        return next((h for n, h in self.__typedefs if n == typename), None) \
+               or get_message_type_hash(typename)
 
 
-    def get_type_and_topic_info(self, topic_filters=None):
-        """
-        Returns topic and message type information from bag.
-
-        @param   topic_filters  one or more topic to filter by, 
-                                either a single str or a list of strings
-        @return                 `TypesAndTopicsTuple(
-                                  msg_types: {"key": type name, "val": md5hash}, 
-                                  topics: {topic name: TopicTuple(
-                                    msg_type:       type name,
-                                    message_count:  number of messages,
-                                    connections:    number of connections,
-                                    frequency:      data frequency)
-                                  )}
-                                )` describing the types of messages present
-                                and information about the topics
-        """
-        info = super(BagReader, self).get_type_and_topic_info(topic_filters)
-        self.__topics.update((t, x.msg_type) for t, x in info.topics.items())
-        return info
+    def get_topic_info(self):
+        """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
+        return dict(self.__topics)
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None, connection_filter=None, raw=False):
@@ -142,11 +131,10 @@ class BagReader(rosbag.Bag):
                                     for each message in the bag file
         """
         hashtypes = {}
-        for n, h in self.__typehashes.items(): hashtypes.setdefault(h, []).append(n)
-        self.__ensure_topics()
-        read_topics = topics if isinstance(topics, list) else [topics] if topics else self.__topics
-        dupes = {t: n for t, n in self.__topics.items()
-                 if t in read_topics and len(hashtypes.get(n, [])) > 1}
+        for n, h in self.__typedefs: hashtypes.setdefault(h, []).append(n)
+        read_topics = topics if isinstance(topics, list) else [topics] if topics else None
+        dupes = {t: (n, h) for t, n, h in self.__topics
+                 if (read_topics is None or t in read_topics) and len(hashtypes.get(n, [])) > 1}
 
         kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
                       connection_filter=connection_filter, raw=raw)
@@ -158,13 +146,13 @@ class BagReader(rosbag.Bag):
         for topic, msg, stamp in super(BagReader, self).read_messages(**kwargs):
             # Workaround for rosbag bug of using wrong type for identical type hashes
             if dupes.get(topic, msg._type) != msg._type:
-                msg = self.__convert_message(msg, dupes[topic])
+                msg = self.__convert_message(msg, *dupes[topic])
             yield topic, msg, stamp
 
 
-    def __convert_message(self, msg, typename2):
+    def __convert_message(self, msg, typename2, typehash2=None):
         """Returns message converted to given type; fields must match."""
-        msg2 = self.get_message_class(typename2)
+        msg2 = self.get_message_class(typename2, typehash2)
         fields2 = get_message_fields(msg2)
         for fname, ftypename in get_message_fields(msg).items():
             v1 = v2 = getattr(msg, fname)
@@ -174,33 +162,34 @@ class BagReader(rosbag.Bag):
         return msg2
 
 
-    def __populate_defs(self):
-        """Populates message type definitions and hashes."""
+    def __populate_meta(self):
+        """Populates topics and message type definitions and hashes."""
+        result = collections.Counter()  # {(topic, typename, typehash): count}
+        counts = collections.Counter()  # {connection ID: count}
+        for c in self._chunks:
+            for c_id, count in c.connection_counts.items():
+                counts[c_id] += count
         for c in self._connections.values():
-            self.__typedefs  [c.datatype] = c.msg_def
-            self.__typehashes[c.datatype] = c.md5sum
+            result[(c.topic, c.datatype, c.md5sum)] += counts[c.id]
+            self.__typedefs[(c.datatype, c.md5sum)] = c.msg_def
+        self.__topics = dict(result)
 
 
-    def __ensure_topics(self):
-        """Loads topics information if not loaded."""
-        if not self.__topics: self.get_type_and_topic_info()
+    def __ensure_typedef(self, typename, typehash):
+        """Parses subtype definition from any full definition where available, if not loaded."""
+        typekey = (typename, typehash)
+        if typekey not in self.__typedefs:
+            for (roottype, roothash), rootdef in list(self.__typedefs.items()):
+                rootkey = (roottype, roothash)
+                if self.__parseds.get(rootkey): continue  # for (roottype, roothash)
 
-
-    def __ensure_type(self, typename):
-        """Loads type information if not loaded."""
-        if typename not in self.__typedefs:
-            for sometype, typedef in list(self.__typedefs.items()):
-                if self.__parseds.get(sometype): continue  # for sometype
-
-                subdefs = tuple(parse_definition_subtypes(typedef).items())
-                self.__typedefs.update(subdefs)
-                for subtype, subdef in subdefs:
-                    md5 = calculate_definition_hash(subtype, subdef, subdefs)
-                    self.__typehashes[subtype] = md5
-                self._parseds[sometype] = True
-                if typename in subdefs:
-                    break  # for sometype
-            self.__typedefs.setdefault(typename, "")
+                subdefs = tuple(parse_definition_subtypes(rootdef))  # ((typename, typedef), )
+                subhashes = {n: calculate_definition_hash(n, d, subdefs) for n, d in subdefs}
+                self.__typedefs.update(((n, subhashes[n]), d) for n, d in subdefs)
+                self._parseds[rootkey] = True
+                if typekey in subdefs:
+                    break  # for (roottype, roothash)
+            self.__typedefs.setdefault(typekey, "")
 
 
     @staticmethod
@@ -239,22 +228,21 @@ class EmbagReader(object):
 
 
     def __init__(self, filename):
-        self._topics   = {}  # {topic: [typename, ]}
-        self._counts   = {}  # {(topic, typename): message count}
-        self._types    = {}  # {typename: message type class}
-        self._hashdefs = {}  # {message type definition MD5 hash: typename}
-        self._typedefs = {}  # {typename: type definition text}
+        self._topics   = {}  # {(topic, typename, typehash): message count}
+        self._types    = {}  # {(typename, typehash): message type class}
+        self._hashdefs = {}  # {(topic, typehash): typename}
+        self._typedefs = {}  # {(typename, typehash): type definition text}
         self._view = embag.View(filename)
 
         ## Bagfile path
         self.filename = filename
 
-        self._configure()
+        self._populate_meta()
 
 
     def get_message_count(self):
         """Returns the number of messages in the bag."""
-        return sum(self._counts.values())
+        return sum(self._topics.values())
 
 
     def get_start_time(self):
@@ -267,41 +255,40 @@ class EmbagReader(object):
         return self._view.getEndTime().to_sec()
 
 
-    def get_type_and_topic_info(self):
-        """Returns namedtuple(topics={topicname: namedtuple(msg_type, message_count)})."""
-        TopicTuple  = collections.namedtuple("TopicTuple",          ["msg_type", "message_count"])
-        ResultTuple = collections.namedtuple("TypesAndTopicsTuple", ["topics"])
-        topicmap = {}
-        for topic, typenames in self._topics.items():
-            for typename in typenames:
-                topickey = (topic, typename)
-                topicmap[topic] = TopicTuple(typename, self._counts.get(topickey, 0))
-        return ResultTuple(topics=topicmap)
-
-
-    def get_message_class(self, typename):
+    def get_message_class(self, typename, typehash=None):
         """
         Returns rospy message class for typename, or None if unknown type.
 
         Generates class dynamically if not already generated.
+
+        @param   typehash  message type definition hash, if any
         """
-        if typename not in self._types and typename in self._typedefs:
-            for n, t in genpy.dynamic.generate_dynamic(typename, self._typedefs[typename]).items():
-                self._types[n] = t
-        return self._types.get(typename) or get_message_class(typename)
+        typekey = (typename, typehash)
+        if typekey not in self._types and typekey in self._typedefs:
+            for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
+                self._types[(n, c._md5sum)] = c
+        return self._types.get(typekey) or get_message_class(typename)
 
 
     def get_message_definition(self, msg_or_type):
-        """Returns ROS1 message type definition full text, including subtype definitions."""
-        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        return self._typedefs.get(typename) or get_message_definition(typename)
+        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
+        if is_ros_message(msg_or_type):
+            return self._typedefs.get((msg_or_type._type, msg_or_type._md5sum))
+        typename = msg_or_type
+        return next((d for (n, h), d in self._typedefs.items() if n == typename), None)
 
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS1 message type MD5 hash."""
-        typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        md5 = next((h for h, t in self._hashdefs.items() if t == typename), None)
-        return md5 or get_message_type_hash(msg_or_type)
+        if is_ros_message(msg_or_type): return msg_or_type._md5sum
+        typename = msg_or_type
+        return next((h for n, h in self._typedefs if n == typename), None) \
+               or get_message_type_hash(typename)
+
+
+    def get_topic_info(self):
+        """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
+        return dict(self._topics)
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None):
@@ -320,8 +307,8 @@ class EmbagReader(object):
             if end_time is not None and end_time < m.timestamp.to_sec():
                 continue  # for m
 
-            typename = self._hashdefs[m.md5]
-            msg = self._populate_message(self.get_message_class(typename)(), m.data())
+            typename = self._hashdefs[(m.topic, m.md5)]
+            msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
             yield m.topic, msg, rospy.Time(m.timestamp.secs, m.timestamp.nsecs)
 
 
@@ -338,18 +325,20 @@ class EmbagReader(object):
         return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
 
 
-    def _configure(self):
+    def _populate_meta(self):
         """Populates bag metainfo."""
         connections = self._view.connectionsByTopic()
         for topic in self._view.topics():
             for conn in connections.get(topic, ()):
-                typename, topickey = conn.type, (topic, conn.type)
-                self._topics.setdefault(topic, []).append(typename)
-                self._counts[topickey] = self._counts.get(topickey, 0) + conn.message_count
-                self._hashdefs[conn.md5sum] = typename
-                self._typedefs[typename] = conn.message_definition
-                for n, d in parse_definition_subtypes(conn.message_definition).items():
-                    self._typedefs.setdefault(n, d)
+                topickey, typekey = (topic, conn.type, conn.md5sum), (conn.type, conn.md5sum)
+                self._topics.setdefault(topickey, 0)
+                self._topics[topickey] += conn.message_count
+                self._hashdefs[(topic, conn.md5sum)] = conn.type
+                self._typedefs[typekey] = conn.message_definition
+                subtypedefs = tuple(parse_definition_subtypes(conn.message_definition).items())
+                for n, d in subtypedefs:
+                    h = calculate_definition_hash(n, d, subtypedefs)
+                    self._typedefs.setdefault((n, h), d)
 
 
     def _populate_message(self, msg, embagval):
@@ -436,7 +425,8 @@ def create_bag_reader(filename, reindex):
     """
     Returns EmbagReader if embag available else rosbag.Bag.
 
-    Supplemented with get_message_class(), get_message_definition(), and get_message_type_hash().
+    Supplemented with get_message_class(), get_message_definition(),
+    get_message_type_hash(), and get_topic_info().
 
     @param   reindex  reindex unindexed bag, making a backup copy if indexed format
     """
@@ -453,9 +443,15 @@ def create_bag_writer(filename):
 
 def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a rospy.Publisher."""
+    def pub_unregister():
+        # ROS1 prints errors when closing a publisher with subscribers
+        if not pub.get_num_connections(): super(rospy.Publisher, pub).unregister()
+
     cls = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
-    return rospy.Publisher(topic, cls, queue_size=queue_size)
+    pub = rospy.Publisher(topic, cls, queue_size=queue_size)
+    pub.unregister = pub_unregister
+    return pub
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):

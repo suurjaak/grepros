@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    15.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -63,10 +63,10 @@ class ParquetSink(SinkBase):
         super(ParquetSink, self).__init__(args)
 
         self._filebase  = args.DUMP_TARGET
-        self._filenames = {}  # {typehash: Parquet file path}
-        self._caches    = {}  # {typehash: [{data}, ]}
-        self._schemas   = {}  # {typehash: pyarrow.Schema}
-        self._writers   = {}  # {typehash: pyarrow.parquet.ParquetWriter}
+        self._filenames = {}  # {(typename, typehash): Parquet file path}
+        self._caches    = {}  # {(typename, typehash): [{data}, ]}
+        self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
+        self._writers   = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
 
         self._close_printed = False
 
@@ -113,12 +113,13 @@ class ParquetSink(SinkBase):
 
     def _process_type(self, topic, msg):
         """Prepares Parquet schema and writer if not existing."""
-        typehash = self.source.get_message_type_hash(msg)
-        if (topic, typehash) not in self._counts and self._args.VERBOSE:
-            ConsolePrinter.debug("Adding topic %s.", topic)
-        if typehash in self._writers: return
-
         typename = rosapi.get_message_type(msg)
+        typehash = self.source.get_message_type_hash(msg)
+        typekey  = (typename, typehash)
+        if (topic, typename, typehash) not in self._counts and self._args.VERBOSE:
+            ConsolePrinter.debug("Adding topic %s.", topic)
+        if typekey in self._writers: return
+
         basedir, basename = os.path.split(self._filebase)
         pathname = os.path.join(basedir, re.sub(r"\W", "__", "%s__%s" % (typename, typehash)))
         os.makedirs(pathname, exist_ok=True)
@@ -132,10 +133,10 @@ class ParquetSink(SinkBase):
 
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
-        self._caches[typehash]    = []
-        self._filenames[typehash] = filename
-        self._schemas[typehash]   = pyarrow.schema(cols)
-        self._writers[typehash]   = pyarrow.parquet.ParquetWriter(filename, self._schemas[typehash])
+        self._caches[typekey]    = []
+        self._filenames[typekey] = filename
+        self._schemas[typekey]   = pyarrow.schema(cols)
+        self._writers[typekey]   = pyarrow.parquet.ParquetWriter(filename, self._schemas[typekey])
 
 
     def _process_message(self, topic, stamp, msg):
@@ -144,14 +145,16 @@ class ParquetSink(SinkBase):
 
         Writes cache to disk if length reached chunk size.
         """
+        typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
+        typekey  = (typename, typehash)
         data = {}
         for p, v, t in rosapi.iter_message_fields(msg):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
-        self._caches[typehash].append(data)
-        if len(self._caches[typehash]) >= self.CHUNK_SIZE:
-            self._write_table(typehash)
+        self._caches[typekey].append(data)
+        if len(self._caches[typekey]) >= self.CHUNK_SIZE:
+            self._write_table(typekey)
 
 
     def _make_column_type(self, typename):
@@ -184,17 +187,17 @@ class ParquetSink(SinkBase):
         return v
 
 
-    def _write_table(self, typehash):
+    def _write_table(self, typekey):
         """Writes out cached messages for type."""
-        dicts = self._caches[typehash][:]
-        del self._caches[typehash][:]
+        dicts = self._caches[typekey][:]
+        del self._caches[typekey][:]
         mapping = {k: [d[k] for d in dicts] for k in dicts[0]}
-        table = pyarrow.Table.from_pydict(mapping, self._schemas[typehash])
-        self._writers[typehash].write_table(table)
+        table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
+        self._writers[typekey].write_table(table)
 
 
 
-def init(args):
+def init(args=None):
     """Adds ParquetSink to MultiSink formats."""
     MultiSink.SUBFLAG_CLASSES.setdefault("DUMP_TARGET", {}).setdefault("DUMP_FORMAT", {})
     MultiSink.SUBFLAG_CLASSES["DUMP_TARGET"]["DUMP_FORMAT"]["parquet"] = ParquetSink

@@ -449,30 +449,30 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     var Messages = new function() {
       var self = this;
 
-      var TOPICS    = self.TOPICS    = {};  // {topic: [type, ]}
-      var TOPICKEYS = self.TOPICKEYS = [];  // [[topic, type], ]
-      var SCHEMAS   = self.SCHEMAS   = {};  // {type: schema}
-      var FIRSTMSGS = self.FIRSTMSGS = {};  // {[topic, type]: {id, dt}}
-      var LASTMSGS  = self.LASTMSGS  = {};  // {[topic, type]: {id, dt}}
-      var MSGCOUNTS = self.MSGCOUNTS = {};  // {[topic, type]: count}
+      var TOPICS    = self.TOPICS    = {};  // {topic: [[typename, typehash], ]}
+      var TOPICKEYS = self.TOPICKEYS = [];  // [[topic, typename, typehash], ]
+      var SCHEMAS   = self.SCHEMAS   = {};  // {[typename, typehash]: schema}
+      var FIRSTMSGS = self.FIRSTMSGS = {};  // {[topic, typename, typehash]: {id, dt}}
+      var LASTMSGS  = self.LASTMSGS  = {};  // {[topic, typename, typehash]: {id, dt}}
+      var MSGCOUNTS = self.MSGCOUNTS = {};  // {[topic, typename, typehash]: count}
 
 
       /** Registers entry in a topic. */
-      self.registerTopic = function(topic, type, schema, id, secs_nsecs) {
-        var topickey = [topic, type];
+      self.registerTopic = function(topic, type, hash, schema, id, secs_nsecs) {
+        var topickey = [topic, type, hash];
         TOPICKEYS.push(topickey);
-        SCHEMAS[type] = schema;
-        self.registerMessage(null, id, secs_nsecs, topic, type);
+        SCHEMAS[[type, hash]] = schema;
+        self.registerMessage(null, id, secs_nsecs, topic, type, hash);
       };
 
 
       /** Registers message. */
-      self.registerMessage = function(topicindex, id, secs_nsecs, topic, type) {
-        var topickey = (topic && type) ? [topic, type] : TOPICKEYS[topicindex];
+      self.registerMessage = function(topicindex, id, secs_nsecs, topic, type, hash) {
+        var topickey = (topicindex != null) ? TOPICKEYS[topicindex] : [topic, type, hash];
         var dt = formatStamp(secs_nsecs);
         if (!FIRSTMSGS[topickey]) {
           FIRSTMSGS[topickey] = {"id": id, "dt": dt};
-          (TOPICS[topic] = TOPICS[topic] || []).push(type);
+          (TOPICS[topic] = TOPICS[topic] || []).push([type, hash]);
         };
         LASTMSGS[topickey] = {"id": id, "dt": dt};
         MSGCOUNTS[topickey] = (MSGCOUNTS[topickey] || 0) + 1;
@@ -481,17 +481,17 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
       /** Shows popup with message type definition. */
-      self.showSchema = function(type, evt) {
+      self.showSchema = function(type, hash, evt) {
         var elem = document.getElementById("overlay");
         elem.classList.remove("hidden");
-        var text = SCHEMAS[type].split("\\n").map(function(line) {
+        var text = SCHEMAS[[type, hash]].split("\\n").map(function(line) {
           if (!line.match(/^w?string [^#]*=/))  // String constant lines cannot have comments
             return line.replace(/#.*$/g, '<span class="comment">$&</span>');
           return line;
         }).join("\\n");
         text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
         text = text.replace(/\\n/g, "<br />");
-        elem.getElementsByClassName("title")[0].innerText = type + ":";
+        elem.getElementsByClassName("title")[0].innerText = "{0} ({1}):".format(type, hash);
         elem.getElementsByClassName("content")[0].innerHTML = text;
         evt && evt.stopPropagation && evt.stopPropagation();
         return false;
@@ -539,7 +539,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         if (elem_link && elem_link.classList.contains("disabled")) return;
         var elem_source = document.getElementById(id_source);
         if (elem_source) {
-          var selectors = [].slice.call(elem_source.classList).filter(function(v) { return v.match(/\\//); });
+          var SKIPCLS = ["meta", "message", "collapsed", "hidden", "highlight"];
+          var selectors = [].slice.call(elem_source.classList).filter(function(v) { return SKIPCLS.indexOf(v) < 0; });
           var adjacent = (direction < 0) ? "previousElementSibling" : "nextElementSibling";
           var elem_sibling = elem_source[adjacent];
           var found = false;
@@ -601,9 +602,9 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
       /** Shows or hides topic message rows. */
-      self.enableTopic = function(topic, type, elem_cb) {
+      self.enableTopic = function(topic, type, hash, elem_cb) {
         var toggler = elem_cb.checked ? "remove" : "add";
-        var selectors = [topic, type].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
+        var selectors = [topic, type, hash].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
         var rows = document.querySelectorAll("#messages tbody tr.meta");
         for (var i = 0; i < rows.length; i++) {
           var elem_tr = rows[i];
@@ -670,19 +671,20 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
         var elem_tbody = elem_table.getElementsByTagName("tbody")[0];
         Object.keys(Messages.TOPICS).sort(self.cmp).forEach(function(topic, i) {
-          Messages.TOPICS[topic].sort(self.cmp).forEach(function(type, j) {
-            var topickey = [topic, type];
+          Messages.TOPICS[topic].sort(self.cmp).forEach(function(typekey, j) {
+            var type = typekey[0], hash = typekey[1];
+            var topickey = [topic, type, hash];
             var id0 = Messages.FIRSTMSGS[topickey]["id"], id1 = Messages.LASTMSGS[topickey]["id"];
             var dt0 = Messages.FIRSTMSGS[topickey]["dt"], dt1 = Messages.LASTMSGS[topickey]["dt"];
             var elem_row = document.createElement("tr");
             var id_cb = "cb_topic_{0}_{1}".format(i, j);
             var elem_cb = createElement("input", null, {"type": "checkbox", "checked": "checked", "id": id_cb,
                                                         "title": "Toggle topic messages visibility",
-                                                        "onclick": "return TOC.enableTopic('{0}', '{1}', this)".format(topic, type)});
+                                                        "onclick": "return TOC.enableTopic('{0}', '{1}', '{2}', this)".format(topic, type, hash)});
             elem_row.appendChild(createElement("td", elem_cb));
             elem_row.appendChild(createElement("td", createElement("label", topic, {"for": id_cb})));
             var elem_type = createElement("a", type, {"href": "javascript:;", "title": "Show type definition",
-                                                      "onclick": "return Messages.showSchema('{0}')".format(type)});
+                                                      "onclick": "return Messages.showSchema('{0}', '{1}')".format(type, hash)});
             elem_row.appendChild(createElement("td", elem_type));
             elem_row.appendChild(createElement("td", (Messages.MSGCOUNTS[topickey]).toLocaleString("en")));
             var elem_first = createElement("a", dt0, {"href": "#" + id0, "title": "Go to first message in topic",
@@ -1016,22 +1018,22 @@ Command: {{ " ".join(args) }}
     </tr></thead>
     <tbody>
 <%
-topic_idx = {}  # {(topic, type), ]
+topic_idx = {}  # {(topic, typename, typehash), ]
 selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %>
 %for i, (topic, index, stamp, msg, match) in enumerate(messages, 1):
     <%
 secs, nsecs = divmod(rosapi.to_nsec(stamp), 10**9)
 meta = source.get_message_meta(topic, index, stamp, msg)
-topickey = (topic, meta["type"])
+topickey = (topic, meta["type"], meta["hash"])
     %>
-    <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }}" id="{{ i }}" onclick="return Messages.onClickHeader({{ i }}, event)">
+    <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }} {{ selector(meta["hash"]) }}" id="{{ i }}" onclick="return Messages.onClickHeader({{ i }}, event)">
       <td>
         {{ "{0:,d}".format(index) }}{{ ("/{0:,d}".format(meta["total"])) if "total" in meta else "" }}
         <span class="index">{{ i }}</span>
       </td>
       <td>{{ topic }}</td>
-      <td><a title="Show type definition" href="javascript:;" onclick="return Messages.showSchema('{{ meta["type"] }}', event)">{{ meta["type"] }}</td>
+      <td><a title="Show type definition" href="javascript:;" onclick="return Messages.showSchema('{{ meta["type"] }}', '{{ meta["hash"] }}', event)">{{ meta["type"] }}</td>
       <td>{{ meta["dt"] }}</td>
       <td>{{ meta["stamp"] }}</td>
       <td>
@@ -1051,7 +1053,7 @@ topickey = (topic, meta["type"])
     %if topickey in topic_idx:
         <script> Messages.registerMessage('{{ topic_idx[topickey] }}', {{ i }}, {{ [secs, nsecs] }}); </script>
     %else:
-        <script> Messages.registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, {{ [secs, nsecs] }}); </script>
+        <script> Messages.registerTopic('{{ topic }}', '{{ meta["type"] }}', '{{ meta["hash"] }}', '{{ meta.get("schema", "").replace("\n", "\\n") }}', {{ i }}, {{ [secs, nsecs] }}); </script>
     %endif
       </td>
     </tr>

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    09.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -45,15 +45,15 @@ class Searcher(object):
         self._args     = copy.deepcopy(args)
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
-        # {(topic, type): {message ID: message}}
+        # {(topic, typename, typehash): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): {message ID: ROS time}}
+        # {(topic, typename, typehash): {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): {None: count processed, True: count matched, False: count emitted as context}}
+        # {(topic, typename, typehash): {None: processed, True: matched, False: emitted as context}}
         self._counts   = collections.defaultdict(collections.Counter)
-        # {(topic, type): {message ID: True if matched else False if emitted else None}
+        # {(topic, typename, typehash): {message ID: True if matched else False if emitted else None}}
         self._statuses = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): (message hash over all fields used in matching)}
+        # {(topic, typename, typehash): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
@@ -85,7 +85,7 @@ class Searcher(object):
                 counter, batch, any_matched = 0, source.get_batch(), False
 
             msgid = counter = counter + 1
-            topickey = (topic, rosapi.get_message_type(msg))
+            topickey = (topic, rosapi.get_message_type(msg), source.get_message_type_hash(msg))
             self._counts[topickey][None] += 1
             self._messages[topickey][msgid] = msg
             self._stamps  [topickey][msgid] = stamp
@@ -124,7 +124,7 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
-        topickey = (topic, rosapi.get_message_type(msg))
+        topickey = (topic, rosapi.get_message_type(msg), self._source.get_message_type_hash(msg))
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
             return False

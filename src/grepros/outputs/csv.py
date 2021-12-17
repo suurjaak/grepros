@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs.csv
@@ -39,9 +39,9 @@ class CsvSink(SinkBase):
         """
         super(CsvSink, self).__init__(args)
         self._filebase      = args.DUMP_TARGET  # Filename base, will be made unique
-        self._files         = {}                # {(topic, typehash): file()}
-        self._writers       = {}                # {(topic, typehash): csv.writer}
-        self._lasttopickey  = None              # Last (topic, typehash) emitted
+        self._files         = {}                # {(topic, typename, typehash): file()}
+        self._writers       = {}                # {(topic, typename, typehash): csv.writer}
+        self._lasttopickey  = None              # Last (topic, typename, typehash) emitted
         self._close_printed = False
 
         atexit.register(self.close)
@@ -78,7 +78,7 @@ class CsvSink(SinkBase):
 
         File is populated with header if 
         """
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
