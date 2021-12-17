@@ -71,15 +71,18 @@ class BagReader(rosbag.Bag):
             BagReader.reindex(filename, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
-        self.__types    = {}  # {typename: message type class}
-        self.__hashdefs = {}  # {message type definition MD5 hash: typename}
-        self.__typedefs = {}  # {typename: type definition text}
+        self.__topics     = {}  # {topic: typename}
+        self.__types      = {}  # {typename: message type class}
+        self.__typehashes = {}  # {typename: type definition MD5 hash}
+        self.__typedefs   = {}  # {typename: type definition text}
+        self.__parseds    = {}  # {typename: whether definition has been parsed for subtypes}
+
+        self.__populate_defs()
 
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS1 message type definition full text from bag, including subtype definitions."""
         typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        self._ensure_type(typename)
         return self.__typedefs.get(typename)
 
 
@@ -89,7 +92,7 @@ class BagReader(rosbag.Bag):
 
         Generates class dynamically if not already generated.
         """
-        self._ensure_type(typename)
+        self.__ensure_type(typename)
         if typename not in self.__types and typename in self.__typedefs:
             for n, t in genpy.dynamic.generate_dynamic(typename, self.__typedefs[typename]).items():
                 self.__types[n] = t
@@ -99,26 +102,104 @@ class BagReader(rosbag.Bag):
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS1 message type MD5 hash."""
         typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-        self._ensure_type(typename)
-        md5 = next((h for h, t in self.__hashdefs.items() if t == typename), None)
-        return md5 or get_message_type_hash(msg_or_type)
+        return self.__typehashes.get(typename) or get_message_type_hash(msg_or_type)
 
 
-    def _ensure_type(self, typename):
+    def get_type_and_topic_info(self, topic_filters=None):
+        """
+        Returns topic and message type information from bag.
+
+        @param   topic_filters  one or more topic to filter by, 
+                                either a single str or a list of strings
+        @return                 `TypesAndTopicsTuple(
+                                  msg_types: {"key": type name, "val": md5hash}, 
+                                  topics: {topic name: TopicTuple(
+                                    msg_type:       type name,
+                                    message_count:  number of messages,
+                                    connections:    number of connections,
+                                    frequency:      data frequency)
+                                  )}
+                                )` describing the types of messages present
+                                and information about the topics
+        """
+        info = super(BagReader, self).get_type_and_topic_info(topic_filters)
+        self.__topics.update((t, x.msg_type) for t, x in info.topics.items())
+        return info
+
+
+    def read_messages(self, topics=None, start_time=None, end_time=None, connection_filter=None, raw=False):
+        """
+        Yields messages from the bag, optionally filtered by topic, timestamp and connection details.
+
+        @param   topics             list of topics or a single topic.
+                                    If an empty list is given, all topics will be read.
+        @param   start_time         earliest timestamp of messages to return
+        @param   end_time           latest timestamp of messages to return
+        @param   connection_filter  function to filter connections to include
+        @param   raw                if True, then generate tuples of
+                                    (datatype, (data, md5sum, position), pytype)
+        @return                     generator of BagMessage(topic, message, timestamp) namedtuples
+                                    for each message in the bag file
+        """
+        hashtypes = {}
+        for n, h in self.__typehashes.items(): hashtypes.setdefault(h, []).append(n)
+        self.__ensure_topics()
+        read_topics = topics if isinstance(topics, list) else [topics] if topics else self.__topics
+        dupes = {t: n for t, n in self.__topics.items()
+                 if t in read_topics and len(hashtypes.get(n, [])) > 1}
+
+        kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
+                      connection_filter=connection_filter, raw=raw)
+        if not dupes:
+            for topic, msg, stamp in super(BagReader, self).read_messages(**kwargs):
+                yield topic, msg, stamp
+            return
+
+        for topic, msg, stamp in super(BagReader, self).read_messages(**kwargs):
+            # Workaround for rosbag bug of using wrong type for identical type hashes
+            if dupes.get(topic, msg._type) != msg._type:
+                msg = self.__convert_message(msg, dupes[topic])
+            yield topic, msg, stamp
+
+
+    def __convert_message(self, msg, typename2):
+        """Returns message converted to given type; fields must match."""
+        msg2 = self.get_message_class(typename2)
+        fields2 = get_message_fields(msg2)
+        for fname, ftypename in get_message_fields(msg).items():
+            v1 = v2 = getattr(msg, fname)
+            if ftypename != fields2.get(fname, ftypename):
+                v2 = self.__convert_message(v1, fields2[fname])
+            setattr(msg2, fname, v2)
+        return msg2
+
+
+    def __populate_defs(self):
+        """Populates message type definitions and hashes."""
+        for c in self._connections.values():
+            self.__typedefs  [c.datatype] = c.msg_def
+            self.__typehashes[c.datatype] = c.md5sum
+
+
+    def __ensure_topics(self):
+        """Loads topics information if not loaded."""
+        if not self.__topics: self.get_type_and_topic_info()
+
+
+    def __ensure_type(self, typename):
         """Loads type information if not loaded."""
-        if not self.__typedefs:
-            for c in self._connections.values():
-                self.__typedefs[c.datatype] = c.msg_def
-                self.__hashdefs[c.md5sum] = c.datatype
         if typename not in self.__typedefs:
-            for typedef in list(self.__typedefs.values()):
+            for sometype, typedef in list(self.__typedefs.items()):
+                if self.__parseds.get(sometype): continue  # for sometype
+
                 subdefs = tuple(parse_definition_subtypes(typedef).items())
                 self.__typedefs.update(subdefs)
                 for subtype, subdef in subdefs:
                     md5 = calculate_definition_hash(subtype, subdef, subdefs)
-                    self.__hashdefs[md5] = subtype
+                    self.__typehashes[subtype] = md5
+                self._parseds[sometype] = True
                 if typename in subdefs:
-                    break  # for typedef
+                    break  # for sometype
             self.__typedefs.setdefault(typename, "")
 
 

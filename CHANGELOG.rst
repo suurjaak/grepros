@@ -7,6 +7,7 @@ Changelog for package grepros
 * add Parquet plugin
 * add --reindex-if-unindexed option
 * fix error in Postgres output if a nested JSON value is NaN
+* fix skipping some messages in ROS1 bag for different types with identical hashes
 
 0.3.5 (2021-12-14)
 -------------------
