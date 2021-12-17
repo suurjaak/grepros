@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -47,9 +47,11 @@ class ConsolePrinter(object):
     STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  ## Dim gray
     STYLE_SPECIAL   = "\x1b[35m"                ## Purple
     STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
+    STYLE_WARN      = "\x1b[33m"                ## Yellow
     STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
 
     DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
+    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  ## Warning message wrappers
     ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
 
     COLOR = None       ## Whether using colors in output
@@ -84,9 +86,11 @@ class ConsolePrinter(object):
 
         if cls.COLOR:
             cls.DEBUG_START, cls.DEBUG_END = cls.STYLE_LOWLIGHT, cls.STYLE_RESET
+            cls.WARN_START,  cls.WARN_END  = cls.STYLE_WARN,     cls.STYLE_RESET
             cls.ERROR_START, cls.ERROR_END = cls.STYLE_ERROR,    cls.STYLE_RESET
         else:
             cls.DEBUG_START, cls.DEBUG_END = "", ""
+            cls.WARN_START,  cls.WARN_END  = "", ""
             cls.ERROR_START, cls.ERROR_END = "", ""
 
 
@@ -114,6 +118,17 @@ class ConsolePrinter(object):
     def error(cls, text="", *args, **kwargs):
         """Prints error to stderr, formatted with args and kwargs, in error colors if supported."""
         KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
+        cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+    @classmethod
+    def warn(cls, text="", *args, **kwargs):
+        """
+        Prints warning to stderr.
+        
+        Formatted with args and kwargs, in warning colors if supported.
+        """
+        KWS = dict(__file=sys.stderr, __prefix=cls.WARN_START, __suffix=cls.WARN_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 

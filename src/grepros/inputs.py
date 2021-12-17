@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.11.2021
+@modified    16.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -284,7 +284,7 @@ class ConditionMixin(object):
     def _get_topic_instance(self, topic, remap=None):
         """
         Returns Topic() by name.
-        
+
         @param   remap  optional remap dictionary as {topic1: (topic2, typename)}
         """
         if remap and topic in remap:
@@ -346,6 +346,7 @@ class BagSource(SourceBase, ConditionMixin):
                                     for message to be processable
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
+        @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.DUMP_TARGET   output bagfile, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
         """
@@ -543,7 +544,7 @@ class BagSource(SourceBase, ConditionMixin):
         and os.path.realpath(self._args.DUMP_TARGET) == os.path.realpath(filename):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename)
+            bag = rosapi.create_bag_reader(filename, self._args.REINDEX)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False

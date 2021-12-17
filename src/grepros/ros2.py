@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    12.12.2021
+@modified    16.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -352,7 +352,7 @@ def canonical(typename):
     return DDS_TYPES.get(typename, typename) + suffix
 
 
-def create_bag_reader(filename):
+def create_bag_reader(filename, *_, **__):
     """Returns a ROS2 bag reader with rosbag.Bag-like interface."""
     return Bag(filename)
 

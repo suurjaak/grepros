@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -323,6 +323,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--order-bag-by"],
              dest="ORDERBY", choices=["topic", "type"],
              help="order bag messages by topic or type first and then by time"),
+
+        dict(args=["--reindex-if-unindexed"],
+             dest="REINDEX", action="store_true",
+             help="reindex unindexed bags (ROS1 only),\n"
+                  "making a backup copy if indexed format (warning: SLOW)"),
 
     ], "Live topic control": [
 

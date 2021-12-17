@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -16,6 +16,7 @@ import collections
 import io
 import os
 import re
+import shutil
 import time
 
 try: import embag
@@ -57,7 +58,19 @@ class BagReader(rosbag.Bag):
 
 
     def __init__(self, *args, **kwargs):
-        super(BagReader, self).__init__(*args, **kwargs)
+        """
+        @param   allow_unindexed  if true and bag is unindexed, makes a copy
+                                  of the file (unless unindexed format) and reindexes original
+        """
+        reindex = kwargs.pop("allow_unindexed", False)
+        try:
+            super(BagReader, self).__init__(*args, **kwargs)
+        except rosbag.ROSBagUnindexedException:
+            if not reindex: raise
+            filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
+            BagReader.reindex(filename, *args, **kwargs)
+            super(BagReader, self).__init__(filename, *args, **kwargs)
+
         self.__types    = {}  # {typename: message type class}
         self.__hashdefs = {}  # {message type definition MD5 hash: typename}
         self.__typedefs = {}  # {typename: type definition text}
@@ -107,6 +120,36 @@ class BagReader(rosbag.Bag):
                 if typename in subdefs:
                     break  # for typedef
             self.__typedefs.setdefault(typename, "")
+
+
+    @staticmethod
+    def reindex(f, *args, **kwargs):
+        """Reindexes bag (making a backup copy if indexed format)."""
+        KWS = ["mode", "compression", "chunk_threshold",
+               "allow_unindexed", "options", "skip_index"]
+        kwargs.update(zip(args, KWS), allow_unindexed=True)
+
+        ConsolePrinter.warn("Unindexed bag %s, reindexing.", f)
+        inbag = rosbag.Bag(f, **kwargs)
+        do_copy = (inbag.version > 102)
+        inbag.close()
+
+        f2 = "%s.orig%s" % os.path.splitext(f) if do_copy else f
+        do_copy and shutil.copy(f, f2)
+
+        inbag, outbag = None, None
+        outkwargs = dict(kwargs, mode="a" if do_copy else "w", allow_unindexed=do_copy)
+        try:
+            inbag  = rosbag.Bag(f2, **dict(kwargs, mode="r"))
+            outbag = rosbag.Bag(f, **outkwargs)
+            rosbag.rosbag_main.reindex_op(inbag, outbag, quiet=True)
+        except BaseException:
+            inbag and inbag.close()
+            outbag and outbag.close()
+            do_copy and os.remove(f2)
+            raise
+        inbag.close()
+        outbag.close()
 
 
 
@@ -308,15 +351,17 @@ def validate(live=False):
     return not missing
 
 
-def create_bag_reader(filename):
+def create_bag_reader(filename, reindex):
     """
     Returns EmbagReader if embag available else rosbag.Bag.
 
     Supplemented with get_message_class(), get_message_definition(), and get_message_type_hash().
+
+    @param   reindex  reindex unindexed bag, making a backup copy if indexed format
     """
     if False and embag:  # @todo enable when embag fixes its memory leak
         return EmbagReader(filename)
-    return BagReader(filename, skip_index=True)
+    return BagReader(filename, skip_index=True, allow_unindexed=reindex)
 
 
 def create_bag_writer(filename):

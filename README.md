@@ -825,6 +825,9 @@ Bag input control:
   -r, --recursive       recurse into subdirectories when looking for bagfiles
   --order-bag-by {topic,type}
                         order bag messages by topic or type first and then by time
+  --reindex-if-unindexed
+                        reindex unindexed bags (ROS1 only),
+                        making a backup copy if indexed format (warning: SLOW)
 
 Live topic control:
   --publish-prefix PREFIX

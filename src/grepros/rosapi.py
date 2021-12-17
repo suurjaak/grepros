@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    16.12.2021
+@modified    17.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -135,15 +135,17 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
 
 
-def create_bag_reader(filename):
+def create_bag_reader(filename, reindex=False):
     """
     Returns an object for reading ROS bags.
 
     Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
     if using embag in ROS1, or if using ROS2.
     Supplemented with get_message_class(), get_message_definition() and get_message_type_hash().
+
+    @param   reindex  reindex unindexed bag (ROS1 only), making a backup copy if indexed format
     """
-    return realapi.create_bag_reader(filename)
+    return realapi.create_bag_reader(filename, reindex)
 
 
 def create_bag_writer(filename):
