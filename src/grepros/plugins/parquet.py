@@ -11,7 +11,7 @@ Released under the BSD License.
 @modified    15.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.plugins.parquet
+## @namespace grepros.plugins.parquet
 import os
 import re
 
