@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -247,6 +247,11 @@ class ConditionMixin(object):
             if not result: break  # for i,
         return result
 
+    def close_batch(self):
+        """Clears cached messages."""
+        self._firstmsgs.clear()
+        self._lastmsgs.clear()
+
     def has_conditions(self):
         """Returns whether there are any conditions configured."""
         return bool(self._conditions)
@@ -406,12 +411,14 @@ class BagSource(SourceBase, ConditionMixin):
         """Closes current bag, if any."""
         self._running = False
         self._bag and self._bag.close()
+        ConditionMixin.close_batch(self)
         super(BagSource, self).close()
 
     def close_batch(self):
         """Closes current bag, if any, and moves reading to the next one, if any."""
         self._bag and self._bag.close()
         self._bag = None
+        ConditionMixin.close_batch(self)
 
     def format_meta(self):
         """Returns bagfile metainfo string."""
@@ -658,6 +665,7 @@ class TopicSource(SourceBase, ConditionMixin):
             self._subs.pop(k).unregister()
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
+        ConditionMixin.close_batch(self)
         super(TopicSource, self).close()
         rosapi.shutdown_node()
 
