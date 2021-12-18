@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -22,8 +22,8 @@ import sys
 
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                     filter_fields, format_bytes, merge_spans, plural, wildcard_to_regex
+from . common import ConsolePrinter, MatchMarkers, TextWrapper, filter_fields, \
+                     format_bytes, makedirs, merge_spans, plural, wildcard_to_regex
 from . import rosapi
 
 
@@ -356,6 +356,7 @@ class BagSink(SinkBase):
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
                                      self._args.DUMP_TARGET,
                                      (" (%s)" % format_bytes(sz)) if sz else "")
+            makedirs(os.path.dirname(self._args.DUMP_TARGET))
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
         topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)

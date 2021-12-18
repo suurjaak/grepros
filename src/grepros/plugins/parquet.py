@@ -22,8 +22,8 @@ except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
 
-from .. common import ConsolePrinter, format_bytes, plural, unique_path
-from .. outputs import MultiSink, SinkBase
+from .. common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from .. outputs import SinkBase
 from .. import rosapi
 
 
@@ -122,7 +122,6 @@ class ParquetSink(SinkBase):
 
         basedir, basename = os.path.split(self._filebase)
         pathname = os.path.join(basedir, re.sub(r"\W", "__", "%s__%s" % (typename, typehash)))
-        os.makedirs(pathname, exist_ok=True)
         filename = unique_path(os.path.join(pathname, basename))
 
         cols = []
@@ -133,6 +132,7 @@ class ParquetSink(SinkBase):
 
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
+        if not self._writers: makedirs(pathname)
         self._caches[typekey]    = []
         self._filenames[typekey] = filename
         self._schemas[typekey]   = pyarrow.schema(cols)

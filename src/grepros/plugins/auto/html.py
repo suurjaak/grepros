@@ -21,7 +21,7 @@ import re
 import sys
 import threading
 
-from ... common import ConsolePrinter, MatchMarkers, format_bytes, plural, unique_path
+from ... common import ConsolePrinter, MatchMarkers, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import SinkBase, TextSinkMixin
 from ... vendor import step
@@ -132,6 +132,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                       timeline=not self._args.ORDERBY, messages=self._produce())
+            makedirs(os.path.dirname(self._filename))
             self._filename = unique_path(self._filename, empty_ok=True)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Creating %s.", self._filename)

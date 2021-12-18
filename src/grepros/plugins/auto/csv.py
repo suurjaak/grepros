@@ -18,7 +18,7 @@ import csv
 import os
 import sys
 
-from ... common import ConsolePrinter, format_bytes, plural, unique_path
+from ... common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import SinkBase
 
@@ -59,6 +59,7 @@ class CsvSink(SinkBase):
         for k in names:
             self._files.pop(k).close()
         self._writers.clear()
+        self._lasttopickey = None
         if not self._close_printed and self._counts:
             self._close_printed = True
             sizes = {k: os.path.getsize(n) for k, n in names.items()}
@@ -79,6 +80,8 @@ class CsvSink(SinkBase):
         File is populated with header if 
         """
         topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        if not self._lasttopickey:
+            makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:

@@ -559,6 +559,16 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
+def makedirs(path):
+    """Creates directory structure for path if not already existing."""
+    parts, accum = path.split(os.sep), []
+    while parts:
+        accum.append(parts.pop(0))
+        curpath = os.path.join(*accum)
+        if not os.path.exists(curpath):
+            os.mkdir(curpath)
+
+
 def memoize(func):
     """Returns a results-caching wrapper for the function."""
     cache = {}

@@ -17,7 +17,7 @@ import json
 import os
 import sqlite3
 
-from ... common import ConsolePrinter, format_bytes, quote
+from ... common import ConsolePrinter, format_bytes, makedirs, quote
 from ... import rosapi
 from . dbbase import DataSinkBase
 
@@ -211,6 +211,7 @@ class SqliteSink(DataSinkBase):
 
     def _connect(self):
         """Returns new database connection."""
+        makedirs(os.path.dirname(self._filename))
         db = sqlite3.connect(self._filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None
