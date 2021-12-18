@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    30.11.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -733,27 +733,19 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       };
 
 
-      /** Register message ID and timestamp for timeline. */
+      /** Registers message ID and timestamp for timeline. */
       self.registerMessage = function(id, secs_nsecs) {
         MSGIDS.push(id);
         MSGSTAMPS.push(secs_nsecs);
       };
 
 
-      /** Populates timeline structures and the timeline element. */
-      self.populate = function() {
-        var elem_container = document.querySelector("#timeline");
-        var elem_timeline  = document.querySelector("#timeline ul");
-        var elem_title     = document.querySelector("#timeline span");
-        elem_container.classList.remove("hidden");
-
-        var HEIGHT = window.innerHeight - getBoxHeight(elem_container) - getBoxHeight(elem_timeline) - getOuterHeight(elem_title);
-        var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
-
-        // Calculate a sensibly rounded interval
+      /** Returns a sensibly rounded interval for timeline steps, as nanoseconds. */
+      self.calculateInterval = function(count) {
         var st1 = MSGSTAMPS[0], stN = MSGSTAMPS[MSGSTAMPS.length - 1];  // [seconds, nanoseconds], 
         var st2 = MSGSTAMPS[Math.min(1, MSGSTAMPS.length - 1)];
-        var entryspan_ns = ((stN[0] - st1[0]) * 10**9 + (stN[1] - st1[1])) / NUM;  // Ensure max precision
+        var entryspan_ns = ((stN[0] - st1[0]) * 10**9 + (stN[1] - st1[1])) / count;  // Ensure max precision
+
         var ROUNDINGS = [ // [[threshold in nanos, rounding in nanos], ]
           [3600 * 1000000000, 3600 * 1000000000],  // >1h, round to 60m
           [ 600 * 1000000000,  900 * 1000000000],  // 10m..60m, round to 15m
@@ -787,45 +779,12 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         };
         if (!rounded) entryspan_ns = 1;
 
-        /** Returns [s1+s2, ns1+ns2] from [s1, ns2] and [s2, ns2]. */
-        var add = function(secs_nsecs1, secs_nsecs2) {
-          var s = secs_nsecs1[0] + secs_nsecs2[0], ns = secs_nsecs1[1] +  secs_nsecs2[1];
-          return (ns > 10**9) ? [s + 1, ns - 10**9] : [s, ns];
-        };
-        /** Returns [secs, nsecs] rounded lower. */
-        var round = function(secs_nsecs, nsecs) {
-          var s = secs_nsecs[0], ns = secs_nsecs[1];
-          if (nsecs > 10**9) { s -= s % Math.floor(nsecs / 10**9); ns = 0; }
-          else { ns -= ns % nsecs; };
-          return [s, ns];
-        };
-        /** Returns whether first stamp is equal to or greater than the second. */
-        var is_not_less = function(secs_nsecs1, secs_nsecs2) {
-          return secs_nsecs1[0] > secs_nsecs2[0] || (secs_nsecs1[0] == secs_nsecs2[0] && secs_nsecs1[1] > secs_nsecs2[1]);
-        };
+        return entryspan_ns;
+      };
 
-        // Assemble timeline entries
-        var timeentry = round(MSGSTAMPS[0], entryspan_ns);
-        var entryspan = [Math.floor(entryspan_ns / 10**9), entryspan_ns % 10**9];
-        var nextentry = add(timeentry, entryspan);
-        var timelines = [timeentry];
-        var indexids = {};  // [secs_nsecs: first message ID]
-        var counts   = {};  // {secs_nsecs: message count}
-        MSG_TIMELINES = {};
-        for (var i = 0; i < MSGSTAMPS.length; i++) {
-          var st = MSGSTAMPS[i];
-          if (!i || is_not_less(st, nextentry)) {
-            while (i && is_not_less(st, nextentry)) {
-              timeentry = nextentry;
-              timelines.push(timeentry);
-              nextentry = add(timeentry, entryspan);
-            };
-            indexids[timeentry] = MSGIDS[i];
-          };
-          counts[timeentry] = (counts[timeentry] || 0) + 1;
-          MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
-        };
 
+      /** Generates date format string with sufficient granularity for given timelines. */
+      self.makeDateFormat = function(timelines) {
         // Generate date format string
         var dt1 = makeDate(timelines[0]);
         var dt2 = makeDate(timelines[Math.min(1, timelines.length - 1)]);
@@ -845,6 +804,66 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
           if (dt1.strftime(fmtstr + fracts) == dt2.strftime(fmtstr + fracts)) fracts = ".%n";  // Nanos
           fmtstr += fracts;
         };
+        return fmtstr;
+      };
+
+
+      /** Returns [s1+s2, ns1+ns2] from [s1, ns2] and [s2, ns2]. */
+      self.add = function(secs_nsecs1, secs_nsecs2) {
+        var s = secs_nsecs1[0] + secs_nsecs2[0], ns = secs_nsecs1[1] +  secs_nsecs2[1];
+        return (ns > 10**9) ? [s + 1, ns - 10**9] : [s, ns];
+      };
+
+
+      /** Returns [secs, nsecs] rounded lower. */
+      self.round = function(secs_nsecs, nsecs) {
+        var s = secs_nsecs[0], ns = secs_nsecs[1];
+        if (nsecs > 10**9) { s -= s % Math.floor(nsecs / 10**9); ns = 0; }
+        else { ns -= ns % nsecs; };
+        return [s, ns];
+      };
+
+
+      /** Returns whether first stamp is equal to or greater than the second. */
+      self.is_not_less = function(secs_nsecs1, secs_nsecs2) {
+        return secs_nsecs1[0] > secs_nsecs2[0] || (secs_nsecs1[0] == secs_nsecs2[0] && secs_nsecs1[1] > secs_nsecs2[1]);
+      };
+
+
+      /** Populates timeline structures and the timeline element. */
+      self.populate = function() {
+        var elem_container = document.querySelector("#timeline");
+        var elem_timeline  = document.querySelector("#timeline ul");
+        var elem_title     = document.querySelector("#timeline span");
+        elem_container.classList.remove("hidden");
+
+        var HEIGHT = window.innerHeight - getBoxHeight(elem_container) - getBoxHeight(elem_timeline) - getOuterHeight(elem_title);
+        var NUM = Math.max(5, Math.floor(HEIGHT / 25));  // / li.height
+        var entryspan_ns = self.calculateInterval(NUM);
+
+        // Assemble timeline entries
+        var timeentry = self.round(MSGSTAMPS[0], entryspan_ns);
+        var entryspan = [Math.floor(entryspan_ns / 10**9), entryspan_ns % 10**9];
+        var nextentry = self.add(timeentry, entryspan);
+        var timelines = [timeentry];
+        var indexids = {};  // [secs_nsecs: first message ID]
+        var counts   = {};  // {secs_nsecs: message count}
+        MSG_TIMELINES = {};
+        for (var i = 0; i < MSGSTAMPS.length; i++) {
+          var st = MSGSTAMPS[i];
+          if (!i || self.is_not_less(st, nextentry)) {
+            while (i && self.is_not_less(st, nextentry)) {
+              timeentry = nextentry;
+              timelines.push(timeentry);
+              nextentry = self.add(timeentry, entryspan);
+            };
+            indexids[timeentry] = MSGIDS[i];
+          };
+          counts[timeentry] = (counts[timeentry] || 0) + 1;
+          MSG_TIMELINES[MSGIDS[i]] = timelines.length - 1;
+        };
+
+        var fmtstr = self.makeDateFormat(timelines);
 
         // Populate timeline
         elem_timeline.innerHTML = "";
