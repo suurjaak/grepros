@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    16.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.postgres
+## @namespace grepros.plugins.auto.postgres
 import collections
 import json
 
@@ -23,8 +23,8 @@ try:
 except ImportError:
     psycopg2 = None
 
-from .. import common, rosapi
-from .. common import ConsolePrinter
+from ... import common, rosapi
+from ... common import ConsolePrinter
 from . dbbase import DataSinkBase
 
 quote = lambda s: common.quote(s, force=True)

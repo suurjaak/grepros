@@ -8,16 +8,16 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.dbbase
+## @namespace grepros.plugins.auto.dbbase
 import atexit
 import collections
 
-from .. import common, rosapi
-from .. common import ConsolePrinter, ellipsize, plural
-from . base import SinkBase
+from ... import common, rosapi
+from ... common import ConsolePrinter, ellipsize, plural
+from ... outputs import SinkBase
 
 quote = lambda s, force=True: common.quote(s, force)
 

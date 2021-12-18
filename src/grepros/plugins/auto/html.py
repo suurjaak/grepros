@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.html
+## @namespace grepros.plugins.auto.html
 import atexit
 import copy
 import os
@@ -21,10 +21,10 @@ import re
 import sys
 import threading
 
-from .. common import ConsolePrinter, MatchMarkers, format_bytes, plural, unique_path
-from .. import rosapi
-from .. vendor import step
-from . base import SinkBase, TextSinkMixin
+from ... common import ConsolePrinter, MatchMarkers, format_bytes, plural, unique_path
+from ... import rosapi
+from ... outputs import SinkBase, TextSinkMixin
+from ... vendor import step
 
 
 class HtmlSink(SinkBase, TextSinkMixin):

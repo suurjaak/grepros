@@ -8,19 +8,19 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.csv
+## @namespace grepros.plugins.auto.csv
 from __future__ import absolute_import
 import atexit
 import csv
 import os
 import sys
 
-from .. common import ConsolePrinter, format_bytes, plural, unique_path
-from .. import rosapi
-from . base import SinkBase
+from ... common import ConsolePrinter, format_bytes, plural, unique_path
+from ... import rosapi
+from ... outputs import SinkBase
 
 
 class CsvSink(SinkBase):

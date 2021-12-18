@@ -8,17 +8,17 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    13.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.sqlite
+## @namespace grepros.plugins.auto.sqlite
 import collections
 import json
 import os
 import sqlite3
 
-from .. common import ConsolePrinter, format_bytes, quote
-from .. import rosapi
+from ... common import ConsolePrinter, format_bytes, quote
+from ... import rosapi
 from . dbbase import DataSinkBase
 
 
