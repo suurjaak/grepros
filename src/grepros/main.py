@@ -473,7 +473,7 @@ def run():
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
-        sink.sinks.extend(filter(bool, [plugins.load("sink", args)]))
+        sink.sinks.extend(filter(bool, plugins.load("sink", args, list=True)))
         if not sink.validate():
             sys.exit(1)
 

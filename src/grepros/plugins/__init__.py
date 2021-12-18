@@ -76,22 +76,28 @@ def configure(args):
             raise
 
 
-def load(category, args):
+def load(category, args, every=False):
     """
     Returns a plugin category instance loaded from any configured plugin, or None.
 
     @param   category  item category like "source", "sink", or "search"
     @param   args      arguments object like argparse.Namespace
+    @param   every     if true, returns a list of instances,
+                       using all plugins that return something
     """
+    result = []
     for name, plugin in PLUGINS.items():
         if callable(getattr(plugin, "load", None)):
             try:
-                result = plugin.load(category, args)
-                if result is not None:
-                    return result
+                instance = plugin.load(category, args)
+                if instance is not None:
+                    result.append(instance)
+                    if not every:
+                        break  # for name, plugin
             except Exception:
                 ConsolePrinter.error("Error invoking %s.load(%r, args).", name, category)
                 raise
+    return result if every else result[0] if result else None
 
 
 def add_sink_format(name, sinkcls):
