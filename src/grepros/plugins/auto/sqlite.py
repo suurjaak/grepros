@@ -240,3 +240,10 @@ class SqliteSink(DataSinkBase):
             self._id_counters[table] = self._db.execute(sql).fetchone()["id"]
         self._id_counters[table] += 1
         return self._id_counters[table]
+
+
+
+def init(args=None):
+    """Adds sqlite to main.ARGUMENTS, SqliteSink to MultiSink formats."""
+    from .. import add_sink_format  # Late import to avoid circular
+    add_sink_format("sqlite", SqliteSink)

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -198,6 +198,6 @@ class ParquetSink(SinkBase):
 
 
 def init(args=None):
-    """Adds ParquetSink to MultiSink formats."""
-    MultiSink.SUBFLAG_CLASSES.setdefault("DUMP_TARGET", {}).setdefault("DUMP_FORMAT", {})
-    MultiSink.SUBFLAG_CLASSES["DUMP_TARGET"]["DUMP_FORMAT"]["parquet"] = ParquetSink
+    """Adds parquet to main.ARGUMENTS, ParquetSink to MultiSink formats."""
+    from . import add_sink_format  # Late import to avoid circular
+    add_sink_format("parquet", ParquetSink)

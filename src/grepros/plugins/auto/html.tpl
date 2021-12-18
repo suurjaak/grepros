@@ -491,7 +491,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
         }).join("\\n");
         text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
         text = text.replace(/\\n/g, "<br />");
-        elem.getElementsByClassName("title")[0].innerText = "{0} ({1}):".format(type, hash);
+        elem.getElementsByClassName("title")[0].innerText = "{0}:".format(type);
         elem.getElementsByClassName("content")[0].innerHTML = text;
         evt && evt.stopPropagation && evt.stopPropagation();
         return false;

@@ -61,7 +61,7 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
@@ -358,7 +358,7 @@ class BagSink(SinkBase):
                                      (" (%s)" % format_bytes(sz)) if sz else "")
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
-        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
@@ -407,8 +407,7 @@ class TopicSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        typename = self.source.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
+        typename, typehash = rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         topickey = (topic, typename, typehash)
         cls = self.source.get_message_class(typename, typehash)
         if topickey not in self._pubs:

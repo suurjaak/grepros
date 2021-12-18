@@ -234,6 +234,9 @@ Write messages to CSV files, each topic to a separate file, named
 Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.full__topic__name.2.csv`.
+
 Specifying `--write-format csv` is not required if the filename ends with `.csv`.
 
 
@@ -247,6 +250,9 @@ message timeline, message type definitions, and a topically traversable message 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
 
 Note: resulting file may be large, and take a long time to open in browser. 
+
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.2.html`.
 
 Specifying `--write-format html` is not required if the filename ends with `.htm` or `.html`.
 
@@ -678,6 +684,22 @@ Plugins are free to modify `grepros` internals, like adding command-line argumen
 to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
 
 
+Built-in plugins:
+
+### parquet
+
+    --plugin grepros.plugins.parquet --write my.parquet [--write-format parquet]
+
+Write messages to Apache Parquet files (columnar storage format),
+each message type to a separate file, named `package__MessageType__typehash/my.parquet`
+for `package/MessageType` (typehash is message type definition MD5 hashsum).
+
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. `package__MessageType__typehash/my.2.parquet`.
+
+Specifying `--write-format parquet` is not required if the filename ends with `.parquet`.
+
+
 All command-line arguments
 --------------------------
 
@@ -792,7 +814,7 @@ Output control:
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
   --write-option [KEY=VALUE [KEY=VALUE ...]]
-                        write options as key=value pairs, supported flags:
+                        write options as key=value pairs
                           commit-interval=NUM      transaction size for Postgres/SQLite output
                                                    (default 1000, 0 is autocommit)
                           message-yaml=true|false  whether to populate table field messages.yaml

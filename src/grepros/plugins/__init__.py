@@ -2,6 +2,21 @@
 """
 Plugins interface.
 
+Allows specifying a custom plugin for "source", "search" or "sink".
+
+Supported (but not required) plugin interface methods:
+
+- `init(args)`: invoked at startup with command-line arguments
+- `load(category, args)`: invoked with category "search" or "source" or "sink",
+                          using returned value if not None
+
+Plugins are free to modify package internals, like adding command-line arguments
+to `main.ARGUMENTS` or sink types to `outputs.MultiSink`.
+
+`plugins.add_format()` has been provided as a convenience method for
+
+
+
 Auto-inits any plugins in grepros.plugins.auto.
 
 ------------------------------------------------------------------------------
@@ -14,11 +29,13 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
+import glob
 import importlib
-import types
+import os
 
 from .. common import ConsolePrinter
-from . auto import *
+from .. outputs import MultiSink
+from . import auto
 
 
 ## {"some.module": <module 'some.module' from ..>}
@@ -27,16 +44,17 @@ PLUGINS = {}
 
 def init(args=None):
     """Imports and initializes all plugins from given Python module."""
-    for name, plugin in globals().items():
-        if not isinstance(plugin, types.ModuleType) \
-        or __package__ + ".auto" != getattr(plugin, "__package__", None):
-            continue  # for name
+    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*.py"))):
+        if f.startswith("__"): continue # for f
 
+        name = os.path.splitext(os.path.split(f)[-1])[0]
+        modulename = "%s.auto.%s" % (__package__, name)
         try:
+            plugin = import_item(modulename)
             if callable(getattr(plugin, "init", None)): plugin.init(args)
             PLUGINS[name] = plugin
         except Exception:
-            ConsolePrinter.error("Error loading plugin %s.", name)
+            ConsolePrinter.error("Error loading plugin %s.", modulename)
     if args: configure(args)
 
 
@@ -74,7 +92,23 @@ def load(category, args):
             except Exception:
                 ConsolePrinter.error("Error invoking %s.load(%r, args).", name, category)
                 raise
-                
+
+
+def add_sink_format(name, sinkcls):
+    """
+    Adds plugin to main.ARGUMENTS and MultiSink formats.
+
+    @param   name     format name like "csv", added to `--write-format`
+    @param   sinkcls  class providing SinkBase interface
+    """
+    from .. import main  # Late import to avoid circular
+    writearg = next((d for d in main.ARGUMENTS.get("arguments", [])
+                     if ["--write-format"] == d.get("args")), None)
+    if writearg and writearg.get("choices"):
+        writearg["choices"] = sorted(set(writearg["choices"] + [name]))
+    MultiSink.SUBFLAG_CLASSES.setdefault("DUMP_TARGET", {}).setdefault("DUMP_FORMAT", {})
+    MultiSink.SUBFLAG_CLASSES["DUMP_TARGET"]["DUMP_FORMAT"][name] = sinkcls
+
 
 def import_item(name):
     """

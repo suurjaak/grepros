@@ -150,7 +150,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             if entry is None:
                 break  # while
             (topic, index, stamp, msg, match) = entry
-            topickey = (topic, self.source.get_message_type(msg),
+            topickey = (topic, rosapi.get_message_type(msg),
                         self.source.get_message_type_hash(msg))
             if self._args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
@@ -159,3 +159,17 @@ class HtmlSink(SinkBase, TextSinkMixin):
         try:
             while self._queue.get_nowait() or True: self._queue.task_done()
         except queue.Empty: pass
+
+
+
+def init(args=None):
+    """Adds html to main.ARGUMENTS, HtmlSink to MultiSink formats."""
+    from .. import add_sink_format  # Late import to avoid circular
+    add_sink_format("html", HtmlSink)
+
+    from ... import main  # Late import to avoid circular
+    optionarg = next((d for d in main.ARGUMENTS.get("groups", {}).get("Output control", [])
+                      if ["--write-option"] == d.get("args")), None)
+    if optionarg: optionarg["help"] = optionarg["help"].rstrip() + ("\n"
+        "  template=/my/path.tpl    custom template to use for HTML output"
+    )

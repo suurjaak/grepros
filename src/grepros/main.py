@@ -80,6 +80,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "can specify message field as NAME=PATTERN\n"
                   "(supports nested.paths and * wildcards)"),
 
+        dict(args=["-h", "--help"],
+             dest="HELP", action="store_true",
+             help="show this help message and exit"),
+
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
              help="PATTERNs are ordinary strings, not regular expressions"),
@@ -109,9 +113,9 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="write matched messages to specified output file"),
 
         dict(args=["--write-format"], dest="DUMP_FORMAT",
-             choices=["bag", "csv", "html", "postgres", "sqlite"],
+             choices=["bag"],
              help="output format, auto-detected from TARGET if not given,\n"
-                  "bag or database will be appended to if it already exists"),
+                  "bag will be appended to if it already exists"),
 
         dict(args=["--plugin"],
              dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
@@ -269,18 +273,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
              default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
-             help="write options as key=value pairs, supported flags:\n"
-                  "  commit-interval=NUM      transaction size for Postgres/SQLite output\n"
-                  "                           (default 1000, 0 is autocommit)\n"
-                  "  message-yaml=true|false  whether to populate table field messages.yaml\n"
-                  "                           in SQLite output (default true)\n"
-                  "  nesting=array|all        create tables for nested message types\n"
-                  "                           in Postgres/SQLite output,\n"
-                  '                           only for arrays if "array" \n'
-                  "                           else for any nested types\n"
-                  "                           (array fields in parent will be populated \n"
-                  "                            with foreign keys instead of messages as JSON)\n"
-                  "  template=/my/path.tpl    custom template to use for HTML output\n"),
+             help="write options as key=value pairs"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
@@ -367,7 +360,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 def make_parser():
     """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
-               formatter_class=argparse.RawTextHelpFormatter)
+               formatter_class=argparse.RawTextHelpFormatter, add_help=False)
     argparser = argparse.ArgumentParser(**kws)
     for arg in map(dict, ARGUMENTS["arguments"]):
         argparser.add_argument(*arg.pop("args"), **arg)
@@ -461,6 +454,9 @@ def run():
 
     atexit.register(flush_stdout)
     args, _ = argparser.parse_known_args()
+    if args.HELP:
+        argparser.print_help()
+        return
 
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, )  # Py3

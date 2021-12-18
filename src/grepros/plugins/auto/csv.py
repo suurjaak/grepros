@@ -78,7 +78,7 @@ class CsvSink(SinkBase):
 
         File is populated with header if 
         """
-        topickey = topic, self.source.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
@@ -129,3 +129,10 @@ class CsvSink(SinkBase):
                     yield mp, mv
             else:
                 yield path, rosapi.to_sec(v)
+
+
+
+def init(args=None):
+    """Adds csv to main.ARGUMENTS, CsvSink to MultiSink formats."""
+    from .. import add_sink_format  # Late import to avoid circular
+    add_sink_format("csv", CsvSink)

@@ -279,3 +279,10 @@ class PostgresSink(DataSinkBase):
     def autodetect(cls, dump_target):
         """Returns true if dump_target is recognizable as a Postgres connection string."""
         return (dump_target or "").startswith("postgresql://")
+
+
+
+def init(args=None):
+    """Adds postgres to main.ARGUMENTS, PostgresSink to MultiSink formats."""
+    from .. import add_sink_format  # Late import to avoid circular
+    add_sink_format("postgres", PostgresSink)
