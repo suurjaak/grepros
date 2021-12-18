@@ -9,13 +9,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
-import importlib
 import itertools
 import math
 import os
@@ -416,73 +415,6 @@ class TextWrapper(object):
             reversed_chunks[-1] = text[break_pos:]
         elif not cur_line:
             cur_line.append(reversed_chunks.pop())
-
-
-
-class Plugins(object):
-    """Simple plugin interface, loads and inits plugin modules, provides core methods."""
-
-    ## {"some.module": <module 'some.module' from ..>}
-    PLUGINS = {}
-
-
-    @classmethod
-    def configure(cls, args):
-        """
-        Imports plugin Python packages, invokes init(args) if any, raises on error.
-
-        @param   args           arguments object like argparse.Namespace
-        @param   args.PLUGINS   list of Python modules or classes to import,
-                                 as ["my.module", "other.module.SomeClass", ]
-        """
-        for name in (n for n in args.PLUGINS if n not in cls.PLUGINS):
-            try:
-                plugin = cls.import_item(name)
-                if callable(getattr(plugin, "init", None)): plugin.init(args)
-                cls.PLUGINS[name] = plugin
-            except Exception:
-                ConsolePrinter.error("Error loading plugin %s.", name)
-                raise
-
-
-    @classmethod
-    def load(cls, category, args):
-        """
-        Returns a plugin category instance loaded from any configured plugin, or None.
-
-        @param   category  item category like "source", "sink", or "search"
-        @param   args      arguments object like argparse.Namespace
-        """
-        for name, plugin in cls.PLUGINS.items():
-            if callable(getattr(plugin, "load", None)):
-                try:
-                    result = plugin.load(category, args)
-                    if result is not None:
-                        return result
-                except Exception:
-                    ConsolePrinter.error("Error invoking %s.load(%r, args).", name, category)
-                    raise
-                
-
-    @classmethod
-    def import_item(cls, name):
-        """
-        Returns imported module, or identifier from imported namespace; raises on error.
-
-        @param   name  Python module name like "my.module"
-                       or module namespace identifier like "my.module.Class"
-        """
-        result, parts = None, name.split(".")
-        for i, item in enumerate(parts):
-            path, success = ".".join(parts[:i + 1]), False
-            try: result, success = importlib.import_module(path), True
-            except ImportError: pass
-            if not success and i:
-                try: result, success = getattr(result, item), True
-                except AttributeError: pass
-            if not success:
-                raise ImportError("No module or identifier named %r" % path)
-        return result
 
 
 

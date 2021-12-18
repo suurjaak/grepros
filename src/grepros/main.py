@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2021
+@modified    18.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -20,7 +20,9 @@ import re
 import sys
 
 from . import __version__, inputs, outputs, search
-from . common import ConsolePrinter, Plugins, parse_datetime
+from . common import ConsolePrinter, parse_datetime
+from . import plugins
+
 
 
 ## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
@@ -444,9 +446,9 @@ def flush_stdout():
 
 
 def preload_plugins():
-    """Imports and initializes plugins from arguments."""
-    if "--plugin" in sys.argv:
-        Plugins.configure(make_parser().parse_known_args()[0])
+    """Imports and initializes plugins from auto-load folder and from arguments."""
+    args = make_parser().parse_known_args()[0] if "--plugin" in sys.argv else None
+    plugins.init(args)
 
 
 def run():
@@ -470,18 +472,18 @@ def run():
         if not validate_args(args):
             sys.exit(1)
 
-        source = Plugins.load("source", args) or \
+        source = plugins.load("source", args) or \
                  (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
-        sink.sinks.extend(filter(bool, [Plugins.load("sink", args)]))
+        sink.sinks.extend(filter(bool, [plugins.load("sink", args)]))
         if not sink.validate():
             sys.exit(1)
 
         thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
-        searcher = Plugins.load("search", args) or search.Searcher(args)
+        searcher = plugins.load("search", args) or search.Searcher(args)
         searcher.search(source, sink)
     except BREAK_EXS:
         try: source and source.close()
