@@ -456,10 +456,11 @@ class DataSinkBase(SinkBase):
         """Returns valid unique name for table/view, inserting meta-row if necessary."""
         if "view" == category:
             existing = next((x for x in self._topics.values()
-                             if x["type"] == typename and x["md5"] == typehash), None)
+                             if x["type"] == typename and x["md5"] == typehash
+                             and x.get("view_name")), None)
             if existing: return existing["view_name"]
         if "table" == category:
-            existing = next((x for x in self._types.values()
+            existing = next((x for x in list(self._topics.values()) + list(self._types.values())
                              if x["type"] == typename and x["md5"] == typehash), None)
             if existing: return existing["table_name"]
 
