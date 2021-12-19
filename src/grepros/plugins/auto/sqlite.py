@@ -166,7 +166,7 @@ class SqliteSink(DataSinkBase):
         parses "message-yaml" from args.DUMP_OPTIONS.
         """
         config_ok = super(SqliteSink, self).validate()
-        if self._args.DUMP_OPTIONS.get("message-yaml") not in ("true", "false"):
+        if self._args.DUMP_OPTIONS.get("message-yaml") not in (None, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self._args.DUMP_OPTIONS["message-yaml"])
