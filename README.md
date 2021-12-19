@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or HTML/CSV/Postgres/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/Parquet/Postgres/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -17,6 +17,7 @@ Using ROS1 live topics requires ROS master to be running.
 
 Using ROS2 requires Python packages for message types to be available in path.
 
+Supports loading custom plugins, mainly for additional output formats.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
 
@@ -43,6 +44,7 @@ Using ROS2 requires Python packages for message types to be available in path.
   - [Filtering](#filtering)
   - [Conditions](#conditions)
 - [Plugins](#plugins)
+  - [Parquet](#parquet)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -214,7 +216,7 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write my.bag [--write-format bag]
+    --write path/to/my.bag [--write-format bag]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
@@ -226,10 +228,10 @@ if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 ### csv
 
-    --write my.csv [--write-format csv]
+    --write path/to/my.csv [--write-format csv]
 
 Write messages to CSV files, each topic to a separate file, named
-`my.full__topic__name.csv` for `/full/topic/name`.
+`path/to/my.full__topic__name.csv` for `/full/topic/name`.
 
 Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
@@ -242,7 +244,7 @@ Specifying `--write-format csv` is not required if the filename ends with `.csv`
 
 ### html
 
-    --write my.html [--write-format html]
+    --write path/to/my.html [--write-format html]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -364,7 +366,7 @@ CREATE TABLE "std_msgs/Header" (
 
 ### sqlite
 
-    --write my.sqlite [--write-format sqlite]
+    --write path/to/my.sqlite [--write-format sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -683,15 +685,21 @@ Supported (but not required) plugin interface methods:
 Plugins are free to modify `grepros` internals, like adding command-line arguments
 to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
 
+Convenience methods:
+
+- `plugins.add_write_format(name, cls)`: adds an output plugin to defaults
+- `plugins.add_write_options(label, [(name, help)])`: adds options for an output plugin
+- `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
+
 
 Built-in plugins:
 
 ### parquet
 
-    --plugin grepros.plugins.parquet --write my.parquet [--write-format parquet]
+    --plugin grepros.plugins.parquet --write path/to/my.parquet [--write-format parquet]
 
 Write messages to Apache Parquet files (columnar storage format),
-each message type to a separate file, named `package__MessageType__typehash/my.parquet`
+each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
 for `package/MessageType` (typehash is message type definition MD5 hashsum).
 
 If a file already exists, a unique counter is appended to the name of the new file,
@@ -814,7 +822,7 @@ Output control:
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
   --write-option [KEY=VALUE [KEY=VALUE ...]]
-                        write options as key=value pairs
+                        output options as key=value pairs
                           commit-interval=NUM      transaction size for Postgres/SQLite output
                                                    (default 1000, 0 is autocommit)
                           message-yaml=true|false  whether to populate table field messages.yaml

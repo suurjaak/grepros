@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -244,7 +244,22 @@ class SqliteSink(DataSinkBase):
 
 
 
-def init(args=None):
-    """Adds sqlite to main.ARGUMENTS, SqliteSink to MultiSink formats."""
-    from .. import add_sink_format  # Late import to avoid circular
-    add_sink_format("sqlite", SqliteSink)
+def init(*_, **__):
+    """Adds SQLite format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("sqlite", SqliteSink)
+    plugins.add_write_options("SQLite", [
+        ("commit-interval=NUM",      "transaction size for SQLite output\n"
+                                     "(default 1000, 0 is autocommit)"),
+        ("message-yaml=true|false",  "whether to populate table field messages.yaml\n"
+                                     "in SQLite output (default true)"),
+        ("nesting=array|all",        "create tables for nested message types\n"
+                                     "in SQLite output,\n"
+                                     'only for arrays if "array" \n'
+                                     "else for any nested types\n"
+                                     "(array fields in parent will be populated \n"
+                                     " with foreign keys instead of messages as JSON)"),
+    ])
+    writearg = plugins.get_argument("--write-format")
+    if writearg:
+        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")

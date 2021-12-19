@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -273,7 +273,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
              default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
-             help="write options as key=value pairs"),
+             help="output options as key=value pairs"),
 
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
@@ -473,7 +473,7 @@ def run():
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
-        sink.sinks.extend(filter(bool, plugins.load("sink", args, list=True)))
+        sink.sinks.extend(filter(bool, plugins.load("sink", args, collect=True)))
         if not sink.validate():
             sys.exit(1)
 

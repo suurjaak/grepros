@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -163,14 +163,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
 
 
-def init(args=None):
-    """Adds html to main.ARGUMENTS, HtmlSink to MultiSink formats."""
-    from .. import add_sink_format  # Late import to avoid circular
-    add_sink_format("html", HtmlSink)
-
-    from ... import main  # Late import to avoid circular
-    optionarg = next((d for d in main.ARGUMENTS.get("groups", {}).get("Output control", [])
-                      if ["--write-option"] == d.get("args")), None)
-    if optionarg: optionarg["help"] = optionarg["help"].rstrip() + ("\n"
-        "  template=/my/path.tpl    custom template to use for HTML output"
-    )
+def init(*_, **__):
+    """Adds HTML format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("html", HtmlSink)
+    plugins.add_write_options("HTML", [
+        ("template=/my/path.tpl",  "custom template to use for HTML output")
+    ])

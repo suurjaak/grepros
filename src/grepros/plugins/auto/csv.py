@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -135,7 +135,7 @@ class CsvSink(SinkBase):
 
 
 
-def init(args=None):
-    """Adds csv to main.ARGUMENTS, CsvSink to MultiSink formats."""
-    from .. import add_sink_format  # Late import to avoid circular
-    add_sink_format("csv", CsvSink)
+def init(*_, **__):
+    """Adds CSV format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("csv", CsvSink)

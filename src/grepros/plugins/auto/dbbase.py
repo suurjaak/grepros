@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -516,28 +516,3 @@ class DataSinkBase(SinkBase):
             if self._nesting: v = []
             else: v = [rosapi.message_to_dict(x) for x in v]
         return v
-
-
-
-def init(args=None):
-    """Adds database write options to main.ARGUMENTS."""
-    from ... import main  # Late import to avoid circular
-    writearg = next((d for d in main.ARGUMENTS.get("arguments", [])
-                     if ["--write-format"] == d.get("args")), None)
-    if writearg:
-        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")
-
-    optionarg = next((d for d in main.ARGUMENTS.get("groups", {}).get("Output control", [])
-                      if ["--write-option"] == d.get("args")), None)
-    if optionarg: optionarg["help"] = optionarg["help"].rstrip() + ("\n"
-        "  commit-interval=NUM      transaction size for Postgres/SQLite output\n"
-        "                           (default 1000, 0 is autocommit)\n"
-        "  message-yaml=true|false  whether to populate table field messages.yaml\n"
-        "                           in SQLite output (default true)\n"
-        "  nesting=array|all        create tables for nested message types\n"
-        "                           in Postgres/SQLite output,\n"
-        '                           only for arrays if "array" \n'
-        "                           else for any nested types\n"
-        "                           (array fields in parent will be populated \n"
-        "                            with foreign keys instead of messages as JSON)"
-    )
