@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -561,10 +561,10 @@ def format_stamp(stamp):
 
 def makedirs(path):
     """Creates directory structure for path if not already existing."""
-    parts, accum = path.split(os.sep), []
+    parts, accum = list(filter(bool, path.split(os.sep))), []
     while parts:
         accum.append(parts.pop(0))
-        curpath = os.path.join(*accum)
+        curpath = (os.sep if path.startswith(os.sep) else "") + os.path.join(*accum)
         if not os.path.exists(curpath):
             os.mkdir(curpath)
 
