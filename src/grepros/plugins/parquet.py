@@ -40,13 +40,14 @@ class ParquetSink(SinkBase):
 
     ## Mapping from ROS common types to Postgres types
     COMMON_TYPES = {
-        "byte":    pyarrow.uint8(),  "char":    pyarrow.int8(),    "int8":    pyarrow.int8(),
-        "int16":   pyarrow.int16(),  "int32":   pyarrow.int32(),   "int64":   pyarrow.int64(),
-        "uint8":   pyarrow.uint8(),  "uint16":  pyarrow.uint16(),  "uint32":  pyarrow.uint32(),
-        "uint64":  pyarrow.uint64(), "float32": pyarrow.float32(), "float64": pyarrow.float64(),
-        "bool":    pyarrow.bool_(),  "string":  pyarrow.string(),  "wstring": pyarrow.string(),
-        "uint8[]": pyarrow.binary(), "char[]":  pyarrow.binary(),
-        "time":    pyarrow.int64(), "duration": pyarrow.int64(),
+        "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
+        "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
+        "uint8":   pyarrow.uint8(),  "uint16":   pyarrow.uint16(),  "uint32":  pyarrow.uint32(),
+        "uint64":  pyarrow.uint64(), "float32":  pyarrow.float32(), "float64": pyarrow.float64(),
+        "bool":    pyarrow.bool_(),  "string":   pyarrow.string(),  "wstring": pyarrow.string(),
+        "uint8[]": pyarrow.binary(), "char[]":   pyarrow.binary(),
+        "time":    pyarrow.int64(),  "duration": pyarrow.int64(),
+        "builtin_interfaces/Time": pyarrow.int64(), "builtin_interfaces/Duration": pyarrow.int64(),
     } if pyarrow else {}
 
     ## Default columns for message type tables
