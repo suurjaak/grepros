@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -436,12 +436,14 @@ class BagSource(SourceBase, ConditionMixin):
         """Returns bagfile metainfo data dict."""
         if self._meta is not None:
             return self._meta
-        start, end = self._bag.get_start_time(), self._bag.get_end_time()
+        mcount = self._bag.get_message_count()
+        start, end = (self._bag.get_start_time(), self._bag.get_end_time()) if mcount else ("", "")
+        delta = format_timedelta(datetime.timedelta(seconds=(end or 0) - (start or 0)))
         self._meta = dict(file=self._filename, size=format_bytes(self._bag.size),
-                          mcount=self._bag.get_message_count(), tcount=len(self.topics),
-                          start=drop_zeros(start), startdt=drop_zeros(format_stamp(start)),
-                          end=drop_zeros(end), enddt=drop_zeros(format_stamp(end)),
-                          delta=format_timedelta(datetime.timedelta(seconds=end - start)))
+                          mcount=mcount, tcount=len(self.topics),
+                          start=drop_zeros(start), end=drop_zeros(end),
+                          startdt=drop_zeros(format_stamp(start)) if start != "" else "",
+                          enddt=drop_zeros(format_stamp(end)) if end != "" else "", delta=delta)
         return self._meta
 
     def get_message_meta(self, topic, index, stamp, msg):

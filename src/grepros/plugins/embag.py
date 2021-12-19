@@ -50,11 +50,13 @@ class EmbagReader(object):
 
     def get_start_time(self):
         """Returns the start time of the bag, as UNIX timestamp."""
+        if not self._topics: return None
         return self._view.getStartTime().to_sec()
 
 
     def get_end_time(self):
         """Returns the end time of the bag, as UNIX timestamp."""
+        if not self._topics: return None
         return self._view.getEndTime().to_sec()
 
 
