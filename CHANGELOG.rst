@@ -8,6 +8,7 @@ Changelog for package grepros
 * add --plugin grepros.plugins.embag (ROS1 bag reader)
 * add --reindex-if-unindexed option
 * refactor plugins interface
+* fix progress bar afterword not updating when grepping multiple bags
 * fix error on empty bag with no messages
 * fix error in Postgres output if a nested JSON value is NaN
 * fix skipping some messages in ROS1 bag for different types with identical hashes

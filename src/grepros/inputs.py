@@ -396,6 +396,7 @@ class BagSource(SourceBase, ConditionMixin):
                         yield topic, msg, stamp
                 if not self._running:
                     break  # for topics
+            self.close_batch()
         self._running = False
 
     def validate(self):
@@ -415,9 +416,12 @@ class BagSource(SourceBase, ConditionMixin):
         super(BagSource, self).close()
 
     def close_batch(self):
-        """Closes current bag, if any, and moves reading to the next one, if any."""
+        """Closes current bag, if any."""
         self._bag and self._bag.close()
         self._bag = None
+        if self.bar:
+            self.bar.update(flush=True)
+            self.bar = None
         ConditionMixin.close_batch(self)
 
     def format_meta(self):

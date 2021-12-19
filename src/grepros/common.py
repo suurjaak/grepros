@@ -142,6 +142,13 @@ class ConsolePrinter(object):
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 
+    @classmethod
+    def flush(cls):
+        """Ends current open line, if any."""
+        if cls._LINEOPEN: print()
+        cls._LINEOPEN = False
+
+
 
 class ProgressBar(threading.Thread):
     """
@@ -230,16 +237,20 @@ class ProgressBar(threading.Thread):
             self.percent = percent
         self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
         self.bar, prevbar = bartext, self.bar
-        if draw and prevbar != self.bar: self.draw(flush)
+        if draw and (flush or prevbar != self.bar): self.draw(flush)
 
 
     def draw(self, flush=False):
-        """Prints the progress bar, from the beginning of the current line."""
+        """
+        Prints the progress bar, from the beginning of the current line.
+
+        @param   flush  add linefeed to end, forcing a new line for any next print
+        """
         ConsolePrinter.print("\r" + self.printbar, __end=" ")
         if len(self.printbar) != len(self.bar):  # Draw twice to position caret at true content end
             self.printbar = self.bar
             ConsolePrinter.print("\r" + self.printbar, __end=" ")
-        if flush: ConsolePrinter.print()
+        if flush: ConsolePrinter.flush()
 
 
     def run(self):
