@@ -55,9 +55,9 @@ def init(args=None):
                             as ["my.module", "other.module.SomeClass", ]
     """
     for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*.py"))):
-        if f.startswith("__"): continue # for f
-
         name = os.path.splitext(os.path.split(f)[-1])[0]
+        if name.startswith("__"): continue # for f
+
         modulename = "%s.auto.%s" % (__package__, name)
         try:
             plugin = import_item(modulename)
@@ -66,6 +66,7 @@ def init(args=None):
         except Exception:
             ConsolePrinter.error("Error loading plugin %s.", modulename)
     if args: configure(args)
+    populate_known_plugins()
     populate_write_options()
 
 
@@ -150,6 +151,29 @@ def get_argument(name, group=None):
                      if name in d.get("args")), None)
     return next((d for d in main.ARGUMENTS.get("arguments", [])
                  if name in d.get("args")), None)
+
+
+def populate_known_plugins():
+    """Adds known non-auto plugins to `--plugin` argument help."""
+    plugins = []
+    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "*.py"))):
+        name = os.path.splitext(os.path.split(f)[-1])[0]
+        if not name.startswith("__"):
+            plugins.append("%s.%s" % (__package__, name))
+
+    pluginarg = get_argument("--plugin")
+    if pluginarg and plugins:
+        MAXLINELEN = 60
+        lines = ["load a Python module or class as plugin", "(built-in plugins: "]
+        for i, name in enumerate(plugins):
+            if not i: lines[-1] += name
+            else:
+                if len(lines[-1] + ", " + name) > MAXLINELEN:
+                    lines[-1] += ", "
+                    lines.append(" " + name)
+                else: lines[-1] += ", " + name
+        lines[-1] += ")"
+        pluginarg["help"] = "\n".join(lines)
 
 
 def populate_write_options():

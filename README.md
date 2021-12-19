@@ -742,6 +742,8 @@ optional arguments:
                         bag or database will be appended to if it already exists
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
+                        (built-in plugins: grepros.plugins.embag, 
+                         grepros.plugins.parquet)
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
