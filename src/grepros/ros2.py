@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    17.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -41,9 +41,11 @@ SKIP_EXTENSIONS = ()
 ## ROS2 time/duration message types
 ROS_TIME_TYPES = ["builtin_interfaces/Time", "builtin_interfaces/Duration"]
 
-## ROS2 time/duration types and message types
-ROS_TIME_CLASSES = (builtin_interfaces.msg.Time, builtin_interfaces.msg.Duration,
-                    rclpy.time.Time,             rclpy.duration.Duration)
+## ROS2 time/duration types and message types mapped to type names
+ROS_TIME_CLASSES = {rclpy.time.Time:                 "builtin_interfaces/Time",
+                    builtin_interfaces.msg.Time:     "builtin_interfaces/Time",
+                    rclpy.duration.Duration:         "builtin_interfaces/Duration",
+                    builtin_interfaces.msg.Duration: "builtin_interfaces/Duration"}
 
 ## {"pkg/msg/Msg": message type definition full text with subtypes}
 DEFINITIONS = {}
@@ -393,7 +395,7 @@ def format_message_value(msg, name, value):
     """
     LENS = {"sec": 13, "nanosec": 9}
     v = "%s" % (value, )
-    if not isinstance(msg, ROS_TIME_CLASSES) or name not in LENS:
+    if not isinstance(msg, tuple(ROS_TIME_CLASSES)) or name not in LENS:
         return v
 
     EXTRA = sum(v.count(x) * len(x) for x in (MatchMarkers.START, MatchMarkers.END))
@@ -504,13 +506,13 @@ def is_ros_message(val, ignore_time=False):
     """
     is_message = rosidl_runtime_py.utilities.is_message(val)
     if is_message and ignore_time:
-        is_message = not isinstance(val, ROS_TIME_CLASSES)
+        is_message = not isinstance(val, tuple(ROS_TIME_CLASSES))
     return is_message
 
 
 def is_ros_time(val):
     """Returns whether value is a ROS2 time/duration."""
-    return isinstance(val, ROS_TIME_CLASSES)
+    return isinstance(val, tuple(ROS_TIME_CLASSES))
 
 
 def make_duration(secs=0, nsecs=0):
@@ -555,14 +557,14 @@ def set_message_value(obj, name, value):
 
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
-    if not isinstance(val, ROS_TIME_CLASSES):
+    if not isinstance(val, tuple(ROS_TIME_CLASSES)):
         return val
     return val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
 
 
 def to_sec(val):
     """Returns value in seconds if value is ROS2 time/duration, else value."""
-    if not isinstance(val, ROS_TIME_CLASSES):
+    if not isinstance(val, tuple(ROS_TIME_CLASSES)):
         return val
     nanos = val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
     secs, nsecs = divmod(nanos, 10**9)

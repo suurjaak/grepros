@@ -44,6 +44,7 @@ Supports loading custom plugins, mainly for additional output formats.
   - [Filtering](#filtering)
   - [Conditions](#conditions)
 - [Plugins](#plugins)
+  - [embag](#embag)
   - [Parquet](#parquet)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
@@ -693,6 +694,15 @@ Convenience methods:
 
 
 Built-in plugins:
+
+### embag
+
+    --plugin grepros.plugins.embag
+
+Use the [embag](https://github.com/embarktrucks/embag) library for reading ROS1 bags.
+
+Significantly faster, but unstable.
+
 
 ### parquet
 

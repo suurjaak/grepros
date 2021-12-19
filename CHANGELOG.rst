@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.6 (2021-12-17)
+0.3.6 (2021-12-19)
 -------------------
-* add Parquet plugin
+* add --plugin grepros.plugins.parquet (Parquet output)
+* add --plugin grepros.plugins.embag (ROS1 bag reader)
 * add --reindex-if-unindexed option
 * refactor plugins interface
 * fix error in Postgres output if a nested JSON value is NaN

@@ -8,19 +8,16 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
 import collections
 import io
 import os
-import re
 import shutil
 import time
 
-try: import embag
-except ImportError: embag = None
 import genpy
 import genpy.dynamic
 import rosbag
@@ -28,7 +25,7 @@ import roslib
 import rospy
 
 from . common import ConsolePrinter, MatchMarkers, memoize
-from . rosapi import ROS_BUILTIN_TYPES, calculate_definition_hash, parse_definition_subtypes
+from . rosapi import calculate_definition_hash, parse_definition_subtypes
 
 
 ## Bagfile extensions to seek
@@ -40,8 +37,8 @@ SKIP_EXTENSIONS = (".bag.orig.active", )
 ## ROS1 time/duration types
 ROS_TIME_TYPES = ["time", "duration"]
 
-## ROS1 time/duration type names to type classes
-ROS_TIME_TYPES_MAP = {"time": rospy.Time, "duration": rospy.Duration}
+## ROS1 time/duration types mapped to type names
+ROS_TIME_CLASSES = {rospy.Time: "time", rospy.Duration: "duration"}
 
 ## {"pkg/msg/Msg": message type class}
 TYPECLASSES = {}
@@ -223,153 +220,6 @@ class BagReader(rosbag.Bag):
 
 
 
-class EmbagReader(object):
-    """embag reader interface, partially mimicking rosbag.Bag."""
-
-
-    def __init__(self, filename):
-        self._topics   = {}  # {(topic, typename, typehash): message count}
-        self._types    = {}  # {(typename, typehash): message type class}
-        self._hashdefs = {}  # {(topic, typehash): typename}
-        self._typedefs = {}  # {(typename, typehash): type definition text}
-        self._view = embag.View(filename)
-
-        ## Bagfile path
-        self.filename = filename
-
-        self._populate_meta()
-
-
-    def get_message_count(self):
-        """Returns the number of messages in the bag."""
-        return sum(self._topics.values())
-
-
-    def get_start_time(self):
-        """Returns the start time of the bag, as UNIX timestamp."""
-        return self._view.getStartTime().to_sec()
-
-
-    def get_end_time(self):
-        """Returns the end time of the bag, as UNIX timestamp."""
-        return self._view.getEndTime().to_sec()
-
-
-    def get_message_class(self, typename, typehash=None):
-        """
-        Returns rospy message class for typename, or None if unknown type.
-
-        Generates class dynamically if not already generated.
-
-        @param   typehash  message type definition hash, if any
-        """
-        typekey = (typename, typehash)
-        if typekey not in self._types and typekey in self._typedefs:
-            for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
-                self._types[(n, c._md5sum)] = c
-        return self._types.get(typekey) or get_message_class(typename)
-
-
-    def get_message_definition(self, msg_or_type):
-        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
-        if is_ros_message(msg_or_type):
-            return self._typedefs.get((msg_or_type._type, msg_or_type._md5sum))
-        typename = msg_or_type
-        return next((d for (n, h), d in self._typedefs.items() if n == typename), None)
-
-
-    def get_message_type_hash(self, msg_or_type):
-        """Returns ROS1 message type MD5 hash."""
-        if is_ros_message(msg_or_type): return msg_or_type._md5sum
-        typename = msg_or_type
-        return next((h for n, h in self._typedefs if n == typename), None) \
-               or get_message_type_hash(typename)
-
-
-    def get_topic_info(self):
-        """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
-        return dict(self._topics)
-
-
-    def read_messages(self, topics=None, start_time=None, end_time=None):
-        """
-        Yields messages from the bag, optionally filtered by topic and timestamp.
-
-        @param   topics      list of topics or a single topic to filter by, if at all
-        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
-        @param   end_time    latest timestamp of message to return, as UNIX timestamp
-        @return              (topic, msg, rclpy.time.Time)
-        """
-        topics = topics if isinstance(topics, list) else [topics] if topics else []
-        for m in self._view.getMessages(topics) if topics else self._view.getMessages():
-            if start_time is not None and start_time > m.timestamp.to_sec():
-                continue  # for m
-            if end_time is not None and end_time < m.timestamp.to_sec():
-                continue  # for m
-
-            typename = self._hashdefs[(m.topic, m.md5)]
-            msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
-            yield m.topic, msg, rospy.Time(m.timestamp.secs, m.timestamp.nsecs)
-
-
-    def close(self):
-        """Closes the bag file."""
-        if self._view:
-            del self._view
-            self._view = None
-
-
-    @property
-    def size(self):
-        """Returns current file size."""
-        return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
-
-
-    def _populate_meta(self):
-        """Populates bag metainfo."""
-        connections = self._view.connectionsByTopic()
-        for topic in self._view.topics():
-            for conn in connections.get(topic, ()):
-                topickey, typekey = (topic, conn.type, conn.md5sum), (conn.type, conn.md5sum)
-                self._topics.setdefault(topickey, 0)
-                self._topics[topickey] += conn.message_count
-                self._hashdefs[(topic, conn.md5sum)] = conn.type
-                self._typedefs[typekey] = conn.message_definition
-                subtypedefs = tuple(parse_definition_subtypes(conn.message_definition).items())
-                for n, d in subtypedefs:
-                    h = calculate_definition_hash(n, d, subtypedefs)
-                    self._typedefs.setdefault((n, h), d)
-
-
-    def _populate_message(self, msg, embagval):
-        """Returns the ROS1 message populated from a corresponding embag.RosValue."""
-        for name, typename in get_message_fields(msg).items():
-            v, scalarname = embagval.get(name), scalar(typename)
-            if typename in ROS_BUILTIN_TYPES:      # Single built-in type
-                msgv = getattr(embagval, name)
-            elif scalarname in ROS_BUILTIN_TYPES:  # List of built-in types
-                msgv = list(v)
-            elif typename in ROS_TIME_TYPES:              # Single temporal type
-                msgv = ROS_TIME_TYPES_MAP[typename](*self._parse_time(v))
-            elif scalarname in ROS_TIME_TYPES:            # List of temporal types
-                cls = ROS_TIME_TYPES_MAP[scalarname]
-                msgv = [cls(*self._parse_time(x)) for x in v]
-            elif typename == scalarname:                  # Single subtype
-                msgv = self._populate_message(self.get_message_class(typename)(), v)
-            else:                                         # List of subtypes
-                cls = self.get_message_class(scalarname)
-                msgv = [self._populate_message(cls(), x) for x in v]
-            setattr(msg, name, msgv)
-        return msg
-
-
-    def _parse_time(self, embagval):
-        """Returns (seconds, nanoseconds) from embag.RosValue representing time or duration."""
-        m = re.search(r"(\d+)s (\d+)ns", str(embagval))
-        return int(m.group(1)), int(m.group(2))
-
-
-
 def init_node(name):
     """
     Initializes a ROS1 node if not already initialized.
@@ -423,15 +273,13 @@ def validate(live=False):
 
 def create_bag_reader(filename, reindex):
     """
-    Returns EmbagReader if embag available else rosbag.Bag.
+    Returns rosbag.Bag.
 
     Supplemented with get_message_class(), get_message_definition(),
     get_message_type_hash(), and get_topic_info().
 
     @param   reindex  reindex unindexed bag, making a backup copy if indexed format
     """
-    if False and embag:  # @todo enable when embag fixes its memory leak
-        return EmbagReader(filename)
     return BagReader(filename, skip_index=True, allow_unindexed=reindex)
 
 
@@ -526,7 +374,7 @@ def get_message_type_hash(msg_or_type):
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS1 message, else {}."""
     names = getattr(val, "__slots__", [])
-    if isinstance(val, (rospy.Time, rospy.Duration)):  # Empty __slots__
+    if isinstance(val, tuple(ROS_TIME_CLASSES)):  # Empty __slots__
         names = genpy.TVal.__slots__
     return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
 

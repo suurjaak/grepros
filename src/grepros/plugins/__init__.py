@@ -82,6 +82,8 @@ def configure(args):
             plugin = import_item(name)
             if callable(getattr(plugin, "init", None)): plugin.init(args)
             PLUGINS[name] = plugin
+        except ImportWarning:
+            raise
         except Exception:
             ConsolePrinter.error("Error loading plugin %s.", name)
             raise

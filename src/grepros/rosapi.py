@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -43,6 +43,12 @@ ROS_STRING_TYPES = ["string", "wstring"]
 ## All built-in basic types in ROS
 ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ROS_STRING_TYPES
 
+## ROS time/duration types, populated after init
+ROS_TIME_TYPES = []
+
+## ROS1 time/duration types mapped to type names, populated after init
+ROS_TIME_CLASSES = {}
+
 ## All built-in basic types plus time types in ROS, populated after init
 ROS_COMMON_TYPES = []
 
@@ -70,7 +76,8 @@ def validate(live=False):
 
     @param   live  whether environment must support launching a ROS node
     """
-    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS_COMMON_TYPES
+    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, \
+           ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES
     if realapi:
         return True
 
@@ -90,6 +97,8 @@ def validate(live=False):
     if success:
         BAG_EXTENSIONS, SKIP_EXTENSIONS = realapi.BAG_EXTENSIONS, realapi.SKIP_EXTENSIONS
         ROS_COMMON_TYPES = ROS_BUILTIN_TYPES + realapi.ROS_TIME_TYPES
+        ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
+        ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
     return success
 
 

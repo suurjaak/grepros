@@ -441,7 +441,8 @@ def flush_stdout():
 def preload_plugins():
     """Imports and initializes plugins from auto-load folder and from arguments."""
     args = make_parser().parse_known_args()[0] if "--plugin" in sys.argv else None
-    plugins.init(args)
+    try: plugins.init(args)
+    except ImportWarning: sys.exit(1)
 
 
 def run():
