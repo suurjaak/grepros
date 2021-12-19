@@ -396,6 +396,7 @@ class BagSource(SourceBase, ConditionMixin):
                         yield topic, msg, stamp
                 if not self._running:
                     break  # for topics
+            self.sink.flush()
             self.close_batch()
         self._running = False
 
