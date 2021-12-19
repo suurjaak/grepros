@@ -454,12 +454,10 @@ class BagSource(SourceBase, ConditionMixin):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
         self._ensure_totals()
-        typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
-        return dict(topic=topic, type=typename, hash=typehash,
-                    total=self.topics[(topic, typename, typehash)],
-                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
-                    stamp=drop_zeros(rosapi.to_sec(stamp)), index=index,
-                    schema=self.get_message_definition(msg))
+        result = super(BagSource, self).get_message_meta(topic, index, stamp, msg)
+        result.update(total=self.topics[(topic, result["type"], result["hash"])],
+                      qos=self._bag.get_qos(topic, result["type"]))
+        return result
 
     def get_message_class(self, typename, typehash=None):
         """Returns ROS message type class."""
@@ -680,6 +678,14 @@ class TopicSource(SourceBase, ConditionMixin):
         """Returns source metainfo data dict."""
         ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
         return dict(ENV, tcount=len(self.topics))
+
+    def get_message_meta(self, topic, index, stamp, msg):
+        """Returns message metainfo data dict."""
+        result = super(TopicSource, self).get_message_meta(topic, index, stamp, msg)
+        topickey = (topic, result["type"], result["hash"])
+        if topickey in self._subs:
+            result.update(qos=self._subs[topickey].get_qos())
+        return result
 
     def format_meta(self):
         """Returns source metainfo string."""

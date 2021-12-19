@@ -14,6 +14,7 @@ Released under the BSD License.
 ## @namespace grepros.ros2
 import array
 import collections
+import enum
 import os
 import re
 import sqlite3
@@ -27,6 +28,7 @@ import rclpy.executors
 import rclpy.serialization
 import rclpy.time
 import rosidl_runtime_py.utilities
+import yaml
 
 from . common import ConsolePrinter, MatchMarkers, memoize
 from . import rosapi
@@ -104,6 +106,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._db     = None  # sqlite3.Connection instance
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
+        self._qoses  = {}    # {(topic, typename): {qos profile dict}}
 
         ## Bagfile path
         self.filename = filename
@@ -166,6 +169,19 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return dict(self._counts)
 
 
+    def get_qos(self, topic, typename):
+        """Returns topic Quality of Service profile as a dictionary, or None if not available."""
+        topickey = (topic, typename)
+        if topickey not in self._qoses and topickey in self._topics:
+            try:
+                if self._topics["offered_qos_profiles"]:
+                    self._qoses[topickey] = yaml.safe_load(self._topics["offered_qos_profiles"])
+            except Exception as e:
+                ConsolePrinter.warn("Error parsing quality of service for topic %r: %s", topic, e)
+        self._qoses.setdefault(topickey, None)
+        return self._qoses[topickey]
+
+
     def get_message_class(self, typename, typehash=None):
         """Returns ROS2 message type class."""
         return get_message_class(typename)
@@ -222,13 +238,14 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                 break
 
 
-    def write(self, topic, msg, stamp):
+    def write(self, topic, msg, stamp, meta=None):
         """
         Writes a message to the bag.
 
         @param   topic  name of topic
         @param   msg    ROS2 message
         @param   stamp  rclpy.time.Time of message publication
+        @param   meta   message metainfo dict (meta["qos"] added to topics-table, if any)
         """
         self._ensure_open(populate=True)
         self.get_topic_info()
@@ -240,9 +257,11 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             full_typename = make_full_typename(get_message_type(msg))
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
-            args = (topic, full_typename, "cdr", "")
+            qos = yaml.safe_dump(meta["qos"], ) if meta and meta.get("qos") else ""
+            args = (topic, full_typename, "cdr", qos)
             cursor.execute(sql, args)
-            tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename}
+            tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename,
+                     "serialization_format": "cdr", "offered_qos_profiles": qos}
             self._topics[topickey] = tdata
 
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
@@ -379,12 +398,13 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns an rclpy.Subscription, with .unregister()."""
+    """Returns an rclpy.Subscription, with .unregister() and .get_qos()."""
     cls = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
+    sub.get_qos = lambda: qos_to_dict(sub.qos_profile)
     return sub
 
 
@@ -532,6 +552,24 @@ def make_full_typename(typename):
     if "/msg/" in typename or "/" not in typename:
         return typename
     return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
+def qos_to_dict(qos):
+    """Returns rclpy.qos.QoSProfile as dictionary."""
+    result = {}
+    if qos:
+        QOS_TYPES = (bool, int, enum.Enum) + tuple(ROS_TIME_CLASSES)
+        for name in (n for n in dir(qos) if not n.startswith("_")):
+            val = getattr(qos, name)
+            if name.startswith("_") or not isinstance(val, QOS_TYPES):
+                continue  # for name
+            if isinstance(val, enum.Enum):
+                val = val.value
+            elif isinstance(val, tuple(ROS_TIME_CLASSES)):
+                sec, nsec = divmod(to_nsec(val), 10**9)
+                val = {"sec": sec, "nsec": nsec}
+            result[name] = val
+    return [result]
 
 
 @memoize

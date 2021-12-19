@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.12.2021
+@modified    19.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -363,7 +363,7 @@ class BagSink(SinkBase):
         if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
-        self._bag.write(topic, msg, stamp)
+        self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
         super(BagSink, self).emit(topic, index, stamp, msg, match)
 
     def validate(self):

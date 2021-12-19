@@ -163,7 +163,8 @@ def create_bag_writer(filename):
     """
     Returns an object for writing ROS bags.
 
-    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
+    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2;
+    write()-method has an additional optional parameter `meta` (message metainfo dict).
     """
     return realapi.create_bag_writer(filename)
 
@@ -174,7 +175,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns a ROS subscriber instance, with .unregister()."""
+    """Returns a ROS subscriber instance, with .unregister() and .get_qos()."""
     return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 

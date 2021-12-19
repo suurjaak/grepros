@@ -284,9 +284,11 @@ def create_bag_reader(filename, reindex):
 
 
 def create_bag_writer(filename):
-    """Returns a rosbag.Bag."""
+    """Returns a rosbag.Bag, with write() taking an additional optional parameter `meta`."""
     mode = "a" if os.path.isfile(filename) and os.path.getsize(filename) else "w"
-    return rosbag.Bag(filename, mode)
+    bag = rosbag.Bag(filename, mode)
+    bag.write = lambda topic, msg, stamp, meta=None: rosbag.Bag.write(bag, topic, msg, stamp)
+    return bag
 
 
 def create_publisher(topic, cls_or_typename, queue_size):
@@ -303,12 +305,18 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns a rospy.Subscriber. Local message packages are not strictly required."""
+    """
+    Returns a rospy.Subscriber, with .get_qos().
+
+    Local message packages are not strictly required.
+    """
     cls = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     if cls is None and isinstance(cls_or_typename, str):
-        return create_anymsg_subscriber(topic, cls_or_typename, handler, queue_size)
-    return rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
+        sub = create_anymsg_subscriber(topic, cls_or_typename, handler, queue_size)
+    else: sub = rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
+    sub.get_qos = lambda: None
+    return sub
 
 
 def create_anymsg_subscriber(topic, typename, handler, queue_size):
