@@ -40,7 +40,7 @@ ROS_TIME_TYPES = ["time", "duration"]
 ## ROS1 time/duration types mapped to type names
 ROS_TIME_CLASSES = {rospy.Time: "time", rospy.Duration: "duration"}
 
-## {"pkg/msg/Msg": message type class}
+## {(typename, typehash): message type class}
 TYPECLASSES = {}
 
 ## Seconds between checking whether ROS master is available.
@@ -329,11 +329,12 @@ def create_anymsg_subscriber(topic, typename, handler, queue_size):
     def myhandler(msg):
         if msg._connection_header["type"] != typename:
             return
+        typekey = (typename, msg._connection_header["md5sum"])
         if typename not in TYPECLASSES:
             typedef = msg._connection_header["message_definition"]
             for name, cls in genpy.dynamic.generate_dynamic(typename, typedef).items():
-                TYPECLASSES.setdefault(name, cls)
-        handler(TYPECLASSES[typename]().deserialize(msg._buff))
+                TYPECLASSES.setdefault((name, cls._md5sum), cls)
+        handler(TYPECLASSES[typekey]().deserialize(msg._buff))
 
     return rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
 
