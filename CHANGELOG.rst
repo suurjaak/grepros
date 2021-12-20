@@ -2,10 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.6 (2021-12-19)
+0.3.6 (2021-12-20)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
-* add --plugin grepros.plugins.embag (ROS1 bag reader)
+* add --plugin grepros.plugins.embag (faster ROS1 bag reader)
 * add --reindex-if-unindexed option
 * refactor plugins interface
 * populate topics.offered_qos_profiles in ROS2 bag output where possible

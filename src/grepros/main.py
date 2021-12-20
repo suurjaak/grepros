@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.12.2021
+@modified    20.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -46,8 +46,8 @@ Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
-from bags in current directory:
-    grepros frame_id=map --type geometry_msgs/* --max-count 10
+from bags in current directory, reindexing any unindexed bags:
+    grepros frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
     grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag

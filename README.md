@@ -67,9 +67,9 @@ Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
-from bags in current directory:
+from bags in current directory, reindexing any unindexed bags:
 
-    grepros frame_id=map --type geometry_msgs/* --max-count 10
+    grepros frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
 
@@ -170,6 +170,11 @@ Scan specific paths instead of current directory (supports * wildcards):
 
     -p     /home/bags/2021-11-*
     --path my/dir
+
+Reindex unindexed ROS1 bags before processing
+(warning: creates backup copies of files, into same directory as file):
+
+    --reindex-if-unindexed
 
 Order bag messages first by topic or type, and only then by time:
 
@@ -701,7 +706,7 @@ Built-in plugins:
 
 Use the [embag](https://github.com/embarktrucks/embag) library for reading ROS1 bags.
 
-Significantly faster, but unstable.
+Significantly faster, but library tends to be unstable.
 
 
 ### parquet
