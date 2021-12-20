@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.3.6 (2021-12-20)
+0.4.0 (2021-12-20)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
 * add --plugin grepros.plugins.embag (faster ROS1 bag reader)
