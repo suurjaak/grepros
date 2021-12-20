@@ -197,7 +197,7 @@ class ProgressBar(threading.Thread):
 
 
     def update(self, value=None, draw=True, flush=False):
-        """Updates the progress bar value, and refreshes by default."""
+        """Updates the progress bar value, and refreshes by default; returns self."""
         if value is not None: self.value = min(self.max, max(self.min, value))
         afterword = self.aftertemplate.format(**vars(self))
         w_full = self.width - 2
@@ -238,6 +238,7 @@ class ProgressBar(threading.Thread):
         self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
         self.bar, prevbar = bartext, self.bar
         if draw and (flush or prevbar != self.bar): self.draw(flush)
+        return self
 
 
     def draw(self, flush=False):
@@ -553,15 +554,15 @@ def format_timedelta(delta):
     return " ".join(items or ["0sec"])
 
 
-def format_bytes(size, precision=2, inter=" "):
-    """Returns a formatted byte size (like 421.45 MB)."""
+def format_bytes(size, precision=2, inter=" ", strip=True):
+    """Returns a formatted byte size (like 421.40 MB), trailing zeros optionally removed."""
     result = "0 bytes"
     if size:
         UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
         exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
         result = "%.*f" % (precision, size / (1024. ** exponent))
         result += "" if precision > 0 else "."  # Do not strip integer zeroes
-        result = drop_zeros(result) + inter + UNITS[exponent]
+        result = (drop_zeros(result) if strip else result) + inter + UNITS[exponent]
     return result
 
 

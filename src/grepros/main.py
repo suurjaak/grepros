@@ -321,8 +321,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--reindex-if-unindexed"],
              dest="REINDEX", action="store_true",
-             help="reindex unindexed bags (ROS1 only),\n"
-                  "making a backup copy if indexed format (warning: SLOW)"),
+             help="reindex unindexed bags (ROS1 only), makes backup copies"),
 
     ], "Live topic control": [
 

@@ -24,7 +24,7 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, MatchMarkers, memoize
+from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
 from . rosapi import calculate_definition_hash, parse_definition_subtypes
 
 
@@ -56,16 +56,17 @@ class BagReader(rosbag.Bag):
 
     def __init__(self, *args, **kwargs):
         """
-        @param   allow_unindexed  if true and bag is unindexed, makes a copy
-                                  of the file (unless unindexed format) and reindexes original
+        @param   reindex           if true and bag is unindexed, makes a copy
+                                   of the file (unless unindexed format) and reindexes original
+        @param   reindex_progress  show progress bar with reindexing status
         """
-        reindex = kwargs.pop("allow_unindexed", False)
+        reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "reindex_progress"))
         try:
             super(BagReader, self).__init__(*args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
             filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
-            BagReader.reindex(filename, *args, **kwargs)
+            BagReader.reindex(filename, progress, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
         self.__topics     = {}  # {(topic, typename, typehash): message count}
@@ -190,33 +191,71 @@ class BagReader(rosbag.Bag):
 
 
     @staticmethod
-    def reindex(f, *args, **kwargs):
-        """Reindexes bag (making a backup copy if indexed format)."""
+    def reindex(f, progress, *args, **kwargs):
+        """
+        Reindexes bag (making a backup copy if indexed format).
+
+        @param   progress  show progress bar for reindexing status
+        """
         KWS = ["mode", "compression", "chunk_threshold",
                "allow_unindexed", "options", "skip_index"]
         kwargs.update(zip(args, KWS), allow_unindexed=True)
+        copied, bar, f2 = False, None, None
+        if progress:
+            fmt = lambda s: format_bytes(s, strip=False)
+            name, size = os.path.basename(f), os.path.getsize(f)
+            aftertemplate = " Reindexing %s (%s): {afterword}" % (name, fmt(size))
+            bar = ProgressBar(size, interval=0.1, pulse=True, aftertemplate=aftertemplate)
 
         ConsolePrinter.warn("Unindexed bag %s, reindexing.", f)
-        inbag = rosbag.Bag(f, **kwargs)
-        do_copy = (inbag.version > 102)
-        inbag.close()
-
-        f2 = "%s.orig%s" % os.path.splitext(f) if do_copy else f
-        do_copy and shutil.copy(f, f2)
-
-        inbag, outbag = None, None
-        outkwargs = dict(kwargs, mode="a" if do_copy else "w", allow_unindexed=do_copy)
+        bar and bar.update(0).start()  # Start progress pulse
         try:
-            inbag  = rosbag.Bag(f2, **dict(kwargs, mode="r"))
-            outbag = rosbag.Bag(f, **outkwargs)
-            rosbag.rosbag_main.reindex_op(inbag, outbag, quiet=True)
-        except BaseException:
-            inbag and inbag.close()
-            outbag and outbag.close()
-            do_copy and os.remove(f2)
-            raise
+            inbag = rosbag.Bag(f, **kwargs)
+            do_copy = (inbag.version > 102)
+            inbag.close()
+
+            f2 = "%s.orig%s" % os.path.splitext(f) if do_copy else f
+            do_copy and shutil.copy(f, f2)
+            copied = do_copy
+
+            inbag, outbag = None, None
+            outkwargs = dict(kwargs, mode="a" if do_copy else "w", allow_unindexed=do_copy)
+            try:
+                inbag  = rosbag.Bag(f2, **dict(kwargs, mode="r"))
+                outbag = rosbag.Bag(f, **outkwargs)
+                BagReader._reindex_bag(inbag, outbag, bar)
+            except BaseException:
+                inbag and inbag.close()
+                outbag and outbag.close()
+                copied and shutil.move(f2, f)
+                raise
+        finally: bar and bar.update(bar.value, flush=True).stop()
         inbag.close()
         outbag.close()
+
+
+    @staticmethod
+    def _reindex_bag(inbag, outbag, bar=None):
+        """Runs reindexing, showing optional progress bar."""
+        update_bar, noop = lambda s: None, lambda s: None
+        indexbag = inbag  if inbag.version == 102 else outbag
+        writebag = outbag if inbag.version == 102 else None
+        if bar:
+            fmt = lambda s: format_bytes(s, strip=False)
+            update_bar = lambda s: (setattr(bar, "afterword", fmt(s)),
+                                    setattr(bar, "pulse", False), bar.update(s).stop())
+        # v102: build index from inbag, write all messages to outbag.
+        # Other versions: re-build index in outbag file in-place.
+        progress = update_bar if not writebag else noop  # Incremental progress during re-build
+        for offset in indexbag.reindex():
+            progress(offset)
+        if not writebag:
+            return
+
+        progress = update_bar if bar else noop  # Incremental progress during re-write
+        for (topic, msg, t, header) in indexbag.read_messages(return_connection_header=True):
+            writebag.write(topic, msg, t, connection_header=header)
+            progress(indexbag._file.tell())
 
 
 
@@ -271,16 +310,17 @@ def validate(live=False):
     return not missing
 
 
-def create_bag_reader(filename, reindex):
+def create_bag_reader(filename, reindex=False, reindex_progress=False):
     """
     Returns rosbag.Bag.
 
     Supplemented with get_message_class(), get_message_definition(),
     get_message_type_hash(), and get_topic_info().
 
-    @param   reindex  reindex unindexed bag, making a backup copy if indexed format
+    @param   reindex           reindex unindexed bag, making a backup if indexed format
+    @param   reindex_progress  show progress bar with reindexing status
     """
-    return BagReader(filename, skip_index=True, allow_unindexed=reindex)
+    return BagReader(filename, skip_index=True, reindex=reindex, reindex_progress=reindex_progress)
 
 
 def create_bag_writer(filename):

@@ -868,8 +868,7 @@ Bag input control:
   --order-bag-by {topic,type}
                         order bag messages by topic or type first and then by time
   --reindex-if-unindexed
-                        reindex unindexed bags (ROS1 only),
-                        making a backup copy if indexed format (warning: SLOW)
+                        reindex unindexed bags (ROS1 only; makes backup copies)
 
 Live topic control:
   --publish-prefix PREFIX

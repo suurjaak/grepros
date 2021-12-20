@@ -72,8 +72,8 @@ class SourceBase(object):
         self._counts.clear()
         if self.bar:
             self.bar.pulse_pos = None
-            self.bar.update(flush=True)
-            self.bar, _ = None, self.bar.stop()
+            self.bar.update(flush=True).stop()
+            self.bar = None
 
     def close_batch(self):
         """Shuts down input batch if any (like bagfile), else all input."""
@@ -563,7 +563,7 @@ class BagSource(SourceBase, ConditionMixin):
         and os.path.realpath(self._args.DUMP_TARGET) == os.path.realpath(filename):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, self._args.REINDEX)
+            bag = rosapi.create_bag_reader(filename, self._args.REINDEX, self._args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
