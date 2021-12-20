@@ -8,10 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    19.12.2021
+@modified    20.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
+import json
 import os
 import re
 
@@ -59,6 +60,7 @@ class ParquetSink(SinkBase):
         @param   args                arguments object like argparse.Namespace
         @param   args.META           whether to print metainfo
         @param   args.DUMP_TARGET    base name of Parquet files to write
+        @param   args.DUMP_OPTIONS   {"parquet-*": arguments passed to ParquetWriter}
         @param   args.VERBOSE        whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
@@ -68,8 +70,11 @@ class ParquetSink(SinkBase):
         self._caches    = {}  # {(typename, typehash): [{data}, ]}
         self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
         self._writers   = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
+        self._writeargs = {}  # {additional given arguments for ParquetWriter}
 
         self._close_printed = False
+
+        self._configure()
 
 
     def validate(self):
@@ -134,10 +139,13 @@ class ParquetSink(SinkBase):
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
         if not self._writers: makedirs(pathname)
+
+        schema = pyarrow.schema(cols)
+        writer = pyarrow.parquet.ParquetWriter(filename, schema, **self._writeargs)
         self._caches[typekey]    = []
         self._filenames[typekey] = filename
-        self._schemas[typekey]   = pyarrow.schema(cols)
-        self._writers[typekey]   = pyarrow.parquet.ParquetWriter(filename, self._schemas[typekey])
+        self._schemas[typekey]   = schema
+        self._writers[typekey]   = writer
 
 
     def _process_message(self, topic, stamp, msg):
@@ -196,6 +204,15 @@ class ParquetSink(SinkBase):
         table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
         self._writers[typekey].write_table(table)
 
+
+    def _configure(self):
+        """Parses args.DUMP_OPTIONS."""
+        for k, v in self._args.DUMP_OPTIONS.items():
+            if not k.startswith("parquet-"): continue  # for k, v
+
+            try: v = json.loads(v)
+            except Exception: pass
+            self._writeargs[k[8:]] = v
 
 
 def init(*_, **__):

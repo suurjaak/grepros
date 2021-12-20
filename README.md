@@ -722,6 +722,18 @@ e.g. `package__MessageType__typehash/my.2.parquet`.
 
 Specifying `--write-format parquet` is not required if the filename ends with `.parquet`.
 
+Supports additional arguments given to [pyarrow.parquet.ParquetWriter](
+https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html), as:
+
+    --write-option parquet-argname=value
+
+For example, specifying no compression:
+
+    --write-option parquet-compression=null
+
+The value is interpreted as JSON if possible, e.g. `parquet-write_statistics=false`.
+
+
 
 All command-line arguments
 --------------------------
