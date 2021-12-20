@@ -109,6 +109,11 @@ class BagReader(rosbag.Bag):
                or get_message_type_hash(typename)
 
 
+    def get_qos(self, topic, typename):
+        """Returns None."""
+        return None
+
+
     def get_topic_info(self):
         """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
         return dict(self.__topics)
