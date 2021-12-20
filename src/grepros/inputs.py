@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.12.2021
+@modified    20.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -376,7 +376,7 @@ class BagSource(SourceBase, ConditionMixin):
         names, paths = self._args.FILES, self._args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
         for filename in find_files(names, paths, exts, skip_exts, recurse=self._args.RECURSE):
-            if not self._running or not self._configure(filename) or not self._topics:
+            if not self._running or not self._configure(filename):
                 continue  # for filename
 
             topicsets = [self._topics]
@@ -396,7 +396,7 @@ class BagSource(SourceBase, ConditionMixin):
                         yield topic, msg, stamp
                 if not self._running:
                     break  # for topics
-            self.sink.flush()
+            self._counts and self.sink.flush()
             self.close_batch()
         self._running = False
 
