@@ -13,7 +13,6 @@ Released under the BSD License.
 """
 ## @namespace grepros.plugins.sql
 import atexit
-import collections
 import datetime
 import os
 import re
@@ -35,19 +34,31 @@ class SqlSink(SinkBase):
 
     ## Supported SQL dialects and options
     DIALECTS = {
-        "default": {
-            "array":   "%s[]",  # Array type template, given type name argument
-            "types":   {},
-            "maxlen":  0,
-            "table":   "CREATE TABLE IF NOT EXISTS %(table)s (%(cols)s);",
-            "view": """CREATE VIEW IF NOT EXISTS %(view)s AS
-                       SELECT %(cols)s
-                       FROM %(table)s
-                       WHERE _topic = %(topic)s;""",
+
+        None: {
+            "table_template":       "CREATE TABLE IF NOT EXISTS {table} ({cols});",
+            "view_template":        """
+CREATE VIEW IF NOT EXISTS {view} AS
+SELECT {cols}
+FROM {table}
+WHERE _topic = {topic};""",
+            "types":                  {},        # Mapping between ROS and SQL common types
+            "defaulttype":          None,        # Fallback SQL type if no mapped type for ROS type
+            "arraytype_template":   "{type}[]",  # Array type template, formatted with type
+            "maxlen_entity":           0,        # Maximum table/view name length, 0 disables
+            "maxlen_column":           0,        # Maximum column name length, 0 disables
+            "invalid_char_regex":   None,        # Regex for matching invalid characters in name
+            "invalid_char_repl":    "__",        # Replacement for invalid characters in name
         },
+
         "sqlite": {},
+
         "postgres": {
-            "maxlen":  63,
+            "view_template": """
+CREATE OR REPLACE VIEW {view} AS
+SELECT {cols}
+FROM {table}
+WHERE _topic = {topic};""",
             "types": {
                 "byte":    "SMALLINT", " char":    "SMALLINT", "int8":    "SMALLINT",
                 "int16":   "SMALLINT", "int32":    "INTEGER",  "int64":   "BIGINT",
@@ -59,15 +70,13 @@ class SqlSink(SinkBase):
                 "builtin_interfaces/Time":         "NUMERIC",
                 "builtin_interfaces/Duration":     "NUMERIC",
             },
-            "defaulttype": "JSONB",
-            "view": """CREATE OR REPLACE VIEW %(view)s AS
-                       SELECT %(cols)s
-                       FROM %(table)s
-                       WHERE _topic = %(topic)s;""",
+            "defaulttype":    "JSONB",
+            "maxlen_entity":  63,
+            "maxlen_column":  63,
         },
+
         "clickhouse": {
-            "array":   "Array(%s)",  # Array type template, given type name argument
-            "table":   "CREATE TABLE IF NOT EXISTS %(table)s (%(cols)s) ENGINE = ENGINE;",
+            "table_template":      "CREATE TABLE IF NOT EXISTS {table} ({cols}) ENGINE = ENGINE;",
             "types": {
                 "byte":    "UInt8",  "char":     "Int8",    "int8":    "Int8",
                 "int16":   "Int16",  "int32":    "Int32",   "int64":   "Int64",
@@ -80,10 +89,13 @@ class SqlSink(SinkBase):
                 "builtin_interfaces/Time":       "DateTime64(9)",
                 "builtin_interfaces/Duration":   "DateTime64(9)",
             },
-            "defaulttype": "String",
+            "defaulttype":         "String",
+            "arraytype_template":  "Array({type})",
         },
     }
 
+    ## Default SQL dialect used if dialect not specified
+    DEFAULT_DIALECT = "sqlite"
 
     ## Default columns for message type tables
     MESSAGE_TYPE_BASECOLS  = [("_topic",      "string"),
@@ -98,18 +110,17 @@ class SqlSink(SinkBase):
         """
         super(SqlSink, self).__init__(args)
 
-        self._filebase      = args.DUMP_TARGET
-        self._dialect       = args.DUMP_OPTIONS.get("dialect", "default")
+        self._dialect       = args.DUMP_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
         self._filename      = None   # Unique output filename
         self._file          = None   # Open file() object
         self._batch         = None   # Current source batch
         self._types         = {}     # {(typename, typehash): "CREATE TABLE .."}
         self._nested_types  = {}     # {(typename, typehash): "CREATE TABLE .."}
         self._topics        = {}     # {(topic, typename, typehash): "CREATE VIEW .."}
-        self._metas         = []     # [source metainfo string, ]
+        self._metas         = []     # [source batch metainfo string, ]
         self._close_printed = False
 
-        # Whether to create tables and rows for nested message types,
+        # Whether to create tables for nested message types,
         # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
         self._nesting       = args.DUMP_OPTIONS.get("nesting")
@@ -122,16 +133,17 @@ class SqlSink(SinkBase):
         Returns whether "dialect" and "nesting" parameters contain supported values.
         """
         ok = True
-        if self._args.DUMP_OPTIONS.get("dialect") not in tuple(self.DIALECTS) + (None, ):
+        if "dialect" in self._args.DUMP_OPTIONS \
+        and self._args.DUMP_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
             ok = False
             ConsolePrinter.error("Unknown dialect for SQL: %r."
                                  "Choose one of {%s}.",
                                  self._args.DUMP_OPTIONS["dialect"],
-                                 "|".join(sorted(self.DIALECTS)))
+                                 "|".join(sorted(filter(bool, self.DIALECTS))))
         if self._args.DUMP_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
                                  "Choose one of {array,all}.",
-                                 self._args.DUMP_OPTIONS["nesting"]) # @todo või ehk global "nesting" ?
+                                 self._args.DUMP_OPTIONS["nesting"])
             ok = False
         return ok
 
@@ -148,14 +160,14 @@ class SqlSink(SinkBase):
 
 
     def close(self):
-        """Rewrites out everything to SQL schema file."""
+        """Rewrites out everything to SQL schema file, ensuring all source metas."""
         if self._file:
             self._file.seek(0)
             self._write_header()
             for key in sorted(self._types):
-                self._write_item("table", self._types[key])
+                self._write_entity("table", self._types[key])
             for key in sorted(self._topics):
-                self._write_item("view", self._topics[key])
+                self._write_entity("view", self._topics[key])
             self._file.close()
             self._file = None
         if not self._close_printed and self._types:
@@ -175,43 +187,39 @@ class SqlSink(SinkBase):
         del self._metas[:]
 
 
-    def _get_dialect_option(self, option):
-        """Returns option for current SQL dialect, falling back to default dialect."""
-        return self.DIALECTS[self._dialect].get(option, self.DIALECTS["default"].get(option))
-
-
     def _ensure_open(self):
         """Opens output file if not already open, writes header."""
         if self._file: return
 
-        self._filename = unique_path(self._filebase)
+        self._filename = unique_path(self._args.DUMP_TARGET)
         makedirs(os.path.dirname(self._filename))
         self._file = open(self._filename, "wb")
         self._write_header()
 
 
     def _process_topic(self, topic, msg):
-        """Builds CREATE VIEW statement for topic if not already built."""
+        """Builds and writes CREATE VIEW statement for topic if not already built."""
         typename = rosapi.get_message_type(msg)
         typehash = self.source.get_message_type_hash(msg)
         topickey = (topic, typename, typehash)
         if topickey in self._topics:
             return
 
-        table_name = self._make_name("%s (%s)" % (typename, typehash))
-        view_name  = self._make_name("%s (%s) (%s)" % (topic, typename, typehash))
+        table_name = self._make_entity_name("table", "%s (%s)" % (typename, typehash))
+        view_name  = self._make_entity_name("view",  "%s (%s) (%s)" % (topic, typename, typehash))
         sqlargs = {"view": quote(view_name),
                    "table": quote(table_name, force=True),
                    "topic": repr(topic), "cols": "*", }
-        template = self._get_dialect_option("view")
-        sql = LINESTRIP(template) % sqlargs
+        template = self._get_dialect_option("view_template")
+        sql = template.strip().format(**sqlargs)
         self._topics[topickey] = {"topic": topic, "type": typename, "md5": typehash,
                                   "sql": sql, "table": table_name, "view": view_name}
+        self._write_entity("view", self._topics[topickey])
 
 
     def _process_type(self, msg):
         """
-        Builds CREATE TABLE statement for message type if not already built.
+        Builds and writes CREATE TABLE statement for message type if not already built.
 
         Builds statements recursively for nested types if configured.
 
@@ -232,13 +240,14 @@ class SqlSink(SinkBase):
 
         namewidth = 2 + max(len(n) for n, _ in cols)
         coldefs = ["%s  %s" % (quote(n).ljust(namewidth), t) for n, t in cols]
-        table_name = self._make_name("%s (%s)" % (typename, typehash))
+        table_name = self._make_entity_name("table", "%s (%s)" % (typename, typehash))
         sqlargs = {"table": quote(table_name), "cols": "\n  %s\n" % ",\n  ".join(coldefs), }
-        template = self._get_dialect_option("table")
-        sql = LINESTRIP(template) % sqlargs
+        template = self._get_dialect_option("table_template")
+        sql = template.strip().format(**sqlargs)
         self._types[typekey] = {"type": typename, "md5": typehash,
                                 "msgdef": self.source.get_message_definition(msg),
                                 "table": table_name, "sql": sql}
+        self._write_entity("table", self._types[typekey])
 
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
@@ -257,49 +266,53 @@ class SqlSink(SinkBase):
         return sql
 
 
-    def _make_name(self, name):
+    def _make_entity_name(self, category, name):
         """Returns valid unique name for table/view."""
-        maxlen = self._get_dialect_option("maxlen")
-        if not maxlen: return name
-
-        result = ellipsize(name, maxlen)
         existing = set(sum(([x["table"], x.get("view")]
                             for dct in (self._topics, self._types) for x in dct.values()), []))
-        counter = 2
-        while result in existing:
-            suffix = " (%s)" % counter
-            result = ellipsize(name, maxlen - len(suffix)) + suffix
-            counter += 1
-        return result
+        return self._make_name("entity", name, existing)
 
 
     def _make_column_names(self, col_names):
         """Returns valid unique names for table columns."""
-        maxlen = self._get_dialect_option("maxlen")
-        if not maxlen: return list(col_names)
-
-        result = collections.OrderedDict()  # {sql name: original name}
+        result = []
         for name in col_names:
-            name_in_sql = ellipsize(name, maxlen)
-            counter = 2
-            while name_in_sql in result:
-                suffix = " (%s)" % counter
-                name_in_sql = ellipsize(name, maxlen - len(suffix)) + suffix
-                counter += 1
-            result[name_in_sql] = name
+            result.append(self._make_name("column", name, result))
         return list(result)
+
+
+    def _make_name(self, category, name, existing):
+        """
+        Returns a valid unique name for table/view/column.
+
+        Replaces invalid characters and constrains length.
+        """
+        MAXLEN_ARG   = "maxlen_column" if "column" == category else "maxlen_entity"
+        MAXLEN       = self._get_dialect_option(MAXLEN_ARG)
+        INVALID_RGX  = self._get_dialect_option("invalid_char_regex")
+        INVALID_REPL = self._get_dialect_option("invalid_char_repl")
+        if not MAXLEN and not INVALID_RGX: return name
+
+        name1 = re.sub(INVALID_RGX, INVALID_REPL, name) if INVALID_RGX else name
+        name2 = ellipsize(name1, MAXLEN)
+        counter = 2
+        while name2 in existing:
+            suffix = " (%s)" % counter
+            name2 = ellipsize(name1, MAXLEN - len(suffix)) + suffix
+            counter += 1
+        return name2
 
 
     def _make_column_type(self, typename):
         """Returns column type for SQL."""
-        TYPES = self._get_dialect_option("types")
-        ARRAYTEMPLATE = self._get_dialect_option("array")
-        DEFAULTTYPE = self._get_dialect_option("defaulttype")
+        TYPES         = self._get_dialect_option("types")
+        ARRAYTEMPLATE = self._get_dialect_option("arraytype_template")
+        DEFAULTTYPE   = self._get_dialect_option("defaulttype")
 
         coltype = TYPES.get(typename)
         scalartype = rosapi.scalar(typename)
         if not coltype and scalartype in TYPES:
-            coltype = ARRAYTEMPLATE % TYPES[scalartype]
+            coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])
         if not coltype:
             coltype = DEFAULTTYPE or quote(typename)
         return coltype
@@ -314,12 +327,18 @@ class SqlSink(SinkBase):
         return v
 
 
+    def _get_dialect_option(self, option):
+        """Returns option for current SQL dialect, falling back to default dialect."""
+        return self.DIALECTS[self._dialect].get(option, self.DIALECTS[None].get(option))
+
+
     def _write_header(self):
         """Writes header to current file."""
         args = {
-            "dialect":  self._dialect or "default",
+            "dialect":  self._dialect,
             "args":      " ".join(sys.argv[1:]),
-            "source":   "\n\n".join("-- Source:\n" + "\n".join("-- " + x for x in s.strip().splitlines())
+            "source":   "\n\n".join("-- Source:\n" + 
+                                    "\n".join("-- " + x for x in s.strip().splitlines())
                                     for s in self._metas),
             "dt":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
@@ -331,7 +350,7 @@ class SqlSink(SinkBase):
         ).format(**args).encode("utf-8"))
 
 
-    def _write_item(self, category, item):
+    def _write_entity(self, category, item):
         """Writes table or view SQL statement to file."""
         self._file.write(b"\n")
         if "table" == category:
@@ -342,12 +361,14 @@ class SqlSink(SinkBase):
         self._file.write(("%s\n\n" % item["sql"]).encode("utf-8"))
 
 
+
 def init(*_, **__):
-    """Adds SQL format support."""
+    """Adds SQL schema output format support."""
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("sql", SqlSink, "SQL", [
-        ("dialect=" + "|".join(sorted(SqlSink.DIALECTS)),
-                                     "use specified SQL dialect in SQL output"),
+        ("dialect=" + "|".join(sorted(filter(bool, SqlSink.DIALECTS))),
+                                     "use specified SQL dialect in SQL output\n"
+                                     '(default "%s")' % SqlSink.DEFAULT_DIALECT),
         ("nesting=array|all",        "create tables for nested message types\n"
                                      "in SQL output,\n"
                                      'only for arrays if "array" \n'
