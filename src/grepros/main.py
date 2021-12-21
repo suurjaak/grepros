@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -109,16 +109,15 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="DUMP_TARGET", metavar="TARGET", default="",
-             help="write matched messages to specified output file"),
-
-        dict(args=["--write-format"], dest="DUMP_FORMAT",
-             choices=["bag"],
-             help="output format, auto-detected from TARGET if not given,\n"
-                  "bag will be appended to if it already exists"),
+        dict(args=["--write"], dest="DUMP_TARGET", nargs="+", action="append",
+             metavar="TARGET [format=bag] [KEY=VALUE ...]",
+             help="write matched messages to specified output,\n"
+                  "format is autodetected from TARGET if not specified.\n"
+                  "Bag or database will be appended to if it already exists.\n"
+                  "Keyword arguments are given to output writer."),
 
         dict(args=["--plugin"],
-             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
+             dest="PLUGINS", metavar="PLUGIN", action="append", default=[],
              help="load a Python module or class as plugin"),
     ],
 
@@ -271,10 +270,6 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
-             default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
-             help="output options as key=value pairs"),
-
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
              help='use color output in console (default "always")'),
@@ -356,10 +351,20 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 }
 
 
+class HelpFormatter(argparse.RawTextHelpFormatter):
+    """RawTextHelpFormatter returning custom metavar for DUMP_TARGET."""
+
+    def _format_action_invocation(self, action):
+        """Returns formatted invocation."""
+        if "DUMP_TARGET" == action.dest:
+            return " ".join(action.option_strings + [action.metavar])
+        return super(HelpFormatter, self)._format_action_invocation(action)
+
+
 def make_parser():
     """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
-               formatter_class=argparse.RawTextHelpFormatter, add_help=False)
+               formatter_class=HelpFormatter, add_help=False)
     argparser = argparse.ArgumentParser(**kws)
     for arg in map(dict, ARGUMENTS["arguments"]):
         argparser.add_argument(*arg.pop("args"), **arg)
@@ -380,8 +385,15 @@ def validate_args(args):
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
-    # Turn [["key", "value"], ] into a dictionary
-    args.DUMP_OPTIONS = dict(args.DUMP_OPTIONS)
+    # Validate --write .. key=value
+    for opts in args.DUMP_TARGET:  # List of lists, one for each --write
+        erropts = []
+        for opt in opts[1:]:
+            try: dict([opt.split("=", 1)])
+            except Exception: erropts.append(opt)
+        if erropts:
+            errors[""].append('Invalid KEY=VALUE in "--write %s": %s' %
+                              (" ".join(opts), " ".join(erropts)))
 
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
@@ -394,7 +406,7 @@ def validate_args(args):
                                              or args.PATHS or any("*" in x for x in args.FILES))
 
     for k, v in vars(args).items():  # Drop duplicates from list values
-        if isinstance(v, list):
+        if k != "DUMP_TARGET" and isinstance(v, list):
             setattr(args, k, list(collections.OrderedDict((x, None) for x in v)))
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    20.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -60,7 +60,7 @@ class ParquetSink(SinkBase):
         @param   args                arguments object like argparse.Namespace
         @param   args.META           whether to print metainfo
         @param   args.DUMP_TARGET    base name of Parquet files to write
-        @param   args.DUMP_OPTIONS   {"parquet-*": arguments passed to ParquetWriter}
+        @param   args.DUMP_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
         @param   args.VERBOSE        whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
@@ -102,16 +102,19 @@ class ParquetSink(SinkBase):
             vv and self._write_table(k)
         for k in list(self._writers):
             self._writers.pop(k).close()
-        names = [self._filenames.pop(k) for k in list(self._filenames)]
         if not self._close_printed and self._counts:
             self._close_printed = True
-            ConsolePrinter.debug("Wrote %s in %s to %s (%s in total).")
-            sizes = {n: os.path.getsize(n) for n in names}
+            sizes = {n: os.path.getsize(n) for n in self._filenames.values()}
             ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)),
-                                 plural("Parquet file", len(names)),
+                                 plural("Parquet file", len(sizes)),
                                  format_bytes(sum(sizes.values())))
+            typecounts = {}
+            for (t, h), name in self._filenames.items():
+                count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
+                ConsolePrinter.debug("- %s (%s, %s)", name,
+                                    format_bytes(sizes[name]), plural("message", count))
         self._caches.clear()
         self._schemas.clear()
         self._filenames.clear()
@@ -138,7 +141,7 @@ class ParquetSink(SinkBase):
 
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
-        if not self._writers: makedirs(pathname)
+        makedirs(pathname)
 
         schema = pyarrow.schema(cols)
         writer = pyarrow.parquet.ParquetWriter(filename, schema, **self._writeargs)
@@ -208,14 +211,17 @@ class ParquetSink(SinkBase):
     def _configure(self):
         """Parses args.DUMP_OPTIONS."""
         for k, v in self._args.DUMP_OPTIONS.items():
-            if not k.startswith("parquet-"): continue  # for k, v
+            if not k.startswith("writer-"): continue  # for k, v
 
             try: v = json.loads(v)
             except Exception: pass
-            self._writeargs[k[8:]] = v
+            self._writeargs[k[len("writer-"):]] = v
 
 
 def init(*_, **__):
     """Adds Parquet format support."""
     from .. import plugins  # Late import to avoid circular
-    plugins.add_write_format("parquet", ParquetSink)
+    plugins.add_write_format("parquet", ParquetSink, "Parquet", [
+        ("writer-argname=argvalue",  "additional arguments for Parquet output\n"
+                                     "given to pyarrow.parquet.ParquetWriter"),
+    ])

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -247,8 +247,7 @@ class SqliteSink(DataSinkBase):
 def init(*_, **__):
     """Adds SQLite format support."""
     from ... import plugins  # Late import to avoid circular
-    plugins.add_write_format("sqlite", SqliteSink)
-    plugins.add_write_options("SQLite", [
+    plugins.add_write_format("sqlite", SqliteSink, "SQLite", [
         ("commit-interval=NUM",      "transaction size for SQLite output\n"
                                      "(default 1000, 0 is autocommit)"),
         ("message-yaml=true|false",  "whether to populate table field messages.yaml\n"

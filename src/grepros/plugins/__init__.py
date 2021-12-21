@@ -16,7 +16,8 @@ to `main.ARGUMENTS` or sink types to `outputs.MultiSink`.
 
 Convenience methods:
 
-- `plugins.add_write_format(name, cls)`: adds an output plugin to defaults
+- `plugins.add_write_format(name, cls, label=None, options=())`:
+   adds an output plugin to defaults
 - `plugins.add_write_options(label, [(name, help)])`: adds options for an output plugin
 - `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
 
@@ -26,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -67,7 +68,7 @@ def init(args=None):
             ConsolePrinter.error("Error loading plugin %s.", modulename)
     if args: configure(args)
     populate_known_plugins()
-    populate_write_options()
+    populate_write_formats()
 
 
 def configure(args):
@@ -114,28 +115,19 @@ def load(category, args, collect=False):
     return result if collect else result[0] if result else None
 
 
-def add_write_format(name, cls):
+def add_write_format(name, cls, label=None, options=()):
     """
-    Adds plugin to `--write-format` in main.ARGUMENTS and MultiSink formats.
+    Adds plugin to `--write` in main.ARGUMENTS and MultiSink formats.
 
-    @param   name  format name like "csv", added to `--write-format`
-    @param   cls   class providing SinkBase interface
-    """
-    writearg = get_argument("--write-format")
-    if writearg and writearg.get("choices"):
-        writearg["choices"] = sorted(set(writearg["choices"] + [name]))
-    MultiSink.SUBFLAG_CLASSES.setdefault("DUMP_TARGET", {}).setdefault("DUMP_FORMAT", {})
-    MultiSink.SUBFLAG_CLASSES["DUMP_TARGET"]["DUMP_FORMAT"][name] = cls
-
-
-def add_write_options(label, options):
-    """
+    @param   name     format name like "csv", added to `--write .. format=FORMAT`
+    @param   cls      class providing SinkBase interface
     @param   label    plugin label; if multiple plugins add the same option,
-                      the label in help text is replaced with a list of all labels
-    @param   options  a sequence of (name, help) to add to --write-option help, like
+                      "label output" in help text is replaced with "label1/label2/.. output"
+    @param   options  a sequence of (name, help) to add to --write help, like
                       [("template=/my/path.tpl", "custom template to use for HTML output")]
     """
-    WRITE_OPTIONS[label] = list(options)
+    MultiSink.FORMAT_CLASSES[name] = cls
+    if options: WRITE_OPTIONS.setdefault(label, []).extend(options)
 
 
 def get_argument(name, group=None):
@@ -176,10 +168,14 @@ def populate_known_plugins():
         pluginarg["help"] = "\n".join(lines)
 
 
-def populate_write_options():
-    """Populates main.ARGUMENTS with added write options."""
-    optionarg = get_argument("--write-option", "Output control")
-    if not optionarg or not any(WRITE_OPTIONS.values()): return
+def populate_write_formats():
+    """Populates main.ARGUMENTS with added write formats and options."""
+    writearg = get_argument("--write")
+    if not writearg: return
+
+    formats = sorted(set(MultiSink.FORMAT_CLASSES))
+    writearg["metavar"] = "TARGET [format=%s] [KEY=VALUE ...]" % "|".join(formats)
+    if not WRITE_OPTIONS: return
 
     MAXNAME    = 24    # Maximum space for name on same line as help
     LEADING    = "  "  # Leading indent on all option lines 
@@ -208,14 +204,15 @@ def populate_write_options():
     for name in list(texts):
         if len(namelabels[name]) > 1:
             for label in namelabels[name]:
-                texts[name] = texts[name].replace(label, PLACEHOLDER)
-            texts[name] = texts[name].replace(PLACEHOLDER, "/".join(sorted(namelabels[name])))
+                texts[name] = texts[name].replace("%s output" % label, PLACEHOLDER)
+            labels = "/".join(sorted(filter(bool, namelabels[name])))
+            texts[name] = texts[name].replace(PLACEHOLDER, labels + " output")
 
     fmt = lambda n, h: "\n".join((indent if i or "\n" == inters[n] else "") + l
                                  for i, l in enumerate(h.splitlines()))
     text = "\n".join(sorted("".join((LEADING, n, inters[n], fmt(n, h)))
                             for n, h in texts.items()))
-    optionarg["help"] = ("output options as key=value pairs:\n" + text).strip()
+    writearg["help"] += "\n" + text
 
 
 def import_item(name):

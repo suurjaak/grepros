@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -63,7 +63,7 @@ class CsvSink(SinkBase):
         if not self._close_printed and self._counts:
             self._close_printed = True
             sizes = {k: os.path.getsize(n) for k, n in names.items()}
-            ConsolePrinter.debug("Wrote %s in %s to file (%s):",
+            ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", len(self._counts)),
                                  format_bytes(sum(sizes.values())))

@@ -222,19 +222,19 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write path/to/my.bag [--write-format bag]
+    --write path/to/my.bag [format=bag]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
 it is appended to. 
 
-Specifying `--write-format bag` is not required
+Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 
 ### csv
 
-    --write path/to/my.csv [--write-format csv]
+    --write path/to/my.csv [format=csv]
 
 Write messages to CSV files, each topic to a separate file, named
 `path/to/my.full__topic__name.csv` for `/full/topic/name`.
@@ -245,12 +245,12 @@ to a single list, with header fields like `/topic/field.subfield.listsubfield.0.
 If a file already exists, a unique counter is appended to the name of the new file,
 e.g. `my.full__topic__name.2.csv`.
 
-Specifying `--write-format csv` is not required if the filename ends with `.csv`.
+Specifying `format=csv` is not required if the filename ends with `.csv`.
 
 
 ### html
 
-    --write path/to/my.html [--write-format html]
+    --write path/to/my.html [format=html]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -262,16 +262,16 @@ Note: resulting file may be large, and take a long time to open in browser.
 If the file already exists, a unique counter is appended to the name of the new file,
 e.g. `my.2.html`.
 
-Specifying `--write-format html` is not required if the filename ends with `.htm` or `.html`.
+Specifying `format=html` is not required if the filename ends with `.htm` or `.html`.
 
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
-    --write-option template=/my/html.template
+    --write path/to/my.html template=/my/html.template
 
 
 ### postgres
 
-    --write postgresql://username@host/dbname [--write-format postgres]
+    --write postgresql://username@host/dbname [format=postgres]
 
 Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
 and views `/full/topic/name` for each topic. 
@@ -286,7 +286,7 @@ If the database already exists, it is appended to. If there are conflicting name
 (same package and name but different message type definition),
 table/view name becomes "name (MD5 hash of type definition)".
 
-Specifying `--write-format postgres` is not required if the parameter uses the
+Specifying `format=postgres` is not required if the parameter uses the
 Postgres URI scheme `postgresql://`.
 
 Parameter `--write` can also use the Postgres keyword=value format,
@@ -297,7 +297,7 @@ Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
-    --write-option commit-interval=NUM
+    --write postgresql://username@host/dbname commit-interval=NUM
 
 #### Nested messages
 
@@ -306,7 +306,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=array
+    --write postgresql://username@host/dbname nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -352,7 +352,7 @@ Without nesting, array field values are inserted as JSON with full subtype conte
 
 To recursively populate all nested message types:
 
-    --write-option nesting=all
+    --write postgresql://username@host/dbname nesting=all
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
 
@@ -372,7 +372,7 @@ CREATE TABLE "std_msgs/Header" (
 
 ### sqlite
 
-    --write path/to/my.sqlite [--write-format sqlite]
+    --write path/to/my.sqlite [format=sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -383,18 +383,18 @@ full message YAMLs, and message type definition texts. Note that a database
 dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
 due to breaking changes in ROS2 standard built-in types and message types.
 
-Specifying `--write-format sqlite` is not required
+Specifying `format=sqlite` is not required
 if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
 
 A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
-    --write-option commit-interval=NUM
+    --write path/to/my.sqlite commit-interval=NUM
 
 By default, table `messages` is populated with full message YAMLs, unless:
 
-    --write-option message-yaml=false
+    --write path/to/my.sqlite message-yaml=false
 
 
 #### Nested messages
@@ -404,7 +404,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=array
+    --write path/to/my.sqlite nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -452,7 +452,7 @@ Without nesting, array field values are inserted as JSON with full subtype conte
 
 To recursively populate all nested message types:
 
-    --write-option nesting=all
+    --write path/to/my.sqlite nesting=all
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
 
@@ -693,8 +693,8 @@ to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
 
 Convenience methods:
 
-- `plugins.add_write_format(name, cls)`: adds an output plugin to defaults
-- `plugins.add_write_options(label, [(name, help)])`: adds options for an output plugin
+- `plugins.add_write_format(name, cls, label=None, options=())`:
+   adds an output plugin to defaults
 - `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
 
 
@@ -711,7 +711,7 @@ Significantly faster, but library tends to be unstable.
 
 ### parquet
 
-    --plugin grepros.plugins.parquet --write path/to/my.parquet [--write-format parquet]
+    --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
 
 Write messages to Apache Parquet files (columnar storage format),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -720,18 +720,18 @@ for `package/MessageType` (typehash is message type definition MD5 hashsum).
 If a file already exists, a unique counter is appended to the name of the new file,
 e.g. `package__MessageType__typehash/my.2.parquet`.
 
-Specifying `--write-format parquet` is not required if the filename ends with `.parquet`.
+Specifying `format=parquet` is not required if the filename ends with `.parquet`.
 
 Supports additional arguments given to [pyarrow.parquet.ParquetWriter](
 https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html), as:
 
-    --write-option parquet-argname=value
+    --write path/to/my.parquet writer-argname=argvalue
 
 For example, specifying no compression:
 
-    --write-option parquet-compression=null
+    --write path/to/my.parquet writer-compression=null
 
-The value is interpreted as JSON if possible, e.g. `parquet-write_statistics=false`.
+The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`.
 
 
 
@@ -753,10 +753,22 @@ optional arguments:
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write TARGET        write matched messages to specified output file
-  --write-format {bag,csv,html,postgres,sqlite}
-                        output format, auto-detected from TARGET if not given,
-                        bag or database will be appended to if it already exists
+  --write TARGET [format=bag|csv|html|postgres|sqlite] [KEY=VALUE ...]
+                        write matched messages to specified output,
+                        format is autodetected from TARGET if not specified.
+                        Bag or database will be appended to if it already exists.
+                        Keyword arguments are given to output writer:
+                          commit-interval=NUM      transaction size for Postgres/SQLite output
+                                                   (default 1000, 0 is autocommit)
+                          message-yaml=true|false  whether to populate table field messages.yaml
+                                                   in SQLite output (default true)
+                          nesting=array|all        create tables for nested message types
+                                                   in Postgres/SQL/SQLite output,
+                                                   only for arrays if "array" 
+                                                   else for any nested types
+                                                   (array fields in parent will be populated 
+                                                    with foreign keys instead of messages as JSON)
+                          template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
                         (built-in plugins: grepros.plugins.embag, 
@@ -850,19 +862,6 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-option [KEY=VALUE [KEY=VALUE ...]]
-                        output options as key=value pairs
-                          commit-interval=NUM      transaction size for Postgres/SQLite output
-                                                   (default 1000, 0 is autocommit)
-                          message-yaml=true|false  whether to populate table field messages.yaml
-                                                   in SQLite output (default true)
-                          nesting=array|all        create tables for nested message types
-                                                   in Postgres/SQLite output,
-                                                   only for arrays if "array" 
-                                                   else for any nested types
-                                                   (array fields in parent will be populated 
-                                                    with foreign keys instead of messages as JSON)
-                          template=/my/path.tpl    custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console

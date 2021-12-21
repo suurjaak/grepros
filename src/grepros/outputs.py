@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -454,39 +454,37 @@ class MultiSink(SinkBase):
     ## Autobinding between argument flags and sink classes
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
-    ## Autobinding between argument flags+subflags and sink classes
-    SUBFLAG_CLASSES = {"DUMP_TARGET": {"DUMP_FORMAT": {"bag": BagSink}}}
+    ## Autobinding between --write .. format=FORMAT and sink classes
+    FORMAT_CLASSES = {"bag": BagSink}
 
     def __init__(self, args):
         """
         @param   args               arguments object like argparse.Namespace
         @param   args.CONSOLE       print matches to console
-        @param   args.DUMP_TARGET   write matches to output file
-        @param   args.DUMP_FORMAT   output file format, "bag" or "html"
+        @param   args.DUMP_TARGET   [[target, format=FORMAT, key=value, ], ]
         @param   args.PUBLISH       publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
+        self._valid = True
 
         ## List of all combined sinks
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
                       if getattr(args, flag, None)]
-        for flag, opts in self.SUBFLAG_CLASSES.items():
-            cls = None
-            for subflag, binding in opts.items() if getattr(args, flag, None) else ():
-                cls = getattr(args, subflag, None) and binding.get(getattr(args, subflag, None))
 
-                for sinkcls in binding.values() if not cls else ():
-                    if callable(getattr(sinkcls, "autodetect", None)):
-                        cls = sinkcls.autodetect(getattr(args, flag)) and sinkcls
-                        if cls:
-                            break  # for sinkcls
-                if cls:
-                    break  # for subflag
-            if cls:
-                self.sinks += [cls(args)]
-                break  # for flag
-            elif getattr(args, flag, None):
-                raise Exception("Unknown output format.")
+        for dumpopts in args.DUMP_TARGET:
+            target, kwargs = dumpopts[0], dict(x.split("=", 1) for x in dumpopts[1:])
+            cls = self.FORMAT_CLASSES.get(kwargs.pop("format", None))
+            if not cls:
+                cls = next((c for c in self.FORMAT_CLASSES.values()
+                            if callable(getattr(c, "autodetect", None))
+                            and c.autodetect(target)), None)
+            if not cls:
+                ConsolePrinter.error('Unknown output format in "%s"' % " ".join(dumpopts))
+                self._valid = False
+                continue  # for dumpopts
+            clsargs = copy.deepcopy(args)
+            clsargs.DUMP_TARGET, clsargs.DUMP_OPTIONS = target, kwargs
+            self.sinks += [cls(clsargs)]
 
     def emit_meta(self):
         """Outputs source metainfo in one sink, if not already emitted."""
@@ -510,7 +508,7 @@ class MultiSink(SinkBase):
         """Returns whether prerequisites are met for all sinks."""
         if not self.sinks:
             ConsolePrinter.error("No output configured.")
-        return bool(self.sinks) and all([sink.validate() for sink in self.sinks])
+        return bool(self.sinks) and all([sink.validate() for sink in self.sinks]) and self._valid
 
     def close(self):
         """Closes all sinks."""

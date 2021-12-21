@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -285,8 +285,7 @@ class PostgresSink(DataSinkBase):
 def init(*_, **__):
     """Adds Postgres format support."""
     from ... import plugins  # Late import to avoid circular
-    plugins.add_write_format("postgres", PostgresSink)
-    plugins.add_write_options("Postgres", [
+    plugins.add_write_format("postgres", PostgresSink, "Postgres", [
         ("commit-interval=NUM",  "transaction size for Postgres output\n"
                                  "(default 1000, 0 is autocommit)"),
         ("nesting=array|all",    "create tables for nested message types\n"
@@ -298,4 +297,4 @@ def init(*_, **__):
     ])
     writearg = plugins.get_argument("--write-format")
     if writearg:
-        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")
+        writearg["help"] = writearg["help"].replace("Bag will be", "Bag or database will be")

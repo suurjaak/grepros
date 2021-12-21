@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -166,7 +166,6 @@ class HtmlSink(SinkBase, TextSinkMixin):
 def init(*_, **__):
     """Adds HTML format support."""
     from ... import plugins  # Late import to avoid circular
-    plugins.add_write_format("html", HtmlSink)
-    plugins.add_write_options("HTML", [
+    plugins.add_write_format("html", HtmlSink, "HTML", [
         ("template=/my/path.tpl",  "custom template to use for HTML output")
     ])
