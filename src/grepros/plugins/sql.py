@@ -232,9 +232,8 @@ class SqlSink(SinkBase):
 
         namewidth = 2 + max(len(n) for n, _ in cols)
         coldefs = ["%s  %s" % (quote(n).ljust(namewidth), t) for n, t in cols]
-        sqlargs = {"table": quote(typename, force=True),
-                   "cols": "\n  %s\n" % ",\n  ".join(coldefs), }
         table_name = self._make_name("%s (%s)" % (typename, typehash))
+        sqlargs = {"table": quote(table_name), "cols": "\n  %s\n" % ",\n  ".join(coldefs), }
         template = self._get_dialect_option("table")
         sql = LINESTRIP(template) % sqlargs
         self._types[typekey] = {"type": typename, "md5": typehash,
