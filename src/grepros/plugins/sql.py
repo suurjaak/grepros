@@ -163,7 +163,7 @@ class SqlSink(SinkBase):
             ConsolePrinter.debug("Wrote %s and %s to SQL %s (%s).",
                                  plural("message type table",
                                         len(self._types) - len(self._nested_types)),
-                                 plural("topic view", len(self._topics)), self._filename,
+                                 plural("topic view", self._topics), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
             if self._nested_types:
                 ConsolePrinter.debug("Wrote %s to SQL %s.",

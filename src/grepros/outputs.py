@@ -377,7 +377,7 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._args.DUMP_TARGET,
+                                 plural("topic", self._counts), self._args.DUMP_TARGET,
                                  format_bytes(os.path.getsize(self._args.DUMP_TARGET)))
         super(BagSink, self).close()
 
@@ -441,7 +441,7 @@ class TopicSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Published %s to %s.",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(set(self._pubs.values()))))
+                                 plural("topic", self._pubs))
         for k in list(self._pubs):
             self._pubs.pop(k).unregister()
         super(TopicSink, self).close()

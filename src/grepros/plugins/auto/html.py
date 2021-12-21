@@ -103,7 +103,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._filename,
+                                 plural("topic", self._counts), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
         super(HtmlSink, self).close()
 

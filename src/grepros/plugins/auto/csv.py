@@ -65,8 +65,7 @@ class CsvSink(SinkBase):
             sizes = {k: os.path.getsize(n) for k, n in names.items()}
             ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)),
-                                 format_bytes(sum(sizes.values())))
+                                 plural("topic", self._counts), format_bytes(sum(sizes.values())))
             for topickey, name in names.items():
                 ConsolePrinter.debug("- %s (%s, %s)", name,
                                     format_bytes(sizes[topickey]),

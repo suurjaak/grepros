@@ -107,10 +107,8 @@ class ParquetSink(SinkBase):
             sizes = {n: os.path.getsize(n) for n in self._filenames.values()}
             ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)),
-                                 plural("Parquet file", len(sizes)),
+                                 plural("topic", self._counts), plural("Parquet file", sizes),
                                  format_bytes(sum(sizes.values())))
-            typecounts = {}
             for (t, h), name in self._filenames.items():
                 count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
                 ConsolePrinter.debug("- %s (%s, %s)", name,

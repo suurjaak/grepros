@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -179,7 +179,7 @@ class DataSinkBase(SinkBase):
             target = self._make_db_label()
             ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self.ENGINE, target)
+                                 plural("topic", self._counts), self.ENGINE, target)
             if self._nested_counts:
                 ConsolePrinter.debug("Wrote %s in %s.",
                                      plural("nested message", sum(self._nested_counts.values())),
