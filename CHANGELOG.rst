@@ -5,6 +5,7 @@ Changelog for package grepros
 0.4.0 (2021-12-21)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
+* add --plugin grepros.plugins.sql (SQL schema output)
 * add --plugin grepros.plugins.embag (faster ROS1 bag reader)
 * add --reindex-if-unindexed option
 * allow multiple write sinks, combine --write-format and --write-option to --write

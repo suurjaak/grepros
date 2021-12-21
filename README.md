@@ -45,7 +45,8 @@ Supports loading custom plugins, mainly for additional output formats.
   - [Conditions](#conditions)
 - [Plugins](#plugins)
   - [embag](#embag)
-  - [Parquet](#parquet)
+  - [parquet](#parquet)
+  - [sql](#sql)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -734,6 +735,28 @@ For example, specifying no compression:
 The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`.
 
 
+### sql
+
+    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql]
+
+Write SQL schema to output file, CREATE TABLE for each message type
+and CREATE VIEW for each topic.
+
+A specific SQL dialect can be specified:
+
+    --write path/to/my.sql dialect=clickhouse|postgres|sqlite
+
+Specifying `format=sql` is not required if the filename ends with `.sql`.
+
+To create tables for nested array message type fields:
+
+    --write path/to/my.sql nesting=array
+
+To create tables for all nested message types:
+
+    --write path/to/my.sql nesting=all
+
+
 
 All command-line arguments
 --------------------------
@@ -772,7 +795,7 @@ optional arguments:
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
                         (built-in plugins: grepros.plugins.embag, 
-                         grepros.plugins.parquet)
+                         grepros.plugins.parquet, grepros.plugins.sql)
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
