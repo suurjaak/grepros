@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -98,12 +98,12 @@ class ConsolePrinter(object):
         """Prints text, formatted with args and kwargs."""
         fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
-        text = str(text)
-        try: text = text % args if args else text
+        text, fmted = str(text), False
+        try: text, fmted = (text % args if args else text), bool(args)
         except Exception: pass
-        try: text = text % kwargs if kwargs else text
+        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
         except Exception: pass
-        try: text = text.format(*args, **kwargs) if args or kwargs else text
+        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
         except Exception: pass
         if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
 
@@ -124,7 +124,7 @@ class ConsolePrinter(object):
     def warn(cls, text="", *args, **kwargs):
         """
         Prints warning to stderr.
-        
+
         Formatted with args and kwargs, in warning colors if supported.
         """
         KWS = dict(__file=sys.stderr, __prefix=cls.WARN_START, __suffix=cls.WARN_END)
