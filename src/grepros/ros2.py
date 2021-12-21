@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    19.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -150,7 +150,6 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   counts  whether to return actual message counts instead of None
         """
         self._ensure_open()
-        topickeys = {}  # {topic_id: (topic, typename, typehash)}
         DEFAULTCOUNT = 0 if counts else None
         if not self._counts and self._has_table("topics"):
             for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
@@ -161,6 +160,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                 topickeys[row["id"]] = (topic, typename, typehash)
 
         if counts and self._has_table("messages") and not any(self._counts.values()):
+            topickeys = {v["id"]: (t, n, get_message_type_hash(n))
+                         for (t, n), v in self._topics.items()}
             for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
                                         "GROUP BY topic_id").fetchall():
                 if row["topic_id"] in topickeys:
@@ -173,11 +174,12 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Returns topic Quality of Service profile as a dictionary, or None if not available."""
         topickey = (topic, typename)
         if topickey not in self._qoses and topickey in self._topics:
+            topicrow = self._topics[topickey]
             try:
-                if self._topics["offered_qos_profiles"]:
-                    self._qoses[topickey] = yaml.safe_load(self._topics["offered_qos_profiles"])
+                if topicrow.get("offered_qos_profiles"):
+                    self._qoses[topickey] = yaml.safe_load(topicrow["offered_qos_profiles"])
             except Exception as e:
-                ConsolePrinter.warn("Error parsing quality of service for topic %r: %s", topic, e)
+                ConsolePrinter.warn("Error parsing quality of service for topic %r: %r", topic, e)
         self._qoses.setdefault(topickey, None)
         return self._qoses[topickey]
 
