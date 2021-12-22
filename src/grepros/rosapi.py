@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.12.2021
+@modified    22.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -230,6 +230,13 @@ def get_rostime():
     return realapi.get_rostime()
 
 
+def get_ros_time_category(typename):
+    """Returns "time" or "duration" for time/duration type, else typename."""
+    if typename in ROS_TIME_TYPES:
+        return "duration" if "duration" in typename.lower() else "time"
+    return typename
+
+
 def get_topic_types():
     """
     Returns currently available ROS topics, as [(topicname, typename)].
@@ -253,30 +260,32 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, messages_only=False, top=()):
+def iter_message_fields(msg, messages_only=False, scalars=(), top=()):
     """
     Yields ((nested, path), value, typename) from ROS message.
 
     @param  messages_only  whether to yield only values that are ROS messages themselves
                            or lists of ROS messages, else will yield scalar and list values
+    @param  scalars        sequence of ROS types to consider as scalars, like ("time", duration")
     """
     fieldmap = realapi.get_message_fields(msg)
     if fieldmap is msg: return
     if messages_only:
         for k, t in fieldmap.items():
-            v = realapi.get_message_value(msg, k, t)
-            is_sublist = isinstance(v, (list, tuple)) and \
-                         realapi.scalar(t) not in ROS_COMMON_TYPES
-            if realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, True, top=top + (k, )):
+            v, scalart = realapi.get_message_value(msg, k, t), realapi.scalar(t)
+            is_sublist = isinstance(v, (list, tuple)) and scalart not in ROS_COMMON_TYPES
+            is_forced_scalar = get_ros_time_category(scalart) in scalars
+            if not is_forced_scalar and realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, True, scalars, top=top + (k, )):
                     yield p2, v2, t2
-            if realapi.is_ros_message(v, ignore_time=True) or is_sublist:
+            if is_forced_scalar or is_sublist or realapi.is_ros_message(v, ignore_time=True):
                 yield top + (k, ), v, t
     else:
         for k, t in fieldmap.items():
             v = realapi.get_message_value(msg, k, t)
-            if realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, top=top + (k, )):
+            is_forced_scalar = get_ros_time_category(realapi.scalar(t)) in scalars
+            if not is_forced_scalar and realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, False, scalars, top=top + (k, )):
                     yield p2, v2, t2
             else:
                 yield top + (k, ), v, t

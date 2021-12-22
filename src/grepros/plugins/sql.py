@@ -32,6 +32,9 @@ class SqlSink(SinkBase):
     Writes SQL schema file for message type tables and topic views.
     """
 
+    ## Auto-detection file extensions
+    FILE_EXTENSIONS = (".sql", )
+
     ## Supported SQL dialects and options
     DIALECTS = {
 
@@ -68,9 +71,6 @@ WHERE _topic = {topic};""",
                 "uint64":  "BIGINT",   "float32":  "REAL",     "float64": "DOUBLE PRECISION",
                 "bool":    "BOOLEAN",  "string":   "TEXT",     "wstring": "TEXT",
                 "uint8[]": "BYTEA",    "char[]":   "BYTEA",
-                "time":    "NUMERIC",  "duration": "NUMERIC",
-                "builtin_interfaces/Time":         "NUMERIC",
-                "builtin_interfaces/Duration":     "NUMERIC",
             },
             "defaulttype":    "JSONB",
             "maxlen_entity":  63,
@@ -86,10 +86,6 @@ WHERE _topic = {topic};""",
                 "uint64":  "UInt64", "float32":  "Float32", "float64": "Float64",
                 "bool":    "UInt8",  "string":   "String",  "wstring": "String",
                 "uint8[]": "String", "char[]":   "String",
-                "time":                          "DateTime64(9)",
-                "duration":                      "DateTime64(9)",
-                "builtin_interfaces/Time":       "DateTime64(9)",
-                "builtin_interfaces/Duration":   "DateTime64(9)",
             },
             "defaulttype":         "String",
             "arraytype_template":  "Array({type})",
@@ -245,7 +241,8 @@ WHERE _topic = {topic};""",
             return None
 
         cols = []
-        for path, value, subtype in rosapi.iter_message_fields(msg):
+        scalars = set(x for x in self._get_dialect_option("types") if "[" not in x)
+        for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
         cols += [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
@@ -328,22 +325,19 @@ WHERE _topic = {topic};""",
         ARRAYTEMPLATE = self._get_dialect_option("arraytype_template")
         DEFAULTTYPE   = self._get_dialect_option("defaulttype")
 
-        coltype = TYPES.get(typename)
-        scalartype = rosapi.scalar(typename)
+        coltype    = TYPES.get(typename)
+        scalartype = rosapi.get_ros_time_category(rosapi.scalar(typename))
+        timetype   = rosapi.get_ros_time_category(scalartype)
         if not coltype and scalartype in TYPES:
             coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])
+        if not coltype and timetype in TYPES:
+            if typename != scalartype:
+                coltype = ARRAYTEMPLATE.format(type=TYPES[timetype])
+            else:
+                coltype = TYPES[timetype]
         if not coltype:
             coltype = DEFAULTTYPE or quote(typename)
         return coltype
-
-
-    def _make_column_value(self, value, typename=None):
-        """Returns column value suitable for inserting to database."""
-        v, scalartype = value, typename and rosapi.scalar(typename)
-        if isinstance(v, (list, tuple)) and typename and scalartype not in rosapi.ROS_BUILTIN_TYPES:
-            if self._nesting: v = []
-            else: v = [rosapi.message_to_dict(x) for x in v]
-        return v
 
 
     def _get_dialect_option(self, option):
