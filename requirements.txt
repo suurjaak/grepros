@@ -1,3 +1,6 @@
 # ROS1 deps not pip-installable: genpy, rosbag, roslib, rospy
 # ROS2 deps not pip-installable: builtin_interfaces, rclpy, rosidl_runtime_py
+# embag input: embag
+# parquet output: pandas, pyarrow
+# postgres output: psycopg2
 pyyaml
