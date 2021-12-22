@@ -109,7 +109,8 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="DUMP_TARGET", nargs="+", action="append",
+        dict(args=["--write"],
+             dest="DUMP_TARGET", nargs="+", default=[], action="append",
              metavar="TARGET [format=bag] [KEY=VALUE ...]",
              help="write matched messages to specified output,\n"
                   "format is autodetected from TARGET if not specified.\n"
