@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or HTML/CSV/Parquet/Postgres/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/Parquet/Postgres/SQL/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -289,6 +289,8 @@ table/view name becomes "name (MD5 hash of type definition)".
 
 Specifying `format=postgres` is not required if the parameter uses the
 Postgres URI scheme `postgresql://`.
+
+Requires [psycopg2](https://pypi.org/project/psycopg2).
 
 Parameter `--write` can also use the Postgres keyword=value format,
 e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
@@ -715,14 +717,26 @@ Significantly faster, but library tends to be unstable.
 
     --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
 
-Write messages to Apache Parquet files (columnar storage format),
+Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
 for `package/MessageType` (typehash is message type definition MD5 hashsum).
+Adds fields `_topic string()` and `_timestamp timestamp("ns")` to each type.
 
 If a file already exists, a unique counter is appended to the name of the new file,
 e.g. `package__MessageType__typehash/my.2.parquet`.
 
 Specifying `format=parquet` is not required if the filename ends with `.parquet`.
+
+Requires [pandas](https://pypi.org/project/pandas) and [pyarrow](https://pypi.org/project/pyarrow).
+
+Supports custom mapping between ROS and pyarrow types:
+
+    --write path/to/my.parquet type-rostype=arrowtype
+
+Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+unless they are mapped to pyarrow types explicitly, like:
+
+    --write path/to/my.parquet type-time="timestamp('ns')" type-duration="duration('ns')"
 
 Supports additional arguments given to [pyarrow.parquet.ParquetWriter](
 https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html), as:
@@ -749,7 +763,7 @@ A specific SQL dialect can be specified:
 
     --write path/to/my.sql dialect=clickhouse|postgres|sqlite
 
-Additional dialects can be loaded from a YAML or JSON file:
+Additional dialects, or updates for existing dialects, can be loaded from a YAML or JSON file:
 
     --write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
 
@@ -769,6 +783,9 @@ dialectname:
   invalid_char_regex:  Regex for matching invalid characters in name, if any
   invalid_char_repl:   Replacement for invalid characters in name
 ```
+
+Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.
 
 Any dialect options not specified will be taken from the default dialect configuration:
 

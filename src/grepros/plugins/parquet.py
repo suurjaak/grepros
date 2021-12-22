@@ -8,10 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    21.12.2021
+@modified    22.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
+import ast
 import json
 import os
 import re
@@ -39,7 +40,7 @@ class ParquetSink(SinkBase):
     ## Number of dataframes to cache before writing, per type
     CHUNK_SIZE = 100
 
-    ## Mapping from ROS common types to Postgres types
+    ## Mapping from ROS common types to pyarrow types
     COMMON_TYPES = {
         "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
         "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
@@ -47,13 +48,18 @@ class ParquetSink(SinkBase):
         "uint64":  pyarrow.uint64(), "float32":  pyarrow.float32(), "float64": pyarrow.float64(),
         "bool":    pyarrow.bool_(),  "string":   pyarrow.string(),  "wstring": pyarrow.string(),
         "uint8[]": pyarrow.binary(), "char[]":   pyarrow.binary(),
-        "time":    pyarrow.int64(),  "duration": pyarrow.int64(),
-        "builtin_interfaces/Time": pyarrow.int64(), "builtin_interfaces/Duration": pyarrow.int64(),
     } if pyarrow else {}
 
+    ## Fallback pyarrow type if mapped type not found
+    DEFAULT_TYPE = pyarrow.string() if pyarrow else None
+
     ## Default columns for message type tables
-    MESSAGE_TYPE_BASECOLS  = [("_topic",      "string"),
-                              ("_timestamp",  "time"), ]
+    MESSAGE_TYPE_BASECOLS  = [("_topic",      pyarrow.string()),
+                              ("_timestamp",  pyarrow.timestamp("ns")), ] if pyarrow else []
+
+    ## Custom arguments for pyarrow.parquet.ParquetWriter
+    WRITER_ARGS = {"version": "2.6"}
+
 
     def __init__(self, args):
         """
@@ -70,7 +76,6 @@ class ParquetSink(SinkBase):
         self._caches    = {}  # {(typename, typehash): [{data}, ]}
         self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
         self._writers   = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
-        self._writeargs = {}  # {additional given arguments for ParquetWriter}
 
         self._close_printed = False
 
@@ -132,17 +137,18 @@ class ParquetSink(SinkBase):
         filename = unique_path(os.path.join(pathname, basename))
 
         cols = []
-        for path, value, subtype in rosapi.iter_message_fields(msg):
+        scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
+        for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
-        cols += [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
+        cols += self.MESSAGE_TYPE_BASECOLS
 
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
         makedirs(pathname)
 
         schema = pyarrow.schema(cols)
-        writer = pyarrow.parquet.ParquetWriter(filename, schema, **self._writeargs)
+        writer = pyarrow.parquet.ParquetWriter(filename, schema, **self.WRITER_ARGS)
         self._caches[typekey]    = []
         self._filenames[typekey] = filename
         self._schemas[typekey]   = schema
@@ -159,7 +165,7 @@ class ParquetSink(SinkBase):
         typehash = self.source.get_message_type_hash(msg)
         typekey  = (typename, typehash)
         data = {}
-        for p, v, t in rosapi.iter_message_fields(msg):
+        for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
         self._caches[typekey].append(data)
@@ -169,12 +175,18 @@ class ParquetSink(SinkBase):
 
     def _make_column_type(self, typename):
         """Returns pyarrow type for ROS type."""
-        coltype = self.COMMON_TYPES.get(typename)
+        coltype    = self.COMMON_TYPES.get(typename)
         scalartype = rosapi.scalar(typename)
+        timetype   = rosapi.get_ros_time_category(scalartype)
         if not coltype and scalartype in self.COMMON_TYPES:
             coltype = pyarrow.list_(self.COMMON_TYPES[scalartype])
+        if not coltype and timetype in self.COMMON_TYPES:
+            if typename != scalartype:
+                coltype = pyarrow.list_(self.COMMON_TYPES[timetype])
+            else:
+                coltype = self.COMMON_TYPES[timetype]
         if not coltype:
-            coltype = pyarrow.string()
+            coltype = self.DEFAULT_TYPE
         return coltype
 
 
@@ -209,17 +221,25 @@ class ParquetSink(SinkBase):
     def _configure(self):
         """Parses args.DUMP_OPTIONS."""
         for k, v in self._args.DUMP_OPTIONS.items():
-            if not k.startswith("writer-"): continue  # for k, v
-
-            try: v = json.loads(v)
-            except Exception: pass
-            self._writeargs[k[len("writer-"):]] = v
+            if k.startswith("type-"):
+                # Split "time('ns')" into "time" and "('ns')"
+                base, argstr = re.split(r"([^(]+)(\([^)]*\))?", v, 1)[1:3]
+                cls = getattr(pyarrow, base)
+                args = ast.literal_eval(argstr) if argstr else ()
+                args = (args, ) if not isinstance(args, tuple) else args
+                self.COMMON_TYPES[k[len("type-"):]] = cls(*args)
+            elif k.startswith("writer-"):
+                try: v = json.loads(v)
+                except Exception: pass
+                self.WRITER_ARGS[k[len("writer-"):]] = v
 
 
 def init(*_, **__):
     """Adds Parquet output format support."""
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
+        ("type-rostype=arrowtype",  "custom mapping between ROS and pyarrow type\n"
+                                     "for Parquet output, like type-time=\"timestamp('ns')\""),
         ("writer-argname=argvalue",  "additional arguments for Parquet output\n"
                                      "given to pyarrow.parquet.ParquetWriter"),
     ])
