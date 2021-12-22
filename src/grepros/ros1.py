@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.12.2021
+@modified    22.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -229,6 +229,7 @@ class BagReader(rosbag.Bag):
                 inbag  = rosbag.Bag(f2, **dict(kwargs, mode="r"))
                 outbag = rosbag.Bag(f, **outkwargs)
                 BagReader._reindex_bag(inbag, outbag, bar)
+                bar and bar.update(bar.max)
             except BaseException:
                 inbag and inbag.close()
                 outbag and outbag.close()
