@@ -164,7 +164,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
 
 def init(*_, **__):
-    """Adds HTML format support."""
+    """Adds HTML output format support."""
     from ... import plugins  # Late import to avoid circular
     plugins.add_write_format("html", HtmlSink, "HTML", [
         ("template=/my/path.tpl",  "custom template to use for HTML output")

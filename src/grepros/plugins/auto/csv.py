@@ -135,6 +135,6 @@ class CsvSink(SinkBase):
 
 
 def init(*_, **__):
-    """Adds CSV format support."""
+    """Adds CSV output format support."""
     from ... import plugins  # Late import to avoid circular
     plugins.add_write_format("csv", CsvSink)

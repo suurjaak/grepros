@@ -217,7 +217,7 @@ class ParquetSink(SinkBase):
 
 
 def init(*_, **__):
-    """Adds Parquet format support."""
+    """Adds Parquet output format support."""
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
         ("writer-argname=argvalue",  "additional arguments for Parquet output\n"

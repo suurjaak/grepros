@@ -245,7 +245,7 @@ class SqliteSink(DataSinkBase):
 
 
 def init(*_, **__):
-    """Adds SQLite format support."""
+    """Adds SQLite output format support."""
     from ... import plugins  # Late import to avoid circular
     plugins.add_write_format("sqlite", SqliteSink, "SQLite", [
         ("commit-interval=NUM",      "transaction size for SQLite output\n"

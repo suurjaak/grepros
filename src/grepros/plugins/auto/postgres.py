@@ -283,7 +283,7 @@ class PostgresSink(DataSinkBase):
 
 
 def init(*_, **__):
-    """Adds Postgres format support."""
+    """Adds Postgres output format support."""
     from ... import plugins  # Late import to avoid circular
     plugins.add_write_format("postgres", PostgresSink, "Postgres", [
         ("commit-interval=NUM",  "transaction size for Postgres output\n"
