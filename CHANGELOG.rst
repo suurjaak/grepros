@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.0 (2021-12-21)
+0.4.0 (2021-12-22)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
 * add --plugin grepros.plugins.sql (SQL schema output)

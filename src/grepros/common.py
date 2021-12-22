@@ -594,6 +594,15 @@ def memoize(func):
     return inner
 
 
+def merge_dicts(d1, d2):
+    """Merges d2 into d1, recursively for nested dicts."""
+    for k, v in d2.items():
+        if k in d1 and isinstance(v, dict) and isinstance(d1[k], dict):
+            merge_dicts(d1[k], v)
+        else:
+            d1[k] = v
+
+
 def merge_spans(spans):
     """Returns a sorted list of (start, end) spans with overlapping spans merged."""
     result = sorted(spans)

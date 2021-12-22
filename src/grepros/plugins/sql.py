@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    21.12.2021
+@modified    22.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -18,13 +18,13 @@ import os
 import re
 import sys
 
+import yaml
+
 from .. import rosapi
-from .. common import ConsolePrinter, ellipsize, format_bytes, makedirs, plural, quote, unique_path
+from .. common import ConsolePrinter, ellipsize, format_bytes, makedirs, \
+                      merge_dicts, plural, quote, unique_path
 from .. outputs import SinkBase
 
-
-## Strips leading and trailing whitespace from each line in string.
-LINESTRIP = lambda v: re.sub("(^ +)|( +$)", "", v, flags=re.M)
 
 
 class SqlSink(SinkBase):
@@ -36,7 +36,9 @@ class SqlSink(SinkBase):
     DIALECTS = {
 
         None: {
+            # CREATE TABLE template, args: table, cols, type, hash, package, class
             "table_template":       "CREATE TABLE IF NOT EXISTS {table} ({cols});",
+            # CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
             "view_template":        """
 CREATE VIEW IF NOT EXISTS {view} AS
 SELECT {cols}
@@ -44,7 +46,7 @@ FROM {table}
 WHERE _topic = {topic};""",
             "types":                  {},        # Mapping between ROS and SQL common types
             "defaulttype":          None,        # Fallback SQL type if no mapped type for ROS type
-            "arraytype_template":   "{type}[]",  # Array type template, formatted with type
+            "arraytype_template":   "{type}[]",  # Array type template, args: type
             "maxlen_entity":           0,        # Maximum table/view name length, 0 disables
             "maxlen_column":           0,        # Maximum column name length, 0 disables
             "invalid_char_regex":   None,        # Regex for matching invalid characters in name
@@ -133,10 +135,21 @@ WHERE _topic = {topic};""",
         Returns whether "dialect" and "nesting" parameters contain supported values.
         """
         ok = True
+        if self._args.DUMP_OPTIONS.get("dialect-file"):
+            filename = self._args.DUMP_OPTIONS["dialect-file"]
+            try:
+                with open(filename) as f:
+                    dialects = yaml.safe_load(f.read())
+                if any(not isinstance(v, dict) for v in dialects.values()):
+                    raise Exception("Each dialect must be a dictionary.") 
+                merge_dicts(self.DIALECTS, dialects)
+            except Exception as e:
+                ok = False
+                ConsolePrinter.error("Error reading SQL dialect file %r: %s", filename, e)
         if "dialect" in self._args.DUMP_OPTIONS \
         and self._args.DUMP_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
             ok = False
-            ConsolePrinter.error("Unknown dialect for SQL: %r."
+            ConsolePrinter.error("Unknown dialect for SQL: %r. "
                                  "Choose one of {%s}.",
                                  self._args.DUMP_OPTIONS["dialect"],
                                  "|".join(sorted(filter(bool, self.DIALECTS))))
@@ -155,8 +168,8 @@ WHERE _topic = {topic};""",
             self._batch = batch
             self._metas.append(self.source.format_meta())
         self._ensure_open()
-        self._process_type(msg) 
-        self._process_topic(topic, msg) 
+        self._process_type(msg)
+        self._process_topic(topic, msg)
 
 
     def close(self):
@@ -205,13 +218,13 @@ WHERE _topic = {topic};""",
         if topickey in self._topics:
             return
 
-        table_name = self._make_entity_name("table", "%s (%s)" % (typename, typehash))
+        table_name = self._types[(typename, typehash)]["table"]
         view_name  = self._make_entity_name("view",  "%s (%s) (%s)" % (topic, typename, typehash))
-        sqlargs = {"view": quote(view_name),
-                   "table": quote(table_name, force=True),
-                   "topic": repr(topic), "cols": "*", }
-        template = self._get_dialect_option("view_template")
-        sql = template.strip().format(**sqlargs)
+        pkgname, clsname = typename.split("/", 1)
+        sqlargs = {"view": quote(view_name), "table": quote(table_name, force=True),
+                   "topic": repr(topic), "cols": "*", "type": typename, "hash": typehash,
+                   "package": pkgname, "class": clsname}
+        sql = self._get_dialect_option("view_template").strip().format(**sqlargs)
         self._topics[topickey] = {"topic": topic, "type": typename, "md5": typehash,
                                   "sql": sql, "table": table_name, "view": view_name}
         self._write_entity("view", self._topics[topickey])
@@ -241,14 +254,20 @@ WHERE _topic = {topic};""",
         namewidth = 2 + max(len(n) for n, _ in cols)
         coldefs = ["%s  %s" % (quote(n).ljust(namewidth), t) for n, t in cols]
         table_name = self._make_entity_name("table", "%s (%s)" % (typename, typehash))
-        sqlargs = {"table": quote(table_name), "cols": "\n  %s\n" % ",\n  ".join(coldefs), }
-        template = self._get_dialect_option("table_template")
-        sql = template.strip().format(**sqlargs)
+        pkgname, clsname = typename.split("/", 1)
+        sqlargs = {"table": quote(table_name), "cols": "\n  %s\n" % ",\n  ".join(coldefs),
+                   "type": typename, "hash": typehash, "package": pkgname, "class": clsname}
+        sql = self._get_dialect_option("table_template").strip().format(**sqlargs)
         self._types[typekey] = {"type": typename, "md5": typehash,
                                 "msgdef": self.source.get_message_definition(msg),
                                 "table": table_name, "sql": sql}
         self._write_entity("table", self._types[typekey])
+        if self._nesting: self._process_nested(msg)
+        return sql
 
+
+    def _process_nested(self, msg):
+        """Builds anr writes CREATE TABLE statements for nested types."""
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = rosapi.scalar(subtype)
@@ -263,13 +282,13 @@ WHERE _topic = {topic};""",
             for submsg in submsgs[:1] or [self.source.get_message_class(scalartype, subtypehash)()]:
                 subsql = self._process_type(submsg)
                 if subsql: self._nested_types[subtypekey] = subsql
-        return sql
 
 
     def _make_entity_name(self, category, name):
         """Returns valid unique name for table/view."""
         existing = set(sum(([x["table"], x.get("view")]
-                            for dct in (self._topics, self._types) for x in dct.values()), []))
+                            for dct in (self._topics, self._types)
+                            for x in dct.values()), []))
         return self._make_name("entity", name, existing)
 
 
@@ -369,6 +388,9 @@ def init(*_, **__):
         ("dialect=" + "|".join(sorted(filter(bool, SqlSink.DIALECTS))),
                                      "use specified SQL dialect in SQL output\n"
                                      '(default "%s")' % SqlSink.DEFAULT_DIALECT),
+        ("dialect-file=path/to/dialects.yaml",
+                                     "load additional SQL dialects for SQL output\n"
+                                     "from a YAML or JSON file"),
         ("nesting=array|all",        "create tables for nested message types\n"
                                      "in SQL output,\n"
                                      'only for arrays if "array" \n'

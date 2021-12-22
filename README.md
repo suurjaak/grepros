@@ -698,6 +698,7 @@ Convenience methods:
    adds an output plugin to defaults
 - `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
 
+Specifying `--plugin someplugin` and `--help` will include plugin options in printed help.
 
 Built-in plugins:
 
@@ -742,11 +743,49 @@ The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`
 Write SQL schema to output file, CREATE TABLE for each message type
 and CREATE VIEW for each topic.
 
+Specifying `format=sql` is not required if the filename ends with `.sql`.
+
 A specific SQL dialect can be specified:
 
     --write path/to/my.sql dialect=clickhouse|postgres|sqlite
 
-Specifying `format=sql` is not required if the filename ends with `.sql`.
+Additional dialects can be loaded from a YAML or JSON file:
+
+    --write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
+
+Dialect file format:
+
+```yaml
+dialectname:
+  table_template:      CREATE TABLE template, args: table, cols, type, hash, package, class
+  view_template:       CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
+  types:               Mapping between ROS and SQL common types for table columns,
+                       e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
+  defaulttype:         Fallback SQL type if no mapped type for ROS type;
+                       if no mapped and no default type, column type will be ROS type as-is
+  arraytype_template:  Array type template, args: type
+  maxlen_entity:       Maximum table/view name length, 0 disables
+  maxlen_column:       Maximum column name length, 0 disables
+  invalid_char_regex:  Regex for matching invalid characters in name, if any
+  invalid_char_repl:   Replacement for invalid characters in name
+```
+
+Any dialect options not specified will be taken from the default dialect configuration:
+
+```yaml
+  table_template:      'CREATE TABLE IF NOT EXISTS {table} ({cols});'
+  view_template:       'CREATE VIEW IF NOT EXISTS {view} AS
+                        SELECT {cols}
+                        FROM {table}
+                        WHERE _topic = {topic};'
+  types:               {}
+  defaulttype:         null
+  arraytype_template:  '{type}[]'
+  maxlen_entity:       0
+  maxlen_column:       0
+  invalid_char_regex:  null
+  invalid_char_repl:   '__'
+```
 
 To create tables for nested array message type fields:
 
