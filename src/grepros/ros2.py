@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    21.12.2021
+@modified    22.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -157,7 +157,6 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                 typehash = get_message_type_hash(typename)
                 self._topics[(topic, typename)] = row
                 self._counts[(topic, typename, typehash)] = DEFAULTCOUNT
-                topickeys[row["id"]] = (topic, typename, typehash)
 
         if counts and self._has_table("messages") and not any(self._counts.values()):
             topickeys = {v["id"]: (t, n, get_message_type_hash(n))
