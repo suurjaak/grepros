@@ -137,7 +137,7 @@ class BagReader(rosbag.Bag):
         for n, h in self.__typedefs: hashtypes.setdefault(h, []).append(n)
         read_topics = topics if isinstance(topics, list) else [topics] if topics else None
         dupes = {t: (n, h) for t, n, h in self.__topics
-                 if (read_topics is None or t in read_topics) and len(hashtypes.get(n, [])) > 1}
+                 if (read_topics is None or t in read_topics) and len(hashtypes.get(h, [])) > 1}
 
         kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
                       connection_filter=connection_filter, raw=raw)
@@ -155,7 +155,7 @@ class BagReader(rosbag.Bag):
 
     def __convert_message(self, msg, typename2, typehash2=None):
         """Returns message converted to given type; fields must match."""
-        msg2 = self.get_message_class(typename2, typehash2)
+        msg2 = self.get_message_class(typename2, typehash2)()
         fields2 = get_message_fields(msg2)
         for fname, ftypename in get_message_fields(msg).items():
             v1 = v2 = getattr(msg, fname)
