@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -499,10 +499,11 @@ class MultiSink(SinkBase):
             sink.emit(topic, index, stamp, msg, match)
 
     def bind(self, source):
-        """Attaches source to all sinks."""
+        """Attaches source to all sinks, sets thread_excepthook on all sinks."""
         SinkBase.bind(self, source)
         for sink in self.sinks:
             sink.bind(source)
+            sink.thread_excepthook = self.thread_excepthook
 
     def validate(self):
         """Returns whether prerequisites are met for all sinks."""
