@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    22.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -245,7 +245,8 @@ WHERE _topic = {topic};""",
         for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
-        cols += [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
+        cols += [(c, self._make_column_type(t, fallback="uint64" if "time" == t else None))
+                 for c, t in self.MESSAGE_TYPE_BASECOLS]
         cols = list(zip(self._make_column_names([c for c, _ in cols]), [t for _, t in cols]))
 
         namewidth = 2 + max(len(n) for n, _ in cols)
@@ -319,8 +320,12 @@ WHERE _topic = {topic};""",
         return name2
 
 
-    def _make_column_type(self, typename):
-        """Returns column type for SQL."""
+    def _make_column_type(self, typename, fallback=None):
+        """
+        Returns column type for SQL.
+
+        @param  fallback  fallback typename to use for lookup if typename not found
+        """
         TYPES         = self._get_dialect_option("types")
         ARRAYTEMPLATE = self._get_dialect_option("arraytype_template")
         DEFAULTTYPE   = self._get_dialect_option("defaulttype")
@@ -335,6 +340,8 @@ WHERE _topic = {topic};""",
                 coltype = ARRAYTEMPLATE.format(type=TYPES[timetype])
             else:
                 coltype = TYPES[timetype]
+        if not coltype and fallback:
+            coltype = self._make_column_type(fallback)
         if not coltype:
             coltype = DEFAULTTYPE or quote(typename)
         return coltype
