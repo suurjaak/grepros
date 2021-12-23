@@ -8,6 +8,20 @@ if($ENV{ROS_VERSION} EQUAL "1")
 
   catkin_python_setup()
 
+  if(CATKIN_ENABLE_TESTING)
+    find_package(rostest REQUIRED)
+    find_package(std_msgs REQUIRED)
+
+    catkin_add_nosetests(test/ros1/test_bag_to_console.py)
+    catkin_add_nosetests(test/ros1/test_bag_to_bag.py)
+    catkin_add_nosetests(test/ros1/test_bag_to_csv.py)
+    catkin_add_nosetests(test/ros1/test_bag_to_html.py)
+    catkin_add_nosetests(test/ros1/test_bag_to_sqlite.py)
+    catkin_add_nosetests(test/ros1/test_bag_to_sql.py)
+    add_rostest(test/ros1/test_bag_to_live.launch)
+    add_rostest(test/ros1/test_live_to_console.launch)
+  endif()
+
   catkin_package(CATKIN_DEPENDS genpy rosbag roslib rospy)
 
   catkin_install_python(PROGRAMS

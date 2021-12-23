@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.0 (2021-12-22)
+0.4.0 (2021-12-23)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
 * add --plugin grepros.plugins.sql (SQL schema output)
@@ -16,6 +16,7 @@ Changelog for package grepros
 * fix error in Postgres output for NaNs in nested JSON values
 * fix skipping some messages in ROS1 bag for types with identical hashes
 * ensure no conflicts from changed message types or identical type hashes
+* add tests for ROS1
 
 0.3.5 (2021-12-14)
 -------------------
