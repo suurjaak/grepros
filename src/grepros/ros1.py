@@ -53,6 +53,15 @@ master = None
 class BagReader(rosbag.Bag):
     """Add message type getters to rosbag.Bag."""
 
+    # {(typename, typehash): message type class}
+    __TYPES    = {}
+
+    ## {(typename, typehash): type definition text}
+    __TYPEDEFS = {}
+
+    # {(typename, typehash): whether subtype definitions parsed}
+    __PARSEDS = {}
+
 
     def __init__(self, *args, **kwargs):
         """
@@ -69,10 +78,7 @@ class BagReader(rosbag.Bag):
             BagReader.reindex(filename, progress, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
-        self.__topics     = {}  # {(topic, typename, typehash): message count}
-        self.__types      = {}  # {(typename, typehash): message type class}
-        self.__typedefs   = {}  # {(typename, typehash): type definition text}
-        self.__parseds    = {}  # {(typename, typehash): whether subtype definitions parsed}
+        self.__topics = {}  # {(topic, typename, typehash): message count}
 
         self.__populate_meta()
 
@@ -80,9 +86,9 @@ class BagReader(rosbag.Bag):
     def get_message_definition(self, msg_or_type):
         """Returns ROS1 message type definition full text from bag, including subtype definitions."""
         if is_ros_message(msg_or_type):
-            return self.__typedefs.get((msg_or_type._type, msg_or_type._md5sum))
+            return self.__TYPEDEFS.get((msg_or_type._type, msg_or_type._md5sum))
         typename = msg_or_type
-        return next((d for (n, h), d in self.__typedefs.items() if n == typename), None)
+        return next((d for (n, h), d in self.__TYPEDEFS.items() if n == typename), None)
 
 
     def get_message_class(self, typename, typehash=None):
@@ -95,18 +101,21 @@ class BagReader(rosbag.Bag):
         """
         typekey = (typename, typehash)
         self.__ensure_typedef(typename, typehash)
-        if typekey not in self.__types and typekey in self.__typedefs:
-            for n, c in genpy.dynamic.generate_dynamic(typename, self.__typedefs[typekey]).items():
-                self.__types[(n, c._md5sum)] = c
-        return self.__types.get(typekey) or get_message_class(typename)
+        if typekey not in self.__TYPES and typekey in self.__TYPEDEFS:
+            for n, c in genpy.dynamic.generate_dynamic(typename, self.__TYPEDEFS[typekey]).items():
+                self.__TYPES[(n, c._md5sum)] = c
+        return self.__TYPES.get(typekey) or get_message_class(typename)
 
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS1 message type MD5 hash."""
         if is_ros_message(msg_or_type): return msg_or_type._md5sum
         typename = msg_or_type
-        return next((h for n, h in self.__typedefs if n == typename), None) \
-               or get_message_type_hash(typename)
+        typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
+        if not typehash:
+            self.__ensure_typedef(typename)
+            typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
+        return typehash or get_message_type_hash(typename)
 
 
     def get_qos(self, topic, typename):
@@ -134,7 +143,7 @@ class BagReader(rosbag.Bag):
                                     for each message in the bag file
         """
         hashtypes = {}
-        for n, h in self.__typedefs: hashtypes.setdefault(h, []).append(n)
+        for n, h in self.__TYPEDEFS: hashtypes.setdefault(h, []).append(n)
         read_topics = topics if isinstance(topics, list) else [topics] if topics else None
         dupes = {t: (n, h) for t, n, h in self.__topics
                  if (read_topics is None or t in read_topics) and len(hashtypes.get(h, [])) > 1}
@@ -174,25 +183,27 @@ class BagReader(rosbag.Bag):
                 counts[c_id] += count
         for c in self._connections.values():
             result[(c.topic, c.datatype, c.md5sum)] += counts[c.id]
-            self.__typedefs[(c.datatype, c.md5sum)] = c.msg_def
+            self.__TYPEDEFS[(c.datatype, c.md5sum)] = c.msg_def
         self.__topics = dict(result)
 
 
-    def __ensure_typedef(self, typename, typehash):
+    def __ensure_typedef(self, typename, typehash=None):
         """Parses subtype definition from any full definition where available, if not loaded."""
+        typehash = typehash or next((h for n, h in self.__TYPEDEFS if n == typename), None)
         typekey = (typename, typehash)
-        if typekey not in self.__typedefs:
-            for (roottype, roothash), rootdef in list(self.__typedefs.items()):
+        if typekey not in self.__TYPEDEFS:
+            for (roottype, roothash), rootdef in list(self.__TYPEDEFS.items()):
                 rootkey = (roottype, roothash)
-                if self.__parseds.get(rootkey): continue  # for (roottype, roothash)
+                if self.__PARSEDS.get(rootkey): continue  # for (roottype, roothash)
 
                 subdefs = tuple(parse_definition_subtypes(rootdef).items())  # ((typename, typedef), )
                 subhashes = {n: calculate_definition_hash(n, d, subdefs) for n, d in subdefs}
-                self.__typedefs.update(((n, subhashes[n]), d) for n, d in subdefs)
-                self.__parseds[rootkey] = True
-                if typekey in subdefs:
+                self.__TYPEDEFS.update(((n, subhashes[n]), d) for n, d in subdefs)
+                self.__PARSEDS.update(((n, h), True) for n, h in subhashes.items())
+                self.__PARSEDS[rootkey] = True
+                if typekey in self.__TYPEDEFS:
                     break  # for (roottype, roothash)
-            self.__typedefs.setdefault(typekey, "")
+            self.__TYPEDEFS.setdefault(typekey, "")
 
 
     @staticmethod

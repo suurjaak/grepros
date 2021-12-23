@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -119,7 +119,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     # First pass: write constants
     for line in msgdef.splitlines():
         if set(line) == set("="):  # Subtype separator
-            continue  # for line
+            break  # for line
         # String constants cannot have line comments
         if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
         match = FIELD_RGX.match(line)
