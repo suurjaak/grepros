@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    21.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -147,8 +147,8 @@ class HtmlSink(SinkBase, TextSinkMixin):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
         while True:
             entry = self._queue.get()
-            self._queue.task_done()
             if entry is None:
+                self._queue.task_done()
                 break  # while
             (topic, index, stamp, msg, match) = entry
             topickey = (topic, rosapi.get_message_type(msg),
@@ -157,6 +157,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
+            self._queue.task_done()
         try:
             while self._queue.get_nowait() or True: self._queue.task_done()
         except queue.Empty: pass
