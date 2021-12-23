@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -186,10 +186,10 @@ class BagReader(rosbag.Bag):
                 rootkey = (roottype, roothash)
                 if self.__parseds.get(rootkey): continue  # for (roottype, roothash)
 
-                subdefs = tuple(parse_definition_subtypes(rootdef))  # ((typename, typedef), )
+                subdefs = tuple(parse_definition_subtypes(rootdef).items())  # ((typename, typedef), )
                 subhashes = {n: calculate_definition_hash(n, d, subdefs) for n, d in subdefs}
                 self.__typedefs.update(((n, subhashes[n]), d) for n, d in subdefs)
-                self._parseds[rootkey] = True
+                self.__parseds[rootkey] = True
                 if typekey in subdefs:
                     break  # for (roottype, roothash)
             self.__typedefs.setdefault(typekey, "")
