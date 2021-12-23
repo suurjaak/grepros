@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -490,7 +490,7 @@ def run():
         if not sink.validate():
             sys.exit(1)
 
-        thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
+        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
         searcher = plugins.load("search", args) or search.Searcher(args)
         searcher.search(source, sink)

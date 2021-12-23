@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -125,9 +125,9 @@ class SourceBase(object):
     def notify(self, status):
         """Reports match status of last produced message."""
 
-    def thread_excepthook(self, exc):
+    def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
-        ConsolePrinter.error(exc)
+        ConsolePrinter.error(text)
 
 
 class ConditionMixin(object):
@@ -755,7 +755,7 @@ class TopicSource(SourceBase, ConditionMixin):
         time.sleep(self.MASTER_INTERVAL)
         while self._running:
             try: self.refresh_topics()
-            except Exception as e: self.thread_excepthook(e)
+            except Exception as e: self.thread_excepthook("Error refreshing live topics: %r" % e, e)
             time.sleep(self.MASTER_INTERVAL)
 
     def _on_message(self, topic, msg):

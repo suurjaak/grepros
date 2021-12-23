@@ -139,7 +139,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             with open(self._filename, "wb") as f:
                 template.stream(f, ns, unbuffered=True)
         except Exception as e:
-            self.thread_excepthook(e)
+            self.thread_excepthook("Error writing HTML output %r: %r" % (self._filename, e), e)
         finally:
             self._writer = None
 

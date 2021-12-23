@@ -80,9 +80,9 @@ class SinkBase(object):
     def flush(self):
         """Writes out any pending data to disk."""
 
-    def thread_excepthook(self, exc):
+    def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
-        ConsolePrinter.error(exc)
+        ConsolePrinter.error(text)
 
     def is_highlighting(self):
         """Returns whether this sink requires highlighted matches."""
