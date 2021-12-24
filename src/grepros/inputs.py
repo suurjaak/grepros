@@ -164,12 +164,12 @@ class ConditionMixin(object):
 
     class Topic(object):
         """
-        Object for `<topic x>` replacements in condition expressions.
+        Object for <topic x> replacements in condition expressions.
 
-        len(topic)  -> number of messages processed in topic
-        bool(topic) -> whether there are any messages in topic
-        topic[x]    -> history at -1 -2 for last and but one, or 0 1 for first and second
-        topic.x     -> attribute x of last message
+        - len(topic)  -> number of messages processed in topic
+        - bool(topic) -> whether there are any messages in topic
+        - topic[x]    -> history at -1 -2 for last and but one, or 0 1 for first and second
+        - topic.x     -> attribute x of last message
         """
 
         def __init__(self, count, firsts, lasts):

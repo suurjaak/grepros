@@ -153,6 +153,8 @@ This will add the `grepros` command to the local ROS2 workspace path.
 Inputs
 ------
 
+Input is either from one or more ROS bag files (default), or from live ROS topics.
+
 ### bag
 
 Read messages from ROS bag files, by default all in current directory.
@@ -202,6 +204,9 @@ Use ROS time instead of system time for incoming message timestamps:
 
 Outputs
 -------
+
+There can be any number of outputs: printing to console (default),
+publishing to live ROS topics, or writing to file or database.
 
 ### console
 
