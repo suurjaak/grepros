@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    22.12.2021
+@modified    24.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -48,12 +48,6 @@ ROS_TIME_CLASSES = {rclpy.time.Time:                 "builtin_interfaces/Time",
                     builtin_interfaces.msg.Time:     "builtin_interfaces/Time",
                     rclpy.duration.Duration:         "builtin_interfaces/Duration",
                     builtin_interfaces.msg.Duration: "builtin_interfaces/Duration"}
-
-## {"pkg/msg/Msg": message type definition full text with subtypes}
-DEFINITIONS = {}
-
-## {"pkg/msg/Msg": message type definition MD5 hash}
-TYPEHASHES = {}
 
 ## Data Distribution Service types to ROS builtins
 DDS_TYPES = {"boolean":             "bool",
@@ -438,41 +432,47 @@ def get_message_data(msg):
 
 def get_message_definition(msg_or_type):
     """Returns ROS2 message type definition full text, including subtype definitions."""
-    typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-    typename = canonical(typename)
-    if typename not in DEFINITIONS:
-        try:
-            texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
-            typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
-            with open(typepath) as f:
-                texts[typename] = f.read()
-            for line in texts[typename].splitlines():
-                if not line or not line[0].isalpha():
-                    continue  # for line
-                linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
-                if linetype in rosapi.ROS_BUILTIN_TYPES:
-                    continue  # for line
-                linetype = linetype if "/" in linetype else "std_msgs/Header" \
-                           if "Header" == linetype else "%s/%s" % (pkg, linetype)
-                linedef = None if linetype in texts else get_message_definition(linetype)
-                if linedef: texts[linetype] = linedef
-            basedef = texts.pop(next(iter(texts)))
-            subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
-            DEFINITIONS[typename] = basedef + "\n".join(subdefs)
-        except Exception as e:
-            ConsolePrinter.error("Error reading type definition of %s: %s", typename, e)
-            DEFINITIONS[typename] = ""
-    return DEFINITIONS[typename]
+    typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
+    return _get_message_definition(canonical(typename))
 
 
 def get_message_type_hash(msg_or_type):
     """Returns ROS2 message type MD5 hash."""
-    typename = get_message_type(msg_or_type) if is_ros_message(msg_or_type) else msg_or_type
-    typename = canonical(typename)
-    if typename not in TYPEHASHES:
-        msgdef = get_message_definition(typename)
-        TYPEHASHES[typename] = rosapi.calculate_definition_hash(typename, msgdef)
-    return TYPEHASHES[typename]
+    typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
+    return _get_message_type_hash(canonical(typename))
+
+
+@memoize
+def _get_message_definition(typename):
+    """Returns ROS2 message type definition full text (internal caching method)."""
+    try:
+        texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
+        typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
+        with open(typepath) as f:
+            texts[typename] = f.read()
+        for line in texts[typename].splitlines():
+            if not line or not line[0].isalpha():
+                continue  # for line
+            linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
+            if linetype in rosapi.ROS_BUILTIN_TYPES:
+                continue  # for line
+            linetype = linetype if "/" in linetype else "std_msgs/Header" \
+                       if "Header" == linetype else "%s/%s" % (pkg, linetype)
+            linedef = None if linetype in texts else get_message_definition(linetype)
+            if linedef: texts[linetype] = linedef
+        basedef = texts.pop(next(iter(texts)))
+        subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
+        return basedef + "\n".join(subdefs)
+    except Exception as e:
+        ConsolePrinter.error("Error reading type definition of %s: %s", typename, e)
+        return ""
+
+
+@memoize
+def _get_message_type_hash(typename):
+    """Returns ROS2 message type MD5 hash (internal caching method)."""
+    msgdef = get_message_definition(typename)
+    return rosapi.calculate_definition_hash(typename, msgdef)
 
 
 def get_message_fields(val):
