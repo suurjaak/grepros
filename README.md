@@ -586,6 +586,10 @@ Emit a specified number of matches per topic (per each file if bag input):
 
     --max-per-topic 20
 
+Emit every Nth match in topic:
+
+    --every-nth-match 10  # (skips 10 matches in topic after each match emitted)
+
 
 ### Filtering
 
@@ -650,7 +654,7 @@ Stop scanning at a specific message index in topic:
 
 Scan every Nth message in topic:
 
-    --every-nth-message 10  # (skips 100 messages in topic with each step)
+    --every-nth-message 10  # (skips 10 messages in topic with each step)
 
 Scan messages in topic with timestamps at least N seconds apart:
 
@@ -908,6 +912,8 @@ Filtering:
                         scan every Nth message within topic
   --every-nth-interval SECONDS
                         scan messages within topic at least N seconds apart
+  --every-nth-match NUM
+                        emit every Nth match in topic
   -sf [FIELD [FIELD ...]], --select-field [FIELD [FIELD ...]]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)

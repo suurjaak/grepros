@@ -39,6 +39,7 @@ class Searcher(object):
         @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
         @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
         @param   args.MAX_TOPICS          number of topics to print matches from
+        @param   args.NTH_MATCH           emit every Nth match in topic
         @param   args.SELECT_FIELDS       message fields to use in matching if not all
         @param   args.NOSELECT_FIELDS     message fields to skip in matching
         """
@@ -53,8 +54,6 @@ class Searcher(object):
         self._counts   = collections.defaultdict(collections.Counter)
         # {(topic, typename, typehash): {message ID: True if matched else False if emitted else None}}
         self._statuses = collections.defaultdict(collections.OrderedDict)
-        # {(topic, typename, typehash): (message hash over all fields used in matching)}
-        self._hashes = collections.defaultdict(set)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
@@ -125,12 +124,6 @@ class Searcher(object):
                 return False
         if not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
-        if self._args.UNIQUE:
-            include, exclude = self._patterns["select"], self._patterns["noselect"]
-            msghash = rosapi.make_message_hash(msg, include, exclude)
-            if msghash in self._hashes[topickey]:
-                return False
-            self._hashes[topickey].add(msghash)
         return True
 
 
@@ -150,7 +143,7 @@ class Searcher(object):
 
     def _clear_data(self):
         """Clears local structures."""
-        for d in (self._counts, self._messages, self._stamps, self._statuses, self._hashes):
+        for d in (self._counts, self._messages, self._stamps, self._statuses):
             d.clear()
 
 

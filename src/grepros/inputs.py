@@ -38,16 +38,23 @@ class SourceBase(object):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.START_TIME     earliest timestamp of messages to scan
-        @param   args.END_TIME       latest timestamp of messages to scan
-        @param   args.NTH_MESSAGE    scan every Nth message in topic
-        @param   args.NTH_INTERVAL   minimum time interval between messages in topic
+        @param   args                    arguments object like argparse.Namespace
+        @param   args.START_TIME         earliest timestamp of messages to scan
+        @param   args.END_TIME           latest timestamp of messages to scan
+        @param   args.UNIQUE             emit messages that are unique in topic
+        @param   args.SELECT_FIELDS      message fields to use for uniqueness if not all
+        @param   args.NOSELECT_FIELDS    message fields to skip for uniqueness
+        @param   args.NTH_MESSAGE        scan every Nth message in topic
+        @param   args.NTH_INTERVAL       minimum time interval between messages in topic
         """
         self._args = copy.deepcopy(args)
+        # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
+        self._patterns = {}
         # {topic: ["pkg/MsgType", ]} searched in current source
         self._topics = collections.defaultdict(list)
         self._counts = collections.Counter()  # {(topic, typename, typehash): count processed}
+        # {(topic, typename, typehash): (message hash over all fields used in matching)}
+        self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
         ## outputs.SinkBase instance bound to this source
@@ -56,6 +63,8 @@ class SourceBase(object):
         self.topics = {}
         ## ProgressBar instance, if any
         self.bar = None
+
+        self._parse_patterns()
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -73,6 +82,7 @@ class SourceBase(object):
         self.topics.clear()
         self._topics.clear()
         self._counts.clear()
+        self._hashes.clear()
         self._processables.clear()
         if self.bar:
             self.bar.pulse_pos = None
@@ -124,7 +134,7 @@ class SourceBase(object):
             return False
         if self._args.END_TIME and stamp > self._args.END_TIME:
             return False
-        if (self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0) and self._processables:
+        if self._args.UNIQUE or self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
             typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
             topickey = (topic, typename, typehash)
             last_accepted = self._processables.get(topickey)
@@ -134,6 +144,12 @@ class SourceBase(object):
         if self._args.NTH_INTERVAL > 0 and last_accepted:
             if rosapi.to_sec(stamp - last_accepted[1]) < self._args.NTH_INTERVAL:
                 return False
+        if self._args.UNIQUE:
+            include, exclude = self._patterns["select"], self._patterns["noselect"]
+            msghash = rosapi.make_message_hash(msg, include, exclude)
+            if msghash in self._hashes[topickey]:
+                return False
+            self._hashes[topickey].add(msghash)
         return True
 
     def notify(self, status):
@@ -142,6 +158,12 @@ class SourceBase(object):
     def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
         ConsolePrinter.error(text)
+
+    def _parse_patterns(self):
+        """Parses pattern arguments into re.Patterns."""
+        selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
+        for key, vals in [("select", selects), ("noselect", noselects)]:
+            self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
 
 class ConditionMixin(object):
@@ -575,6 +597,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._totals_ok = False
         self._counts.clear()
         self._processables.clear()
+        self._hashes.clear()
         self.topics.clear()
         if self._args.DUMP_TARGET \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)

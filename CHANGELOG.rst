@@ -8,6 +8,7 @@ Changelog for package grepros
 * add --plugin grepros.plugins.sql (SQL schema output)
 * add --plugin grepros.plugins.embag (faster ROS1 bag reader)
 * add --reindex-if-unindexed option
+* add --every-nth-match option
 * add --every-nth-message option
 * add --every-nth-interval option
 * allow multiple write sinks, combine --write-format and --write-option to --write

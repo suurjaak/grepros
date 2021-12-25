@@ -186,6 +186,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
              help="scan messages at least N seconds apart within topic"),
 
+        dict(args=["--every-nth-match"],
+             dest="NTH_MATCH", metavar="NUM", type=int, default=1,
+             help="emit every Nth match in topic"),
+
         dict(args=["-sf", "--select-field"],
              dest="SELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
              help="message fields to use in matching if not all\n"
