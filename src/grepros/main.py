@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -118,7 +118,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "Keyword arguments are given to output writer."),
 
         dict(args=["--plugin"],
-             dest="PLUGINS", metavar="PLUGIN", action="append", default=[],
+             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
              help="load a Python module or class as plugin"),
     ],
 
