@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2021
+@modified    24.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -38,14 +38,17 @@ class SourceBase(object):
 
     def __init__(self, args):
         """
-        @param   args              arguments object like argparse.Namespace
-        @param   args.START_TIME   earliest timestamp of messages to scan
-        @param   args.END_TIME     latest timestamp of messages to scan
+        @param   args                arguments object like argparse.Namespace
+        @param   args.START_TIME     earliest timestamp of messages to scan
+        @param   args.END_TIME       latest timestamp of messages to scan
+        @param   args.NTH_MESSAGE    scan every Nth message in topic
+        @param   args.NTH_INTERVAL   minimum time interval between messages in topic
         """
         self._args = copy.deepcopy(args)
         # {topic: ["pkg/MsgType", ]} searched in current source
         self._topics = collections.defaultdict(list)
         self._counts = collections.Counter()  # {(topic, typename, typehash): count processed}
+        self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
         ## outputs.SinkBase instance bound to this source
         self.sink = None
@@ -70,6 +73,7 @@ class SourceBase(object):
         self.topics.clear()
         self._topics.clear()
         self._counts.clear()
+        self._processables.clear()
         if self.bar:
             self.bar.pulse_pos = None
             self.bar.update(flush=True).stop()
@@ -120,6 +124,16 @@ class SourceBase(object):
             return False
         if self._args.END_TIME and stamp > self._args.END_TIME:
             return False
+        if (self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0) and self._processables:
+            typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
+            topickey = (topic, typename, typehash)
+            last_accepted = self._processables.get(topickey)
+        if self._args.NTH_MESSAGE > 1 and last_accepted:
+            if index < last_accepted[0] + self._args.NTH_MESSAGE:
+                return False
+        if self._args.NTH_INTERVAL > 0 and last_accepted:
+            if rosapi.to_sec(stamp - last_accepted[1]) < self._args.NTH_INTERVAL:
+                return False
         return True
 
     def notify(self, status):
@@ -523,6 +537,8 @@ class BagSource(SourceBase, ConditionMixin):
             self.bar and self.bar.update(value=sum(self._counts.values()))
             yield topic, msg, stamp
 
+            if self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
+                self._processables[topickey]  = (self._counts[topickey], stamp)
             if self._status and self._args.AFTER and not self._sticky \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
@@ -558,6 +574,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._sticky    = False
         self._totals_ok = False
         self._counts.clear()
+        self._processables.clear()
         self.topics.clear()
         if self._args.DUMP_TARGET \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)
@@ -648,10 +665,14 @@ class TopicSource(SourceBase, ConditionMixin):
             self._update_progress(total, self._running and bool(topic))
             if topic:
                 typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
-                self._counts[(topic, typename, typehash)] += 1
+                topickey = (topic, typename, typehash)
+                self._counts[topickey] += 1
                 self.conditions_register_message(topic, msg)
-                if not self.is_conditions_topic(topic, pure=True):
-                    yield topic, msg, stamp
+                if self.is_conditions_topic(topic, pure=True): continue  # while
+
+                yield topic, msg, stamp
+                if self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
+                    self._processables[topickey]  = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
 

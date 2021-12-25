@@ -648,6 +648,15 @@ Stop scanning at a specific message index in topic:
     -n1         -100  # (counts back from topic total message count in bag)
     --end-index   10  # (1-based index)
 
+Scan every Nth message in topic:
+
+    --every-nth-message 10  # (skips 100 messages in topic with each step)
+
+Scan messages in topic with timestamps at least N seconds apart:
+
+    --every-nth-interval 5  # (samples topic messages no more often than every 5 seconds)
+
+
 ## Conditions
 
     --condition "PYTHON EXPRESSION"
@@ -895,6 +904,10 @@ Filtering:
   -n1 INDEX, --end-index INDEX
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
+  --every-nth-message NUM
+                        scan every Nth message within topic
+  --every-nth-interval SECONDS
+                        scan messages within topic at least N seconds apart
   -sf [FIELD [FIELD ...]], --select-field [FIELD [FIELD ...]]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)

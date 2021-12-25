@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2021
+@modified    24.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -177,6 +177,14 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="END_INDEX", metavar="INDEX", type=int,
              help="message index within topic to stop at\n"
                   "(1-based if positive, counts back from bag total if negative)"),
+
+        dict(args=["--every-nth-message"],
+             dest="NTH_MESSAGE", metavar="NUM", type=int, default=1,
+             help="scan every Nth message within topic"),
+
+        dict(args=["--every-nth-interval"],
+             dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
+             help="scan messages at least N seconds apart within topic"),
 
         dict(args=["-sf", "--select-field"],
              dest="SELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
