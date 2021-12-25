@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2021
-@modified    24.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 import logging
@@ -17,18 +17,17 @@ import html.parser
 import os
 import sys
 
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_bag_to_html"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestBagInputHtmlOutput(testbase.TestBase):
     """Tests grepping from input bags and writing matches to HTML file."""
+
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
 
     ## Name used in logging
     OUTPUT_LABEL = "HTML"
@@ -57,5 +56,4 @@ class TestBagInputHtmlOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST)
-    rostest.rosrun(PKG, TEST, TestBagInputHtmlOutput)
+    TestBagInputHtmlOutput.run_rostest()

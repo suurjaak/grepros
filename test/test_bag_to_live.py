@@ -16,19 +16,17 @@ import logging
 import os
 import sys
 
-import rospy
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_bag_to_live"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestBagInputLiveOutput(testbase.TestBase):
     """Tests grepping from input bags and publishing matches to live topics."""
+
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
 
     ## Name used in logging
     OUTPUT_LABEL = "live topics"
@@ -36,7 +34,7 @@ class TestBagInputLiveOutput(testbase.TestBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._msgs = {}  # {topic: [msg, ]}
-        rospy.init_node(TEST)
+        self.init_node()
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
@@ -52,5 +50,4 @@ class TestBagInputLiveOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST, testbase.RosLogHandler(TEST))
-    rostest.rosrun(PKG, TEST, TestBagInputLiveOutput)
+    TestBagInputLiveOutput.run_rostest()

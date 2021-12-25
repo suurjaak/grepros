@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Base class for tests
+Base class for ROS tests.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -9,48 +9,44 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    24.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 import logging
 import glob
 import os
+import sqlite3
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 
-import rospy
+if os.getenv("ROS_VERSION") == "1":
+    import rosbag
+    import rospy
+    import rostest
+else:
+    import rclpy.serialization
+    import rclpy.time
+    import rosidl_runtime_py.utilities
 
-logger = logging.getLogger("grepros")
-
-
-class RosLogHandler(logging.Handler):
-    """Logging handler that forwards logging messages to rospy.logwarn."""
-
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__name = name
-
-    def emit(self, record):
-        """Invokes rospy.logwarn or logerr (only warn or higher gets rostest output)."""
-        try: text = record.msg % record.args if record.args else record.msg
-        except Exception: text = record.msg
-        text = "[%s] %s" % (self.__name, text)
-        (rospy.logerr if record.levelno >= logging.ERROR else rospy.logwarn)(text)
+logger = logging.getLogger()
 
 
-def init_logging(name, handler=None):
+def init_logging(name):
     """Initializes logging."""
     fmt = "[%%(levelname)s]\t[%%(created).06f] [%s] %%(message)s" % name
-    logging.basicConfig(level=logging.DEBUG, format=fmt)
-    if handler: logger.addHandler(handler)
+    logging.basicConfig(level=logging.DEBUG, format=fmt, force=True, stream=sys.stdout)
     logger.setLevel(logging.DEBUG)
 
 
+
 class TestBase(unittest.TestCase):
-    """
-    Tests grepping from a source to a sink, with prepared test bags.
-    """
+    """Tests grepping from a source to a sink, with prepared test bags."""
+
+    ## Test name used in flow logging
+    NAME = ""
 
     ## Name used in flow logging
     INPUT_LABEL = "ROS bags"
@@ -62,10 +58,10 @@ class TestBase(unittest.TestCase):
     OUTPUT_SUFFIX = None
 
     ## Test bags directory
-    DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+    DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
 
-    ## ROS bagfile glob pattern
-    BAG_PATTERN = "*.bag"
+    ## ROS bagfile extension
+    BAG_SUFFIX = ".bag" if os.getenv("ROS_VERSION") == "1" else ".db3"
 
     ## Words searched in bag
     SEARCH_WORDS = ["this"]
@@ -99,12 +95,15 @@ class TestBase(unittest.TestCase):
         self._cmd     = None  # Full grepros command
         self._outname = None  # Name of temporary file for write output
         self._outfile = None  # Opened temporary file
+        self._node    = None  # rclpy.Node for ROS2
+
+        init_logging(self.NAME)
 
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
         logger.debug("Setting up test.")
-        self._bags = glob.glob(os.path.join(self.DATA_DIR, self.BAG_PATTERN))
+        self._bags = sorted(glob.glob(os.path.join(self.DATA_DIR, "*" + self.BAG_SUFFIX)))
         if self.OUTPUT_SUFFIX:
             self._outname = tempfile.NamedTemporaryFile(suffix=self.OUTPUT_SUFFIX).name
 
@@ -120,6 +119,29 @@ class TestBase(unittest.TestCase):
         except Exception: pass
 
 
+    def create_publisher(self, topic, cls):
+        if os.getenv("ROS_VERSION") == "1":
+            return rospy.Publisher(topic, cls, queue_size=10)
+        return self._node.create_publisher(cls, topic, 10)
+
+
+    def init_node(self):
+        """Creates ROS1 or ROS2 node."""
+        if os.getenv("ROS_VERSION") == "1":
+            rospy.init_node(self.NAME)
+            logger.addHandler(Ros1LogHandler(self.NAME))
+            logger.setLevel(logging.DEBUG)
+        else:
+            try: rclpy.init()
+            except Exception: pass  # Must not be called twice
+            self._node = rclpy.create_node(self.NAME)
+
+
+    def shutdown_node(self):
+        """Shuts down ROS2 node, if any."""
+        self._node and rclpy.shutdown()
+
+
     def run_command(self, communicate=True):
         """Executes test command, returns command output text if communicate."""
         logger.debug("Executing %r.", " ".join(self._cmd))
@@ -127,6 +149,12 @@ class TestBase(unittest.TestCase):
                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if not communicate: return None
         return self._proc.communicate()[0]
+
+
+    def spin_once(self, timeout):
+        """"""
+        if self._node: rclpy.spin_once(self._node, timeout_sec=timeout)
+        else: time.sleep(timeout)
 
 
     def verify_bags(self):
@@ -156,3 +184,58 @@ class TestBase(unittest.TestCase):
 
                 value = " ".join(self.SKIPPED_WORDS + [bagname])
                 self.assertNotIn(value, messages, "Unexpected message value in output.")
+
+
+    @classmethod
+    def run_rostest(cls):
+        """Runs rostest if ROS1."""
+        rostest.rosrun("grepros", cls.NAME, cls)
+
+
+
+class Ros1LogHandler(logging.Handler):
+    """Logging handler that forwards logging messages to rospy.logwarn."""
+
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__name = name
+
+    def emit(self, record):
+        """Invokes rospy.logwarn or logerr (only warn or higher gets rostest output)."""
+        if "rospy" in record.name or record.levelno >= logging.WARN:
+            return  # Skip rospy internal logging, or higher levels logged by rospy
+
+        try: text = record.msg % record.args if record.args else record.msg
+        except Exception: text = record.msg
+        text = "[%s] %s" % (self.__name, text)
+        (rospy.logerr if record.levelno >= logging.ERROR else rospy.logwarn)(text)
+
+
+
+class Ros2BagReader():
+    """Simple ROS2 bag reader."""
+
+    def __init__(self, filename):
+        self._db = sqlite3.connect(filename)
+        self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+
+    def read_messages(self):
+        """Yields messages from the bag."""
+        topicmap = {x["id"]: x for x in self._db.execute("SELECT * FROM topics").fetchall()}
+        msgtypes = {}  # {full typename: cls}
+
+        for row in self._db.execute("SELECT * FROM messages ORDER BY timestamp"):
+            tdata = topicmap[row["topic_id"]]
+            topic, typename = tdata["name"], tdata["type"]
+            if typename not in msgtypes:
+                msgtypes[typename] = rosidl_runtime_py.utilities.get_message(typename)
+            msg = rclpy.serialization.deserialize_message(row["data"], msgtypes[typename])
+            stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
+            yield topic, msg, stamp
+
+    def close(self):
+        """Closes the bag file."""
+        self._db.close()
+
+
+BagReader = rosbag.Bag if os.getenv("ROS_VERSION") == "1" else Ros2BagReader

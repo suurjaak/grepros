@@ -9,32 +9,30 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2021
-@modified    24.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 import logging
 import os
 import sys
 
-import rosbag
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_bag_to_bag"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestBagInputBagOutput(testbase.TestBase):
     """Tests grepping from input bags and writing matches to bag."""
 
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
+
     ## Name used in logging
     OUTPUT_LABEL = "ROS bag"
 
     ## Suffix for write output file
-    OUTPUT_SUFFIX = ".bag"
+    OUTPUT_SUFFIX = testbase.TestBase.BAG_SUFFIX
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
@@ -49,7 +47,7 @@ class TestBagInputBagOutput(testbase.TestBase):
 
         logger.info("Reading data from written %s.", self.OUTPUT_LABEL)
         messages = {}  # {topic: [msg, ]}
-        outfile = self._outfile = rosbag.Bag(self._outname)
+        outfile = self._outfile = testbase.BagReader(self._outname)
         for topic, msg, _ in outfile.read_messages():
             messages.setdefault(topic, []).append(msg)
         outfile.close()
@@ -59,5 +57,4 @@ class TestBagInputBagOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST)
-    rostest.rosrun(PKG, TEST, TestBagInputBagOutput)
+    TestBagInputBagOutput.run_rostest()

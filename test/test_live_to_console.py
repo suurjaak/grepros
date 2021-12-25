@@ -15,23 +15,18 @@ Released under the BSD License.
 import logging
 import os
 import sys
-import time
 
-import rosbag
-import roslib
-import rospy
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_live_to_console"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestLiveInputConsoleOutput(testbase.TestBase):
     """Tests grepping from live topics and printing matches to console."""
+
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
 
     ## Name used in logging
     INPUT_LABEL = "live topics"
@@ -41,12 +36,17 @@ class TestLiveInputConsoleOutput(testbase.TestBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        rospy.init_node(TEST)
+        self.init_node()
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
         super().setUp()
         self._cmd = self.CMD_BASE + ["--live"]
+
+    def tearDown(self):
+        """Terminates subprocess and shuts down ROS2 node, if any."""
+        super().tearDown()
+        self.shutdown_node()
 
     def test_grepros(self):
         """Runs grepros on live topics, verifies console output."""
@@ -54,24 +54,25 @@ class TestLiveInputConsoleOutput(testbase.TestBase):
         self.run_command(communicate=False)
 
         logger.info("Opening publishers.")
-        pubs = {}  # {topic: rospy.Publisher}
+        pubs = {}  # {topic: ROS publisher}
         for bagfile in self._bags:
-            bag = rosbag.Bag(bagfile)
-            for topic, tdata in bag.get_type_and_topic_info().topics.items():
+            bag = testbase.BagReader(bagfile)
+            for topic, msg, _ in bag.read_messages():
                 if topic not in pubs:
                     logger.info("Opening publisher to %r.", topic)
-                    cls = roslib.message.get_message_class(tdata.msg_type)
-                    pubs[topic] = rospy.Publisher(topic, cls, queue_size=10)
+                    pubs[topic] = self.create_publisher(topic, type(msg))
+                    self.spin_once(0.5)
             bag.close()
+        self.spin_once(2)
 
         logger.info("Publishing messages to live.")
-        time.sleep(2)
         for bagfile in self._bags:
-            bag = rosbag.Bag(bagfile)
+            bag = testbase.BagReader(bagfile)
             for topic, msg, _ in bag.read_messages():
                 pubs[topic].publish(msg)
-                time.sleep(0.5)
+                self.spin_once(0.5)
             bag.close()
+        self.spin_once(2)
 
         self._proc.terminate()
         fulltext = self._proc.communicate()[0]
@@ -80,5 +81,4 @@ class TestLiveInputConsoleOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST, testbase.RosLogHandler(TEST))
-    rostest.rosrun(PKG, TEST, TestLiveInputConsoleOutput)
+    TestLiveInputConsoleOutput.run_rostest()

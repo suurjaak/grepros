@@ -16,18 +16,17 @@ import logging
 import os
 import sys
 
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_bag_to_sql"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestBagInputSqlOutput(testbase.TestBase):
     """Tests grepping from input bags and writing schema to SQL file."""
+
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
 
     ## Name used in logging
     OUTPUT_LABEL = "SQL"
@@ -54,5 +53,4 @@ class TestBagInputSqlOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST)
-    rostest.rosrun(PKG, TEST, TestBagInputSqlOutput)
+    TestBagInputSqlOutput.run_rostest()

@@ -9,25 +9,24 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2021
-@modified    24.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 import logging
 import os
 import sys
 
-import rostest
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from test import testbase
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from ros1 import testbase
-
-PKG, TEST = "grepros", "test_bag_to_console"
-
-logger = logging.getLogger(PKG)
+logger = logging.getLogger()
 
 
 class TestBagInputConsoleOutput(testbase.TestBase):
     """Tests grepping from input bags and printing matches to console."""
+
+    ## Test name used in flow logging
+    NAME = os.path.splitext(os.path.basename(__file__))[0]
 
     ## Name used in flow logging
     OUTPUT_LABEL = "console"
@@ -49,5 +48,4 @@ class TestBagInputConsoleOutput(testbase.TestBase):
 
 
 if "__main__" == __name__:
-    testbase.init_logging(TEST)
-    rostest.rosrun(PKG, TEST, TestBagInputConsoleOutput)
+    TestBagInputConsoleOutput.run_rostest()

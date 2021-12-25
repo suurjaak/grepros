@@ -1,5 +1,3 @@
 <launch>
-
   <test test-name="test_bag_to_live" pkg="grepros" type="test_bag_to_live.py" />
-
 </launch>

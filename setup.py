@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.11.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -50,11 +50,12 @@ common_args = dict(
     packages         = [PACKAGE],
 )
 version_args = dict(
-    data_files=[
+    data_files      = [
         (os.path.join("share", "ament_index", "resource_index", "packages"),
          [os.path.join("resource", PACKAGE)]),
         (os.path.join("share", PACKAGE), ["package.xml"]),
     ],
+    tests_require   = ["pytest"],
 ) if "2" == os.getenv("ROS_VERSION") else {}
 
 
