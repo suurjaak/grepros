@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    22.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -54,8 +54,8 @@ class ParquetSink(SinkBase):
     DEFAULT_TYPE = pyarrow.string() if pyarrow else None
 
     ## Default columns for message type tables
-    MESSAGE_TYPE_BASECOLS  = [("_topic",      pyarrow.string()),
-                              ("_timestamp",  pyarrow.timestamp("ns")), ] if pyarrow else []
+    MESSAGE_TYPE_BASECOLS  = [("_topic",      "string"),
+                              ("_timestamp",  "time"), ]
 
     ## Custom arguments for pyarrow.parquet.ParquetWriter
     WRITER_ARGS = {"version": "2.6"}
@@ -141,7 +141,8 @@ class ParquetSink(SinkBase):
         for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
-        cols += self.MESSAGE_TYPE_BASECOLS
+        cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
+                 for c, t in self.MESSAGE_TYPE_BASECOLS]
 
         if self._args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
@@ -173,8 +174,12 @@ class ParquetSink(SinkBase):
             self._write_table(typekey)
 
 
-    def _make_column_type(self, typename):
-        """Returns pyarrow type for ROS type."""
+    def _make_column_type(self, typename, fallback=None):
+        """
+        Returns pyarrow type for ROS type.
+
+        @param  fallback  fallback typename to use for lookup if typename not found
+        """
         coltype    = self.COMMON_TYPES.get(typename)
         scalartype = rosapi.scalar(typename)
         timetype   = rosapi.get_ros_time_category(scalartype)
@@ -185,6 +190,8 @@ class ParquetSink(SinkBase):
                 coltype = pyarrow.list_(self.COMMON_TYPES[timetype])
             else:
                 coltype = self.COMMON_TYPES[timetype]
+        if not coltype and fallback:
+            coltype = self._make_column_type(fallback)
         if not coltype:
             coltype = self.DEFAULT_TYPE
         return coltype

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    23.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -245,7 +245,7 @@ WHERE _topic = {topic};""",
         for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
-        cols += [(c, self._make_column_type(t, fallback="uint64" if "time" == t else None))
+        cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
         cols = list(zip(self._make_column_names([c for c, _ in cols]), [t for _, t in cols]))
 
