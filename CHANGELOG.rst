@@ -18,6 +18,7 @@ Changelog for package grepros
 * fix error on empty bag with no messages
 * fix error in Postgres output for NaNs in nested JSON values
 * fix skipping some messages in ROS1 bag for types with identical hashes
+* fix not being able to specify list arguments several times
 * ensure no conflicts from changed message types or identical type hashes
 * add tests
 

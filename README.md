@@ -70,7 +70,7 @@ Find first message containing "future" (case-insensitive) in my.bag:
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory, reindexing any unindexed bags:
 
-    grepros frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
+    grepros frame_id=map --type geometry_msgs/* --max-count 10 --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
 
