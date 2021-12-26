@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -155,7 +155,7 @@ class ProgressBar(threading.Thread):
     A simple ASCII progress bar with a ticker thread
 
     Drawn like
-    '[---------\   36%            ] Progressing text..'.
+    '[---------/   36%            ] Progressing text..'.
     or for pulse mode
     '[    ----                    ] Progressing text..'.
     """
@@ -724,7 +724,7 @@ def unique_path(pathname, empty_ok=False):
 
 def wildcard_to_regex(text, end=False):
     """
-    Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I).
+    Returns plain wildcard like "foo*bar" as re.Pattern("foo.*bar", re.I).
 
     @param   end  whether pattern should match until end (adds $)
     """

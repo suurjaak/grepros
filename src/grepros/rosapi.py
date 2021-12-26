@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    23.12.2021
+@modified    26.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -111,7 +111,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     """
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
     FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
-    STR_CONST_RGX = re.compile("^w?string\s+([^\s=#]+)\s*=")
+    STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     lines, pkg = [], typename.rsplit("/", 1)[0]
     subtypedefs = dict(extradefs, **parse_definition_subtypes(msgdef))
     extradefs = tuple(subtypedefs.items())
