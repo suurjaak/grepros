@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    21.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -76,9 +76,9 @@ class CsvSink(SinkBase):
         """
         Returns a csv.writer for writing topic data.
 
-        File is populated with header if 
+        File is populated with header if not created during this session.
         """
-        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if not self._lasttopickey:
             makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -65,6 +65,7 @@ class SourceBase(object):
         self.bar = None
 
         self._parse_patterns()
+        rosapi.TypeMeta.SOURCE = self
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -110,11 +111,10 @@ class SourceBase(object):
 
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
-        return dict(topic=topic, type=rosapi.get_message_type(msg), index=index,
-                    hash=self.get_message_type_hash(msg),
-                    dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
-                    stamp=drop_zeros(rosapi.to_sec(stamp)),
-                    schema=rosapi.get_message_definition(msg))
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            return dict(topic=topic, type=m.typename, index=index, hash=m.typehash, 
+                        dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
+                        stamp=drop_zeros(rosapi.to_sec(stamp)), schema=m.definition)
 
     def get_message_class(self, typename, typehash=None):
         """Returns message type class."""
@@ -135,8 +135,7 @@ class SourceBase(object):
         if self._args.END_TIME and stamp > self._args.END_TIME:
             return False
         if self._args.UNIQUE or self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
-            typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
-            topickey = (topic, typename, typehash)
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
             last_accepted = self._processables.get(topickey)
         if self._args.NTH_MESSAGE > 1 and last_accepted:
             if index < last_accepted[0] + self._args.NTH_MESSAGE:
@@ -317,9 +316,7 @@ class ConditionMixin(object):
     def conditions_register_message(self, topic, msg):
         """Retains message for condition evaluation if in condition topic."""
         if self.is_conditions_topic(topic, pure=False):
-            typename = rosapi.get_message_type(msg)
-            typehash = self.source.get_message_type_hash(msg)
-            topickey = (topic, typename, typehash)
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._lastmsgs[topickey].append(msg)
             if len(self._lastmsgs[topickey]) > self._topic_limits[topic][-1]:
                 self._lastmsgs[topickey].popleft()
@@ -521,7 +518,7 @@ class BagSource(SourceBase, ConditionMixin):
         Returns whether specified message in topic is in acceptable range,
         and all conditions, if any, evaluate as true.
         """
-        topickey = (topic, rosapi.get_message_type(msg), self.get_message_type_hash(msg))
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if self._args.START_INDEX:
             self._ensure_totals()
             START = self._args.START_INDEX
@@ -548,8 +545,7 @@ class BagSource(SourceBase, ConditionMixin):
             if typename not in topics[topic]:
                 continue  # for topic
 
-            typehash = self.get_message_type_hash(msg)
-            topickey = (topic, typename, typehash)
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
@@ -685,10 +681,9 @@ class TopicSource(SourceBase, ConditionMixin):
         while self._running:
             topic, msg, stamp = self._queue.get()
             total += bool(topic)
-            self._update_progress(total, self._running and bool(topic))
+            self._update_progress(total, running=self._running and bool(topic))
             if topic:
-                typename, typehash = rosapi.get_message_type(msg), self.get_message_type_hash(msg)
-                topickey = (topic, typename, typehash)
+                topickey = rosapi.TypeMeta.make(msg, topic).topickey
                 self._counts[topickey] += 1
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -61,7 +61,7 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = rosapi.TypeMeta.make(msg, topic)
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
@@ -359,7 +359,7 @@ class BagSink(SinkBase):
             makedirs(os.path.dirname(self._args.DUMP_TARGET))
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
-        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
@@ -408,9 +408,8 @@ class TopicSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        typename, typehash = rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
-        topickey = (topic, typename, typehash)
-        cls = self.source.get_message_class(typename, typehash)
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            topickey, cls = (m.topickey, m.typeclass)
         if topickey not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    26.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -54,6 +54,138 @@ ROS_COMMON_TYPES = []
 
 ## Module grepros.ros1 or grepros.ros2
 realapi = None
+
+
+class TypeMeta(object):
+    """
+    Container for caching and retrieving message type metadata.
+
+    All property values are lazy-loaded upon request.
+    """
+
+    ## SourceBase instance
+    SOURCE = None
+
+    ## Seconds before auto-clearing message from cache
+    LIFETIME = 2
+
+    ## {id(msg): MessageMeta()}
+    _CACHE = {}
+
+    ## {id(msg): [id(nested msg), ]}
+    _CHILDREN = {}
+
+    ## {id(msg): time.time() of registering}
+    _TIMINGS = {}
+
+    ## time.time() of last cleaning of stale messages
+    _LASTSWEEP = time.time()
+
+    def __init__(self, msg, topic=None):
+        self._msg      = msg
+        self._topic    = topic
+        self._type     = None  # Message typename as "pkg/MsgType"
+        self._def      = None  # Message type definition with full subtype definitions
+        self._hash     = None  # Message type definition MD5 hash
+        self._cls      = None  # Message class object
+        self._topickey = None  # (topic, typename, typehash)
+        self._typekey  = None  # (typename, typehash)
+
+    def __enter__(self, *_, **__):
+        """Allows using instance as a context manager (no other effect)."""
+        return self
+
+    def __exit__(self, *_, **__): pass
+
+    @property
+    def typename(self):
+        """Returns message typename, as "pkg/MsgType"."""
+        if not self._type:
+            self._type = realapi.get_message_type(self._msg)
+        return self._type
+
+    @property
+    def typehash(self):
+        """Returns message type definition MD5 hash."""
+        if not self._hash:
+            hash = self.SOURCE and self.SOURCE.get_message_type_hash(self._msg)
+            self._hash = hash or realapi.get_message_type_hash(self._msg)
+        return self._hash
+
+    @property
+    def definition(self):
+        """Returns message type definition text with full subtype definitions."""
+        if not self._def:
+            typedef = self.SOURCE and self.SOURCE.get_message_definition(self._msg)
+            self._def = typedef or realapi.get_message_definition(self._msg)
+        return self._def
+
+    @property
+    def typeclass(self):
+        """Returns message class object."""
+        if not self._cls:
+            cls = self.SOURCE and self.SOURCE.get_message_class(self._msg)
+            self._cls = cls or realapi.get_message_class(self._msg)
+        return self._cls
+
+    @property
+    def topickey(self):
+        """Returns (topic, typename, typehash) for message."""
+        if not self._topickey:
+            self._topickey = (self._topic, self.typename, self.typehash)
+        return self._topickey
+
+    @property
+    def typekey(self):
+        """Returns (typename, typehash) for message."""
+        if not self._typekey:
+            self._typekey = (self.typename, self.typehash)
+        return self._typekey
+
+    @classmethod
+    def make(cls, msg, topic=None, root=None):
+        """
+        Returns TypeMeta instance, registering message in cache if not present.
+
+        @param   topic  topic the message is in if root message
+        @param   root   root message that msg is a nested value of, if any
+        """
+        msgid = id(msg)
+        if msgid not in cls._CACHE:
+            cls._CACHE[msgid] = TypeMeta(msg, topic)
+            if root and root != msg:
+                cls._CHILDREN.setdefault(id(root), set()).add(msgid)
+            cls._TIMINGS[msgid] = time.time()
+        cls.sweep()
+        return cls._CACHE[msgid]
+
+    @classmethod
+    def discard(cls, msg):
+        """Discards message metadata from cache, if any, including nested messages."""
+        cls._CACHE.pop(id(msg), None)
+        for childid in cls._CHILDREN.pop(id(msg), []):
+            cls._CACHE.pop(childid, None)
+        cls.sweep()
+
+    @classmethod
+    def sweep(cls):
+        """Discards stale messages from cache."""
+        now = time.time()
+        if not cls.LIFETIME or cls._LASTSWEEP < now - cls.LIFETIME: return
+
+        for msgid, tm in list(cls._TIMINGS.items()):
+            drop = (tm > now) or (tm < now - cls.LIFETIME)
+            drop and cls._CACHE.pop(msgid, None)
+            for childid in cls._CHILDREN.pop(msgid, []) if drop else ():
+                cls._CACHE.pop(childid, None)
+        cls._LASTSWEEP = now
+
+    @classmethod
+    def clear(cls):
+        """Clears entire cache."""
+        cls._CACHE.clear()
+        cls._CHILDREN.clear()
+        cls._TIMINGS.clear()
 
 
 def init_node(name=None):

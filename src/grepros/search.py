@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    24.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -81,7 +81,7 @@ class Searcher(object):
                 self._clear_data()
 
             msgid = counter = counter + 1
-            topickey = (topic, rosapi.get_message_type(msg), source.get_message_type_hash(msg))
+            topickey = rosapi.TypeMeta.make(msg, topic)
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
@@ -111,7 +111,7 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
-        topickey = (topic, rosapi.get_message_type(msg), self._source.get_message_type_hash(msg))
+        topickey = rosapi.TypeMeta.make(msg, topic)
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
             return False
@@ -145,6 +145,7 @@ class Searcher(object):
         """Clears local structures."""
         for d in (self._counts, self._messages, self._stamps, self._statuses):
             d.clear()
+        rosapi.TypeMeta.clear()
 
 
     def _prepare(self, source, sink):
@@ -162,7 +163,9 @@ class Searcher(object):
         WINDOW = max(self._args.BEFORE, self._args.AFTER) + 1
         for dct in (self._messages, self._stamps, self._statuses):
             while len(dct[topickey]) > WINDOW:
-                dct[topickey].pop(next(iter(dct[topickey])))
+                item = next(iter(dct[topickey]))
+                dct[topickey].pop(item)
+                dct is self._messages and rosapi.TypeMeta.discard(item)
 
 
     def _parse_patterns(self):

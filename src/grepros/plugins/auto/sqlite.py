@@ -198,12 +198,11 @@ class SqliteSink(DataSinkBase):
 
     def _process_message(self, topic, msg, stamp):
         """Inserts message to messages-table, and to pkg/MsgType tables."""
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        topic_id = self._topics[(topic, typename, typehash)]["id"]
-        margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
-                     topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            topic_id = self._topics[m.topickey]["id"]
+            margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
+                         topic=topic, name=topic, topic_id=topic_id, type=m.typename,
+                         yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
         self._ensure_execute(self.INSERT_MESSAGE, margs)
         self._ensure_execute(self.UPDATE_TOPIC,   margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)

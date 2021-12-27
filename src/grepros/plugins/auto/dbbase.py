@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    21.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -234,9 +234,8 @@ class DataSinkBase(SinkBase):
         Also creates types-row and pkg/MsgType table for this message if not existing.
         If nesting enabled, creates types recursively.
         """
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        topickey = (topic, typename, typehash)
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            typename, typehash, topickey = (m.typename, m.typehash, m.topickey)
         if topickey in self._checkeds:
             return
 
@@ -267,16 +266,16 @@ class DataSinkBase(SinkBase):
         self._checkeds[topickey] = True
 
 
-    def _process_type(self, msg):
+    def _process_type(self, msg, rootmsg=None):
         """Creates types-row and pkg/MsgType table if not already existing."""
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
+        rootmsg = rootmsg or msg
+        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+            typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
         if typekey in self._checkeds:
             return
 
         if typekey not in self._types:
-            msgdef = self.source.get_message_definition(typename)
+            msgdef = rosapi.TypeMeta.make(msg).definition
             table_name = self._make_name("table", typename, typename, typehash)
             targs = dict(type=typename, definition=msgdef,
                          md5=typehash, table_name=table_name)
@@ -307,12 +306,13 @@ class DataSinkBase(SinkBase):
             scalartype = rosapi.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
-            subtypehash = self.source.get_message_type_hash(scalartype)
+
+            subtypehash = not submsgs and self.source.get_message_type_hash(scalartype)
+            if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
+            [submsg] = submsgs[:1] or [self.source.get_message_class(scalartype, subtypehash)()]
             subtable_name = self._make_name("table", scalartype, scalartype, subtypehash)
             nested_tables[".".join(path)] = subtable_name
-            if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
-            for submsg in submsgs[:1] or [self.source.get_message_class(scalartype, subtypehash)()]:
-                self._process_type(submsg)
+            self._process_type(submsg, rootmsg)
         if nested_tables:
             sql = "UPDATE types SET nested_tables = %s WHERE id = %s" % (self.POSARG, self.POSARG)
             self._cursor.execute(sql, (nested_tables, self._types[typekey]["id"]))
@@ -327,8 +327,7 @@ class DataSinkBase(SinkBase):
         Inserts sub-rows for subtypes in message if nesting enabled.
         Commits transaction if interval due.
         """
-        typename = rosapi.get_message_type(msg)
-        self._populate_type(topic, typename, msg, stamp)
+        self._populate_type(topic, msg, stamp)
         if self.COMMIT_INTERVAL:
             do_commit = sum(len(v) for v in self._sql_queue.values()) >= self.COMMIT_INTERVAL
             for sql in list(self._sql_queue) if do_commit else ():
@@ -336,21 +335,20 @@ class DataSinkBase(SinkBase):
             do_commit and self._db.commit()
 
 
-    def _populate_type(self, topic, typename, msg, stamp,
-                       root_typename=None, root_typehash=None,
-                       parent_type=None, parent_id=None):
+    def _populate_type(self, topic, msg, stamp,
+                       rootmsg=None, parent_type=None, parent_id=None):
         """
         Inserts pkg/MsgType row for message.
 
         If nesting is enabled, inserts sub-rows for subtypes in message,
         and returns inserted ID.
         """
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
-        root_typename = root_typename or typename
-        root_typehash = root_typehash or typehash
-        topic_id   = self._topics[(topic, root_typename, root_typehash)]["id"]
-        table_name = self._types[(typename, typehash)]["table_name"]
+        rootmsg = rootmsg or msg
+        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+            typename, typekey = m.typename, m.typekey
+        with rosapi.TypeMeta.make(rootmsg) as m:
+            topic_id = self._topics[m.topickey]["id"]
+        table_name = self._types[typekey]["table_name"]
         sql, cols, args = self._sql_cache.get(table_name), [], []
 
         for p, v, t in rosapi.iter_message_fields(msg):
@@ -381,8 +379,7 @@ class DataSinkBase(SinkBase):
             if isinstance(submsgs, (list, tuple)):
                 subids[subpath] = []
             for submsg in submsgs if isinstance(submsgs, (list, tuple)) else [submsgs]:
-                subid = self._populate_type(topic, scalartype, submsg, stamp,
-                                            root_typename, root_typehash, typename, myid)
+                subid = self._populate_type(topic, submsg, stamp, rootmsg, typename, myid)
                 if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:

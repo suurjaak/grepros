@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    25.12.2021
+@modified    27.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -125,9 +125,8 @@ class ParquetSink(SinkBase):
 
     def _process_type(self, topic, msg):
         """Prepares Parquet schema and writer if not existing."""
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
         if (topic, typename, typehash) not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
         if typekey in self._writers: return
@@ -162,10 +161,8 @@ class ParquetSink(SinkBase):
 
         Writes cache to disk if length reached chunk size.
         """
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
         data = {}
+        typekey = rosapi.TypeMeta.make(msg, topic).typekey
         for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))

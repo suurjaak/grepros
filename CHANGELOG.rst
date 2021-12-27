@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.1 (2021-12-27)
+-------------------
+
+
 0.4.0 (2021-12-26)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)
