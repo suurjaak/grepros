@@ -6,7 +6,8 @@
 
   <maintainer email="erki@lap.ee">Erki Suurjaak</maintainer>
   <author email="erki@lap.ee">Erki Suurjaak</author>
-  <url type="website">https://github.com/suurjaak/grepros</url>
+  <url type="website">http://www.ros.org/wiki/grepros</url>
+  <url type="repository">https://github.com/suurjaak/grepros</url>
   <license>BSD</license>
 
   <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
