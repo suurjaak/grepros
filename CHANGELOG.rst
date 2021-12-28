@@ -2,6 +2,26 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.0 (2021-12-26)
+-------------------
+* add --plugin grepros.plugins.parquet (Parquet output)
+* add --plugin grepros.plugins.sql (SQL schema output)
+* add --plugin grepros.plugins.embag (faster ROS1 bag reader)
+* add --reindex-if-unindexed option
+* add --every-nth-match option
+* add --every-nth-message option
+* add --every-nth-interval option
+* allow multiple write sinks, combine --write-format and --write-option to --write
+* refactor plugins interface
+* populate topics.offered_qos_profiles in ROS2 bag output where possible
+* fix progress bar afterword not updating when grepping multiple bags
+* fix error on empty bag with no messages
+* fix error in Postgres output for NaNs in nested JSON values
+* fix skipping some messages in ROS1 bag for types with identical hashes
+* fix not being able to specify list arguments several times
+* ensure no conflicts from changed message types or identical type hashes
+* add tests
+
 0.3.5 (2021-12-14)
 -------------------
 * fix Postgres output not having content

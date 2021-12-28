@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>grepros</name>
-  <version>0.3.5</version>
+  <version>0.4.0</version>
   <description>grep for ROS bag files and live topics</description>
 
   <maintainer email="erki@lap.ee">Erki Suurjaak</maintainer>
   <author email="erki@lap.ee">Erki Suurjaak</author>
-  <url type="website">https://github.com/suurjaak/grepros</url>
+  <url type="website">http://www.ros.org/wiki/grepros</url>
+  <url type="repository">https://github.com/suurjaak/grepros</url>
   <license>BSD</license>
 
   <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
@@ -15,11 +16,20 @@
   <depend condition="$ROS_VERSION == 1">rosbag</depend>
   <depend condition="$ROS_VERSION == 1">roslib</depend>
   <depend condition="$ROS_VERSION == 1">rospy</depend>
+
+  <depend condition="$ROS_VERSION == 2">builtin_interfaces</depend>
+  <depend condition="$ROS_VERSION == 2">rclpy</depend>
+  <depend condition="$ROS_VERSION == 2">rosidl_runtime_py</depend>
+
   <depend>python3-yaml</depend>
 
-  <test_depend condition="$ROS_VERSION == 2">ament_lint_auto</test_depend>
-  <test_depend condition="$ROS_VERSION == 2">ament_lint_common</test_depend>
+  <test_depend>std_msgs</test_depend>
+  <test_depend condition="$ROS_VERSION == 1">rostest</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">ament_cmake_pytest</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">python3-pytest</test_depend>
+
   <export>
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
     <build_type condition="$ROS_VERSION == 2">ament_python</build_type>
   </export>
 

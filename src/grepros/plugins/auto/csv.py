@@ -8,19 +8,19 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.csv
+## @namespace grepros.plugins.auto.csv
 from __future__ import absolute_import
 import atexit
 import csv
 import os
 import sys
 
-from .. common import ConsolePrinter, format_bytes, plural, unique_path
-from .. import rosapi
-from . base import SinkBase
+from ... common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from ... import rosapi
+from ... outputs import SinkBase
 
 
 class CsvSink(SinkBase):
@@ -39,9 +39,9 @@ class CsvSink(SinkBase):
         """
         super(CsvSink, self).__init__(args)
         self._filebase      = args.DUMP_TARGET  # Filename base, will be made unique
-        self._files         = {}                # {(topic, typehash): file()}
-        self._writers       = {}                # {(topic, typehash): csv.writer}
-        self._lasttopickey  = None              # Last (topic, typehash) emitted
+        self._files         = {}                # {(topic, typename, typehash): file()}
+        self._writers       = {}                # {(topic, typename, typehash): csv.writer}
+        self._lasttopickey  = None              # Last (topic, typename, typehash) emitted
         self._close_printed = False
 
         atexit.register(self.close)
@@ -59,13 +59,13 @@ class CsvSink(SinkBase):
         for k in names:
             self._files.pop(k).close()
         self._writers.clear()
+        self._lasttopickey = None
         if not self._close_printed and self._counts:
             self._close_printed = True
             sizes = {k: os.path.getsize(n) for k, n in names.items()}
-            ConsolePrinter.debug("Wrote %s in %s to file (%s):",
+            ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)),
-                                 format_bytes(sum(sizes.values())))
+                                 plural("topic", self._counts), format_bytes(sum(sizes.values())))
             for topickey, name in names.items():
                 ConsolePrinter.debug("- %s (%s, %s)", name,
                                     format_bytes(sizes[topickey]),
@@ -78,7 +78,9 @@ class CsvSink(SinkBase):
 
         File is populated with header if 
         """
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        if not self._lasttopickey:
+            makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
@@ -129,3 +131,10 @@ class CsvSink(SinkBase):
                     yield mp, mv
             else:
                 yield path, rosapi.to_sec(v)
+
+
+
+def init(*_, **__):
+    """Adds CSV output format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("csv", CsvSink)

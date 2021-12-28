@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    09.12.2021
+@modified    24.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -39,24 +39,24 @@ class Searcher(object):
         @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
         @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
         @param   args.MAX_TOPICS          number of topics to print matches from
+        @param   args.NTH_MATCH           emit every Nth match in topic
         @param   args.SELECT_FIELDS       message fields to use in matching if not all
         @param   args.NOSELECT_FIELDS     message fields to skip in matching
         """
         self._args     = copy.deepcopy(args)
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
-        # {(topic, type): {message ID: message}}
+        # {(topic, typename, typehash): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): {message ID: ROS time}}
+        # {(topic, typename, typehash): {message ID: ROS time}}
         self._stamps   = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): {None: count processed, True: count matched, False: count emitted as context}}
+        # {(topic, typename, typehash): {None: processed, True: matched, False: emitted as context}}
         self._counts   = collections.defaultdict(collections.Counter)
-        # {(topic, type): {message ID: True if matched else False if emitted else None}
+        # {(topic, typename, typehash): {message ID: True if matched else False if emitted else None}}
         self._statuses = collections.defaultdict(collections.OrderedDict)
-        # {(topic, type): (message hash over all fields used in matching)}
-        self._hashes = collections.defaultdict(set)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
+        self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
 
@@ -71,51 +71,38 @@ class Searcher(object):
         @param   sink    outputs.SinkBase instance
         @return          count matched
         """
-        for d in (self._messages, self._stamps, self._counts, self._statuses, self._hashes):
-            d.clear()
-        self._source, self._sink = source, sink
-        source.bind(sink), sink.bind(source)
+        self._prepare(source, sink)
+        counter, total_matched, batch_matched, batch = 0, 0, False, None
 
-        counter, total, batch, any_matched = 0, 0, None, False
         for topic, msg, stamp in source.read():
             if batch != source.get_batch():
-                total += sum(x[True] for x in self._counts.values())
-                for d in (self._counts, self._messages, self._stamps, self._statuses, self._hashes):
-                    d.clear()
-                counter, batch, any_matched = 0, source.get_batch(), False
+                total_matched += sum(x[True] for x in self._counts.values())
+                counter, batch, batch_matched = 0, source.get_batch(), False
+                self._clear_data()
 
             msgid = counter = counter + 1
-            topickey = (topic, rosapi.get_message_type(msg))
-            self._counts[topickey][None] += 1
-            self._messages[topickey][msgid] = msg
-            self._stamps  [topickey][msgid] = stamp
-            self._statuses[topickey][msgid] = None
-
+            topickey = (topic, rosapi.get_message_type(msg), source.get_message_type_hash(msg))
+            self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
+
+            source.notify(matched)
             if matched:
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
                 sink.emit_meta()
-                for msgid2, i, s, m in self._get_context(topickey, before=True):
-                    self._counts[topickey][False] += 1
-                    sink.emit(topic, i, s, m, None)
-                    self._statuses[topickey][msgid2] = False
+                self._emit_context(topickey, before=True)
                 sink.emit(topic, self._counts[topickey][None], stamp, msg, matched)
             elif self._args.AFTER and self._has_in_window(topickey, self._args.AFTER + 1, status=True):
-                for msgid2, i, s, m in self._get_context(topickey, before=False):
-                    self._counts[topickey][False] += 1
-                    sink.emit(topic, i, s, m, None)
-                    self._statuses[topickey][msgid2] = False
-            source.notify(matched)
-            any_matched = any_matched or bool(matched)
+                self._emit_context(topickey, before=False)
+            batch_matched = batch_matched or bool(matched)
 
             self._prune_data(topickey)
-            if any_matched and self._is_max_done():
+            if batch_matched and self._is_max_done():
                 sink.flush()
                 source.close_batch()
 
         source.close(), sink.close()
-        return total + sum(x[True] for x in self._counts.values())
+        return total_matched + sum(x[True] for x in self._counts.values())
 
 
     def _is_processable(self, topic, stamp, msg):
@@ -124,7 +111,7 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
-        topickey = (topic, rosapi.get_message_type(msg))
+        topickey = (topic, rosapi.get_message_type(msg), self._source.get_message_type_hash(msg))
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
             return False
@@ -137,13 +124,37 @@ class Searcher(object):
                 return False
         if not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
-        if self._args.UNIQUE:
-            include, exclude = self._patterns["select"], self._patterns["noselect"]
-            msghash = rosapi.make_message_hash(msg, include, exclude)
-            if msghash in self._hashes[topickey]:
-                return False
-            self._hashes[topickey].add(msghash)
         return True
+
+
+    def _emit_context(self, topickey, before=False):
+        """Emits before/after context to sink for latest match."""
+        count = self._args.BEFORE + 1 if before else self._args.AFTER
+        candidates = list(self._statuses[topickey])[-count:]
+        current_index = self._counts[topickey][None]
+        for i, msgid in enumerate(candidates) if count else ():
+            if self._statuses[topickey][msgid] is None:
+                idx = current_index + i - (len(candidates) - 1 if before else 1)
+                stamp, msg = self._stamps[topickey][msgid], self._messages[topickey][msgid]
+                self._counts[topickey][False] += 1
+                self._sink.emit(topickey[0], idx, stamp, msg, None)
+                self._statuses[topickey][msgid] = False
+
+
+    def _clear_data(self):
+        """Clears local structures."""
+        for d in (self._counts, self._messages, self._stamps, self._statuses):
+            d.clear()
+
+
+    def _prepare(self, source, sink):
+        """Clears local structures, binds and registers source and sink."""
+        self._clear_data()
+        self._source, self._sink = source, sink
+        source.bind(sink), sink.bind(source)
+        self._passthrough = not sink.is_highlighting() and not self._patterns["select"] \
+                            and not self._patterns["noselect"] and not self._args.INVERT \
+                            and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
 
 
     def _prune_data(self, topickey):
@@ -180,18 +191,12 @@ class Searcher(object):
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
 
-    def _get_context(self, topickey, before=False):
-        """Returns unemitted context for latest match, as [(msgid, index, timestamp, message)]."""
-        result = []
-        count = self._args.BEFORE + 1 if before else self._args.AFTER
-        candidates = list(self._statuses[topickey])[-count:]
-        current_index = self._counts[topickey][None]
-        for i, msgid in enumerate(candidates) if count else ():
-            if self._statuses[topickey][msgid] is None:
-                idx = current_index + i - (len(candidates) - 1 if before else 1)
-                stamp, msg = self._stamps[topickey][msgid], self._messages[topickey][msgid]
-                result += [(msgid, idx, stamp, msg)]
-        return result
+    def _register_message(self, topickey, msgid, msg, stamp):
+        """Registers message with local structures."""
+        self._counts[topickey][None] += 1
+        self._messages[topickey][msgid] = msg
+        self._stamps  [topickey][msgid] = stamp
+        self._statuses[topickey][msgid] = None
 
 
     def _is_max_done(self):
@@ -273,10 +278,7 @@ class Searcher(object):
                 matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
             return obj
 
-        if not self._sink.is_highlighting() \
-        and not self._patterns["select"] and not self._patterns["noselect"] \
-        and not self._args.INVERT and set(self._patterns["content"]) <= set(self.ANY_MATCHES):
-            return msg  # Skip decorating if highlighting not required and message matches
+        if self._passthrough: return msg
 
         if self._brute_prechecks:
             text  = "\n".join("%r" % (v, ) for _, v, _ in rosapi.iter_message_fields(msg))

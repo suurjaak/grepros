@@ -8,17 +8,17 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    13.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.sqlite
+## @namespace grepros.plugins.auto.sqlite
 import collections
 import json
 import os
 import sqlite3
 
-from .. common import ConsolePrinter, format_bytes, quote
-from .. import rosapi
+from ... common import ConsolePrinter, format_bytes, makedirs, quote
+from ... import rosapi
 from . dbbase import DataSinkBase
 
 
@@ -166,7 +166,7 @@ class SqliteSink(DataSinkBase):
         parses "message-yaml" from args.DUMP_OPTIONS.
         """
         config_ok = super(SqliteSink, self).validate()
-        if self._args.DUMP_OPTIONS.get("message-yaml") not in ("true", "false"):
+        if self._args.DUMP_OPTIONS.get("message-yaml") not in (None, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self._args.DUMP_OPTIONS["message-yaml"])
@@ -199,8 +199,8 @@ class SqliteSink(DataSinkBase):
     def _process_message(self, topic, msg, stamp):
         """Inserts message to messages-table, and to pkg/MsgType tables."""
         typename = rosapi.get_message_type(msg)
-        typehash   = self.source.get_message_type_hash(msg)
-        topic_id = self._topics[(topic, typehash)]["id"]
+        typehash = self.source.get_message_type_hash(msg)
+        topic_id = self._topics[(topic, typename, typehash)]["id"]
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
                      yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
@@ -211,6 +211,7 @@ class SqliteSink(DataSinkBase):
 
     def _connect(self):
         """Returns new database connection."""
+        makedirs(os.path.dirname(self._filename))
         db = sqlite3.connect(self._filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None
@@ -240,3 +241,24 @@ class SqliteSink(DataSinkBase):
             self._id_counters[table] = self._db.execute(sql).fetchone()["id"]
         self._id_counters[table] += 1
         return self._id_counters[table]
+
+
+
+def init(*_, **__):
+    """Adds SQLite output format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("sqlite", SqliteSink, "SQLite", [
+        ("commit-interval=NUM",      "transaction size for SQLite output\n"
+                                     "(default 1000, 0 is autocommit)"),
+        ("message-yaml=true|false",  "whether to populate table field messages.yaml\n"
+                                     "in SQLite output (default true)"),
+        ("nesting=array|all",        "create tables for nested message types\n"
+                                     "in SQLite output,\n"
+                                     'only for arrays if "array" \n'
+                                     "else for any nested types\n"
+                                     "(array fields in parent will be populated \n"
+                                     " with foreign keys instead of messages as JSON)"),
+    ])
+    writearg = plugins.get_argument("--write-format")
+    if writearg:
+        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")

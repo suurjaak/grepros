@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.12.2021
+@modified    26.12.2021
 ------------------------------------------------------------------------------
 """
 import collections
@@ -43,6 +43,12 @@ ROS_STRING_TYPES = ["string", "wstring"]
 ## All built-in basic types in ROS
 ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ROS_STRING_TYPES
 
+## ROS time/duration types, populated after init
+ROS_TIME_TYPES = []
+
+## ROS1 time/duration types mapped to type names, populated after init
+ROS_TIME_CLASSES = {}
+
 ## All built-in basic types plus time types in ROS, populated after init
 ROS_COMMON_TYPES = []
 
@@ -70,7 +76,8 @@ def validate(live=False):
 
     @param   live  whether environment must support launching a ROS node
     """
-    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS_COMMON_TYPES
+    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, \
+           ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES
     if realapi:
         return True
 
@@ -90,6 +97,8 @@ def validate(live=False):
     if success:
         BAG_EXTENSIONS, SKIP_EXTENSIONS = realapi.BAG_EXTENSIONS, realapi.SKIP_EXTENSIONS
         ROS_COMMON_TYPES = ROS_BUILTIN_TYPES + realapi.ROS_TIME_TYPES
+        ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
+        ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
     return success
 
 
@@ -102,7 +111,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     """
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
     FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
-    STR_CONST_RGX = re.compile("^w?string\s+([^\s=#]+)\s*=")
+    STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     lines, pkg = [], typename.rsplit("/", 1)[0]
     subtypedefs = dict(extradefs, **parse_definition_subtypes(msgdef))
     extradefs = tuple(subtypedefs.items())
@@ -110,7 +119,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     # First pass: write constants
     for line in msgdef.splitlines():
         if set(line) == set("="):  # Subtype separator
-            continue  # for line
+            break  # for line
         # String constants cannot have line comments
         if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
         match = FIELD_RGX.match(line)
@@ -135,22 +144,28 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
 
 
-def create_bag_reader(filename):
+def create_bag_reader(filename, reindex=False, reindex_progress=False):
     """
     Returns an object for reading ROS bags.
 
     Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
     if using embag in ROS1, or if using ROS2.
-    Supplemented with get_message_class(), get_message_definition() and get_message_type_hash().
+
+    Supplemented with get_message_class(), get_message_definition(),
+    get_message_type_hash(), and get_topic_info().
+
+    @param   reindex           reindex unindexed bag (ROS1 only), making a backup if indexed format
+    @param   reindex_progress  show progress bar with reindexing status
     """
-    return realapi.create_bag_reader(filename)
+    return realapi.create_bag_reader(filename, reindex, reindex_progress)
 
 
 def create_bag_writer(filename):
     """
     Returns an object for writing ROS bags.
 
-    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2.
+    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2;
+    write()-method has an additional optional parameter `meta` (message metainfo dict).
     """
     return realapi.create_bag_writer(filename)
 
@@ -161,7 +176,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns a ROS subscriber instance, with .unregister()."""
+    """Returns a ROS subscriber instance, with .unregister() and .get_qos()."""
     return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 
@@ -215,6 +230,13 @@ def get_rostime():
     return realapi.get_rostime()
 
 
+def get_ros_time_category(typename):
+    """Returns "time" or "duration" for time/duration type, else typename."""
+    if typename in ROS_TIME_TYPES:
+        return "duration" if "duration" in typename.lower() else "time"
+    return typename
+
+
 def get_topic_types():
     """
     Returns currently available ROS topics, as [(topicname, typename)].
@@ -238,30 +260,32 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, messages_only=False, top=()):
+def iter_message_fields(msg, messages_only=False, scalars=(), top=()):
     """
     Yields ((nested, path), value, typename) from ROS message.
 
     @param  messages_only  whether to yield only values that are ROS messages themselves
                            or lists of ROS messages, else will yield scalar and list values
+    @param  scalars        sequence of ROS types to consider as scalars, like ("time", duration")
     """
     fieldmap = realapi.get_message_fields(msg)
     if fieldmap is msg: return
     if messages_only:
         for k, t in fieldmap.items():
-            v = realapi.get_message_value(msg, k, t)
-            is_sublist = isinstance(v, (list, tuple)) and \
-                         realapi.scalar(t) not in ROS_COMMON_TYPES
-            if realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, True, top=top + (k, )):
+            v, scalart = realapi.get_message_value(msg, k, t), realapi.scalar(t)
+            is_sublist = isinstance(v, (list, tuple)) and scalart not in ROS_COMMON_TYPES
+            is_forced_scalar = get_ros_time_category(scalart) in scalars
+            if not is_forced_scalar and realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, True, scalars, top=top + (k, )):
                     yield p2, v2, t2
-            if realapi.is_ros_message(v, ignore_time=True) or is_sublist:
+            if is_forced_scalar or is_sublist or realapi.is_ros_message(v, ignore_time=True):
                 yield top + (k, ), v, t
     else:
         for k, t in fieldmap.items():
             v = realapi.get_message_value(msg, k, t)
-            if realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, top=top + (k, )):
+            is_forced_scalar = get_ros_time_category(realapi.scalar(t)) in scalars
+            if not is_forced_scalar and realapi.is_ros_message(v):
+                for p2, v2, t2 in iter_message_fields(v, False, scalars, top=top + (k, )):
                     yield p2, v2, t2
             else:
                 yield top + (k, ), v, t
@@ -334,8 +358,13 @@ def make_message_hash(msg, include=(), exclude=()):
     return hasher.hexdigest()
 
 
-def message_to_dict(msg):
-    """Returns ROS message as nested Python dictionary."""
+def message_to_dict(msg, replace=None):
+    """
+    Returns ROS message as nested Python dictionary.
+
+    @param   replace  mapping of {value: replaced value},
+                      e.g. {math.nan: None, math.inf: None}
+    """
     result = {} if realapi.is_ros_message(msg) else msg
     for name, typename in realapi.get_message_fields(msg).items():
         v = realapi.get_message_value(msg, name, typename)
@@ -343,8 +372,13 @@ def message_to_dict(msg):
             v = dict(zip(["secs", "nsecs"], divmod(realapi.to_nsec(v), 10**9)))
         elif realapi.is_ros_message(v):
             v = message_to_dict(v)
-        elif isinstance(v, (list, tuple)) and realapi.scalar(typename) not in ROS_BUILTIN_TYPES:
-            v = [message_to_dict(x) for x in v]
+        elif isinstance(v, (list, tuple)):
+            if realapi.scalar(typename) not in ROS_BUILTIN_TYPES:
+                v = [message_to_dict(x) for x in v]
+            elif replace:
+                v = [replace.get(x, x) for x in v]
+        elif replace:
+            v = replace.get(v, v)
         result[name] = v
     return result
 

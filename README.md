@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or HTML/CSV/Postgres/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/Parquet/Postgres/SQL/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -17,6 +17,7 @@ Using ROS1 live topics requires ROS master to be running.
 
 Using ROS2 requires Python packages for message types to be available in path.
 
+Supports loading custom plugins, mainly for additional output formats.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen.png)
 
@@ -43,6 +44,9 @@ Using ROS2 requires Python packages for message types to be available in path.
   - [Filtering](#filtering)
   - [Conditions](#conditions)
 - [Plugins](#plugins)
+  - [embag](#embag)
+  - [parquet](#parquet)
+  - [sql](#sql)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -64,9 +68,9 @@ Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
-from bags in current directory:
+from bags in current directory, reindexing any unindexed bags:
 
-    grepros frame_id=map --type geometry_msgs/* --max-count 10
+    grepros frame_id=map --type geometry_msgs/* --max-count 10 --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
 
@@ -149,6 +153,8 @@ This will add the `grepros` command to the local ROS2 workspace path.
 Inputs
 ------
 
+Input is either from one or more ROS bag files (default), or from live ROS topics.
+
 ### bag
 
 Read messages from ROS bag files, by default all in current directory.
@@ -167,6 +173,11 @@ Scan specific paths instead of current directory (supports * wildcards):
 
     -p     /home/bags/2021-11-*
     --path my/dir
+
+Reindex unindexed ROS1 bags before processing
+(warning: creates backup copies of files, into same directory as file):
+
+    --reindex-if-unindexed
 
 Order bag messages first by topic or type, and only then by time:
 
@@ -194,6 +205,9 @@ Use ROS time instead of system time for incoming message timestamps:
 Outputs
 -------
 
+There can be any number of outputs: printing to console (default),
+publishing to live ROS topics, or writing to file or database.
+
 ### console
 
 Default output is to console, in ANSI colors, mimicking `grep` output.
@@ -214,32 +228,35 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write my.bag [--write-format bag]
+    --write path/to/my.bag [format=bag]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
 it is appended to. 
 
-Specifying `--write-format bag` is not required
+Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 
 ### csv
 
-    --write my.csv [--write-format csv]
+    --write path/to/my.csv [format=csv]
 
 Write messages to CSV files, each topic to a separate file, named
-`my.full__topic__name.csv` for `/full/topic/name`.
+`path/to/my.full__topic__name.csv` for `/full/topic/name`.
 
 Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
-Specifying `--write-format csv` is not required if the filename ends with `.csv`.
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.full__topic__name.2.csv`.
+
+Specifying `format=csv` is not required if the filename ends with `.csv`.
 
 
 ### html
 
-    --write my.html [--write-format html]
+    --write path/to/my.html [format=html]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -248,16 +265,19 @@ message timeline, message type definitions, and a topically traversable message 
 
 Note: resulting file may be large, and take a long time to open in browser. 
 
-Specifying `--write-format html` is not required if the filename ends with `.htm` or `.html`.
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.2.html`.
+
+Specifying `format=html` is not required if the filename ends with `.htm` or `.html`.
 
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
-    --write-option template=/my/html.template
+    --write path/to/my.html template=/my/html.template
 
 
 ### postgres
 
-    --write postgresql://username@host/dbname [--write-format postgres]
+    --write postgresql://username@host/dbname [format=postgres]
 
 Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
 and views `/full/topic/name` for each topic. 
@@ -272,8 +292,10 @@ If the database already exists, it is appended to. If there are conflicting name
 (same package and name but different message type definition),
 table/view name becomes "name (MD5 hash of type definition)".
 
-Specifying `--write-format postgres` is not required if the parameter uses the
+Specifying `format=postgres` is not required if the parameter uses the
 Postgres URI scheme `postgresql://`.
+
+Requires [psycopg2](https://pypi.org/project/psycopg2).
 
 Parameter `--write` can also use the Postgres keyword=value format,
 e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
@@ -283,7 +305,7 @@ Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
-    --write-option commit-interval=NUM
+    --write postgresql://username@host/dbname commit-interval=NUM
 
 #### Nested messages
 
@@ -292,7 +314,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=array
+    --write postgresql://username@host/dbname nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -338,7 +360,7 @@ Without nesting, array field values are inserted as JSON with full subtype conte
 
 To recursively populate all nested message types:
 
-    --write-option nesting=all
+    --write postgresql://username@host/dbname nesting=all
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
 
@@ -358,7 +380,7 @@ CREATE TABLE "std_msgs/Header" (
 
 ### sqlite
 
-    --write my.sqlite [--write-format sqlite]
+    --write path/to/my.sqlite [format=sqlite]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
@@ -369,18 +391,18 @@ full message YAMLs, and message type definition texts. Note that a database
 dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
 due to breaking changes in ROS2 standard built-in types and message types.
 
-Specifying `--write-format sqlite` is not required
+Specifying `format=sqlite` is not required
 if the filename ends with `.sqlite` or `.sqlite3`.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_sqlite.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_sqlite.png)
 
 A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
-    --write-option commit-interval=NUM
+    --write path/to/my.sqlite commit-interval=NUM
 
 By default, table `messages` is populated with full message YAMLs, unless:
 
-    --write-option message-yaml=false
+    --write path/to/my.sqlite message-yaml=false
 
 
 #### Nested messages
@@ -390,7 +412,7 @@ to parent messages via foreign keys.
 
 To recursively populate nested array fields:
 
-    --write-option nesting=array
+    --write path/to/my.sqlite nesting=array
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate the following tables:
 
@@ -438,7 +460,7 @@ Without nesting, array field values are inserted as JSON with full subtype conte
 
 To recursively populate all nested message types:
 
-    --write-option nesting=all
+    --write path/to/my.sqlite nesting=all
 
 E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
 
@@ -564,6 +586,10 @@ Emit a specified number of matches per topic (per each file if bag input):
 
     --max-per-topic 20
 
+Emit every Nth match in topic:
+
+    --every-nth-match 10  # (skips 10 matches in topic after each match emitted)
+
 
 ### Filtering
 
@@ -626,6 +652,15 @@ Stop scanning at a specific message index in topic:
     -n1         -100  # (counts back from topic total message count in bag)
     --end-index   10  # (1-based index)
 
+Scan every Nth message in topic:
+
+    --every-nth-message 10  # (skips 10 messages in topic with each step)
+
+Scan messages in topic with timestamps at least N seconds apart:
+
+    --every-nth-interval 5  # (samples topic messages no more often than every 5 seconds)
+
+
 ## Conditions
 
     --condition "PYTHON EXPRESSION"
@@ -677,6 +712,125 @@ Supported (but not required) plugin interface methods:
 Plugins are free to modify `grepros` internals, like adding command-line arguments
 to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
 
+Convenience methods:
+
+- `plugins.add_write_format(name, cls, label=None, options=())`:
+   adds an output plugin to defaults
+- `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
+
+Specifying `--plugin someplugin` and `--help` will include plugin options in printed help.
+
+Built-in plugins:
+
+### embag
+
+    --plugin grepros.plugins.embag
+
+Use the [embag](https://github.com/embarktrucks/embag) library for reading ROS1 bags.
+
+Significantly faster, but library tends to be unstable.
+
+
+### parquet
+
+    --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
+
+Write messages to Apache Parquet files (columnar storage format, version 2.6),
+each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
+for `package/MessageType` (typehash is message type definition MD5 hashsum).
+Adds fields `_topic string()` and `_timestamp timestamp("ns")` to each type.
+
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. `package__MessageType__typehash/my.2.parquet`.
+
+Specifying `format=parquet` is not required if the filename ends with `.parquet`.
+
+Requires [pandas](https://pypi.org/project/pandas) and [pyarrow](https://pypi.org/project/pyarrow).
+
+Supports custom mapping between ROS and pyarrow types:
+
+    --write path/to/my.parquet type-rostype=arrowtype
+
+Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+unless they are mapped to pyarrow types explicitly, like:
+
+    --write path/to/my.parquet type-time="timestamp('ns')" type-duration="duration('ns')"
+
+Supports additional arguments given to [pyarrow.parquet.ParquetWriter](
+https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html), as:
+
+    --write path/to/my.parquet writer-argname=argvalue
+
+For example, specifying no compression:
+
+    --write path/to/my.parquet writer-compression=null
+
+The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`.
+
+
+### sql
+
+    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql]
+
+Write SQL schema to output file, CREATE TABLE for each message type
+and CREATE VIEW for each topic.
+
+Specifying `format=sql` is not required if the filename ends with `.sql`.
+
+A specific SQL dialect can be specified:
+
+    --write path/to/my.sql dialect=clickhouse|postgres|sqlite
+
+Additional dialects, or updates for existing dialects, can be loaded from a YAML or JSON file:
+
+    --write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
+
+Dialect file format:
+
+```yaml
+dialectname:
+  table_template:      CREATE TABLE template, args: table, cols, type, hash, package, class
+  view_template:       CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
+  types:               Mapping between ROS and SQL common types for table columns,
+                       e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
+  defaulttype:         Fallback SQL type if no mapped type for ROS type;
+                       if no mapped and no default type, column type will be ROS type as-is
+  arraytype_template:  Array type template, args: type
+  maxlen_entity:       Maximum table/view name length, 0 disables
+  maxlen_column:       Maximum column name length, 0 disables
+  invalid_char_regex:  Regex for matching invalid characters in name, if any
+  invalid_char_repl:   Replacement for invalid characters in name
+```
+
+Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.
+
+Any dialect options not specified will be taken from the default dialect configuration:
+
+```yaml
+  table_template:      'CREATE TABLE IF NOT EXISTS {table} ({cols});'
+  view_template:       'CREATE VIEW IF NOT EXISTS {view} AS
+                        SELECT {cols}
+                        FROM {table}
+                        WHERE _topic = {topic};'
+  types:               {}
+  defaulttype:         null
+  arraytype_template:  '{type}[]'
+  maxlen_entity:       0
+  maxlen_column:       0
+  invalid_char_regex:  null
+  invalid_char_repl:   '__'
+```
+
+To create tables for nested array message type fields:
+
+    --write path/to/my.sql nesting=array
+
+To create tables for all nested message types:
+
+    --write path/to/my.sql nesting=all
+
+
 
 All command-line arguments
 --------------------------
@@ -696,12 +850,26 @@ optional arguments:
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write TARGET        write matched messages to specified output file
-  --write-format {bag,csv,html,postgres,sqlite}
-                        output format, auto-detected from TARGET if not given,
-                        bag or database will be appended to if it already exists
+  --write TARGET [format=bag|csv|html|postgres|sqlite] [KEY=VALUE ...]
+                        write matched messages to specified output,
+                        format is autodetected from TARGET if not specified.
+                        Bag or database will be appended to if it already exists.
+                        Keyword arguments are given to output writer:
+                          commit-interval=NUM      transaction size for Postgres/SQLite output
+                                                   (default 1000, 0 is autocommit)
+                          message-yaml=true|false  whether to populate table field messages.yaml
+                                                   in SQLite output (default true)
+                          nesting=array|all        create tables for nested message types
+                                                   in Postgres/SQL/SQLite output,
+                                                   only for arrays if "array" 
+                                                   else for any nested types
+                                                   (array fields in parent will be populated 
+                                                    with foreign keys instead of messages as JSON)
+                          template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
+                        (built-in plugins: grepros.plugins.embag, 
+                         grepros.plugins.parquet, grepros.plugins.sql)
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
@@ -740,6 +908,12 @@ Filtering:
   -n1 INDEX, --end-index INDEX
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
+  --every-nth-message NUM
+                        scan every Nth message within topic
+  --every-nth-interval SECONDS
+                        scan messages within topic at least N seconds apart
+  --every-nth-match NUM
+                        emit every Nth match in topic
   -sf [FIELD [FIELD ...]], --select-field [FIELD [FIELD ...]]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)
@@ -791,19 +965,6 @@ Output control:
                         (default "**" in colorless output)
   --wrap-width NUM      character width to wrap message YAML output at,
                         0 disables (defaults to detected terminal width)
-  --write-option [KEY=VALUE [KEY=VALUE ...]]
-                        write options as key=value pairs, supported flags:
-                          commit-interval=NUM      transaction size for Postgres/SQLite output
-                                                   (default 1000, 0 is autocommit)
-                          message-yaml=true|false  whether to populate table field messages.yaml
-                                                   in SQLite output (default true)
-                          nesting=array|all        create tables for nested message types
-                                                   in Postgres/SQLite output,
-                                                   only for arrays if "array" 
-                                                   else for any nested types
-                                                   (array fields in parent will be populated 
-                                                    with foreign keys instead of messages as JSON)
-                          template=/my/path.tpl    custom template to use for HTML output
   --color {auto,always,never}
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console
@@ -825,6 +986,8 @@ Bag input control:
   -r, --recursive       recurse into subdirectories when looking for bagfiles
   --order-bag-by {topic,type}
                         order bag messages by topic or type first and then by time
+  --reindex-if-unindexed
+                        reindex unindexed bags (ROS1 only; makes backup copies)
 
 Live topic control:
   --publish-prefix PREFIX

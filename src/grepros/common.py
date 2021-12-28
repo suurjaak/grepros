@@ -9,13 +9,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
-import importlib
 import itertools
 import math
 import os
@@ -47,9 +46,11 @@ class ConsolePrinter(object):
     STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  ## Dim gray
     STYLE_SPECIAL   = "\x1b[35m"                ## Purple
     STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
+    STYLE_WARN      = "\x1b[33m"                ## Yellow
     STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
 
     DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
+    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  ## Warning message wrappers
     ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
 
     COLOR = None       ## Whether using colors in output
@@ -84,9 +85,11 @@ class ConsolePrinter(object):
 
         if cls.COLOR:
             cls.DEBUG_START, cls.DEBUG_END = cls.STYLE_LOWLIGHT, cls.STYLE_RESET
+            cls.WARN_START,  cls.WARN_END  = cls.STYLE_WARN,     cls.STYLE_RESET
             cls.ERROR_START, cls.ERROR_END = cls.STYLE_ERROR,    cls.STYLE_RESET
         else:
             cls.DEBUG_START, cls.DEBUG_END = "", ""
+            cls.WARN_START,  cls.WARN_END  = "", ""
             cls.ERROR_START, cls.ERROR_END = "", ""
 
 
@@ -95,12 +98,12 @@ class ConsolePrinter(object):
         """Prints text, formatted with args and kwargs."""
         fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
-        text = str(text)
-        try: text = text % args if args else text
+        text, fmted = str(text), False
+        try: text, fmted = (text % args if args else text), bool(args)
         except Exception: pass
-        try: text = text % kwargs if kwargs else text
+        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
         except Exception: pass
-        try: text = text.format(*args, **kwargs) if args or kwargs else text
+        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
         except Exception: pass
         if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
 
@@ -118,6 +121,17 @@ class ConsolePrinter(object):
 
 
     @classmethod
+    def warn(cls, text="", *args, **kwargs):
+        """
+        Prints warning to stderr.
+
+        Formatted with args and kwargs, in warning colors if supported.
+        """
+        KWS = dict(__file=sys.stderr, __prefix=cls.WARN_START, __suffix=cls.WARN_END)
+        cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+    @classmethod
     def debug(cls, text="", *args, **kwargs):
         """
         Prints debug text to stderr.
@@ -128,13 +142,20 @@ class ConsolePrinter(object):
         cls.print(text, *args, **dict(kwargs, **KWS))
 
 
+    @classmethod
+    def flush(cls):
+        """Ends current open line, if any."""
+        if cls._LINEOPEN: print()
+        cls._LINEOPEN = False
+
+
 
 class ProgressBar(threading.Thread):
     """
     A simple ASCII progress bar with a ticker thread
 
     Drawn like
-    '[---------\   36%            ] Progressing text..'.
+    '[---------/   36%            ] Progressing text..'.
     or for pulse mode
     '[    ----                    ] Progressing text..'.
     """
@@ -176,7 +197,7 @@ class ProgressBar(threading.Thread):
 
 
     def update(self, value=None, draw=True, flush=False):
-        """Updates the progress bar value, and refreshes by default."""
+        """Updates the progress bar value, and refreshes by default; returns self."""
         if value is not None: self.value = min(self.max, max(self.min, value))
         afterword = self.aftertemplate.format(**vars(self))
         w_full = self.width - 2
@@ -216,16 +237,21 @@ class ProgressBar(threading.Thread):
             self.percent = percent
         self.printbar = bartext + " " * max(0, len(self.bar) - len(bartext))
         self.bar, prevbar = bartext, self.bar
-        if draw and prevbar != self.bar: self.draw(flush)
+        if draw and (flush or prevbar != self.bar): self.draw(flush)
+        return self
 
 
     def draw(self, flush=False):
-        """Prints the progress bar, from the beginning of the current line."""
+        """
+        Prints the progress bar, from the beginning of the current line.
+
+        @param   flush  add linefeed to end, forcing a new line for any next print
+        """
         ConsolePrinter.print("\r" + self.printbar, __end=" ")
         if len(self.printbar) != len(self.bar):  # Draw twice to position caret at true content end
             self.printbar = self.bar
             ConsolePrinter.print("\r" + self.printbar, __end=" ")
-        if flush: ConsolePrinter.print()
+        if flush: ConsolePrinter.flush()
 
 
     def run(self):
@@ -404,73 +430,6 @@ class TextWrapper(object):
 
 
 
-class Plugins(object):
-    """Simple plugin interface, loads and inits plugin modules, provides core methods."""
-
-    ## {"some.module": <module 'some.module' from ..>}
-    PLUGINS = {}
-
-
-    @classmethod
-    def configure(cls, args):
-        """
-        Imports plugin Python packages, invokes init(args) if any, raises on error.
-
-        @param   args           arguments object like argparse.Namespace
-        @param   args.PLUGINS   list of Python modules or classes to import,
-                                 as ["my.module", "other.module.SomeClass", ]
-        """
-        for name in (n for n in args.PLUGINS if n not in cls.PLUGINS):
-            try:
-                plugin = cls.import_item(name)
-                if callable(getattr(plugin, "init", None)): plugin.init(args)
-                cls.PLUGINS[name] = plugin
-            except Exception:
-                ConsolePrinter.error("Error loading plugin %s.", name)
-                raise
-
-
-    @classmethod
-    def load(cls, category, args):
-        """
-        Returns a plugin category instance loaded from any configured plugin, or None.
-
-        @param   category  item category like "source", "sink", or "search"
-        @param   args      arguments object like argparse.Namespace
-        """
-        for name, plugin in cls.PLUGINS.items():
-            if callable(getattr(plugin, "load", None)):
-                try:
-                    result = plugin.load(category, args)
-                    if result is not None:
-                        return result
-                except Exception:
-                    ConsolePrinter.error("Error invoking %s.load(%r, args).", name, category)
-                    raise
-                
-
-    @classmethod
-    def import_item(cls, name):
-        """
-        Returns imported module, or identifier from imported namespace; raises on error.
-
-        @param   name  Python module name like "my.module"
-                       or module namespace identifier like "my.module.Class"
-        """
-        result, parts = None, name.split(".")
-        for i, item in enumerate(parts):
-            path, success = ".".join(parts[:i + 1]), False
-            try: result, success = importlib.import_module(path), True
-            except ImportError: pass
-            if not success and i:
-                try: result, success = getattr(result, item), True
-                except AttributeError: pass
-            if not success:
-                raise ImportError("No module or identifier named %r" % path)
-        return result
-
-
-
 def drop_zeros(v, replace=""):
     """Drops or replaces trailing zeros and empty decimal separator, if any."""
     return re.sub(r"\.?0+$", lambda x: len(x.group()) * replace, str(v))
@@ -595,21 +554,31 @@ def format_timedelta(delta):
     return " ".join(items or ["0sec"])
 
 
-def format_bytes(size, precision=2, inter=" "):
-    """Returns a formatted byte size (like 421.45 MB)."""
+def format_bytes(size, precision=2, inter=" ", strip=True):
+    """Returns a formatted byte size (like 421.40 MB), trailing zeros optionally removed."""
     result = "0 bytes"
     if size:
         UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
         exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
         result = "%.*f" % (precision, size / (1024. ** exponent))
         result += "" if precision > 0 else "."  # Do not strip integer zeroes
-        result = drop_zeros(result) + inter + UNITS[exponent]
+        result = (drop_zeros(result) if strip else result) + inter + UNITS[exponent]
     return result
 
 
 def format_stamp(stamp):
     """Returns ISO datetime from UNIX timestamp."""
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
+
+
+def makedirs(path):
+    """Creates directory structure for path if not already existing."""
+    parts, accum = list(filter(bool, path.split(os.sep))), []
+    while parts:
+        accum.append(parts.pop(0))
+        curpath = (os.sep if path.startswith(os.sep) else "") + os.path.join(*accum)
+        if not os.path.exists(curpath):
+            os.mkdir(curpath)
 
 
 def memoize(func):
@@ -623,6 +592,15 @@ def memoize(func):
     for attr in ("__module__", "__name__", "__doc__"):
         setattr(inner, attr, getattr(func, attr))
     return inner
+
+
+def merge_dicts(d1, d2):
+    """Merges d2 into d1, recursively for nested dicts."""
+    for k, v in d2.items():
+        if k in d1 and isinstance(v, dict) and isinstance(d1[k], dict):
+            merge_dicts(d1[k], v)
+        else:
+            d1[k] = v
 
 
 def merge_spans(spans):
@@ -746,7 +724,7 @@ def unique_path(pathname, empty_ok=False):
 
 def wildcard_to_regex(text, end=False):
     """
-    Returns plain wildcard like "/foo*bar" as re.Pattern("\/foo.*bar", re.I).
+    Returns plain wildcard like "foo*bar" as re.Pattern("foo.*bar", re.I).
 
     @param   end  whether pattern should match until end (adds $)
     """

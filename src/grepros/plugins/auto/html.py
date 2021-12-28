@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.html
+## @namespace grepros.plugins.auto.html
 import atexit
 import copy
 import os
@@ -21,10 +21,10 @@ import re
 import sys
 import threading
 
-from .. common import ConsolePrinter, MatchMarkers, format_bytes, plural, unique_path
-from .. import rosapi
-from .. vendor import step
-from . base import SinkBase, TextSinkMixin
+from ... common import ConsolePrinter, MatchMarkers, format_bytes, makedirs, plural, unique_path
+from ... import rosapi
+from ... outputs import SinkBase, TextSinkMixin
+from ... vendor import step
 
 
 class HtmlSink(SinkBase, TextSinkMixin):
@@ -103,7 +103,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._filename,
+                                 plural("topic", self._counts), self._filename,
                                  format_bytes(os.path.getsize(self._filename)))
         super(HtmlSink, self).close()
 
@@ -132,13 +132,14 @@ class HtmlSink(SinkBase, TextSinkMixin):
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                       timeline=not self._args.ORDERBY, messages=self._produce())
+            makedirs(os.path.dirname(self._filename))
             self._filename = unique_path(self._filename, empty_ok=True)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Creating %s.", self._filename)
             with open(self._filename, "wb") as f:
                 template.stream(f, ns, unbuffered=True)
         except Exception as e:
-            self.thread_excepthook(e)
+            self.thread_excepthook("Error writing HTML output %r: %r" % (self._filename, e), e)
         finally:
             self._writer = None
 
@@ -146,15 +147,26 @@ class HtmlSink(SinkBase, TextSinkMixin):
         """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
         while True:
             entry = self._queue.get()
-            self._queue.task_done()
             if entry is None:
+                self._queue.task_done()
                 break  # while
             (topic, index, stamp, msg, match) = entry
-            topickey = (topic, self.source.get_message_type_hash(msg))
+            topickey = (topic, rosapi.get_message_type(msg),
+                        self.source.get_message_type_hash(msg))
             if self._args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
+            self._queue.task_done()
         try:
             while self._queue.get_nowait() or True: self._queue.task_done()
         except queue.Empty: pass
+
+
+
+def init(*_, **__):
+    """Adds HTML output format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("html", HtmlSink, "HTML", [
+        ("template=/my/path.tpl",  "custom template to use for HTML output")
+    ])

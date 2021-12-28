@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.12.2021
+@modified    25.12.2021
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -20,7 +20,9 @@ import re
 import sys
 
 from . import __version__, inputs, outputs, search
-from . common import ConsolePrinter, Plugins, parse_datetime
+from . common import ConsolePrinter, parse_datetime
+from . import plugins
+
 
 
 ## Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}
@@ -44,8 +46,8 @@ Find first message containing "future" (case-insensitive) in my.bag:
     grepros future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
-from bags in current directory:
-    grepros frame_id=map --type geometry_msgs/* --max-count 10
+from bags in current directory, reindexing any unindexed bags:
+    grepros frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
     grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
@@ -78,6 +80,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "can specify message field as NAME=PATTERN\n"
                   "(supports nested.paths and * wildcards)"),
 
+        dict(args=["-h", "--help"],
+             dest="HELP", action="store_true",
+             help="show this help message and exit"),
+
         dict(args=["-F", "--fixed-strings"],
              dest="RAW", action="store_true",
              help="PATTERNs are ordinary strings, not regular expressions"),
@@ -103,39 +109,39 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="PUBLISH", action="store_true",
              help="publish matched messages to live ROS topics"),
 
-        dict(args=["--write"], dest="DUMP_TARGET", metavar="TARGET", default="",
-             help="write matched messages to specified output file"),
-
-        dict(args=["--write-format"], dest="DUMP_FORMAT",
-             choices=["bag", "csv", "html", "postgres", "sqlite"],
-             help="output format, auto-detected from TARGET if not given,\n"
-                  "bag or database will be appended to if it already exists"),
+        dict(args=["--write"],
+             dest="DUMP_TARGET", nargs="+", default=[], action="append",
+             metavar="TARGET [format=bag] [KEY=VALUE ...]",
+             help="write matched messages to specified output,\n"
+                  "format is autodetected from TARGET if not specified.\n"
+                  "Bag or database will be appended to if it already exists.\n"
+                  "Keyword arguments are given to output writer."),
 
         dict(args=["--plugin"],
-             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[],
+             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[], action="append",
              help="load a Python module or class as plugin"),
     ],
 
     "groups": {"Filtering": [
 
         dict(args=["-t", "--topic"],
-             dest="TOPICS", metavar="TOPIC", nargs="+", default=[],
+             dest="TOPICS", metavar="TOPIC", nargs="+", default=[], action="append",
              help="ROS topics to scan if not all (supports * wildcards)"),
 
         dict(args=["-nt", "--no-topic"],
-             dest="SKIP_TOPICS", metavar="TOPIC", nargs="+", default=[],
+             dest="SKIP_TOPICS", metavar="TOPIC", nargs="+", default=[], action="append",
              help="ROS topics to skip (supports * wildcards)"),
 
         dict(args=["-d", "--type"],
-             dest="TYPES", metavar="TYPE", nargs="+", default=[],
+             dest="TYPES", metavar="TYPE", nargs="+", default=[], action="append",
              help="ROS message types to scan if not all (supports * wildcards)"),
 
         dict(args=["-nd", "--no-type"],
-             dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[],
+             dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[], action="append",
              help="ROS message types to skip (supports * wildcards)"),
 
         dict(args=["--condition"],
-             dest="CONDITIONS", metavar="CONDITION", nargs="+", default=[],
+             dest="CONDITIONS", metavar="CONDITION", nargs="+", default=[], action="append",
              help="extra conditions to require for matching messages,\n"
                   "as ordinary Python expressions, can refer to last messages\n"
                   "in topics as {topic /my/topic}; topic name can contain wildcards.\n"
@@ -172,13 +178,25 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="message index within topic to stop at\n"
                   "(1-based if positive, counts back from bag total if negative)"),
 
+        dict(args=["--every-nth-message"],
+             dest="NTH_MESSAGE", metavar="NUM", type=int, default=1,
+             help="scan every Nth message within topic"),
+
+        dict(args=["--every-nth-interval"],
+             dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
+             help="scan messages at least N seconds apart within topic"),
+
+        dict(args=["--every-nth-match"],
+             dest="NTH_MATCH", metavar="NUM", type=int, default=1,
+             help="emit every Nth match in topic"),
+
         dict(args=["-sf", "--select-field"],
-             dest="SELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             dest="SELECT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to use in matching if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-ns", "--no-select-field"],
-             dest="NOSELECT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             dest="NOSELECT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to skip in matching\n"
                   "(supports nested.paths and * wildcards)"),
 
@@ -217,12 +235,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "around match"),
 
         dict(args=["-pf", "--print-field"],
-             dest="PRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             dest="PRINT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to print in console output if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-np", "--no-print-field"],
-             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="*", default=[],
+             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to skip in console output\n"
                   "(supports nested.paths and * wildcards)"),
 
@@ -265,21 +283,6 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="character width to wrap message YAML output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
-        dict(args=["--write-option"], dest="DUMP_OPTIONS", metavar="KEY=VALUE",
-             default=[], nargs="*", type=lambda x: (x.split("=", 1)*2)[:2],
-             help="write options as key=value pairs, supported flags:\n"
-                  "  commit-interval=NUM      transaction size for Postgres/SQLite output\n"
-                  "                           (default 1000, 0 is autocommit)\n"
-                  "  message-yaml=true|false  whether to populate table field messages.yaml\n"
-                  "                           in SQLite output (default true)\n"
-                  "  nesting=array|all        create tables for nested message types\n"
-                  "                           in Postgres/SQLite output,\n"
-                  '                           only for arrays if "array" \n'
-                  "                           else for any nested types\n"
-                  "                           (array fields in parent will be populated \n"
-                  "                            with foreign keys instead of messages as JSON)\n"
-                  "  template=/my/path.tpl    custom template to use for HTML output\n"),
-
         dict(args=["--color"], dest="COLOR",
              choices=["auto", "always", "never"], default="always",
              help='use color output in console (default "always")'),
@@ -307,12 +310,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     ], "Bag input control": [
 
         dict(args=["-n", "--filename"],
-             dest="FILES", metavar="FILE", nargs="*", default=[],
+             dest="FILES", metavar="FILE", nargs="+", default=[], action="append",
              help="names of ROS bagfiles to scan if not all in directory\n"
                   "(supports * wildcards)"),
 
         dict(args=["-p", "--path"],
-             dest="PATHS", metavar="PATH", nargs="*", default=[],
+             dest="PATHS", metavar="PATH", nargs="+", default=[], action="append",
              help="paths to scan if not current directory\n"
                   "(supports * wildcards)"),
 
@@ -323,6 +326,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--order-bag-by"],
              dest="ORDERBY", choices=["topic", "type"],
              help="order bag messages by topic or type first and then by time"),
+
+        dict(args=["--reindex-if-unindexed"],
+             dest="REINDEX", action="store_true",
+             help="reindex unindexed bags (ROS1 only), makes backup copies"),
 
     ], "Live topic control": [
 
@@ -357,10 +364,20 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 }
 
 
+class HelpFormatter(argparse.RawTextHelpFormatter):
+    """RawTextHelpFormatter returning custom metavar for DUMP_TARGET."""
+
+    def _format_action_invocation(self, action):
+        """Returns formatted invocation."""
+        if "DUMP_TARGET" == action.dest:
+            return " ".join(action.option_strings + [action.metavar])
+        return super(HelpFormatter, self)._format_action_invocation(action)
+
+
 def make_parser():
     """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
-               formatter_class=argparse.RawTextHelpFormatter)
+               formatter_class=HelpFormatter, add_help=False)
     argparser = argparse.ArgumentParser(**kws)
     for arg in map(dict, ARGUMENTS["arguments"]):
         argparser.add_argument(*arg.pop("args"), **arg)
@@ -371,18 +388,14 @@ def make_parser():
     return argparser
 
 
-def validate_args(args):
+def process_args(args):
     """
-    Validates arguments, prints errors, returns success.
+    Converts or combines arguments where necessary, returns args.
 
     @param   args  arguments object like argparse.Namespace
     """
-    errors = collections.defaultdict(list)  # {category: [error, ]}
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
-
-    # Turn [["key", "value"], ] into a dictionary
-    args.DUMP_OPTIONS = dict(args.DUMP_OPTIONS)
 
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
@@ -394,9 +407,39 @@ def validate_args(args):
     args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
                                              or args.PATHS or any("*" in x for x in args.FILES))
 
-    for k, v in vars(args).items():  # Drop duplicates from list values
-        if isinstance(v, list):
-            setattr(args, k, list(collections.OrderedDict((x, None) for x in v)))
+    for k, v in vars(args).items():  # Flatten lists  of lists and drop duplicates
+        if k != "DUMP_TARGET" and isinstance(v, list):
+            here = set()
+            setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
+                              if not (x in here or here.add(x))])
+
+    for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+        if v is None: continue  # for v, n
+        try: v = float(v)
+        except Exception: pass
+        try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+        except Exception: pass
+
+    return  args
+
+
+def validate_args(args):
+    """
+    Validates arguments, prints errors, returns success.
+
+    @param   args  arguments object like argparse.Namespace
+    """
+    errors = collections.defaultdict(list)  # {category: [error, ]}
+
+    # Validate --write .. key=value
+    for opts in args.DUMP_TARGET:  # List of lists, one for each --write
+        erropts = []
+        for opt in opts[1:]:
+            try: dict([opt.split("=", 1)])
+            except Exception: erropts.append(opt)
+        if erropts:
+            errors[""].append('Invalid KEY=VALUE in "--write %s": %s' %
+                              (" ".join(opts), " ".join(erropts)))
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
         if v is None: continue  # for v, n
@@ -439,9 +482,10 @@ def flush_stdout():
 
 
 def preload_plugins():
-    """Imports and initializes plugins from arguments."""
-    if "--plugin" in sys.argv:
-        Plugins.configure(make_parser().parse_known_args()[0])
+    """Imports and initializes plugins from auto-load folder and from arguments."""
+    args = make_parser().parse_known_args()[0] if "--plugin" in sys.argv else None
+    try: plugins.init(process_args(args) if args else None)
+    except ImportWarning: sys.exit(1)
 
 
 def run():
@@ -454,6 +498,9 @@ def run():
 
     atexit.register(flush_stdout)
     args, _ = argparser.parse_known_args()
+    if args.HELP:
+        argparser.print_help()
+        return
 
     BREAK_EXS = (KeyboardInterrupt, )
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
@@ -462,21 +509,21 @@ def run():
     source, sink = None, None
     try:
         ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
-        if not validate_args(args):
+        if not validate_args(process_args(args)):
             sys.exit(1)
 
-        source = Plugins.load("source", args) or \
+        source = plugins.load("source", args) or \
                  (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
-        sink.sinks.extend(filter(bool, [Plugins.load("sink", args)]))
+        sink.sinks.extend(filter(bool, plugins.load("sink", args, collect=True)))
         if not sink.validate():
             sys.exit(1)
 
-        thread_excepthook = lambda e: (ConsolePrinter.error(e), sys.exit(1))
+        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
-        searcher = Plugins.load("search", args) or search.Searcher(args)
+        searcher = plugins.load("search", args) or search.Searcher(args)
         searcher.search(source, sink)
     except BREAK_EXS:
         try: source and source.close()

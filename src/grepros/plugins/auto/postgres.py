@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    14.12.2021
+@modified    21.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.postgres
+## @namespace grepros.plugins.auto.postgres
 import collections
 import json
 
@@ -23,8 +23,8 @@ try:
 except ImportError:
     psycopg2 = None
 
-from .. import common, rosapi
-from .. common import ConsolePrinter
+from ... import common, rosapi
+from ... common import ConsolePrinter
 from . dbbase import DataSinkBase
 
 quote = lambda s: common.quote(s, force=True)
@@ -246,6 +246,8 @@ class PostgresSink(DataSinkBase):
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
         v = value
+        # Common in JSON but disallowed in Postgres
+        replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
         if not typename:
             v = psycopg2.extras.Json(v, json.dumps)
         elif isinstance(v, (list, tuple)):
@@ -253,7 +255,8 @@ class PostgresSink(DataSinkBase):
                 v = [rosapi.to_decimal(x) for x in v]
             elif rosapi.scalar(typename) not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
-                else: v = psycopg2.extras.Json([rosapi.message_to_dict(m) for m in v], json.dumps)
+                else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
+                                                for m in v], json.dumps)
             elif "BYTEA" == self.COMMON_TYPES.get(typename):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
@@ -261,7 +264,7 @@ class PostgresSink(DataSinkBase):
         elif rosapi.is_ros_time(v):
             v = rosapi.to_decimal(v)
         elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
-            v = psycopg2.extras.Json(rosapi.message_to_dict(v), json.dumps)
+            v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
         return v
 
 
@@ -276,3 +279,22 @@ class PostgresSink(DataSinkBase):
     def autodetect(cls, dump_target):
         """Returns true if dump_target is recognizable as a Postgres connection string."""
         return (dump_target or "").startswith("postgresql://")
+
+
+
+def init(*_, **__):
+    """Adds Postgres output format support."""
+    from ... import plugins  # Late import to avoid circular
+    plugins.add_write_format("postgres", PostgresSink, "Postgres", [
+        ("commit-interval=NUM",  "transaction size for Postgres output\n"
+                                 "(default 1000, 0 is autocommit)"),
+        ("nesting=array|all",    "create tables for nested message types\n"
+                                 "in Postgres output,\n"
+                                 'only for arrays if "array" \n'
+                                 "else for any nested types\n"
+                                 "(array fields in parent will be populated \n"
+                                 " with foreign keys instead of messages as JSON)"),
+    ])
+    writearg = plugins.get_argument("--write-format")
+    if writearg:
+        writearg["help"] = writearg["help"].replace("Bag will be", "Bag or database will be")

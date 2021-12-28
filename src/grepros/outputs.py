@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.12.2021
+@modified    23.12.2021
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.outputs.base
+## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
 import collections
@@ -22,9 +22,9 @@ import sys
 
 import yaml
 
-from .. common import ConsolePrinter, MatchMarkers, TextWrapper, \
-                      filter_fields, format_bytes, merge_spans, plural, wildcard_to_regex
-from .. import rosapi
+from . common import ConsolePrinter, MatchMarkers, TextWrapper, filter_fields, \
+                     format_bytes, makedirs, merge_spans, plural, wildcard_to_regex
+from . import rosapi
 
 
 class SinkBase(object):
@@ -40,7 +40,7 @@ class SinkBase(object):
         """
         self._args = copy.deepcopy(args)
         self._batch_meta = {}  # {source batch: "source metadata"}
-        self._counts     = {}  # {(topic, typehash): count}
+        self._counts     = {}  # {(topic, typename, typehash): count}
 
         ## inputs.SourceBase instance bound to this sink
         self.source = None
@@ -61,7 +61,7 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
@@ -80,9 +80,9 @@ class SinkBase(object):
     def flush(self):
         """Writes out any pending data to disk."""
 
-    def thread_excepthook(self, exc):
+    def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
-        ConsolePrinter.error(exc)
+        ConsolePrinter.error(text)
 
     def is_highlighting(self):
         """Returns whether this sink requires highlighted matches."""
@@ -356,13 +356,14 @@ class BagSink(SinkBase):
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
                                      self._args.DUMP_TARGET,
                                      (" (%s)" % format_bytes(sz)) if sz else "")
+            makedirs(os.path.dirname(self._args.DUMP_TARGET))
             self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
 
-        topickey = (topic, self.source.get_message_type_hash(msg))
+        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
         if topickey not in self._counts and self._args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
-        self._bag.write(topic, msg, stamp)
+        self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
         super(BagSink, self).emit(topic, index, stamp, msg, match)
 
     def validate(self):
@@ -376,7 +377,7 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(self._counts)), self._args.DUMP_TARGET,
+                                 plural("topic", self._counts), self._args.DUMP_TARGET,
                                  format_bytes(os.path.getsize(self._args.DUMP_TARGET)))
         super(BagSink, self).close()
 
@@ -402,12 +403,14 @@ class TopicSink(SinkBase):
         @param   args.VERBOSE           whether to print debug information
         """
         super(TopicSink, self).__init__(args)
-        self._pubs = {}  # {(intopic, cls): ROS publisher}
+        self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
     def emit(self, topic, index, stamp, msg, match):
         """Publishes message to output topic."""
-        topickey, cls = (topic, self.source.get_message_type_hash(msg)), type(msg)
+        typename, typehash = rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = (topic, typename, typehash)
+        cls = self.source.get_message_class(typename, typehash)
         if topickey not in self._pubs:
             topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
             topic2 = self._args.PUBLISH_FIXNAME or topic2
@@ -429,7 +432,7 @@ class TopicSink(SinkBase):
         rosapi.init_node()
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
+        """Returns whether ROS environment is set for publishing, prints error if not."""
         return rosapi.validate(live=True)
 
     def close(self):
@@ -438,10 +441,86 @@ class TopicSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Published %s to %s.",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", len(set(self._pubs.values()))))
+                                 plural("topic", self._pubs))
         for k in list(self._pubs):
-            pub = self._pubs.pop(k)
-            # ROS1 prints errors when closing a publisher with subscribers
-            not pub.get_num_connections() and pub.unregister()
+            self._pubs.pop(k).unregister()
         super(TopicSink, self).close()
         rosapi.shutdown_node()
+
+
+class MultiSink(SinkBase):
+    """Combines any number of sinks."""
+
+    ## Autobinding between argument flags and sink classes
+    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
+
+    ## Autobinding between --write .. format=FORMAT and sink classes
+    FORMAT_CLASSES = {"bag": BagSink}
+
+    def __init__(self, args):
+        """
+        @param   args               arguments object like argparse.Namespace
+        @param   args.CONSOLE       print matches to console
+        @param   args.DUMP_TARGET   [[target, format=FORMAT, key=value, ], ]
+        @param   args.PUBLISH       publish matches to live topics
+        """
+        super(MultiSink, self).__init__(args)
+        self._valid = True
+
+        ## List of all combined sinks
+        self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
+                      if getattr(args, flag, None)]
+
+        for dumpopts in args.DUMP_TARGET:
+            target, kwargs = dumpopts[0], dict(x.split("=", 1) for x in dumpopts[1:])
+            cls = self.FORMAT_CLASSES.get(kwargs.pop("format", None))
+            if not cls:
+                cls = next((c for c in self.FORMAT_CLASSES.values()
+                            if callable(getattr(c, "autodetect", None))
+                            and c.autodetect(target)), None)
+            if not cls:
+                ConsolePrinter.error('Unknown output format in "%s"' % " ".join(dumpopts))
+                self._valid = False
+                continue  # for dumpopts
+            clsargs = copy.deepcopy(args)
+            clsargs.DUMP_TARGET, clsargs.DUMP_OPTIONS = target, kwargs
+            self.sinks += [cls(clsargs)]
+
+    def emit_meta(self):
+        """Outputs source metainfo in one sink, if not already emitted."""
+        sink = next((s for s in self.sinks if isinstance(s, ConsoleSink)), None)
+        # Print meta in one sink only, prefer console
+        sink = sink or self.sinks[0] if self.sinks else None
+        sink and sink.emit_meta()
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Outputs ROS message to all sinks."""
+        for sink in self.sinks:
+            sink.emit(topic, index, stamp, msg, match)
+
+    def bind(self, source):
+        """Attaches source to all sinks, sets thread_excepthook on all sinks."""
+        SinkBase.bind(self, source)
+        for sink in self.sinks:
+            sink.bind(source)
+            sink.thread_excepthook = self.thread_excepthook
+
+    def validate(self):
+        """Returns whether prerequisites are met for all sinks."""
+        if not self.sinks:
+            ConsolePrinter.error("No output configured.")
+        return bool(self.sinks) and all([sink.validate() for sink in self.sinks]) and self._valid
+
+    def close(self):
+        """Closes all sinks."""
+        for sink in self.sinks:
+            sink.close()
+
+    def flush(self):
+        """Flushes all sinks."""
+        for sink in self.sinks:
+            sink.flush()
+
+    def is_highlighting(self):
+        """Returns whether any sink requires highlighted matches."""
+        return any(s.is_highlighting() for s in self.sinks)
