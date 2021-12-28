@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    25.12.2021
+@modified    28.12.2021
 ------------------------------------------------------------------------------
 """
 import logging
@@ -37,7 +37,7 @@ logger = logging.getLogger()
 def init_logging(name):
     """Initializes logging."""
     fmt = "[%%(levelname)s]\t[%%(created).06f] [%s] %%(message)s" % name
-    logging.basicConfig(level=logging.DEBUG, format=fmt, force=True, stream=sys.stdout)
+    logging.basicConfig(level=logging.DEBUG, format=fmt, stream=sys.stdout)
     logger.setLevel(logging.DEBUG)
 
 
