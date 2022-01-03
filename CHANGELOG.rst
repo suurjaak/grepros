@@ -2,9 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.1 (2021-12-27)
+0.4.1 (2022-01-03)
 -------------------
-
+* drop default value from --publish-prefix option
 
 0.4.0 (2021-12-26)
 -------------------

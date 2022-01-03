@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.12.2021
+@modified    03.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -334,9 +334,8 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     ], "Live topic control": [
 
         dict(args=["--publish-prefix"],
-             dest="PUBLISH_PREFIX", metavar="PREFIX", default="/grepros",
-             help="prefix to prepend to input topic name on publishing match\n"
-                  '(default "/grepros")'),
+             dest="PUBLISH_PREFIX", metavar="PREFIX", default="",
+             help="prefix to prepend to input topic name on publishing match"),
 
         dict(args=["--publish-suffix"],
              dest="PUBLISH_SUFFIX", metavar="SUFFIX", default="",

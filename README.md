@@ -483,13 +483,15 @@ CREATE TABLE "std_msgs/Header" (
 
     --publish
 
-Publish messages to live ROS topics. The published topic name will default to
-`/grepros/original/name`. Topic prefix and suffix can be changed, 
+Publish messages to live ROS topics. Topic prefix and suffix can be changed, 
 or topic name set to one specific name:
 
     --publish-prefix  /myroot
     --publish-suffix  /myend
     --publish-fixname /my/singular/name
+
+One of the above arguments needs to be specified if publishing to live ROS topics
+while grepping from live ROS topics, to avoid endless loops.
 
 Set custom queue size for publishers (default 10):
 
@@ -992,7 +994,6 @@ Bag input control:
 Live topic control:
   --publish-prefix PREFIX
                         prefix to prepend to input topic name on publishing match
-                        (default "/grepros")
   --publish-suffix SUFFIX
                         suffix to append to input topic name on publishing match
   --publish-fixname TOPIC

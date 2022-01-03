@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.12.2021
+@modified    03.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -394,6 +394,7 @@ class TopicSink(SinkBase):
     def __init__(self, args):
         """
         @param   args                   arguments object like argparse.Namespace
+        @param   args.LIVE              whether reading messages from live ROS topics
         @param   args.META              whether to print metainfo
         @param   args.QUEUE_SIZE_OUT    publisher queue size
         @param   args.PUBLISH_PREFIX    output topic prefix, prepended to input topic
@@ -431,8 +432,18 @@ class TopicSink(SinkBase):
         rosapi.init_node()
 
     def validate(self):
-        """Returns whether ROS environment is set for publishing, prints error if not."""
-        return rosapi.validate(live=True)
+        """
+        Returns whether ROS environment is set for publishing,
+        and output topic configuration is valid, prints error if not.
+        """
+        result = rosapi.validate(live=True)
+        config_ok = True
+        if self._args.LIVE and not any((self._args.PUBLISH_PREFIX, self._args.PUBLISH_SUFFIX,
+                                        self._args.PUBLISH_FIXNAME)):
+            ConsolePrinter.error("Need topic prefix or suffix or fixname "
+                                 "when republishing messages from live ROS topics.")
+            config_ok = False
+        return result and config_ok
 
     def close(self):
         """Shuts down publishers."""
