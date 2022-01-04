@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.12.2021
+@modified    04.01.2022
 ------------------------------------------------------------------------------
 """
 import collections
@@ -153,7 +153,7 @@ class TypeMeta(object):
         msgid = id(msg)
         if msgid not in cls._CACHE:
             cls._CACHE[msgid] = TypeMeta(msg, topic)
-            if root and root != msg:
+            if root and root is not msg:
                 cls._CHILDREN.setdefault(id(root), set()).add(msgid)
             cls._TIMINGS[msgid] = time.time()
         cls.sweep()
