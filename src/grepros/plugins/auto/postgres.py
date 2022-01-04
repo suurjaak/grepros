@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    21.12.2021
+@modified    04.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -37,7 +37,6 @@ class PostgresSink(DataSinkBase):
     Output will have:
     - table "topics", with topic and message type names
     - table "types", with message type definitions
-    - table "meta", with mappings between original names and names shortened for Postgres
 
     plus:
     - table "pkg/MsgType" for each topic message type, with detailed fields,
@@ -55,84 +54,8 @@ class PostgresSink(DataSinkBase):
     ## Database engine name
     ENGINE = "Postgres"
 
-    ## Max table/column name length in Postgres
-    MAX_NAME_LEN = 63
-
     ## Sequence length per table to reserve for inserted message IDs
     ID_SEQUENCE_STEP = 100
-
-    ## Mapping from ROS common types to Postgres types
-    COMMON_TYPES = {
-        "byte": "SMALLINT", "char": "SMALLINT", "int8": "SMALLINT",
-        "int16": "SMALLINT", "int32": "INTEGER", "int64": "BIGINT",
-        "uint8": "SMALLINT", "uint16": "INTEGER", "uint32": "BIGINT",
-        "uint64": "BIGINT", "float32": "REAL", "float64": "DOUBLE PRECISION",
-        "bool": "BOOLEAN", "string": "TEXT", "wstring": "TEXT",
-        "uint8[]": "BYTEA", "char[]": "BYTEA",
-    }
-
-
-    ## SQL statements for populating database base schema
-    BASE_SCHEMA = """
-    CREATE TABLE IF NOT EXISTS meta (
-      id         BIGSERIAL PRIMARY KEY,
-      type       TEXT NOT NULL,
-      parent     TEXT NULL,
-      name       TEXT NOT NULL,
-      name_in_db TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS topics (
-      id                   BIGSERIAL PRIMARY KEY,
-      name                 TEXT NOT NULL,
-      type                 TEXT NOT NULL,
-      md5                  TEXT NOT NULL,
-      table_name           TEXT NOT NULL,
-      view_name            TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS types (
-      id                   BIGSERIAL PRIMARY KEY,
-      type                 TEXT NOT NULL,
-      definition           TEXT NOT NULL,
-      md5                  TEXT NOT NULL,
-      table_name           TEXT NOT NULL,
-      nested_tables        JSON
-    );
-    """
-
-    ## SQL statement for inserting topics
-    INSERT_TOPIC = """
-    INSERT INTO topics (name, type, md5, table_name, view_name)
-    VALUES (%(name)s, %(type)s, %(md5)s, %(table_name)s, '')
-    RETURNING id
-    """
-
-    ## SQL statement for inserting types
-    INSERT_TYPE = """
-    INSERT INTO types (type, definition, md5, table_name)
-    VALUES (%(type)s, %(definition)s, %(md5)s, %(table_name)s)
-    RETURNING id
-    """
-
-    ## SQL statement for inserting metas for renames
-    INSERT_META = """
-    INSERT INTO meta (type, parent, name, name_in_db)
-    VALUES (%(type)s, %(parent)s, %(name)s, %(name_in_db)s)
-    """
-
-    ## SQL statement for updating view name in topic
-    UPDATE_TOPIC_VIEW = """
-    UPDATE topics SET view_name = %(view_name)s
-    WHERE id = %(id)s
-    """
-
-    ## SQL statement for creating a table for type
-    CREATE_TYPE_TABLE = """
-    DROP TABLE IF EXISTS %(name)s CASCADE;
-
-    CREATE TABLE %(name)s (%(cols)s);
-    """
 
     ## SQL statement for selecting metainfo on pkg/MsgType table columns
     SELECT_TYPE_COLUMNS = """
@@ -144,7 +67,7 @@ class PostgresSink(DataSinkBase):
     ORDER BY c.table_name, CAST(c.dtd_identifier AS INTEGER)
     """
 
-    ## Default topic-related columns for pkg/MsgType tables
+    ## Default topic-related columns for pkg/MsgType tables, as [(name, SQL type)]
     MESSAGE_TYPE_TOPICCOLS = [("_topic",       "TEXT"),
                               ("_topic_id",    "BIGINT"), ]
     ## Default columns for pkg/MsgType tables
@@ -194,7 +117,9 @@ class PostgresSink(DataSinkBase):
         super(PostgresSink, self)._load_schema()
         self._cursor.execute(self.SELECT_TYPE_COLUMNS)
         for row in self._cursor.fetchall():
-            typerow = next(x for x in self._types.values() if x["table_name"] == row["table_name"])
+            typerow = next((x for x in self._types.values()
+                            if x["table_name"] == row["table_name"]), None)
+            if not typerow: continue  # for row
             typekey = (typerow["type"], typerow["md5"])
             self._schema.setdefault(typekey, collections.OrderedDict())
             self._schema[typekey][row["column_name"]] = row["data_type"]
@@ -202,8 +127,8 @@ class PostgresSink(DataSinkBase):
 
     def _connect(self):
         """Returns new database connection."""
-        return psycopg2.connect(self._args.DUMP_TARGET,
-                                cursor_factory=psycopg2.extras.RealDictCursor)
+        factory = psycopg2.extras.RealDictCursor
+        return psycopg2.connect(self._args.DUMP_TARGET, cursor_factory=factory)
 
 
     def _execute_insert(self, sql, args):
@@ -225,39 +150,33 @@ class PostgresSink(DataSinkBase):
     def _get_next_id(self, table):
         """Returns next cached ID value, re-populating empty cache from sequence."""
         if not self._id_queue.get(table):
-            sql = "SELECT nextval('%s') AS id" % quote("%s__id_seq" % table)
+            MAXLEN = self.get_dialect_option("maxlen_entity")
+            seqbase, seqsuffix = table, "_%s_seq" % self.MESSAGE_TYPE_BASECOLS[-1][0]
+            if MAXLEN: seqbase = seqbase[:MAXLEN - len(seqsuffix)]
+            sql = "SELECT nextval('%s') AS id" % quote(seqbase + seqsuffix)
             for _ in range(self.ID_SEQUENCE_STEP):
                 self._cursor.execute(sql)
                 self._id_queue[table].append(self._cursor.fetchone()["id"])
         return self._id_queue[table].popleft()
 
 
-    def _make_column_type(self, typename, value):
-        """Returns column database type."""
-        coltype = self.COMMON_TYPES.get(typename)
-        scalartype = rosapi.scalar(typename)
-        if not coltype and scalartype in self.COMMON_TYPES:
-            coltype = self.COMMON_TYPES.get(scalartype) + "[]"
-        if not coltype:
-            coltype = "JSONB"
-        return coltype
-
-
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
+        TYPES = self.get_dialect_option("types")
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
         if not typename:
             v = psycopg2.extras.Json(v, json.dumps)
         elif isinstance(v, (list, tuple)):
-            if v and rosapi.is_ros_time(v[0]):
+            scalartype = rosapi.scalar(typename)
+            if scalartype in rosapi.ROS_TIME_TYPES:
                 v = [rosapi.to_decimal(x) for x in v]
-            elif rosapi.scalar(typename) not in rosapi.ROS_BUILTIN_TYPES:
+            elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
                 else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
                                                 for m in v], json.dumps)
-            elif "BYTEA" == self.COMMON_TYPES.get(typename):
+            elif "BYTEA" == TYPES.get(typename):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
                 v = list(v)  # Values for psycopg2 cannot be tuples
@@ -288,6 +207,9 @@ def init(*_, **__):
     plugins.add_write_format("postgres", PostgresSink, "Postgres", [
         ("commit-interval=NUM",  "transaction size for Postgres output\n"
                                  "(default 1000, 0 is autocommit)"),
+        ("dialect-file=path/to/dialects.yaml",
+                                 "load additional SQL dialect options for Postgres output\n"
+                                 "from a YAML or JSON file"),
         ("nesting=array|all",    "create tables for nested message types\n"
                                  "in Postgres output,\n"
                                  'only for arrays if "array" \n'

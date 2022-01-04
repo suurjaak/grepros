@@ -791,18 +791,23 @@ Dialect file format:
 
 ```yaml
 dialectname:
-  table_template:      CREATE TABLE template, args: table, cols, type, hash, package, class
-  view_template:       CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
-  types:               Mapping between ROS and SQL common types for table columns,
-                       e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
-  defaulttype:         Fallback SQL type if no mapped type for ROS type;
-                       if no mapped and no default type, column type will be ROS type as-is
-  arraytype_template:  Array type template, args: type
-  maxlen_entity:       Maximum table/view name length, 0 disables
-  maxlen_column:       Maximum column name length, 0 disables
-  invalid_char_regex:  Regex for matching invalid characters in name, if any
-  invalid_char_repl:   Replacement for invalid characters in name
+  table_template:       CREATE TABLE template, args: table, cols, type, hash, package, class
+  view_template:        CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
+  table_name_template:  message type table name template, args: type, hash, package, class
+  view_name_template:   topic view name template, args: topic, type, hash, package, class
+  types:                Mapping between ROS and SQL common types for table columns,
+                        e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
+  defaulttype:          Fallback SQL type if no mapped type for ROS type;
+                        if no mapped and no default type, column type will be ROS type as-is
+  arraytype_template:   Array type template, args: type
+  maxlen_entity:        Maximum table/view name length, 0 disables
+  maxlen_column:        Maximum column name length, 0 disables
+  invalid_char_regex:   Regex for matching invalid characters in name, if any
+  invalid_char_repl:    Replacement for invalid characters in name
 ```
+
+Template parameters like `table_name_template` use Python `str.format()` keyword syntax,
+e.g. `{"table_name_template": "{type}", "view_name_template": "{topic}"}`.
 
 Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
 unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.

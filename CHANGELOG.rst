@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.1 (2022-01-03)
+0.4.1 (2022-01-04)
 -------------------
+* refactor database and SQL sinks onto a common base
 * drop default value from --publish-prefix option
 
 0.4.0 (2021-12-26)

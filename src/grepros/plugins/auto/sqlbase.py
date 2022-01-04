@@ -1,0 +1,439 @@
+# -*- coding: utf-8 -*-
+"""
+Base class for producing SQL for topics and messages.
+
+------------------------------------------------------------------------------
+This file is part of grepros - grep for ROS bag files and live topics.
+Released under the BSD License.
+
+@author      Erki Suurjaak
+@created     03.01.2022
+@modified    04.01.2022
+------------------------------------------------------------------------------
+"""
+## @namespace grepros.plugins.auto.sqlbase
+import copy
+import re
+
+import yaml
+
+from ... import rosapi
+from ... common import ConsolePrinter, ellipsize, merge_dicts, quote
+
+
+
+class SqlSinkMixin(object):
+    """
+    Base class for producing SQL for topics and messages.
+
+    Can load additional SQL dialects or additional options for existing dialects
+    from a YAML/JSON file.
+    """
+
+    ## Default SQL dialect used if dialect not specified
+    DEFAULT_DIALECT = "sqlite"
+
+
+    def __init__(self, args):
+        """
+        @param   args                arguments object like argparse.Namespace
+        @param   args.DUMP_OPTIONS   {"dialect": SQL dialect if not default,
+                                      "nesting": true|false to created nested type tables}
+        """
+        self._args    = copy.deepcopy(args)
+        self._topics  = {}  # {(topic, typename, typehash): {topic, table_name, view_name, sql, ..}}
+        self._types   = {}  # {(typename, typehash): {type, table_name, sql, ..}}
+        self._dialect = args.DUMP_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
+
+
+    def validate(self):
+        """
+        Returns whether arguments are valid.
+
+        Verifies that "dialect-file" is valid and "dialect" contains supported value, if any.
+        """
+        return all([self.validate_dialect_file(), self.validate_dialect()])
+
+
+    def validate_dialect_file(self):
+        """Returns whether "dialect-file" is valid in args.DUMP_OPTIONS."""
+        ok = True
+        if self._args.DUMP_OPTIONS.get("dialect-file"):
+            filename = self._args.DUMP_OPTIONS["dialect-file"]
+            try:
+                with open(filename) as f:
+                    dialects = yaml.safe_load(f.read())
+                if any(not isinstance(v, dict) for v in dialects.values()):
+                    raise Exception("Each dialect must be a dictionary.") 
+                merge_dicts(self.DIALECTS, dialects)
+            except Exception as e:
+                ok = False
+                ConsolePrinter.error("Error reading SQL dialect file %r: %s", filename, e)
+        return ok
+
+
+    def validate_dialect(self):
+        """Returns whether "dialect" is valid in args.DUMP_OPTIONS."""
+        ok = True
+        if "dialect" in self._args.DUMP_OPTIONS \
+        and self._args.DUMP_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
+            ok = False
+            ConsolePrinter.error("Unknown dialect for SQL: %r. "
+                                 "Choose one of {%s}.",
+                                 self._args.DUMP_OPTIONS["dialect"],
+                                 "|".join(sorted(filter(bool, self.DIALECTS))))
+        return ok
+
+
+    def make_topic_data(self, topic, msg, extra_cols=(), exclude_cols=()):
+        """
+        Returns full data dictionary for topic, including view name and SQL.
+
+        @param   extra_cols    list of additional column names for message type table
+        @param   exclude_cols  list of column names to exclude from view SELECT, if any
+        @return                {"name": topic name, "type": message type name as "pkg/Cls",
+                                "table_name": message type table name, "view_name": topic view name,
+                                "md5": message type definition MD5 hash, "sql": "CREATE VIEW .."}
+        """
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
+
+        extra_cols   = [x[0] if isinstance(x, (list, tuple)) else x for x in extra_cols]
+        exclude_cols = [x[0] if isinstance(x, (list, tuple)) else x for x in exclude_cols]
+
+        table_name = self._types[typekey]["table_name"]
+        pkgname, clsname = typename.split("/", 1)
+        nameargs = {"topic": topic, "type": typename, "hash": typehash,
+                    "package": pkgname, "class": clsname}
+        view_name = self._make_entity_name("view", nameargs)
+
+        sqlargs = dict(nameargs, view=quote(view_name), table=quote(table_name, force=True),
+                       topic=repr(topic), cols="*")
+        if exclude_cols:
+            msg_cols = [".".join(p) for p, _, _ in rosapi.iter_message_fields(msg)]
+            select_cols = msg_cols + [c for c in extra_cols if c not in exclude_cols]
+            sqlargs["cols"] = ", ".join(quote(c) for c in select_cols)
+        sql = self.get_dialect_option("view_template").strip().format(**sqlargs)
+
+        return {"name": topic, "type": typename, "md5": typehash,
+                "sql": sql, "table_name": table_name, "view_name": view_name}
+
+
+    def make_type_data(self, msg, extra_cols=(), rootmsg=None):
+        """
+        Returns full data dictionary for message type, including table name and SQL.
+
+        @param   rootmsg     top message this message is nested under, if any
+        @param   extra_cols  additional table columns, as [(column name, ROS type)]
+        @return              {"type": message type name as "pkg/Cls",
+                              "table_name": message type table name,
+                              "definition": message type definition,
+                              "cols": [(column name, column type)],
+                              "md5": message type definition MD5 hash, "sql": "CREATE TABLE .."}
+        """
+        rootmsg = rootmsg or msg
+        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+            typename, typehash = (m.typename, m.typehash)
+
+        cols = []
+        scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
+        for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
+            coltype = self._make_column_type(subtype)
+            cols += [(".".join(path), coltype)]
+        cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
+                 for c, t in extra_cols]
+        cols = list(zip(self._make_column_names([c for c, _ in cols]), [t for _, t in cols]))
+        namewidth = 2 + max(len(n) for n, _ in cols)
+        coldefs = ["%s  %s" % (quote(n).ljust(namewidth), t) for n, t in cols]
+
+        pkgname, clsname = typename.split("/", 1)
+        nameargs = {"type": typename, "hash": typehash, "package": pkgname, "class": clsname}
+        table_name = self._make_entity_name("table", nameargs)
+
+        sqlargs = dict(nameargs, table=quote(table_name), cols="\n  %s\n" % ",\n  ".join(coldefs))
+        sql = self.get_dialect_option("table_template").strip().format(**sqlargs)
+        return {"type": typename, "md5": typehash,
+                "definition": rosapi.TypeMeta.make(msg).definition,
+                "table_name": table_name, "cols": cols, "sql": sql}
+
+
+    def make_topic_insert_sql(self, topic, msg):
+        """Returns ("INSERT ..", [args]) for inserting into topics-table."""
+        POSARG = self.get_dialect_option("posarg")
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        tdata = self._topics[topickey]
+
+        sql  = self.get_dialect_option("insert_topic").strip().replace("%s", POSARG)
+        args = [tdata[k] for k in ("name", "type", "md5", "table_name", "view_name")]
+        return sql, args
+
+
+    def make_type_insert_sql(self, msg):
+        """Returns ("INSERT ..", [args]) for inserting into types-table."""
+        POSARG = self.get_dialect_option("posarg")
+        typekey = rosapi.TypeMeta.make(msg).typekey
+        tdata = self._types[typekey]
+
+        sql  = self.get_dialect_option("insert_type").strip().replace("%s", POSARG)
+        args = [tdata[k] for k in ("type", "definition", "md5", "table_name")]
+        return sql, args
+
+
+    def make_message_insert_sql(self, topic, msg, extra_cols=()):
+        """
+        Returns ("INSERT ..", [args]) for inserting into message type table.
+
+        @param   extra_cols  list of additional table columns, as [(name, value)]
+        """
+        typekey = rosapi.TypeMeta.make(msg, topic).typekey
+        table_name = self._types[typekey]["table_name"]
+        sql, cols, args = self._sql_cache.get(table_name), [], []
+
+        for p, v, t in rosapi.iter_message_fields(msg):
+            if not sql: cols.append(".".join(p))
+            args.append(self._make_column_value(v, t))
+        args = tuple(args) + tuple(v for _, v in extra_cols)
+
+        if not sql:
+            POSARG = self.get_dialect_option("posarg")
+            if extra_cols: cols.extend(c for c, _ in extra_cols)
+            sql = "INSERT INTO %s (%s) VALUES (%s)" % \
+                  (quote(table_name), ", ".join(map(quote, cols)),
+                   ", ".join([POSARG] * len(args)))
+            self._sql_cache[table_name] = sql
+
+        return sql, args
+
+
+    def make_update_sql(self, table, values, where=()):
+        """Returns ("UPDATE ..", [args])."""
+        POSARG = self.get_dialect_option("posarg")
+        sql, args, sets, filters = "UPDATE %s SET" % quote(table), [], [], []
+        for lst, vals in [(sets, values), (filters, where)]:
+            for k, v in vals.items() if isinstance(vals, dict) else vals:
+                lst.append("%s = %s" % (quote(k), POSARG))
+                args.append(self._make_column_value(v))
+        sql += ", ".join(sets) + (" " if filters else "") + " AND ".join(filters)
+        return sql, args
+
+
+    def get_dialect_option(self, option):
+        """Returns option for current SQL dialect, falling back to default dialect."""
+        return self.DIALECTS[self._dialect].get(option, self.DIALECTS[None].get(option))
+
+
+    def _make_entity_name(self, category, args):
+        """
+        Returns valid unique name for table/view.
+
+        @param   args  format arguments for table/view name template
+        """
+        name = self.get_dialect_option("%s_name_template" % category).format(**args)
+        existing = set(sum(([x["table_name"], x.get("view_name")]
+                            for dct in (self._topics, self._types)
+                            for x in dct.values()), []))
+        return self._make_name("entity", name, existing)
+
+
+    def _make_column_names(self, col_names):
+        """Returns valid unique names for table columns."""
+        result = []
+        for name in col_names:
+            result.append(self._make_name("column", name, result))
+        return list(result)
+
+
+    def _make_column_value(self, value, typename=None):
+        """Returns column value suitable for inserting to database."""
+        v, scalartype = value, typename and rosapi.scalar(typename)
+        if isinstance(v, (list, tuple)) and typename \
+        and scalartype not in rosapi.ROS_BUILTIN_TYPES:
+            if self._nesting: v = []
+            else: v = [rosapi.message_to_dict(x) for x in v]
+        return v
+
+
+    def _make_name(self, category, name, existing=()):
+        """
+        Returns a valid unique name for table/view/column.
+
+        Replaces invalid characters and constrains length.
+        If name already exists, appends counter like " (2)".
+        """
+        MAXLEN_ARG   = "maxlen_column" if "column" == category else "maxlen_entity"
+        MAXLEN       = self.get_dialect_option(MAXLEN_ARG)
+        INVALID_RGX  = self.get_dialect_option("invalid_char_regex")
+        INVALID_REPL = self.get_dialect_option("invalid_char_repl")
+        if not MAXLEN and not INVALID_RGX: return name
+
+        name1 = re.sub(INVALID_RGX, INVALID_REPL, name) if INVALID_RGX else name
+        name2 = ellipsize(name1, MAXLEN)
+        counter = 2
+        while name2 in existing:
+            suffix = " (%s)" % counter
+            name2 = ellipsize(name1, MAXLEN - len(suffix)) + suffix
+            counter += 1
+        return name2
+
+
+    def _make_column_type(self, typename, fallback=None):
+        """
+        Returns column type for SQL.
+
+        @param  fallback  fallback typename to use for lookup if no mapping for typename
+        """
+        TYPES         = self.get_dialect_option("types")
+        ARRAYTEMPLATE = self.get_dialect_option("arraytype_template")
+        DEFAULTTYPE   = self.get_dialect_option("defaulttype")
+
+        coltype    = TYPES.get(typename)
+        scalartype = rosapi.get_ros_time_category(rosapi.scalar(typename))
+        timetype   = rosapi.get_ros_time_category(scalartype)
+        if not coltype and scalartype in TYPES:
+            coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])
+        if not coltype and timetype in TYPES:
+            if typename != scalartype:
+                coltype = ARRAYTEMPLATE.format(type=TYPES[timetype])
+            else:
+                coltype = TYPES[timetype]
+        if not coltype and fallback:
+            coltype = self._make_column_type(fallback)
+        if not coltype:
+            coltype = DEFAULTTYPE or quote(typename)
+        return coltype
+
+
+    ## Supported SQL dialects and options
+    DIALECTS = {
+
+        None: {
+            # CREATE TABLE template, args: table, cols, type, hash, package, class
+            "table_template":       "CREATE TABLE IF NOT EXISTS {table} ({cols});",
+            # CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
+            "view_template":        """
+DROP VIEW IF EXISTS {view};
+
+CREATE VIEW {view} AS
+SELECT {cols}
+FROM {table}
+WHERE _topic = {topic};""",
+            "table_name_template":  "{type}",      # args: type, hash, package, class
+            "view_name_template":   "{topic}",     # args: topic, type, hash, package, class
+            "types":                {},            # Mapping between ROS and SQL common types
+            "defaulttype":          None,          # Fallback SQL type if no mapping for ROS type
+            "arraytype_template":   "{type}[]",    # Array type template, args: type
+            "maxlen_entity":        0,             # Maximum table/view name length, 0 disables
+            "maxlen_column":        0,             # Maximum column name length, 0 disables
+            "invalid_char_regex":   None,          # Regex for matching invalid characters in name
+            "invalid_char_repl":    "__",          # Replacement for invalid characters in name
+
+            "insert_topic": """
+INSERT INTO topics (name, type, md5, table_name, view_name)
+VALUES (%s, %s, %s, %s, %s);""",
+            "insert_type": """
+INSERT INTO types (type, definition, md5, table_name)
+VALUES (%s, %s, %s, %s);""",
+            "posarg":       "%s",
+        },
+
+        "sqlite": {
+            "posarg":       "?",
+            "base_schema": """
+CREATE TABLE IF NOT EXISTS messages (
+  id           INTEGER   PRIMARY KEY,
+  topic_id     INTEGER   NOT NULL,
+  timestamp    INTEGER   NOT NULL,
+  data         BLOB      NOT NULL,
+
+  topic        TEXT      NOT NULL,
+  type         TEXT      NOT NULL,
+  dt           TIMESTAMP NOT NULL,
+  yaml         TEXT      NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS topics (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name                 TEXT    NOT NULL,
+  type                 TEXT    NOT NULL,
+  serialization_format TEXT    DEFAULT "cdr",
+  offered_qos_profiles TEXT    DEFAULT "",
+
+  md5                  TEXT    NOT NULL,
+  table_name           TEXT    NOT NULL,
+  view_name            TEXT
+);
+
+CREATE TABLE IF NOT EXISTS types (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  type          TEXT    NOT NULL,
+  definition    TEXT    NOT NULL,
+  md5           TEXT    NOT NULL,
+  table_name    TEXT    NOT NULL,
+  nested_tables JSON
+);
+
+CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
+
+PRAGMA journal_mode = WAL;
+""",
+            "insert_message": """
+INSERT INTO messages (topic_id, timestamp, data, topic, type, dt, yaml)
+VALUES (:topic_id, :timestamp, :data, :topic, :type, :dt, :yaml)
+""",
+        },
+
+        "postgres": {
+            "types": {
+                "byte":    "SMALLINT", " char":    "SMALLINT", "int8":    "SMALLINT",
+                "int16":   "SMALLINT", "int32":    "INTEGER",  "int64":   "BIGINT",
+                "uint8":   "SMALLINT", "uint16":   "INTEGER",  "uint32":  "BIGINT",
+                "uint64":  "BIGINT",   "float32":  "REAL",     "float64": "DOUBLE PRECISION",
+                "bool":    "BOOLEAN",  "string":   "TEXT",     "wstring": "TEXT",
+                "uint8[]": "BYTEA",    "char[]":   "BYTEA",
+            },
+            "defaulttype":    "JSONB",
+            "maxlen_entity":  63,
+            "maxlen_column":  63,
+
+            "insert_topic": """
+INSERT INTO topics (name, type, md5, table_name, view_name)
+VALUES (%s, %s, %s, %s, %s)
+RETURNING id;""",
+            "insert_type": """
+INSERT INTO types (type, definition, md5, table_name)
+VALUES (%s, %s, %s, %s)
+RETURNING id;""",
+            "base_schema": """
+CREATE TABLE IF NOT EXISTS topics (
+  id                   BIGSERIAL PRIMARY KEY,
+  name                 TEXT NOT NULL,
+  type                 TEXT NOT NULL,
+  md5                  TEXT NOT NULL,
+  table_name           TEXT NOT NULL,
+  view_name            TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS types (
+  id                   BIGSERIAL PRIMARY KEY,
+  type                 TEXT NOT NULL,
+  definition           TEXT NOT NULL,
+  md5                  TEXT NOT NULL,
+  table_name           TEXT NOT NULL,
+  nested_tables        JSON
+);""",
+        },
+
+        "clickhouse": {
+            "table_template":      "CREATE TABLE IF NOT EXISTS {table} ({cols}) ENGINE = ENGINE;",
+            "types": {
+                "byte":    "UInt8",  "char":     "Int8",    "int8":    "Int8",
+                "int16":   "Int16",  "int32":    "Int32",   "int64":   "Int64",
+                "uint8":   "UInt8",  "uint16":   "UInt16",  "uint32":  "UInt32",
+                "uint64":  "UInt64", "float32":  "Float32", "float64": "Float64",
+                "bool":    "UInt8",  "string":   "String",  "wstring": "String",
+                "uint8[]": "String", "char[]":   "String",
+            },
+            "defaulttype":         "String",
+            "arraytype_template":  "Array({type})",
+        },
+    }

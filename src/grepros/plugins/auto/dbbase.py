@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    27.12.2021
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -16,15 +16,16 @@ import atexit
 import collections
 
 from ... import common, rosapi
-from ... common import ConsolePrinter, ellipsize, plural
+from ... common import ConsolePrinter, plural
 from ... outputs import SinkBase
+from . sqlbase import SqlSinkMixin
 
 quote = lambda s, force=True: common.quote(s, force)
 
 
-class DataSinkBase(SinkBase):
+class DataSinkBase(SinkBase, SqlSinkMixin):
     """
-    Writes messages to a database.
+    Base class for writing messages to a database.
 
     Output will have:
     - table "topics", with topic and message type names
@@ -43,48 +44,11 @@ class DataSinkBase(SinkBase):
     the new table will have its MD5 hash appended to end, as "pkg/MsgType (hash)".
     """
 
-    ## Database engine name
+    ## Database engine name, overridden in subclasses
     ENGINE = None
-
-    ## Placeholder for positional arguments in SQL statement
-    POSARG = "%s"
-
-    ## Max table/column name length in DB engine
-    MAX_NAME_LEN = 0
 
     ## Number of emits between commits; 0 is autocommit
     COMMIT_INTERVAL = 1000
-
-    ## SQL statements for populating database base schema
-    BASE_SCHEMA = ""
-
-    ## SQL statement for inserting topics
-    INSERT_TOPIC = ""
-
-    ## SQL statement for inserting types
-    INSERT_TYPE = ""
-
-    ## SQL statement for inserting metas for renames
-    INSERT_META = ""
-
-    ## SQL statement for updating view name in topic
-    UPDATE_TOPIC_VIEW = ""
-
-    ## SQL statement for creating a table for type
-    CREATE_TYPE_TABLE = ""
-
-    ## SQL statement for creating a view for topic
-    CREATE_TOPIC_VIEW = """
-    DROP VIEW IF EXISTS %(name)s;
-
-    CREATE VIEW %(name)s AS
-    SELECT %(cols)s
-    FROM %(type)s
-    WHERE _topic = %(topic)s;
-    """
-
-    ## SQL statement for selecting metainfo on pkg/MsgType table columns
-    SELECT_TYPE_COLUMNS = ""
 
     ## Default topic-related columns for pkg/MsgType tables
     MESSAGE_TYPE_TOPICCOLS = [("_topic",       "TEXT"),
@@ -110,9 +74,11 @@ class DataSinkBase(SinkBase):
         @param   args.VERBOSE        whether to print debug information
         """
         super(DataSinkBase, self).__init__(args)
+        SqlSinkMixin.__init__(self, args)
 
         self._db            = None   # Database connection
         self._cursor        = None   # Database cursor or connection
+        self._dialect       = self.ENGINE.lower()
         self._close_printed = False
 
         # Whether to create tables and rows for nested message types,
@@ -121,15 +87,12 @@ class DataSinkBase(SinkBase):
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
         self._nesting = args.DUMP_OPTIONS.get("nesting")
 
-        self._topics        = {}  # {(topic, typename, typehash): {topics-row}}
-        self._types         = {}  # {(typename, typehash): {types-row}}
-        self._metas         = {}  # {(category, parent): {name: name in db}}
         self._checkeds      = {}  # {topickey/typekey: whether existence checks are done}
         self._sql_cache     = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._sql_queue     = {}  # {SQL: [(args), ]}
         self._nested_counts = {}  # {(typename, typehash): count}
-        self._id_queue  = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
-        self._schema    = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
+        self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
+        self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
 
@@ -140,25 +103,26 @@ class DataSinkBase(SinkBase):
 
         Checks parameters "commit-interval" and "nesting".
         """
-        config_ok = True
+        ok, sqlconfig_ok = True, SqlSinkMixin.validate_dialect_file(self)
         if "commit-interval" in self._args.DUMP_OPTIONS:
-            try: config_ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
-            except Exception: config_ok = False
-            if not config_ok:
+            try: ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
+            except Exception: ok = False
+            if not ok:
                 ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
                                      self.ENGINE, self._args.DUMP_OPTIONS["commit-interval"])
         if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
                                  self.ENGINE, self._args.DUMP_OPTIONS["nesting"])
-            config_ok = False
-        return config_ok
+            ok = False
+        return ok and sqlconfig_ok
 
 
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to database."""
         if not self._db:
             self._init_db()
+        self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)
         super(DataSinkBase, self).emit(topic, index, stamp, msg, match)
@@ -199,7 +163,7 @@ class DataSinkBase(SinkBase):
             self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit-interval"])
         self._db = self._connect()
         self._cursor = self._make_cursor()
-        self._executescript(self.BASE_SCHEMA)
+        self._executescript(self.get_dialect_option("base_schema"))
         self._db.commit()
         self._load_schema()
         TYPECOLS = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
@@ -219,13 +183,6 @@ class DataSinkBase(SinkBase):
             typekey = (row["type"], row["md5"])
             self._types[typekey] = row
 
-        try:
-            self._cursor.execute("SELECT * FROM meta")
-            for row in self._cursor.fetchall():
-                metakey = (row["type"], row["parent"])
-                self._metas.setdefault(metakey, {})[row["name"]] = row["name_in_db"]
-        except Exception: pass
-
 
     def _process_topic(self, topic, msg):
         """
@@ -234,71 +191,53 @@ class DataSinkBase(SinkBase):
         Also creates types-row and pkg/MsgType table for this message if not existing.
         If nesting enabled, creates types recursively.
         """
-        with rosapi.TypeMeta.make(msg, topic) as m:
-            typename, typehash, topickey = (m.typename, m.typehash, m.topickey)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey in self._checkeds:
             return
 
-        is_new = topickey not in self._topics
-        if is_new:
-            table_name = self._make_name("table", typename, typename, typehash)
-            targs = dict(name=topic, type=typename, md5=typehash, table_name=table_name)
+        if topickey not in self._topics:
+            cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
+            exclude_cols = self.MESSAGE_TYPE_BASECOLS
+            tdata = self.make_topic_data(topic, msg, cols, exclude_cols)
+            self._topics[topickey] = tdata
+            self._executescript(tdata["sql"])
+
+            sql, args = self.make_topic_insert_sql(topic, msg)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Adding topic %s.", topic)
-            targs["id"] = self._execute_insert(self.INSERT_TOPIC, targs)
-            self._topics[topickey] = targs
+            self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
-        self._process_type(msg)
-
-        if is_new:
-            BASECOLS = [c for c, _ in self.MESSAGE_TYPE_BASECOLS]
-            view_name = self._make_name("view", topic, typename, typehash)
-            cols = [c for c in self._schema[(typename, typehash)]
-                    if not c.startswith("_") or c in BASECOLS]
-            vargs = dict(name=quote(view_name), cols=", ".join(map(quote, cols)),
-                         type=quote(self._topics[topickey]["table_name"]), topic=repr(topic))
-            sql = self.CREATE_TOPIC_VIEW % vargs
-            self._executescript(sql)
-
-            self._topics[topickey]["view_name"] = view_name
-            self._cursor.execute(self.UPDATE_TOPIC_VIEW, self._topics[topickey])
             if self.COMMIT_INTERVAL: self._db.commit()
         self._checkeds[topickey] = True
 
 
     def _process_type(self, msg, rootmsg=None):
-        """Creates types-row and pkg/MsgType table if not already existing."""
+        """
+        Creates types-row and pkg/MsgType table if not already existing.
+
+        @return   created types-row, or None if already existed
+        """
         rootmsg = rootmsg or msg
         with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
-            typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
+            typename, typekey = (m.typename, m.typekey)
         if typekey in self._checkeds:
             return
 
+        if typekey not in self._schema:
+            cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
+            tdata = self.make_type_data(msg, cols)
+            self._executescript(tdata["sql"])
+            self._schema[typekey] = collections.OrderedDict(tdata["cols"])
+            self._types[typekey] = tdata
+
         if typekey not in self._types:
-            msgdef = rosapi.TypeMeta.make(msg).definition
-            table_name = self._make_name("table", typename, typename, typehash)
-            targs = dict(type=typename, definition=msgdef,
-                         md5=typehash, table_name=table_name)
+            sql, args = self.make_type_insert_sql(msg)
             if self._args.VERBOSE:
                 ConsolePrinter.debug("Adding type %s.", typename)
-            self._cursor.execute(self.INSERT_TYPE, targs)
-            targs["id"] = self._execute_insert(self.INSERT_TYPE, targs)
-            self._types[typekey] = targs
-
-        if typekey not in self._schema:
-            table_name = self._types[typekey]["table_name"]
-            cols = []
-            for path, value, subtype in rosapi.iter_message_fields(msg):
-                coltype = self._make_column_type(subtype, value)
-                cols += [(".".join(path), coltype)]
-            cols = list(zip(self._make_column_names([c for c, _ in cols], table_name),
-                            [t for _, t in cols]))
-            cols += self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
-            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
-            coldefs  = ["%s %s" % (quote(n), t) for n, t in cols]
-            sql = self.CREATE_TYPE_TABLE % dict(name=quote(table_name), cols=", ".join(coldefs))
-            self._executescript(sql)
-            self._schema[typekey] = collections.OrderedDict(cols)
+            self._types[typekey]["id"] = self._execute_insert(sql, args)
+            self._types[typekey].update(tdata)
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -310,14 +249,15 @@ class DataSinkBase(SinkBase):
             subtypehash = not submsgs and self.source.get_message_type_hash(scalartype)
             if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
             [submsg] = submsgs[:1] or [self.source.get_message_class(scalartype, subtypehash)()]
-            subtable_name = self._make_name("table", scalartype, scalartype, subtypehash)
-            nested_tables[".".join(path)] = subtable_name
-            self._process_type(submsg, rootmsg)
+            subdata = self._process_type(submsg, rootmsg)
+            nested_tables[".".join(path)] = subdata["table"]
         if nested_tables:
-            sql = "UPDATE types SET nested_tables = %s WHERE id = %s" % (self.POSARG, self.POSARG)
-            self._cursor.execute(sql, (nested_tables, self._types[typekey]["id"]))
             self._types[typekey]["nested_tables"] = nested_tables
+            sets, where = {"nested_tables": nested_tables}, {"id": self._types[typekey]["id"]}
+            sql, args = self.make_update_sql("types", sets, where)
+            self._cursor.execute(sql, args)
         self._checkeds[typekey] = True
+        return self._types[typekey]
 
 
     def _process_message(self, topic, msg, stamp):
@@ -349,24 +289,15 @@ class DataSinkBase(SinkBase):
         with rosapi.TypeMeta.make(rootmsg) as m:
             topic_id = self._topics[m.topickey]["id"]
         table_name = self._types[typekey]["table_name"]
-        sql, cols, args = self._sql_cache.get(table_name), [], []
 
-        for p, v, t in rosapi.iter_message_fields(msg):
-            if not sql: cols.append(".".join(p))
-            args.append(self._make_column_value(v, t))
-        myargs = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_nsec(stamp)]
         myid = self._get_next_id(table_name) if self._nesting else None
-        if self._nesting: myargs += [myid, parent_type, parent_id]
-        args = tuple(args + myargs)
-
-        if not sql:
-            cols += [c for c, _ in self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS[:-1]]
-            if self._nesting:
-                cols += [c for c, _ in self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS]
-            sql = "INSERT INTO %s (%s) VALUES (%s)" % \
-                  (quote(table_name), ", ".join(map(quote, cols)),
-                   ", ".join([self.POSARG] * len(args)))
-            self._sql_cache[table_name] = sql
+        coldefs = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS[:-1]
+        colvals = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_nsec(stamp)]
+        if self._nesting:
+            coldefs += self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS
+            colvals += [myid, parent_type, parent_id]
+        extra_cols = list(zip([c for c, _ in coldefs], colvals))
+        sql, args = self.make_message_insert_sql(topic, msg, extra_cols)
         self._ensure_execute(sql, args)
         if parent_type: self._nested_counts[typekey] = self._nested_counts.get(typekey, 0) + 1
 
@@ -383,10 +314,8 @@ class DataSinkBase(SinkBase):
                 if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:
-            args = [self._make_column_value(x) for x in subids.values()] + [myid]
-            sets = ["%s = %s" % (quote(".".join(p)), self.POSARG) for p in subids]
-            sql  = "UPDATE %s SET %s WHERE _id = %s" % \
-                   (quote(table_name), ", ".join(sets), self.POSARG)
+            sets, where = {(".".join(p), subids[p]) for p in subids}, {"_id": myid}
+            sql, args = self.make_update_sql(table_name, sets, where)
             self._ensure_execute(sql, args)
         return myid
 
@@ -447,70 +376,3 @@ class DataSinkBase(SinkBase):
     def _make_db_label(self):
         """Returns formatted label for database."""
         return self._args.DUMP_TARGET
-
-
-    def _make_name(self, category, name, typename, typehash):
-        """Returns valid unique name for table/view, inserting meta-row if necessary."""
-        if "view" == category:
-            existing = next((x for x in self._topics.values()
-                             if x["type"] == typename and x["md5"] == typehash
-                             and x.get("view_name")), None)
-            if existing: return existing["view_name"]
-        if "table" == category:
-            existing = next((x for x in list(self._topics.values()) + list(self._types.values())
-                             if x["type"] == typename and x["md5"] == typehash), None)
-            if existing: return existing["table_name"]
-
-        result = ellipsize(name, self.MAX_NAME_LEN)
-        existing = set(sum(([x["table_name"], x.get("view_name")]
-                            for dct in (self._topics, self._types) for x in dct.values()), []))
-        if result in existing:
-            suffix = " (%s)" % typehash
-            result = ellipsize(name, self.MAX_NAME_LEN - len(suffix)) + suffix
-        counter = 2
-        while result in existing:
-            suffix = " (%s) (%s)" % (typehash, counter)
-            result = ellipsize(name, self.MAX_NAME_LEN - len(suffix)) + suffix
-            counter += 1
-        if result != name and self.INSERT_META:
-            meta = {"type": category, "parent": None, "name": name, "name_in_db": result}
-            self._cursor.execute(self.INSERT_META, meta)
-            self._metas.setdefault((category, None), {})[name] = result
-        return result
-
-
-    def _make_column_names(self, col_names, table_name):
-        """Returns valid unique names for table columns, inserting meta-rows if necessary."""
-        if not self.INSERT_META: return list(col_names)
-
-        result = collections.OrderedDict()  # {dbname: original name}
-        metas, METABASE = [], {"type": "column", "parent": table_name}
-        for name in col_names:
-            name_in_db = ellipsize(name, self.MAX_NAME_LEN)
-            counter = 2
-            while name_in_db in result:
-                suffix = " (%s)" % counter
-                name_in_db = ellipsize(name, self.MAX_NAME_LEN - len(suffix)) + suffix
-                counter += 1
-            if name_in_db != name:
-                metas.append(dict(METABASE, **{"name": name, "name_in_db": name_in_db}))
-            result[name_in_db] = name
-        for meta in metas:
-            self._cursor.execute(self.INSERT_META, meta)
-            self._metas.setdefault(("column", table_name), {})[meta["name"]] = meta["name_in_db"]
-        return list(result)
-
-
-    def _make_column_type(self, typename, value):
-        """Returns column database type."""
-        suffix = "[]" if isinstance(value, (list, tuple)) else ""
-        return quote(rosapi.scalar(typename) + suffix, force=False)
-
-
-    def _make_column_value(self, value, typename=None):
-        """Returns column value suitable for inserting to database."""
-        v, scalartype = value, typename and rosapi.scalar(typename)
-        if isinstance(v, (list, tuple)) and typename and scalartype not in rosapi.ROS_BUILTIN_TYPES:
-            if self._nesting: v = []
-            else: v = [rosapi.message_to_dict(x) for x in v]
-        return v
