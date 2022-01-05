@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * refactor database and SQL sinks onto a common base
 * drop default value from --publish-prefix option
+* fix error in parsing subtypes from message definitions
 
 0.4.0 (2021-12-26)
 -------------------
