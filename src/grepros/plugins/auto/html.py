@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    27.12.2021
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -150,6 +150,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             if entry is None:
                 self._queue.task_done()
                 break  # while
+            (topic, index, stamp, msg, match) = entry
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             if self._args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)

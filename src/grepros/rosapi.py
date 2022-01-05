@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 import collections
@@ -124,8 +124,8 @@ class TypeMeta(object):
     def typeclass(self):
         """Returns message class object."""
         if not self._cls:
-            cls = self.SOURCE and self.SOURCE.get_message_class(self._msg)
-            self._cls = cls or realapi.get_message_class(self._msg)
+            cls = self.SOURCE and self.SOURCE.get_message_class(self.typename, self.typehash)
+            self._cls = cls or realapi.get_message_class(self.typename)
         return self._cls
 
     @property

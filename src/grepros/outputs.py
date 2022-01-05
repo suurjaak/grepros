@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -61,7 +61,7 @@ class SinkBase(object):
         @param   msg    ROS message
         @param   match  ROS message with values tagged with match markers if matched, else None
         """
-        topickey = rosapi.TypeMeta.make(msg, topic)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):

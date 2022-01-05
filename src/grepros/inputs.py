@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.12.2021
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -494,7 +494,7 @@ class BagSource(SourceBase, ConditionMixin):
 
     def get_message_class(self, typename, typehash=None):
         """Returns ROS message type class."""
-        return self._bag.get_message_class(typename, typename) or \
+        return self._bag.get_message_class(typename, typehash) or \
                rosapi.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):

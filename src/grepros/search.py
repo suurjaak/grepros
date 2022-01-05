@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    27.12.2021
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -81,7 +81,7 @@ class Searcher(object):
                 self._clear_data()
 
             msgid = counter = counter + 1
-            topickey = rosapi.TypeMeta.make(msg, topic)
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
@@ -111,7 +111,7 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if self._args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
             return False
