@@ -17,9 +17,9 @@ import json
 import os
 import sqlite3
 
-from ... common import ConsolePrinter, format_bytes, makedirs, quote
+from ... common import ConsolePrinter, format_bytes, makedirs
 from ... import rosapi
-from . dbbase import DataSinkBase
+from . dbbase import DataSinkBase, quote
 
 
 class SqliteSink(DataSinkBase):

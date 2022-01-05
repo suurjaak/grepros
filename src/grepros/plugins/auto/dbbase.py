@@ -8,19 +8,17 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    04.02.2022
+@modified    05.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
 import atexit
 import collections
 
-from ... import common, rosapi
+from ... import rosapi
 from ... common import ConsolePrinter, plural
 from ... outputs import SinkBase
-from . sqlbase import SqlSinkMixin
-
-quote = lambda s, force=True: common.quote(s, force)
+from . sqlbase import SqlSinkMixin, quote
 
 
 class DataSinkBase(SinkBase, SqlSinkMixin):

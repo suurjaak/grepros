@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    04.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -23,11 +23,9 @@ try:
 except ImportError:
     psycopg2 = None
 
-from ... import common, rosapi
+from ... import rosapi
 from ... common import ConsolePrinter
-from . dbbase import DataSinkBase
-
-quote = lambda s: common.quote(s, force=True)
+from . dbbase import DataSinkBase, quote
 
 
 class PostgresSink(DataSinkBase):
