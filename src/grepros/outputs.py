@@ -89,9 +89,9 @@ class SinkBase(object):
         return False
 
     @classmethod
-    def autodetect(cls, dump_target):
-        """Returns true if dump_target is recognizable as output for this sink class."""
-        ext = os.path.splitext(dump_target or "")[-1].lower()
+    def autodetect(cls, target):
+        """Returns true if target is recognizable as output for this sink class."""
+        ext = os.path.splitext(target or "")[-1].lower()
         return ext in cls.FILE_EXTENSIONS
 
 
@@ -336,10 +336,10 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
-        @param   args.META          whether to print metainfo
-        @param   args.DUMP_TARGET   name of ROS bagfile to create or append to
-        @param   args.VERBOSE       whether to print debug information
+        @param   args           arguments object like argparse.Namespace
+        @param   args.META      whether to print metainfo
+        @param   args.WRITE     name of ROS bagfile to create or append to
+        @param   args.VERBOSE   whether to print debug information
         """
         super(BagSink, self).__init__(args)
         self._bag = None
@@ -351,13 +351,11 @@ class BagSink(SinkBase):
         """Writes message to output bagfile."""
         if not self._bag:
             if self._args.VERBOSE:
-                sz = os.path.isfile(self._args.DUMP_TARGET) and \
-                     os.path.getsize(self._args.DUMP_TARGET)
+                sz = os.path.isfile(self._args.WRITE) and os.path.getsize(self._args.WRITE)
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
-                                     self._args.DUMP_TARGET,
-                                     (" (%s)" % format_bytes(sz)) if sz else "")
-            makedirs(os.path.dirname(self._args.DUMP_TARGET))
-            self._bag = rosapi.create_bag_writer(self._args.DUMP_TARGET)
+                                     self._args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
+            makedirs(os.path.dirname(self._args.WRITE))
+            self._bag = rosapi.create_bag_writer(self._args.WRITE)
 
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self._args.VERBOSE:
@@ -377,14 +375,14 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self._args.DUMP_TARGET,
-                                 format_bytes(os.path.getsize(self._args.DUMP_TARGET)))
+                                 plural("topic", self._counts), self._args.WRITE,
+                                 format_bytes(os.path.getsize(self._args.WRITE)))
         super(BagSink, self).close()
 
     @classmethod
-    def autodetect(cls, dump_target):
-        """Returns true if dump_target is recognizable as a ROS bag."""
-        ext = os.path.splitext(dump_target or "")[-1].lower()
+    def autodetect(cls, target):
+        """Returns true if target is recognizable as a ROS bag."""
+        ext = os.path.splitext(target or "")[-1].lower()
         return ext in rosapi.BAG_EXTENSIONS
 
 
@@ -469,10 +467,10 @@ class MultiSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
-        @param   args.CONSOLE       print matches to console
-        @param   args.DUMP_TARGET   [[target, format=FORMAT, key=value, ], ]
-        @param   args.PUBLISH       publish matches to live topics
+        @param   args           arguments object like argparse.Namespace
+        @param   args.CONSOLE   print matches to console
+        @param   args.WRITE     [[target, format=FORMAT, key=value, ], ]
+        @param   args.PUBLISH   publish matches to live topics
         """
         super(MultiSink, self).__init__(args)
         self._valid = True
@@ -481,7 +479,7 @@ class MultiSink(SinkBase):
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
                       if getattr(args, flag, None)]
 
-        for dumpopts in args.DUMP_TARGET:
+        for dumpopts in args.WRITE:
             target, kwargs = dumpopts[0], dict(x.split("=", 1) for x in dumpopts[1:])
             cls = self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:
@@ -493,7 +491,7 @@ class MultiSink(SinkBase):
                 self._valid = False
                 continue  # for dumpopts
             clsargs = copy.deepcopy(args)
-            clsargs.DUMP_TARGET, clsargs.DUMP_OPTIONS = target, kwargs
+            clsargs.WRITE, clsargs.WRITE_OPTIONS = target, kwargs
             self.sinks += [cls(clsargs)]
 
     def emit_meta(self):

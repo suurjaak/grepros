@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    05.02.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -63,13 +63,13 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.DUMP_TARGET    database connection string
-        @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.WRITE           database connection string
+        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
-                                                 of nested types, or "all" for any nesting)}
-        @param   args.META           whether to print metainfo
-        @param   args.VERBOSE        whether to print debug information
+                                                  of nested types, or "all" for any nesting)}
+        @param   args.META            whether to print metainfo
+        @param   args.VERBOSE         whether to print debug information
         """
         super(DataSinkBase, self).__init__(args)
         SqlSinkMixin.__init__(self, args)
@@ -83,7 +83,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
         # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
-        self._nesting = args.DUMP_OPTIONS.get("nesting")
+        self._nesting = args.WRITE_OPTIONS.get("nesting")
 
         self._checkeds      = {}  # {topickey/typekey: whether existence checks are done}
         self._sql_cache     = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
@@ -97,21 +97,21 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
     def validate(self):
         """
-        Returns whether args.DUMP_OPTIONS has valid values, if any.
+        Returns whether args.WRITE_OPTIONS has valid values, if any.
 
         Checks parameters "commit-interval" and "nesting".
         """
         ok, sqlconfig_ok = True, SqlSinkMixin.validate_dialect_file(self)
-        if "commit-interval" in self._args.DUMP_OPTIONS:
-            try: ok = int(self._args.DUMP_OPTIONS["commit-interval"]) >= 0
+        if "commit-interval" in self._args.WRITE_OPTIONS:
+            try: ok = int(self._args.WRITE_OPTIONS["commit-interval"]) >= 0
             except Exception: ok = False
             if not ok:
                 ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
-                                     self.ENGINE, self._args.DUMP_OPTIONS["commit-interval"])
-        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "", "array", "all"):
+                                     self.ENGINE, self._args.WRITE_OPTIONS["commit-interval"])
+        if self._args.WRITE_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
-                                 self.ENGINE, self._args.DUMP_OPTIONS["nesting"])
+                                 self.ENGINE, self._args.WRITE_OPTIONS["nesting"])
             ok = False
         return ok and sqlconfig_ok
 
@@ -157,8 +157,8 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
 
-        if "commit-interval" in self._args.DUMP_OPTIONS:
-            self.COMMIT_INTERVAL = int(self._args.DUMP_OPTIONS["commit-interval"])
+        if "commit-interval" in self._args.WRITE_OPTIONS:
+            self.COMMIT_INTERVAL = int(self._args.WRITE_OPTIONS["commit-interval"])
         self._db = self._connect()
         self._cursor = self._make_cursor()
         self._executescript(self.get_dialect_option("base_schema"))
@@ -373,4 +373,4 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
     def _make_db_label(self):
         """Returns formatted label for database."""
-        return self._args.DUMP_TARGET
+        return self._args.WRITE

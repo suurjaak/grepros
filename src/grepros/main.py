@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -110,7 +110,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="publish matched messages to live ROS topics"),
 
         dict(args=["--write"],
-             dest="DUMP_TARGET", nargs="+", default=[], action="append",
+             dest="WRITE", nargs="+", default=[], action="append",
              metavar="TARGET [format=bag] [KEY=VALUE ...]",
              help="write matched messages to specified output,\n"
                   "format is autodetected from TARGET if not specified.\n"
@@ -364,11 +364,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
 
 class HelpFormatter(argparse.RawTextHelpFormatter):
-    """RawTextHelpFormatter returning custom metavar for DUMP_TARGET."""
+    """RawTextHelpFormatter returning custom metavar for WRITE."""
 
     def _format_action_invocation(self, action):
         """Returns formatted invocation."""
-        if "DUMP_TARGET" == action.dest:
+        if "WRITE" == action.dest:
             return " ".join(action.option_strings + [action.metavar])
         return super(HelpFormatter, self)._format_action_invocation(action)
 
@@ -407,7 +407,7 @@ def process_args(args):
                                              or args.PATHS or any("*" in x for x in args.FILES))
 
     for k, v in vars(args).items():  # Flatten lists  of lists and drop duplicates
-        if k != "DUMP_TARGET" and isinstance(v, list):
+        if k != "WRITE" and isinstance(v, list):
             here = set()
             setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
                               if not (x in here or here.add(x))])
@@ -431,7 +431,7 @@ def validate_args(args):
     errors = collections.defaultdict(list)  # {category: [error, ]}
 
     # Validate --write .. key=value
-    for opts in args.DUMP_TARGET:  # List of lists, one for each --write
+    for opts in args.WRITE:  # List of lists, one for each --write
         erropts = []
         for opt in opts[1:]:
             try: dict([opt.split("=", 1)])

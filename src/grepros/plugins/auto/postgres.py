@@ -79,13 +79,13 @@ class PostgresSink(DataSinkBase):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.DUMP_TARGET    Postgres connection string postgresql://user@host/db
-        @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
-                                      "nesting": "array" to recursively insert arrays
-                                                 of nested types, or "all" for any nesting)}
-        @param   args.META           whether to print metainfo
-        @param   args.VERBOSE        whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.WRITE           Postgres connection string postgresql://user@host/db
+        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+                                       "nesting": "array" to recursively insert arrays
+                                                  of nested types, or "all" for any nesting)}
+        @param   args.META            whether to print metainfo
+        @param   args.VERBOSE         whether to print debug information
         """
         super(PostgresSink, self).__init__(args)
         self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
@@ -94,7 +94,7 @@ class PostgresSink(DataSinkBase):
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and "commit-interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any.
+        and "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any.
         """
         driver_ok, config_ok = bool(psycopg2), super(PostgresSink, self).validate()
         if not driver_ok:
@@ -126,7 +126,7 @@ class PostgresSink(DataSinkBase):
     def _connect(self):
         """Returns new database connection."""
         factory = psycopg2.extras.RealDictCursor
-        return psycopg2.connect(self._args.DUMP_TARGET, cursor_factory=factory)
+        return psycopg2.connect(self._args.WRITE, cursor_factory=factory)
 
 
     def _execute_insert(self, sql, args):
@@ -187,15 +187,15 @@ class PostgresSink(DataSinkBase):
 
     def _make_db_label(self):
         """Returns formatted label for database."""
-        target = self._args.DUMP_TARGET
+        target = self._args.WRITE
         if not target.startswith("postgresql://"): target = repr(target)
         return target
 
 
     @classmethod
-    def autodetect(cls, dump_target):
-        """Returns true if dump_target is recognizable as a Postgres connection string."""
-        return (dump_target or "").startswith("postgresql://")
+    def autodetect(cls, target):
+        """Returns true if target is recognizable as a Postgres connection string."""
+        return (target or "").startswith("postgresql://")
 
 
 

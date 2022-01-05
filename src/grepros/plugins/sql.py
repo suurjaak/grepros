@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    04.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -49,9 +49,9 @@ class SqlSink(SinkBase, SqlSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.DUMP_OPTIONS   {"dialect": SQL dialect if not default,
-                                      "nesting": true|false to created nested type tables}
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
+                                       "nesting": true|false to created nested type tables}
         """
         super(SqlSink, self).__init__(args)
         SqlSinkMixin.__init__(self, args)
@@ -66,7 +66,7 @@ class SqlSink(SinkBase, SqlSinkMixin):
         # Whether to create tables for nested message types,
         # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
-        self._nesting = args.DUMP_OPTIONS.get("nesting")
+        self._nesting = args.WRITE_OPTIONS.get("nesting")
 
         atexit.register(self.close)
 
@@ -76,10 +76,10 @@ class SqlSink(SinkBase, SqlSinkMixin):
         Returns whether "dialect" and "nesting" parameters contain supported values.
         """
         ok, sqlconfig_ok = True, SqlSinkMixin.validate(self)
-        if self._args.DUMP_OPTIONS.get("nesting") not in (None, "array", "all"):
+        if self._args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
                                  "Choose one of {array,all}.",
-                                 self._args.DUMP_OPTIONS["nesting"])
+                                 self._args.WRITE_OPTIONS["nesting"])
             ok = False
         return sqlconfig_ok and ok
 
@@ -127,7 +127,7 @@ class SqlSink(SinkBase, SqlSinkMixin):
         """Opens output file if not already open, writes header."""
         if self._file: return
 
-        self._filename = unique_path(self._args.DUMP_TARGET)
+        self._filename = unique_path(self._args.WRITE)
         makedirs(os.path.dirname(self._filename))
         self._file = open(self._filename, "wb")
         self._write_header()

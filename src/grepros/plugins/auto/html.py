@@ -41,16 +41,16 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.META            whether to print metainfo
-        @param   args.DUMP_TARGET     name of HTML file to write,
-                                      will add counter like .2 to filename if exists
-        @param   args.DUMP_OPTIONS    {"template": path to custom HTML template, if any}
-        @param   args.VERBOSE         whether to print debug information
-        @param   args.MATCH_WRAPPER   string to wrap around matched values,
-                                      both sides if one value, start and end if more than one,
-                                      or no wrapping if zero values
-        @param   args.ORDERBY         "topic" or "type" if any to group results by
+        @param   args                  arguments object like argparse.Namespace
+        @param   args.META             whether to print metainfo
+        @param   args.WRITE            name of HTML file to write,
+                                       will add counter like .2 to filename if exists
+        @param   args.WRITE_OPTIONS    {"template": path to custom HTML template, if any}
+        @param   args.VERBOSE          whether to print debug information
+        @param   args.MATCH_WRAPPER    string to wrap around matched values,
+                                       both sides if one value, start and end if more than one,
+                                       or no wrapping if zero values
+        @param   args.ORDERBY          "topic" or "type" if any to group results by
         """
         args = copy.deepcopy(args)
         args.WRAP_WIDTH = self.WRAP_WIDTH
@@ -59,9 +59,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
         self._queue    = queue.Queue()
-        self._writer   = None              # threading.Thread running _stream()
-        self._filename = args.DUMP_TARGET  # Filename base, will be made unique
-        self._template_path = args.DUMP_OPTIONS.get("template") or self.TEMPLATE_PATH
+        self._writer   = None        # threading.Thread running _stream()
+        self._filename = args.WRITE  # Filename base, will be made unique
+        self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
         self._close_printed = False
 
         WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
@@ -88,7 +88,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         Returns whether custom template exists and ROS environment is set, prints error if not.
         """
         result = True
-        if self._args.DUMP_OPTIONS.get("template") and not os.path.isfile(self._template_path):
+        if self._args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
         return rosapi.validate() and result

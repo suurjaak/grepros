@@ -389,7 +389,7 @@ class BagSource(SourceBase, ConditionMixin):
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
         @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
-        @param   args.DUMP_TARGET   outputs, to skip in input files
+        @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
         """
         super(BagSource, self).__init__(args)
@@ -595,9 +595,9 @@ class BagSource(SourceBase, ConditionMixin):
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
-        if self._args.DUMP_TARGET \
+        if self._args.WRITE \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)
-                for x in self._args.DUMP_TARGET):
+                for x in self._args.WRITE):
             return False
         try:
             bag = rosapi.create_bag_reader(filename, self._args.REINDEX, self._args.PROGRESS)

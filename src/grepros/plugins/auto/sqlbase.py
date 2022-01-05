@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    04.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -36,14 +36,14 @@ class SqlSinkMixin(object):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.DUMP_OPTIONS   {"dialect": SQL dialect if not default,
-                                      "nesting": true|false to created nested type tables}
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
+                                       "nesting": true|false to created nested type tables}
         """
         self._args    = copy.deepcopy(args)
         self._topics  = {}  # {(topic, typename, typehash): {topic, table_name, view_name, sql, ..}}
         self._types   = {}  # {(typename, typehash): {type, table_name, sql, ..}}
-        self._dialect = args.DUMP_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
+        self._dialect = args.WRITE_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
 
 
     def validate(self):
@@ -56,10 +56,10 @@ class SqlSinkMixin(object):
 
 
     def validate_dialect_file(self):
-        """Returns whether "dialect-file" is valid in args.DUMP_OPTIONS."""
+        """Returns whether "dialect-file" is valid in args.WRITE_OPTIONS."""
         ok = True
-        if self._args.DUMP_OPTIONS.get("dialect-file"):
-            filename = self._args.DUMP_OPTIONS["dialect-file"]
+        if self._args.WRITE_OPTIONS.get("dialect-file"):
+            filename = self._args.WRITE_OPTIONS["dialect-file"]
             try:
                 with open(filename) as f:
                     dialects = yaml.safe_load(f.read())
@@ -73,14 +73,14 @@ class SqlSinkMixin(object):
 
 
     def validate_dialect(self):
-        """Returns whether "dialect" is valid in args.DUMP_OPTIONS."""
+        """Returns whether "dialect" is valid in args.WRITE_OPTIONS."""
         ok = True
-        if "dialect" in self._args.DUMP_OPTIONS \
-        and self._args.DUMP_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
+        if "dialect" in self._args.WRITE_OPTIONS \
+        and self._args.WRITE_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
             ok = False
             ConsolePrinter.error("Unknown dialect for SQL: %r. "
                                  "Choose one of {%s}.",
-                                 self._args.DUMP_OPTIONS["dialect"],
+                                 self._args.WRITE_OPTIONS["dialect"],
                                  "|".join(sorted(filter(bool, self.DIALECTS))))
         return ok
 

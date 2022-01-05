@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    04.01.2022
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -54,33 +54,32 @@ class SqliteSink(DataSinkBase):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.META           whether to print metainfo
-        @param   args.DUMP_TARGET    name of SQLite file to write,
-                                     will be appended to if exists
-        @param   args.DUMP_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
-                                      "message-yaml": populate messages.yaml (default true),
-                                      "nesting": "array" to recursively insert arrays
-                                                 of nested types, or "all" for any nesting)}
-        @param   args.VERBOSE        whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.META            whether to print metainfo
+        @param   args.WRITE           name of SQLite file to write, will be appended to if exists
+        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+                                       "message-yaml": populate messages.yaml (default true),
+                                       "nesting": "array" to recursively insert arrays
+                                                  of nested types, or "all" for any nesting)}
+        @param   args.VERBOSE         whether to print debug information
         """
         super(SqliteSink, self).__init__(args)
 
-        self._filename    = args.DUMP_TARGET
-        self._do_yaml     = (args.DUMP_OPTIONS.get("message-yaml") != "false")
+        self._filename    = args.WRITE
+        self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
         self._id_counters = {}  # {table next: max ID}
 
 
     def validate(self):
         """
-        Returns "commit-interval" and "nesting" in args.DUMP_OPTIONS have valid value, if any;
-        parses "message-yaml" from args.DUMP_OPTIONS.
+        Returns "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any;
+        parses "message-yaml" from args.WRITE_OPTIONS.
         """
         config_ok = super(SqliteSink, self).validate()
-        if self._args.DUMP_OPTIONS.get("message-yaml") not in (None, "true", "false"):
+        if self._args.WRITE_OPTIONS.get("message-yaml") not in (None, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
-                                 self.ENGINE, self._args.DUMP_OPTIONS["message-yaml"])
+                                 self.ENGINE, self._args.WRITE_OPTIONS["message-yaml"])
             config_ok = False
         return config_ok
 

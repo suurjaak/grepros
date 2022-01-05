@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    27.12.2021
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -63,15 +63,15 @@ class ParquetSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.META           whether to print metainfo
-        @param   args.DUMP_TARGET    base name of Parquet files to write
-        @param   args.DUMP_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
-        @param   args.VERBOSE        whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.META            whether to print metainfo
+        @param   args.WRITE           base name of Parquet files to write
+        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
+        @param   args.VERBOSE         whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
 
-        self._filebase  = args.DUMP_TARGET
+        self._filebase  = args.WRITE
         self._filenames = {}  # {(typename, typehash): Parquet file path}
         self._caches    = {}  # {(typename, typehash): [{data}, ]}
         self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
@@ -223,8 +223,8 @@ class ParquetSink(SinkBase):
 
 
     def _configure(self):
-        """Parses args.DUMP_OPTIONS."""
-        for k, v in self._args.DUMP_OPTIONS.items():
+        """Parses args.WRITE_OPTIONS."""
+        for k, v in self._args.WRITE_OPTIONS.items():
             if k.startswith("type-"):
                 # Split "time('ns')" into "time" and "('ns')"
                 base, argstr = re.split(r"([^(]+)(\([^)]*\))?", v, 1)[1:3]
