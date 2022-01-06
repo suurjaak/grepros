@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.1 (2022-01-05)
+0.4.1 (2022-01-06)
 -------------------
 * refactor database and SQL sinks onto a common base
 * drop meta-table from Postgres output

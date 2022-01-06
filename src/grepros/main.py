@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -116,6 +116,9 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "format is autodetected from TARGET if not specified.\n"
                   "Bag or database will be appended to if it already exists.\n"
                   "Keyword arguments are given to output writer."),
+
+        dict(args=["--write-options"],  # Will be populated from --write by MultiSink
+             dest="WRITE_OPTIONS", default=argparse.SUPPRESS, help=argparse.SUPPRESS),
 
         dict(args=["--plugin"],
              dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[], action="append",
