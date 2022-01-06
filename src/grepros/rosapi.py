@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 import collections
@@ -501,7 +501,7 @@ def message_to_dict(msg, replace=None):
     for name, typename in realapi.get_message_fields(msg).items():
         v = realapi.get_message_value(msg, name, typename)
         if realapi.is_ros_time(v):
-            v = dict(zip(["secs", "nsecs"], divmod(realapi.to_nsec(v), 10**9)))
+            v = dict(zip(["secs", "nsecs"], realapi.to_sec_nsec(v)))
         elif realapi.is_ros_message(v):
             v = message_to_dict(v)
         elif isinstance(v, (list, tuple)):
@@ -576,8 +576,8 @@ def to_datetime(val):
 
 def to_decimal(val):
     """Returns value as decimal.Decimal if value is ROS time/duration, else value."""
-    if is_ros_time(val):
-        return decimal.Decimal("%d.%09d" % (divmod(to_nsec(val), 10**9)))
+    if realapi.is_ros_time(val):
+        return decimal.Decimal("%d.%09d" % realapi.to_sec_nsec(val))
     return val
 
 
@@ -589,3 +589,8 @@ def to_nsec(val):
 def to_sec(val):
     """Returns value in seconds if value is ROS time/duration, else value."""
     return realapi.to_sec(val)
+
+
+def to_sec_nsec(val):
+    """Returns value as (seconds, nanoseconds) if value is ROS time/duration, else value."""
+    return realapi.to_sec_nsec(val)
