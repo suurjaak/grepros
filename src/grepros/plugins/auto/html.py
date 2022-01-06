@@ -153,7 +153,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
             (topic, index, stamp, msg, match) = entry
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             if self.args.VERBOSE and topickey not in self._counts:
-                ConsolePrinter.debug("Adding topic %s.", topic)
+                ConsolePrinter.debug("Adding topic %s in HTML output.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)
             self._queue.task_done()

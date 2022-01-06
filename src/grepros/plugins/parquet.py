@@ -128,7 +128,7 @@ class ParquetSink(SinkBase):
         with rosapi.TypeMeta.make(msg, topic) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
         if (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
-            ConsolePrinter.debug("Adding topic %s.", topic)
+            ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
         if typekey in self._writers: return
 
         basedir, basename = os.path.split(self._filebase)

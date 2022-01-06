@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -203,7 +203,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
             sql, args = self.make_topic_insert_sql(topic, msg)
             if self.args.VERBOSE:
-                ConsolePrinter.debug("Adding topic %s.", topic)
+                ConsolePrinter.debug("Adding topic %s in %s output.", topic, self.ENGINE)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
             if self.COMMIT_INTERVAL: self._db.commit()

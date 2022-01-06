@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -359,7 +359,7 @@ class BagSink(SinkBase):
 
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
-            ConsolePrinter.debug("Adding topic %s.", topic)
+            ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
         self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
         super(BagSink, self).emit(topic, index, stamp, msg, match)
