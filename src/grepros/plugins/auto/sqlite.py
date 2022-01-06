@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -161,7 +161,8 @@ def init(*_, **__):
         ("commit-interval=NUM",      "transaction size for SQLite output\n"
                                      "(default 1000, 0 is autocommit)"),
         ("dialect-file=path/to/dialects.yaml",
-                                     "load additional SQL dialect options for SQLite output\n"
+                                     "load additional SQL dialect options\n"
+                                     "for SQLite output\n"
                                      "from a YAML or JSON file"),
         ("message-yaml=true|false",  "whether to populate table field messages.yaml\n"
                                      "in SQLite output (default true)"),

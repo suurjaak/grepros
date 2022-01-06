@@ -217,7 +217,8 @@ def init(*_, **__):
                                      "use specified SQL dialect in SQL output\n"
                                      '(default "%s")' % SqlSink.DEFAULT_DIALECT),
         ("dialect-file=path/to/dialects.yaml",
-                                     "load additional SQL dialects for SQL output\n"
+                                     "load additional SQL dialects\n"
+                                     "for SQL output\n"
                                      "from a YAML or JSON file"),
         ("nesting=array|all",        "create tables for nested message types\n"
                                      "in SQL output,\n"
