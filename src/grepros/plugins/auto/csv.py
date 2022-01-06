@@ -92,7 +92,7 @@ class CsvSink(SinkBase):
             f = open(name, **flags)
             w = csv.writer(f)
             if topickey not in self._files:
-                if self._args.VERBOSE:
+                if self.args.VERBOSE:
                     ConsolePrinter.debug("Creating %s.", name)
                 header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
                 metaheader = ["__time", "__datetime", "__type"]

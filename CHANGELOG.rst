@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.1 (2022-01-04)
+0.4.1 (2022-01-05)
 -------------------
 * refactor database and SQL sinks onto a common base
+* drop meta-table from Postgres output
 * drop default value from --publish-prefix option
 * fix error in parsing subtypes from message definitions
 

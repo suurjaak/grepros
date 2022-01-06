@@ -127,7 +127,7 @@ class ParquetSink(SinkBase):
         """Prepares Parquet schema and writer if not existing."""
         with rosapi.TypeMeta.make(msg, topic) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
-        if (topic, typename, typehash) not in self._counts and self._args.VERBOSE:
+        if (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
         if typekey in self._writers: return
 
@@ -143,7 +143,7 @@ class ParquetSink(SinkBase):
         cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
 
-        if self._args.VERBOSE:
+        if self.args.VERBOSE:
             ConsolePrinter.debug("Adding type %s.", typename)
         makedirs(pathname)
 
@@ -224,7 +224,7 @@ class ParquetSink(SinkBase):
 
     def _configure(self):
         """Parses args.WRITE_OPTIONS."""
-        for k, v in self._args.WRITE_OPTIONS.items():
+        for k, v in self.args.WRITE_OPTIONS.items():
             if k.startswith("type-"):
                 # Split "time('ns')" into "time" and "('ns')"
                 base, argstr = re.split(r"([^(]+)(\([^)]*\))?", v, 1)[1:3]

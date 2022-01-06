@@ -38,17 +38,17 @@ class SinkBase(object):
         @param   args        arguments object like argparse.Namespace
         @param   args.META   whether to print metainfo
         """
-        self._args = copy.deepcopy(args)
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {(topic, typename, typehash): count}
 
+        self.args = copy.deepcopy(args)
         ## inputs.SourceBase instance bound to this sink
         self.source = None
 
     def emit_meta(self):
         """Prints source metainfo like bag header as debug stream, if not already printed."""
-        batch = self._args.META and self.source.get_batch()
-        if self._args.META and batch not in self._batch_meta:
+        batch = self.args.META and self.source.get_batch()
+        if self.args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.format_meta()
             meta and ConsolePrinter.debug(meta)
 
@@ -132,18 +132,18 @@ class TextSinkMixin(object):
         """Returns message as formatted string, optionally highlighted for matches."""
         text = self.message_to_yaml(msg).rstrip("\n")
 
-        if self._prefix or self._args.START_LINE or self._args.END_LINE \
-        or self._args.MAX_MESSAGE_LINES or (self._args.LINES_AROUND_MATCH and highlight):
+        if self._prefix or self.args.START_LINE or self.args.END_LINE \
+        or self.args.MAX_MESSAGE_LINES or (self.args.LINES_AROUND_MATCH and highlight):
             lines = text.splitlines()
 
-            if self._args.START_LINE or self._args.END_LINE or self._args.MAX_MESSAGE_LINES:
-                start = self._args.START_LINE or 0
+            if self.args.START_LINE or self.args.END_LINE or self.args.MAX_MESSAGE_LINES:
+                start = self.args.START_LINE or 0
                 start = max(start, -len(lines)) - (start > 0)  # <0 to sanity, >0 to 0-base
-                lines = lines[start:start + (self._args.MAX_MESSAGE_LINES or len(lines))]
+                lines = lines[start:start + (self.args.MAX_MESSAGE_LINES or len(lines))]
                 lines = lines and (lines[:-1] + [lines[-1] + self._styles["rst"]])
 
-            if self._args.LINES_AROUND_MATCH and highlight:
-                spans, NUM = [], self._args.LINES_AROUND_MATCH
+            if self.args.LINES_AROUND_MATCH and highlight:
+                spans, NUM = [], self.args.LINES_AROUND_MATCH
                 for i, l in enumerate(lines):
                     if MatchMarkers.START in l:
                         spans.append([max(0, i - NUM), min(i + NUM + 1, len(lines))])
@@ -203,7 +203,7 @@ class TextSinkMixin(object):
                 return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
         if rosapi.is_ros_message(val):
-            MATCHED_ONLY = self._args.MATCHED_FIELDS_ONLY and not self._args.LINES_AROUND_MATCH
+            MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
             vals, fieldmap = [], rosapi.get_message_fields(val)
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
             fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
@@ -296,8 +296,8 @@ class ConsoleSink(SinkBase, TextSinkMixin):
 
     def emit_meta(self):
         """Prints source metainfo like bag header, if not already printed."""
-        batch = self._args.META and self.source.get_batch()
-        if self._args.META and batch not in self._batch_meta:
+        batch = self.args.META and self.source.get_batch()
+        if self.args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.format_meta()
             kws = dict(self._styles, sep=self.SEP)
             meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
@@ -308,12 +308,12 @@ class ConsoleSink(SinkBase, TextSinkMixin):
     def emit(self, topic, index, stamp, msg, match):
         """Prints separator line and message text."""
         self._prefix = ""
-        if self._args.LINE_PREFIX and self.source.get_batch():
+        if self.args.LINE_PREFIX and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
             kws = dict(self._styles, sep=sep, batch=self.source.get_batch())
             self._prefix = self.PREFIX_TEMPLATE.format(**kws)
         kws = dict(self._styles, sep=self.SEP)
-        if self._args.META:
+        if self.args.META:
             meta = self.source.format_message_meta(topic, index, stamp, msg)
             meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
                              for x in meta.splitlines())
@@ -350,15 +350,15 @@ class BagSink(SinkBase):
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output bagfile."""
         if not self._bag:
-            if self._args.VERBOSE:
-                sz = os.path.isfile(self._args.WRITE) and os.path.getsize(self._args.WRITE)
+            if self.args.VERBOSE:
+                sz = os.path.isfile(self.args.WRITE) and os.path.getsize(self.args.WRITE)
                 ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
-                                     self._args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
-            makedirs(os.path.dirname(self._args.WRITE))
-            self._bag = rosapi.create_bag_writer(self._args.WRITE)
+                                     self.args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
+            makedirs(os.path.dirname(self.args.WRITE))
+            self._bag = rosapi.create_bag_writer(self.args.WRITE)
 
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
-        if topickey not in self._counts and self._args.VERBOSE:
+        if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s.", topic)
 
         self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
@@ -375,8 +375,8 @@ class BagSink(SinkBase):
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self._args.WRITE,
-                                 format_bytes(os.path.getsize(self._args.WRITE)))
+                                 plural("topic", self._counts), self.args.WRITE,
+                                 format_bytes(os.path.getsize(self.args.WRITE)))
         super(BagSink, self).close()
 
     @classmethod
@@ -410,15 +410,15 @@ class TopicSink(SinkBase):
         with rosapi.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
         if topickey not in self._pubs:
-            topic2 = self._args.PUBLISH_PREFIX + topic + self._args.PUBLISH_SUFFIX
-            topic2 = self._args.PUBLISH_FIXNAME or topic2
-            if self._args.VERBOSE:
+            topic2 = self.args.PUBLISH_PREFIX + topic + self.args.PUBLISH_SUFFIX
+            topic2 = self.args.PUBLISH_FIXNAME or topic2
+            if self.args.VERBOSE:
                 ConsolePrinter.debug("Publishing from %s to %s.", topic, topic2)
 
             pub = None
-            if self._args.PUBLISH_FIXNAME:
+            if self.args.PUBLISH_FIXNAME:
                 pub = next((v for (_, c), v in self._pubs.items() if c == cls), None)
-            pub = pub or rosapi.create_publisher(topic2, cls, queue_size=self._args.QUEUE_SIZE_OUT)
+            pub = pub or rosapi.create_publisher(topic2, cls, queue_size=self.args.QUEUE_SIZE_OUT)
             self._pubs[topickey] = pub
 
         self._pubs[topickey].publish(msg)
@@ -436,8 +436,8 @@ class TopicSink(SinkBase):
         """
         result = rosapi.validate(live=True)
         config_ok = True
-        if self._args.LIVE and not any((self._args.PUBLISH_PREFIX, self._args.PUBLISH_SUFFIX,
-                                        self._args.PUBLISH_FIXNAME)):
+        if self.args.LIVE and not any((self.args.PUBLISH_PREFIX, self.args.PUBLISH_SUFFIX,
+                                        self.args.PUBLISH_FIXNAME)):
             ConsolePrinter.error("Need topic prefix or suffix or fixname "
                                  "when republishing messages from live ROS topics.")
             config_ok = False

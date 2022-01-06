@@ -102,16 +102,16 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
         Checks parameters "commit-interval" and "nesting".
         """
         ok, sqlconfig_ok = True, SqlSinkMixin.validate_dialect_file(self)
-        if "commit-interval" in self._args.WRITE_OPTIONS:
-            try: ok = int(self._args.WRITE_OPTIONS["commit-interval"]) >= 0
+        if "commit-interval" in self.args.WRITE_OPTIONS:
+            try: ok = int(self.args.WRITE_OPTIONS["commit-interval"]) >= 0
             except Exception: ok = False
             if not ok:
                 ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
-                                     self.ENGINE, self._args.WRITE_OPTIONS["commit-interval"])
-        if self._args.WRITE_OPTIONS.get("nesting") not in (None, "", "array", "all"):
+                                     self.ENGINE, self.args.WRITE_OPTIONS["commit-interval"])
+        if self.args.WRITE_OPTIONS.get("nesting") not in (None, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
-                                 self.ENGINE, self._args.WRITE_OPTIONS["nesting"])
+                                 self.ENGINE, self.args.WRITE_OPTIONS["nesting"])
             ok = False
         return ok and sqlconfig_ok
 
@@ -157,8 +157,8 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
             isinstance(attr, dict) and attr.clear()
         self._close_printed = False
 
-        if "commit-interval" in self._args.WRITE_OPTIONS:
-            self.COMMIT_INTERVAL = int(self._args.WRITE_OPTIONS["commit-interval"])
+        if "commit-interval" in self.args.WRITE_OPTIONS:
+            self.COMMIT_INTERVAL = int(self.args.WRITE_OPTIONS["commit-interval"])
         self._db = self._connect()
         self._cursor = self._make_cursor()
         self._executescript(self.get_dialect_option("base_schema"))
@@ -202,7 +202,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
             self._executescript(tdata["sql"])
 
             sql, args = self.make_topic_insert_sql(topic, msg)
-            if self._args.VERBOSE:
+            if self.args.VERBOSE:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
@@ -232,7 +232,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
         if typekey not in self._types:
             sql, args = self.make_type_insert_sql(msg)
-            if self._args.VERBOSE:
+            if self.args.VERBOSE:
                 ConsolePrinter.debug("Adding type %s.", typename)
             self._types[typekey]["id"] = self._execute_insert(sql, args)
             self._types[typekey].update(tdata)
@@ -373,4 +373,4 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
     def _make_db_label(self):
         """Returns formatted label for database."""
-        return self._args.WRITE
+        return self.args.WRITE

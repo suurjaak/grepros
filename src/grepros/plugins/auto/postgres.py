@@ -126,7 +126,7 @@ class PostgresSink(DataSinkBase):
     def _connect(self):
         """Returns new database connection."""
         factory = psycopg2.extras.RealDictCursor
-        return psycopg2.connect(self._args.WRITE, cursor_factory=factory)
+        return psycopg2.connect(self.args.WRITE, cursor_factory=factory)
 
 
     def _execute_insert(self, sql, args):
@@ -187,7 +187,7 @@ class PostgresSink(DataSinkBase):
 
     def _make_db_label(self):
         """Returns formatted label for database."""
-        target = self._args.WRITE
+        target = self.args.WRITE
         if not target.startswith("postgresql://"): target = repr(target)
         return target
 

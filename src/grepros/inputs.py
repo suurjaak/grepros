@@ -47,7 +47,6 @@ class SourceBase(object):
         @param   args.NTH_MESSAGE        scan every Nth message in topic
         @param   args.NTH_INTERVAL       minimum time interval between messages in topic
         """
-        self._args = copy.deepcopy(args)
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
         # {topic: ["pkg/MsgType", ]} searched in current source
@@ -57,6 +56,7 @@ class SourceBase(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
+        self.args = copy.deepcopy(args)
         ## outputs.SinkBase instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
@@ -130,20 +130,20 @@ class SourceBase(object):
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable time range."""
-        if self._args.START_TIME and stamp < self._args.START_TIME:
+        if self.args.START_TIME and stamp < self.args.START_TIME:
             return False
-        if self._args.END_TIME and stamp > self._args.END_TIME:
+        if self.args.END_TIME and stamp > self.args.END_TIME:
             return False
-        if self._args.UNIQUE or self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
+        if self.args.UNIQUE or self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             last_accepted = self._processables.get(topickey)
-        if self._args.NTH_MESSAGE > 1 and last_accepted:
-            if index < last_accepted[0] + self._args.NTH_MESSAGE:
+        if self.args.NTH_MESSAGE > 1 and last_accepted:
+            if index < last_accepted[0] + self.args.NTH_MESSAGE:
                 return False
-        if self._args.NTH_INTERVAL > 0 and last_accepted:
-            if rosapi.to_sec(stamp - last_accepted[1]) < self._args.NTH_INTERVAL:
+        if self.args.NTH_INTERVAL > 0 and last_accepted:
+            if rosapi.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
                 return False
-        if self._args.UNIQUE:
+        if self.args.UNIQUE:
             include, exclude = self._patterns["select"], self._patterns["noselect"]
             msghash = rosapi.make_message_hash(msg, include, exclude)
             if msghash in self._hashes[topickey]:
@@ -160,7 +160,7 @@ class SourceBase(object):
 
     def _parse_patterns(self):
         """Parses pattern arguments into re.Patterns."""
-        selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
+        selects, noselects = self.args.SELECT_FIELDS, self.args.NOSELECT_FIELDS
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
@@ -406,16 +406,16 @@ class BagSource(SourceBase, ConditionMixin):
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
         self._running = True
-        names, paths = self._args.FILES, self._args.PATHS
+        names, paths = self.args.FILES, self.args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
-        for filename in find_files(names, paths, exts, skip_exts, recurse=self._args.RECURSE):
+        for filename in find_files(names, paths, exts, skip_exts, recurse=self.args.RECURSE):
             if not self._running or not self._configure(filename):
                 continue  # for filename
 
             topicsets = [self._topics]
-            if "topic" == self._args.ORDERBY:  # Group output by sorted topic names
+            if "topic" == self.args.ORDERBY:  # Group output by sorted topic names
                 topicsets = [{n: tt} for n, tt in sorted(self._topics.items())]
-            elif "type" == self._args.ORDERBY:  # Group output by sorted type names
+            elif "type" == self.args.ORDERBY:  # Group output by sorted type names
                 typetopics = {}
                 for n, tt in self._topics.items():
                     for t in tt: typetopics.setdefault(t, []).append(n)
@@ -436,9 +436,9 @@ class BagSource(SourceBase, ConditionMixin):
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
         result = rosapi.validate()
-        if self._args.ORDERBY and self.conditions_get_topics():
+        if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
-                                 self._args.ORDERBY)
+                                 self.args.ORDERBY)
             result = False
         return result
 
@@ -519,15 +519,15 @@ class BagSource(SourceBase, ConditionMixin):
         and all conditions, if any, evaluate as true.
         """
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
-        if self._args.START_INDEX:
+        if self.args.START_INDEX:
             self._ensure_totals()
-            START = self._args.START_INDEX
+            START = self.args.START_INDEX
             MIN = max(0, START + (self.topics[topickey] if START < 0 else 0))
             if MIN >= index:
                 return False
-        if self._args.END_INDEX:
+        if self.args.END_INDEX:
             self._ensure_totals()
-            END = self._args.END_INDEX
+            END = self.args.END_INDEX
             MAX = END + (self.topics[topickey] if END < 0 else 0)
             if MAX < index:
                 return False
@@ -555,9 +555,9 @@ class BagSource(SourceBase, ConditionMixin):
             self.bar and self.bar.update(value=sum(self._counts.values()))
             yield topic, msg, stamp
 
-            if self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
+            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                 self._processables[topickey]  = (self._counts[topickey], stamp)
-            if self._status and self._args.AFTER and not self._sticky \
+            if self._status and self.args.AFTER and not self._sticky \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
@@ -569,7 +569,7 @@ class BagSource(SourceBase, ConditionMixin):
 
     def _init_progress(self):
         """Initializes progress bar, if any, for current bag."""
-        if self._args.PROGRESS and not self.bar:
+        if self.args.PROGRESS and not self.bar:
             self._ensure_totals()
             self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
             self.bar.afterword = os.path.basename(self._filename)
@@ -595,12 +595,12 @@ class BagSource(SourceBase, ConditionMixin):
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
-        if self._args.WRITE \
+        if self.args.WRITE \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)
-                for x in self._args.WRITE):
+                for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, self._args.REINDEX, self._args.PROGRESS)
+            bag = rosapi.create_bag_reader(filename, self.args.REINDEX, self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
@@ -616,8 +616,8 @@ class BagSource(SourceBase, ConditionMixin):
         for topic in self.conditions_get_topics():
             self.conditions_set_topic_state(topic, True)
 
-        dct = filter_dict(dct, self._args.TOPICS, self._args.TYPES)
-        dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
+        dct = filter_dict(dct, self.args.TOPICS, self.args.TYPES)
+        dct = filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True)
         for topic in self.conditions_get_topics():  # Add topics used in conditions
             matches = [t for p in [wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
@@ -627,7 +627,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._topics = dct
         self._meta   = self.get_meta()
 
-        args = self._args = copy.deepcopy(self._args0)
+        args = self.args = copy.deepcopy(self._args0)
         if args.START_TIME is not None:
             args.START_TIME = rosapi.make_bag_time(args.START_TIME, bag)
         if args.END_TIME is not None:
@@ -689,7 +689,7 @@ class TopicSource(SourceBase, ConditionMixin):
                 if self.is_conditions_topic(topic, pure=True): continue  # while
 
                 yield topic, msg, stamp
-                if self._args.NTH_MESSAGE > 1 or self._args.NTH_INTERVAL > 0:
+                if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                     self._processables[topickey]  = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
@@ -740,11 +740,11 @@ class TopicSource(SourceBase, ConditionMixin):
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether specified message in topic is in acceptable range."""
-        if self._args.START_INDEX:
-            if max(0, self._args.START_INDEX) >= index:
+        if self.args.START_INDEX:
+            if max(0, self.args.START_INDEX) >= index:
                 return False
-        if self._args.END_INDEX:
-            if 0 < self._args.END_INDEX < index:
+        if self.args.END_INDEX:
+            if 0 < self.args.END_INDEX < index:
                 return False
         if not super(TopicSource, self).is_processable(topic, index, stamp, msg):
             return False
@@ -757,18 +757,18 @@ class TopicSource(SourceBase, ConditionMixin):
             topickey = (topic, typename, typehash)
             if topickey in self.topics:
                 continue  # for topic
-            dct = filter_dict({topic: [typename]}, self._args.TOPICS, self._args.TYPES)
-            dct = filter_dict(dct, self._args.SKIP_TOPICS, self._args.SKIP_TYPES, reverse=True)
+            dct = filter_dict({topic: [typename]}, self.args.TOPICS, self.args.TYPES)
+            dct = filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True)
             if dct:
                 handler = functools.partial(self._on_message, topic)
                 sub = rosapi.create_subscriber(topic, typename, handler,
-                                               queue_size=self._args.QUEUE_SIZE_IN)
+                                               queue_size=self.args.QUEUE_SIZE_IN)
                 self._subs[topickey] = sub
             self.topics[topickey] = None
 
     def _init_progress(self):
         """Initializes progress bar, if any."""
-        if self._args.PROGRESS and not self.bar:
+        if self.args.PROGRESS and not self.bar:
             self.bar = ProgressBar(afterword="ROS%s live" % os.getenv("ROS_VERSION"),
                                    aftertemplate=" {afterword}", pulse=True)
             self.bar.start()
@@ -784,10 +784,10 @@ class TopicSource(SourceBase, ConditionMixin):
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
-        if self._args.START_TIME is not None:
-            self._args.START_TIME = rosapi.make_live_time(self._args.START_TIME)
-        if self._args.END_TIME is not None:
-            self._args.END_TIME = rosapi.make_live_time(self._args.END_TIME)
+        if self.args.START_TIME is not None:
+            self.args.START_TIME = rosapi.make_live_time(self.args.START_TIME)
+        if self.args.END_TIME is not None:
+            self.args.END_TIME = rosapi.make_live_time(self.args.END_TIME)
 
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS live."""
@@ -799,6 +799,6 @@ class TopicSource(SourceBase, ConditionMixin):
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""
-        stamp = rosapi.get_rostime() if self._args.ROS_TIME_IN else \
+        stamp = rosapi.get_rostime() if self.args.ROS_TIME_IN else \
                 rosapi.make_time(time.time())
         self._queue and self._queue.put((topic, msg, stamp))

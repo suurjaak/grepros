@@ -76,10 +76,10 @@ class SqliteSink(DataSinkBase):
         parses "message-yaml" from args.WRITE_OPTIONS.
         """
         config_ok = super(SqliteSink, self).validate()
-        if self._args.WRITE_OPTIONS.get("message-yaml") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
-                                 self.ENGINE, self._args.WRITE_OPTIONS["message-yaml"])
+                                 self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
             config_ok = False
         return config_ok
 
@@ -88,7 +88,7 @@ class SqliteSink(DataSinkBase):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
         sqlite3.register_converter("JSON", json.loads)
-        if self._args.VERBOSE:
+        if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")

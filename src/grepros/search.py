@@ -43,7 +43,6 @@ class Searcher(object):
         @param   args.SELECT_FIELDS       message fields to use in matching if not all
         @param   args.NOSELECT_FIELDS     message fields to skip in matching
         """
-        self._args     = copy.deepcopy(args)
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
         # {(topic, typename, typehash): {message ID: message}}
@@ -60,6 +59,7 @@ class Searcher(object):
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
 
+        self.args = copy.deepcopy(args)
         self._parse_patterns()
 
 
@@ -92,7 +92,7 @@ class Searcher(object):
                 sink.emit_meta()
                 self._emit_context(topickey, before=True)
                 sink.emit(topic, self._counts[topickey][None], stamp, msg, matched)
-            elif self._args.AFTER and self._has_in_window(topickey, self._args.AFTER + 1, status=True):
+            elif self.args.AFTER and self._has_in_window(topickey, self.args.AFTER + 1, status=True):
                 self._emit_context(topickey, before=False)
             batch_matched = batch_matched or bool(matched)
 
@@ -112,15 +112,15 @@ class Searcher(object):
         and current message in topic is in configured range, if any.
         """
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
-        if self._args.MAX_MATCHES \
-        and sum(x[True] for x in self._counts.values()) >= self._args.MAX_MATCHES:
+        if self.args.MAX_MATCHES \
+        and sum(x[True] for x in self._counts.values()) >= self.args.MAX_MATCHES:
             return False
-        if self._args.MAX_TOPIC_MATCHES \
-        and self._counts[topickey][True] >= self._args.MAX_TOPIC_MATCHES:
+        if self.args.MAX_TOPIC_MATCHES \
+        and self._counts[topickey][True] >= self.args.MAX_TOPIC_MATCHES:
             return False
-        if self._args.MAX_TOPICS:
+        if self.args.MAX_TOPICS:
             topics_matched = [k for k, vv in self._counts.items() if vv[True]]
-            if topickey not in topics_matched and len(topics_matched) >= self._args.MAX_TOPICS:
+            if topickey not in topics_matched and len(topics_matched) >= self.args.MAX_TOPICS:
                 return False
         if not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
@@ -129,7 +129,7 @@ class Searcher(object):
 
     def _emit_context(self, topickey, before=False):
         """Emits before/after context to sink for latest match."""
-        count = self._args.BEFORE + 1 if before else self._args.AFTER
+        count = self.args.BEFORE + 1 if before else self.args.AFTER
         candidates = list(self._statuses[topickey])[-count:]
         current_index = self._counts[topickey][None]
         for i, msgid in enumerate(candidates) if count else ():
@@ -154,13 +154,13 @@ class Searcher(object):
         self._source, self._sink = source, sink
         source.bind(sink), sink.bind(source)
         self._passthrough = not sink.is_highlighting() and not self._patterns["select"] \
-                            and not self._patterns["noselect"] and not self._args.INVERT \
+                            and not self._patterns["noselect"] and not self.args.INVERT \
                             and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
 
 
     def _prune_data(self, topickey):
         """Drops history older than context window."""
-        WINDOW = max(self._args.BEFORE, self._args.AFTER) + 1
+        WINDOW = max(self.args.BEFORE, self.args.AFTER) + 1
         for dct in (self._messages, self._stamps, self._statuses):
             while len(dct[topickey]) > WINDOW:
                 item = next(iter(dct[topickey]))
@@ -171,25 +171,25 @@ class Searcher(object):
     def _parse_patterns(self):
         """Parses pattern arguments into re.Patterns."""
         NOBRUTE_SIGILS = r"\A", r"\Z", "?("  # Regex specials ruling out brute precheck
-        BRUTE, FLAGS = not self._args.INVERT, re.DOTALL | (0 if self._args.CASE else re.I)
+        BRUTE, FLAGS = not self.args.INVERT, re.DOTALL | (0 if self.args.CASE else re.I)
         self._patterns.clear()
         del self._brute_prechecks[:]
         contents = []
-        for v in self._args.PATTERNS:
+        for v in self.args.PATTERNS:
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
-            v = (re.escape(v) if self._args.RAW else v) + ("|^$" if v in ("''", '""') else "")
+            v = (re.escape(v) if self.args.RAW else v) + ("|^$" if v in ("''", '""') else "")
             path = re.compile(r"(^|\.)%s($|\.)" % ".*".join(map(re.escape, path.split("*")))) \
                    if path else ()
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
-            if BRUTE and (self._args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
+            if BRUTE and (self.args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
-        if not self._args.PATTERNS:  # Add match-all pattern
+        if not self.args.PATTERNS:  # Add match-all pattern
             contents.append(self.ANY_MATCHES[0])
         self._patterns["content"] = contents
 
-        selects, noselects = self._args.SELECT_FIELDS, self._args.NOSELECT_FIELDS
+        selects, noselects = self.args.SELECT_FIELDS, self.args.NOSELECT_FIELDS
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
@@ -205,17 +205,17 @@ class Searcher(object):
     def _is_max_done(self):
         """Returns whether max match count has been reached (and message after-context emitted)."""
         result, is_maxed = False, False
-        if self._args.MAX_MATCHES:
-            is_maxed = sum(vv[True] for vv in self._counts.values()) >= self._args.MAX_MATCHES
-        if not is_maxed and self._args.MAX_TOPIC_MATCHES:
-            count_required = self._args.MAX_TOPICS or len(self._source.topics)
-            count_maxed = sum(vv[True] >= self._args.MAX_TOPIC_MATCHES
+        if self.args.MAX_MATCHES:
+            is_maxed = sum(vv[True] for vv in self._counts.values()) >= self.args.MAX_MATCHES
+        if not is_maxed and self.args.MAX_TOPIC_MATCHES:
+            count_required = self.args.MAX_TOPICS or len(self._source.topics)
+            count_maxed = sum(vv[True] >= self.args.MAX_TOPIC_MATCHES
                               or vv[None] >= (self._source.topics.get(k) or 0)
                               for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)
         if is_maxed:
-            result = not self._args.AFTER or \
-                     not any(self._has_in_window(k, self._args.AFTER, status=True, full=True)
+            result = not self.args.AFTER or \
+                     not any(self._has_in_window(k, self.args.AFTER, status=True, full=True)
                              for k in self._counts)
         return result
 
@@ -246,9 +246,9 @@ class Searcher(object):
                     for match in (m for m in p.finditer(v1) if not v1 or m.start() != m.end()):
                         matched[i] = True
                         spans.append(match.span())
-                        if self._args.INVERT:
+                        if self.args.INVERT:
                             break  # for match
-            spans = merge_spans(spans) if not self._args.INVERT else \
+            spans = merge_spans(spans) if not self.args.INVERT else \
                     [] if spans else [(0, len(v1))] if v1 or not is_collection else []
             for a, b in reversed(spans):  # Work from last to first, indices stay the same
                 v2 = v2[:a] + MatchMarkers.START + v2[a:b] + MatchMarkers.END + v2[b:]
@@ -276,7 +276,7 @@ class Searcher(object):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
-            if not top and not matched and not selects and not fieldmap0 and not self._args.INVERT \
+            if not top and not matched and not selects and not fieldmap0 and not self.args.INVERT \
             and set(self._patterns["content"]) <= set(self.ANY_MATCHES):  # Ensure Empty any-match
                 matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
             return obj
@@ -290,5 +290,5 @@ class Searcher(object):
 
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         decorate_message(result)
-        yes = not matched if self._args.INVERT else len(matched) == len(self._patterns["content"])
+        yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
         return result if yes else None

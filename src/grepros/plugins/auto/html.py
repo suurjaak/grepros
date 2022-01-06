@@ -88,7 +88,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
         Returns whether custom template exists and ROS environment is set, prints error if not.
         """
         result = True
-        if self._args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
+        if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
         return rosapi.validate() and result
@@ -131,10 +131,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
             with open(self._template_path, "r") as f: tpl = f.read()
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
-                      timeline=not self._args.ORDERBY, messages=self._produce())
+                      timeline=not self.args.ORDERBY, messages=self._produce())
             makedirs(os.path.dirname(self._filename))
             self._filename = unique_path(self._filename, empty_ok=True)
-            if self._args.VERBOSE:
+            if self.args.VERBOSE:
                 ConsolePrinter.debug("Creating %s.", self._filename)
             with open(self._filename, "wb") as f:
                 template.stream(f, ns, unbuffered=True)
@@ -152,7 +152,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
                 break  # while
             (topic, index, stamp, msg, match) = entry
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
-            if self._args.VERBOSE and topickey not in self._counts:
+            if self.args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s.", topic)
             yield entry
             super(HtmlSink, self).emit(topic, index, stamp, msg, match)

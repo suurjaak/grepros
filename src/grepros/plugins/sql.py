@@ -76,10 +76,10 @@ class SqlSink(SinkBase, SqlSinkMixin):
         Returns whether "dialect" and "nesting" parameters contain supported values.
         """
         ok, sqlconfig_ok = True, SqlSinkMixin.validate(self)
-        if self._args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
+        if self.args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
                                  "Choose one of {array,all}.",
-                                 self._args.WRITE_OPTIONS["nesting"])
+                                 self.args.WRITE_OPTIONS["nesting"])
             ok = False
         return sqlconfig_ok and ok
 
@@ -127,7 +127,7 @@ class SqlSink(SinkBase, SqlSinkMixin):
         """Opens output file if not already open, writes header."""
         if self._file: return
 
-        self._filename = unique_path(self._args.WRITE)
+        self._filename = unique_path(self.args.WRITE)
         makedirs(os.path.dirname(self._filename))
         self._file = open(self._filename, "wb")
         self._write_header()
