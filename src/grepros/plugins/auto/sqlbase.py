@@ -22,7 +22,7 @@ from ... common import ConsolePrinter, ellipsize, merge_dicts
 
 
 
-class SqlSinkMixin(object):
+class SqlMixin(object):
     """
     Base class for producing SQL for topics and messages.
 
@@ -567,7 +567,7 @@ def quote(name, force=False):
                     contains only alphanumerics, and is not a reserved keyword)
     """
     result = name
-    if force or result.upper() in SqlSinkMixin.KEYWORDS \
+    if force or result.upper() in SqlMixin.KEYWORDS \
     or re.search(r"(^[\W\d])|(?=\W)", result, re.U):
         result = '"%s"' % result.replace('"', '""')
     return result

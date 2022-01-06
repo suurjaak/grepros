@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -20,11 +20,11 @@ import sys
 from .. import rosapi
 from .. common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
 from .. outputs import SinkBase
-from . auto.sqlbase import SqlSinkMixin
+from . auto.sqlbase import SqlMixin
 
 
 
-class SqlSink(SinkBase, SqlSinkMixin):
+class SqlSink(SinkBase, SqlMixin):
     """
     Writes SQL schema file for message type tables and topic views.
 
@@ -54,7 +54,7 @@ class SqlSink(SinkBase, SqlSinkMixin):
                                        "nesting": true|false to created nested type tables}
         """
         super(SqlSink, self).__init__(args)
-        SqlSinkMixin.__init__(self, args)
+        SqlMixin.__init__(self, args)
 
         self._filename      = None   # Unique output filename
         self._file          = None   # Open file() object
@@ -75,7 +75,7 @@ class SqlSink(SinkBase, SqlSinkMixin):
         """
         Returns whether "dialect" and "nesting" parameters contain supported values.
         """
-        ok, sqlconfig_ok = True, SqlSinkMixin.validate(self)
+        ok, sqlconfig_ok = True, SqlMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
                                  "Choose one of {array,all}.",

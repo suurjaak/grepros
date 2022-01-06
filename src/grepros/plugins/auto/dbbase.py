@@ -18,10 +18,10 @@ import collections
 from ... import rosapi
 from ... common import ConsolePrinter, plural
 from ... outputs import SinkBase
-from . sqlbase import SqlSinkMixin, quote
+from . sqlbase import SqlMixin, quote
 
 
-class DataSinkBase(SinkBase, SqlSinkMixin):
+class DataSinkBase(SinkBase, SqlMixin):
     """
     Base class for writing messages to a database.
 
@@ -72,7 +72,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
         @param   args.VERBOSE         whether to print debug information
         """
         super(DataSinkBase, self).__init__(args)
-        SqlSinkMixin.__init__(self, args)
+        SqlMixin.__init__(self, args)
 
         self._db            = None   # Database connection
         self._cursor        = None   # Database cursor or connection
@@ -101,7 +101,7 @@ class DataSinkBase(SinkBase, SqlSinkMixin):
 
         Checks parameters "commit-interval" and "nesting".
         """
-        ok, sqlconfig_ok = True, SqlSinkMixin.validate_dialect_file(self)
+        ok, sqlconfig_ok = True, SqlMixin.validate_dialect_file(self)
         if "commit-interval" in self.args.WRITE_OPTIONS:
             try: ok = int(self.args.WRITE_OPTIONS["commit-interval"]) >= 0
             except Exception: ok = False
