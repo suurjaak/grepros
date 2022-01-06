@@ -815,18 +815,20 @@ unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.
 Any dialect options not specified will be taken from the default dialect configuration:
 
 ```yaml
-  table_template:      'CREATE TABLE IF NOT EXISTS {table} ({cols});'
-  view_template:       'CREATE VIEW IF NOT EXISTS {view} AS
-                        SELECT {cols}
-                        FROM {table}
-                        WHERE _topic = {topic};'
-  types:               {}
-  defaulttype:         null
-  arraytype_template:  '{type}[]'
-  maxlen_entity:       0
-  maxlen_column:       0
-  invalid_char_regex:  null
-  invalid_char_repl:   '__'
+  table_template:       'CREATE TABLE IF NOT EXISTS {table} ({cols});'
+  view_template:        'CREATE VIEW IF NOT EXISTS {view} AS
+                         SELECT {cols}
+                         FROM {table}
+                         WHERE _topic = {topic};'
+  table_name_template:  '{type}',
+  view_name_template:   '{topic}',
+  types:                {}
+  defaulttype:          null
+  arraytype_template:   '{type}[]'
+  maxlen_entity:        0
+  maxlen_column:        0
+  invalid_char_regex:   null
+  invalid_char_repl:    '__'
 ```
 
 To create tables for nested array message type fields:

@@ -5,6 +5,8 @@ Changelog for package grepros
 0.4.1 (2022-01-06)
 -------------------
 * refactor database and SQL sinks onto a common base
+* allow specifying dialect options in Postgres/SQLite output
+* allow overriding table and view names in SQL-related output
 * drop meta-table from Postgres output
 * drop default value from --publish-prefix option
 * fix error in parsing subtypes from message definitions
