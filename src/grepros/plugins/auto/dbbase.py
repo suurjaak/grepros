@@ -194,9 +194,8 @@ class DataSinkBase(SinkBase, SqlMixin):
             return
 
         if topickey not in self._topics:
-            cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
-            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
-            exclude_cols = self.MESSAGE_TYPE_BASECOLS
+            cols, exclude_cols = self.MESSAGE_TYPE_BASECOLS, self.MESSAGE_TYPE_TOPICCOLS
+            if self._nesting: exclude_cols += self.MESSAGE_TYPE_NESTCOLS
             tdata = self.make_topic_data(topic, msg, cols, exclude_cols)
             self._topics[topickey] = tdata
             self._executescript(tdata["sql"])
