@@ -140,8 +140,7 @@ class SqlMixin(object):
         for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
-        cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
-                 for c, t in extra_cols]
+        cols.extend(extra_cols or [])
         cols = list(zip(self._make_column_names([c for c, _ in cols]), [t for _, t in cols]))
         namewidth = 2 + max(len(n) for n, _ in cols)
         coldefs = ["%s  %s" % (quote(n).ljust(namewidth), t) for n, t in cols]
