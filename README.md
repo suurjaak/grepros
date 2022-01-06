@@ -47,6 +47,7 @@ Supports loading custom plugins, mainly for additional output formats.
   - [embag](#embag)
   - [parquet](#parquet)
   - [sql](#sql)
+- [SQL dialects](#sql-dialects)
 - [All command-line arguments](#all-command-line-arguments)
 - [Attribution](#attribution)
 - [License](#license)
@@ -298,7 +299,8 @@ Postgres URI scheme `postgresql://`.
 Requires [psycopg2](https://pypi.org/project/psycopg2).
 
 Parameter `--write` can also use the Postgres keyword=value format,
-e.g. "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
+e.g. `"host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"`.
+
 Standard Postgres environment variables are also supported (PGPASSWORD et al).
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_postgres.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_postgres.png)
@@ -306,6 +308,13 @@ Standard Postgres environment variables are also supported (PGPASSWORD et al).
 A custom transaction size can be specified (default is 1000; 0 is autocommit):
 
     --write postgresql://username@host/dbname commit-interval=NUM
+
+Updates to Postgres SQL dialect can be loaded from a YAML or JSON file:
+
+    --write postgresql://username@host/dbname dialect-file=path/to/dialects.yaml
+
+More on [SQL dialects](#sql-dialects).
+
 
 #### Nested messages
 
@@ -403,6 +412,12 @@ A custom transaction size can be specified (default is 1000; 0 is autocommit):
 By default, table `messages` is populated with full message YAMLs, unless:
 
     --write path/to/my.sqlite message-yaml=false
+
+Updates to SQLite SQL dialect can be loaded from a YAML or JSON file:
+
+    --write path/to/my.sqlite dialect-file=path/to/dialects.yaml
+
+More on [SQL dialects](#sql-dialects).
 
 
 #### Nested messages
@@ -779,6 +794,14 @@ and CREATE VIEW for each topic.
 
 Specifying `format=sql` is not required if the filename ends with `.sql`.
 
+To create tables for nested array message type fields:
+
+    --write path/to/my.sql nesting=array
+
+To create tables for all nested message types:
+
+    --write path/to/my.sql nesting=all
+
 A specific SQL dialect can be specified:
 
     --write path/to/my.sql dialect=clickhouse|postgres|sqlite
@@ -787,19 +810,25 @@ Additional dialects, or updates for existing dialects, can be loaded from a YAML
 
     --write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
 
+
+SQL dialects
+------------
+
+Postgres, SQLite and SQL outputs support loading additional options for SQL dialect.
+
 Dialect file format:
 
 ```yaml
 dialectname:
-  table_template:       CREATE TABLE template, args: table, cols, type, hash, package, class
-  view_template:        CREATE VIEW template, args: view, cols, table, topic, type, hash, package, class
-  table_name_template:  message type table name template, args: type, hash, package, class
-  view_name_template:   topic view name template, args: topic, type, hash, package, class
+  table_template:       CREATE TABLE template; args: table, cols, type, hash, package, class
+  view_template:        CREATE VIEW template; args: view, cols, table, topic, type, hash, package, class
+  table_name_template:  message type table name template; args: type, hash, package, class
+  view_name_template:   topic view name template; args: topic, type, hash, package, class
   types:                Mapping between ROS and SQL common types for table columns,
                         e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
   defaulttype:          Fallback SQL type if no mapped type for ROS type;
                         if no mapped and no default type, column type will be ROS type as-is
-  arraytype_template:   Array type template, args: type
+  arraytype_template:   Array type template; args: type
   maxlen_entity:        Maximum table/view name length, 0 disables
   maxlen_column:        Maximum column name length, 0 disables
   invalid_char_regex:   Regex for matching invalid characters in name, if any
@@ -812,11 +841,13 @@ e.g. `{"table_name_template": "{type}", "view_name_template": "{topic}"}`.
 Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
 unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.
 
-Any dialect options not specified will be taken from the default dialect configuration:
+Any dialect options not specified in the given dialect or built-in dialects,
+will be taken from the default dialect configuration:
 
 ```yaml
   table_template:       'CREATE TABLE IF NOT EXISTS {table} ({cols});'
-  view_template:        'CREATE VIEW IF NOT EXISTS {view} AS
+  view_template:        'DROP VIEW IF EXISTS {view};
+                         CREATE VIEW {view} AS
                          SELECT {cols}
                          FROM {table}
                          WHERE _topic = {topic};'
@@ -830,14 +861,6 @@ Any dialect options not specified will be taken from the default dialect configu
   invalid_char_regex:   null
   invalid_char_repl:    '__'
 ```
-
-To create tables for nested array message type fields:
-
-    --write path/to/my.sql nesting=array
-
-To create tables for all nested message types:
-
-    --write path/to/my.sql nesting=all
 
 
 
