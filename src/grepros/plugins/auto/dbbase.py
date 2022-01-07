@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    06.01.2022
+@modified    07.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -76,7 +76,7 @@ class DataSinkBase(SinkBase, SqlMixin):
 
         self._db            = None   # Database connection
         self._cursor        = None   # Database cursor or connection
-        self._dialect       = self.ENGINE.lower()
+        self._dialect       = self.ENGINE.lower()  # Override SqlMixin._dialect
         self._close_printed = False
 
         # Whether to create tables and rows for nested message types,
@@ -86,11 +86,8 @@ class DataSinkBase(SinkBase, SqlMixin):
         self._nesting = args.WRITE_OPTIONS.get("nesting")
 
         self._checkeds      = {}  # {topickey/typekey: whether existence checks are done}
-        self._sql_cache     = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
         self._sql_queue     = {}  # {SQL: [(args), ]}
         self._nested_counts = {}  # {(typename, typehash): count}
-        self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
-        self._schema   = collections.defaultdict(dict)  # {(typename, typehash): {cols}}
 
         atexit.register(self.close)
 
@@ -101,7 +98,7 @@ class DataSinkBase(SinkBase, SqlMixin):
 
         Checks parameters "commit-interval" and "nesting".
         """
-        ok, sqlconfig_ok = True, SqlMixin.validate_dialect_file(self)
+        ok, sqlconfig_ok = True, SqlMixin._validate_dialect_file(self)
         if "commit-interval" in self.args.WRITE_OPTIONS:
             try: ok = int(self.args.WRITE_OPTIONS["commit-interval"]) >= 0
             except Exception: ok = False
@@ -143,9 +140,13 @@ class DataSinkBase(SinkBase, SqlMixin):
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", self._counts), self.ENGINE, target)
             if self._nested_counts:
-                ConsolePrinter.debug("Wrote %s in %s.",
+                ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
                                      plural("nested message", sum(self._nested_counts.values())),
-                                     plural("nested message type", self._nested_counts))
+                                     plural("nested message type", self._nested_counts),
+                                     self.ENGINE, target)
+        self._checkeds.clear()
+        self._nested_counts.clear()
+        SqlMixin.close(self)
         super(DataSinkBase, self).close()
 
 
@@ -161,7 +162,7 @@ class DataSinkBase(SinkBase, SqlMixin):
             self.COMMIT_INTERVAL = int(self.args.WRITE_OPTIONS["commit-interval"])
         self._db = self._connect()
         self._cursor = self._make_cursor()
-        self._executescript(self.get_dialect_option("base_schema"))
+        self._executescript(self._get_dialect_option("base_schema"))
         self._db.commit()
         self._load_schema()
         TYPECOLS = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
@@ -194,13 +195,13 @@ class DataSinkBase(SinkBase, SqlMixin):
             return
 
         if topickey not in self._topics:
-            cols, exclude_cols = self.MESSAGE_TYPE_BASECOLS, self.MESSAGE_TYPE_TOPICCOLS
+            exclude_cols = list(self.MESSAGE_TYPE_TOPICCOLS)
             if self._nesting: exclude_cols += self.MESSAGE_TYPE_NESTCOLS
-            tdata = self.make_topic_data(topic, msg, cols, exclude_cols)
+            tdata = self._make_topic_data(topic, msg, exclude_cols)
             self._topics[topickey] = tdata
             self._executescript(tdata["sql"])
 
-            sql, args = self.make_topic_insert_sql(topic, msg)
+            sql, args = self._make_topic_insert_sql(topic, msg)
             if self.args.VERBOSE:
                 ConsolePrinter.debug("Adding topic %s in %s output.", topic, self.ENGINE)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
@@ -221,20 +222,19 @@ class DataSinkBase(SinkBase, SqlMixin):
         if typekey in self._checkeds:
             return
 
-        if typekey not in self._schema:
-            cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
-            if self._nesting: cols += self.MESSAGE_TYPE_NESTCOLS
-            tdata = self.make_type_data(msg, cols)
-            self._executescript(tdata["sql"])
-            self._schema[typekey] = collections.OrderedDict(tdata["cols"])
+        if typekey not in self._types:
+            if self.args.VERBOSE:
+                ConsolePrinter.debug("Adding type %s in %s output.", typename, self.ENGINE)
+            extra_cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
+            if self._nesting: extra_cols += self.MESSAGE_TYPE_NESTCOLS
+            tdata = self._make_type_data(msg, extra_cols)
+            self._schema[typekey] = collections.OrderedDict(tdata.pop("cols"))
             self._types[typekey] = tdata
 
-        if typekey not in self._types:
-            sql, args = self.make_type_insert_sql(msg)
-            if self.args.VERBOSE:
-                ConsolePrinter.debug("Adding type %s.", typename)
-            self._types[typekey]["id"] = self._execute_insert(sql, args)
-            self._types[typekey].update(tdata)
+            self._executescript(tdata["sql"])
+            sql, args = self._make_type_insert_sql(msg)
+            tdata["id"] = self._execute_insert(sql, args)
+
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
         nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
@@ -247,11 +247,11 @@ class DataSinkBase(SinkBase, SqlMixin):
             if not isinstance(submsgs, (list, tuple)): submsgs = [submsgs]
             [submsg] = submsgs[:1] or [self.source.get_message_class(scalartype, subtypehash)()]
             subdata = self._process_type(submsg, rootmsg)
-            nested_tables[".".join(path)] = subdata["table"]
+            if subdata: nested_tables[".".join(path)] = subdata["table_name"]
         if nested_tables:
             self._types[typekey]["nested_tables"] = nested_tables
             sets, where = {"nested_tables": nested_tables}, {"id": self._types[typekey]["id"]}
-            sql, args = self.make_update_sql("types", sets, where)
+            sql, args = self._make_update_sql("types", sets, where)
             self._cursor.execute(sql, args)
         self._checkeds[typekey] = True
         return self._types[typekey]
@@ -294,7 +294,7 @@ class DataSinkBase(SinkBase, SqlMixin):
             coldefs += self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS
             colvals += [myid, parent_type, parent_id]
         extra_cols = list(zip([c for c, _ in coldefs], colvals))
-        sql, args = self.make_message_insert_sql(topic, msg, extra_cols)
+        sql, args = self._make_message_insert_sql(topic, msg, extra_cols)
         self._ensure_execute(sql, args)
         if parent_type: self._nested_counts[typekey] = self._nested_counts.get(typekey, 0) + 1
 
@@ -311,8 +311,8 @@ class DataSinkBase(SinkBase, SqlMixin):
                 if isinstance(submsgs, (list, tuple)):
                     subids[subpath].append(subid)
         if subids:
-            sets, where = {(".".join(p), subids[p]) for p in subids}, {"_id": myid}
-            sql, args = self.make_update_sql(table_name, sets, where)
+            sets, where = {".".join(p): subids[p] for p in subids}, {"_id": myid}
+            sql, args = self._make_update_sql(table_name, sets, where)
             self._ensure_execute(sql, args)
         return myid
 

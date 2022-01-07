@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    06.01.2022
+@modified    07.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -41,11 +41,13 @@ class SqlMixin(object):
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables}
         """
-        self._args    = copy.deepcopy(args)
-        self._topics  = {}  # {(topic, typename, typehash): {topic, table_name, view_name, sql, ..}}
-        self._types   = {}  # {(typename, typehash): {type, table_name, sql, ..}}
-        self._dialect = args.WRITE_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
-        self._nesting = args.WRITE_OPTIONS.get("nesting")
+        self._args      = copy.deepcopy(args)
+        self._topics    = {}  # {(topic, typename, typehash): {name, table_name, view_name, sql, ..}}
+        self._types     = {}  # {(typename, typehash): {type, table_name, sql, ..}}
+        self._schema    = {}  # {(typename, typehash): {cols}}
+        self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
+        self._dialect   = args.WRITE_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
+        self._nesting   = args.WRITE_OPTIONS.get("nesting")
 
 
     def validate(self):
@@ -54,10 +56,10 @@ class SqlMixin(object):
 
         Verifies that "dialect-file" is valid and "dialect" contains supported value, if any.
         """
-        return all([self.validate_dialect_file(), self.validate_dialect()])
+        return all([self._validate_dialect_file(), self._validate_dialect()])
 
 
-    def validate_dialect_file(self):
+    def _validate_dialect_file(self):
         """Returns whether "dialect-file" is valid in args.WRITE_OPTIONS."""
         ok = True
         if self._args.WRITE_OPTIONS.get("dialect-file"):
@@ -81,7 +83,7 @@ class SqlMixin(object):
         return ok
 
 
-    def validate_dialect(self):
+    def _validate_dialect(self):
         """Returns whether "dialect" is valid in args.WRITE_OPTIONS."""
         ok = True
         if "dialect" in self._args.WRITE_OPTIONS \
@@ -94,11 +96,18 @@ class SqlMixin(object):
         return ok
 
 
-    def make_topic_data(self, topic, msg, extra_cols=(), exclude_cols=()):
+    def close(self):
+        """Clears data strucrtures."""
+        self._topics.clear()
+        self._types.clear()
+        self._schema.clear()
+        self._sql_cache.clear()
+
+
+    def _make_topic_data(self, topic, msg, exclude_cols=()):
         """
         Returns full data dictionary for topic, including view name and SQL.
 
-        @param   extra_cols    list of additional column names for message type table
         @param   exclude_cols  list of column names to exclude from view SELECT, if any
         @return                {"name": topic name, "type": message type name as "pkg/Cls",
                                 "table_name": message type table name, "view_name": topic view name,
@@ -106,9 +115,6 @@ class SqlMixin(object):
         """
         with rosapi.TypeMeta.make(msg, topic) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
-
-        extra_cols   = [x[0] if isinstance(x, (list, tuple)) else x for x in extra_cols]
-        exclude_cols = [x[0] if isinstance(x, (list, tuple)) else x for x in exclude_cols]
 
         table_name = self._types[typekey]["table_name"]
         pkgname, clsname = typename.split("/", 1)
@@ -119,22 +125,21 @@ class SqlMixin(object):
         sqlargs = dict(nameargs, view=quote(view_name), table=quote(table_name, force=True),
                        topic=repr(topic), cols="*")
         if exclude_cols:
-            scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
-            msg_cols = [".".join(p) for p, _, _ in rosapi.iter_message_fields(msg, scalars=scalars)]
-            select_cols = msg_cols + [c for c in extra_cols if c not in exclude_cols]
+            exclude_cols = [x[0] if isinstance(x, (list, tuple)) else x for x in exclude_cols]
+            select_cols = [c for c in self._schema[typekey] if c not in exclude_cols]
             sqlargs["cols"] = ", ".join(quote(c) for c in select_cols)
-        sql = self.get_dialect_option("view_template").strip().format(**sqlargs)
+        sql = self._get_dialect_option("view_template").strip().format(**sqlargs)
 
         return {"name": topic, "type": typename, "md5": typehash,
                 "sql": sql, "table_name": table_name, "view_name": view_name}
 
 
-    def make_type_data(self, msg, extra_cols=(), rootmsg=None):
+    def _make_type_data(self, msg, extra_cols=(), rootmsg=None):
         """
         Returns full data dictionary for message type, including table name and SQL.
 
         @param   rootmsg     top message this message is nested under, if any
-        @param   extra_cols  additional table columns, as [(column name, ROS type)]
+        @param   extra_cols  additional table columns, as [(column name, column def)]
         @return              {"type": message type name as "pkg/Cls",
                               "table_name": message type table name,
                               "definition": message type definition,
@@ -146,7 +151,7 @@ class SqlMixin(object):
             typename, typehash = (m.typename, m.typehash)
 
         cols = []
-        scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
+        scalars = set(x for x in self._get_dialect_option("types") if x == rosapi.scalar(x))
         for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
@@ -160,35 +165,35 @@ class SqlMixin(object):
         table_name = self._make_entity_name("table", nameargs)
 
         sqlargs = dict(nameargs, table=quote(table_name), cols="\n  %s\n" % ",\n  ".join(coldefs))
-        sql = self.get_dialect_option("table_template").strip().format(**sqlargs)
+        sql = self._get_dialect_option("table_template").strip().format(**sqlargs)
         return {"type": typename, "md5": typehash,
                 "definition": rosapi.TypeMeta.make(msg).definition,
                 "table_name": table_name, "cols": cols, "sql": sql}
 
 
-    def make_topic_insert_sql(self, topic, msg):
+    def _make_topic_insert_sql(self, topic, msg):
         """Returns ("INSERT ..", [args]) for inserting into topics-table."""
-        POSARG = self.get_dialect_option("posarg")
+        POSARG = self._get_dialect_option("posarg")
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         tdata = self._topics[topickey]
 
-        sql  = self.get_dialect_option("insert_topic").strip().replace("%s", POSARG)
+        sql  = self._get_dialect_option("insert_topic").strip().replace("%s", POSARG)
         args = [tdata[k] for k in ("name", "type", "md5", "table_name", "view_name")]
         return sql, args
 
 
-    def make_type_insert_sql(self, msg):
+    def _make_type_insert_sql(self, msg):
         """Returns ("INSERT ..", [args]) for inserting into types-table."""
-        POSARG = self.get_dialect_option("posarg")
+        POSARG = self._get_dialect_option("posarg")
         typekey = rosapi.TypeMeta.make(msg).typekey
         tdata = self._types[typekey]
 
-        sql  = self.get_dialect_option("insert_type").strip().replace("%s", POSARG)
+        sql  = self._get_dialect_option("insert_type").strip().replace("%s", POSARG)
         args = [tdata[k] for k in ("type", "definition", "md5", "table_name")]
         return sql, args
 
 
-    def make_message_insert_sql(self, topic, msg, extra_cols=()):
+    def _make_message_insert_sql(self, topic, msg, extra_cols=()):
         """
         Returns ("INSERT ..", [args]) for inserting into message type table.
 
@@ -198,14 +203,14 @@ class SqlMixin(object):
         table_name = self._types[typekey]["table_name"]
         sql, cols, args = self._sql_cache.get(table_name), [], []
 
-        scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
+        scalars = set(x for x in self._get_dialect_option("types") if x == rosapi.scalar(x))
         for p, v, t in rosapi.iter_message_fields(msg, scalars=scalars):
             if not sql: cols.append(".".join(p))
             args.append(self._make_column_value(v, t))
         args = tuple(args) + tuple(v for _, v in extra_cols)
 
         if not sql:
-            POSARG = self.get_dialect_option("posarg")
+            POSARG = self._get_dialect_option("posarg")
             if extra_cols: cols.extend(c for c, _ in extra_cols)
             sql = "INSERT INTO %s (%s) VALUES (%s)" % \
                   (quote(table_name), ", ".join(map(quote, cols)),
@@ -215,21 +220,16 @@ class SqlMixin(object):
         return sql, args
 
 
-    def make_update_sql(self, table, values, where=()):
+    def _make_update_sql(self, table, values, where=()):
         """Returns ("UPDATE ..", [args])."""
-        POSARG = self.get_dialect_option("posarg")
-        sql, args, sets, filters = "UPDATE %s SET" % quote(table), [], [], []
+        POSARG = self._get_dialect_option("posarg")
+        sql, args, sets, filters = "UPDATE %s SET " % quote(table), [], [], []
         for lst, vals in [(sets, values), (filters, where)]:
             for k, v in vals.items() if isinstance(vals, dict) else vals:
                 lst.append("%s = %s" % (quote(k), POSARG))
                 args.append(self._make_column_value(v))
-        sql += ", ".join(sets) + (" " if filters else "") + " AND ".join(filters)
+        sql += ", ".join(sets) + (" WHERE " if filters else "") + " AND ".join(filters)
         return sql, args
-
-
-    def get_dialect_option(self, option):
-        """Returns option for current SQL dialect, falling back to default dialect."""
-        return self.DIALECTS[self._dialect].get(option, self.DIALECTS[None].get(option))
 
 
     def _make_entity_name(self, category, args):
@@ -238,11 +238,34 @@ class SqlMixin(object):
 
         @param   args  format arguments for table/view name template
         """
-        name = self.get_dialect_option("%s_name_template" % category).format(**args)
+        name = self._get_dialect_option("%s_name_template" % category).format(**args)
         existing = set(sum(([x["table_name"], x.get("view_name")]
                             for dct in (self._topics, self._types)
                             for x in dct.values()), []))
         return self._make_name("entity", name, existing)
+
+
+    def _make_name(self, category, name, existing=()):
+        """
+        Returns a valid unique name for table/view/column.
+
+        Replaces invalid characters and constrains length.
+        If name already exists, appends counter like " (2)".
+        """
+        MAXLEN_ARG   = "maxlen_column" if "column" == category else "maxlen_entity"
+        MAXLEN       = self._get_dialect_option(MAXLEN_ARG)
+        INVALID_RGX  = self._get_dialect_option("invalid_char_regex")
+        INVALID_REPL = self._get_dialect_option("invalid_char_repl")
+        if not MAXLEN and not INVALID_RGX: return name
+
+        name1 = re.sub(INVALID_RGX, INVALID_REPL, name) if INVALID_RGX else name
+        name2 = ellipsize(name1, MAXLEN)
+        counter = 2
+        while name2 in existing:
+            suffix = " (%s)" % counter
+            name2 = ellipsize(name1, MAXLEN - len(suffix)) + suffix
+            counter += 1
+        return name2
 
 
     def _make_column_names(self, col_names):
@@ -276,64 +299,15 @@ class SqlMixin(object):
         return v
 
 
-    def _convert_column_value(self, value, typename):
-        """Returns ROS value converted to dialect value."""
-        ADAPTERS = self.get_dialect_option("adapters")
-        if not ADAPTERS: return value
-
-        adapter, iterate = ADAPTERS.get(typename), False
-        if not adapter and isinstance(value, (list, tuple)):
-            adapter, iterate = ADAPTERS.get(rosapi.scalar(typename)), True
-        if adapter:
-            value = [adapter(x) for x in value] if iterate else adapter(value)
-        return value
-
-
-    def _convert_time_value(self, value, typename):
-        """Returns ROS time/duration value converted to dialect value."""
-        adapter = self.get_dialect_option("adapters").get(typename)
-        if adapter:
-            try: is_int = issubclass(adapter, int)
-            except Exception: is_int = False
-            v = rosapi.to_sec(value) if is_int else "%d.%09d" % rosapi.to_sec_nsec(value)
-            result = adapter(v)
-        else:
-            result = rosapi.to_decimal(value)
-        return result
-
-
-    def _make_name(self, category, name, existing=()):
-        """
-        Returns a valid unique name for table/view/column.
-
-        Replaces invalid characters and constrains length.
-        If name already exists, appends counter like " (2)".
-        """
-        MAXLEN_ARG   = "maxlen_column" if "column" == category else "maxlen_entity"
-        MAXLEN       = self.get_dialect_option(MAXLEN_ARG)
-        INVALID_RGX  = self.get_dialect_option("invalid_char_regex")
-        INVALID_REPL = self.get_dialect_option("invalid_char_repl")
-        if not MAXLEN and not INVALID_RGX: return name
-
-        name1 = re.sub(INVALID_RGX, INVALID_REPL, name) if INVALID_RGX else name
-        name2 = ellipsize(name1, MAXLEN)
-        counter = 2
-        while name2 in existing:
-            suffix = " (%s)" % counter
-            name2 = ellipsize(name1, MAXLEN - len(suffix)) + suffix
-            counter += 1
-        return name2
-
-
     def _make_column_type(self, typename, fallback=None):
         """
         Returns column type for SQL.
 
         @param  fallback  fallback typename to use for lookup if no mapping for typename
         """
-        TYPES         = self.get_dialect_option("types")
-        ARRAYTEMPLATE = self.get_dialect_option("arraytype_template")
-        DEFAULTTYPE   = self.get_dialect_option("defaulttype")
+        TYPES         = self._get_dialect_option("types")
+        ARRAYTEMPLATE = self._get_dialect_option("arraytype_template")
+        DEFAULTTYPE   = self._get_dialect_option("defaulttype")
 
         coltype    = TYPES.get(typename)
         scalartype = rosapi.get_ros_time_category(rosapi.scalar(typename))
@@ -350,6 +324,37 @@ class SqlMixin(object):
         if not coltype:
             coltype = DEFAULTTYPE or quote(typename)
         return coltype
+
+
+    def _convert_column_value(self, value, typename):
+        """Returns ROS value converted to dialect value."""
+        ADAPTERS = self._get_dialect_option("adapters")
+        if not ADAPTERS: return value
+
+        adapter, iterate = ADAPTERS.get(typename), False
+        if not adapter and isinstance(value, (list, tuple)):
+            adapter, iterate = ADAPTERS.get(rosapi.scalar(typename)), True
+        if adapter:
+            value = [adapter(x) for x in value] if iterate else adapter(value)
+        return value
+
+
+    def _convert_time_value(self, value, typename):
+        """Returns ROS time/duration value converted to dialect value."""
+        adapter = self._get_dialect_option("adapters").get(typename)
+        if adapter:
+            try: is_int = issubclass(adapter, int)
+            except Exception: is_int = False
+            v = rosapi.to_sec(value) if is_int else "%d.%09d" % rosapi.to_sec_nsec(value)
+            result = adapter(v)
+        else:
+            result = rosapi.to_decimal(value)
+        return result
+
+
+    def _get_dialect_option(self, option):
+        """Returns option for current SQL dialect, falling back to default dialect."""
+        return self.DIALECTS[self._dialect].get(option, self.DIALECTS[None].get(option))
 
 
     ## Supported SQL dialects and options

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    06.01.2022
+@modified    07.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -148,7 +148,7 @@ class PostgresSink(DataSinkBase):
     def _get_next_id(self, table):
         """Returns next cached ID value, re-populating empty cache from sequence."""
         if not self._id_queue.get(table):
-            MAXLEN = self.get_dialect_option("maxlen_entity")
+            MAXLEN = self._get_dialect_option("maxlen_entity")
             seqbase, seqsuffix = table, "_%s_seq" % self.MESSAGE_TYPE_BASECOLS[-1][0]
             if MAXLEN: seqbase = seqbase[:MAXLEN - len(seqsuffix)]
             sql = "SELECT nextval('%s') AS id" % quote(seqbase + seqsuffix)
@@ -160,7 +160,7 @@ class PostgresSink(DataSinkBase):
 
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
-        TYPES = self.get_dialect_option("types")
+        TYPES = self._get_dialect_option("types")
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
@@ -169,7 +169,7 @@ class PostgresSink(DataSinkBase):
         elif isinstance(v, (list, tuple)):
             scalartype = rosapi.scalar(typename)
             if scalartype in rosapi.ROS_TIME_TYPES:
-                v = [self._convert_time(x) for x in v]
+                v = [self._convert_time_value(x, scalartype) for x in v]
             elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
                 else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
@@ -177,9 +177,9 @@ class PostgresSink(DataSinkBase):
             elif "BYTEA" == TYPES.get(typename):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
-                v = self._convert_column_value(v, typename)
+                v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2
         elif rosapi.is_ros_time(v):
-            v = self._convert_time_value(v)
+            v = self._convert_time_value(v, typename)
         elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
             v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
         elif typename:

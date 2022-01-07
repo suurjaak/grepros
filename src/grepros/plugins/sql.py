@@ -13,6 +13,7 @@ Released under the BSD License.
 """
 ## @namespace grepros.plugins.sql
 import atexit
+import collections
 import datetime
 import os
 import sys
@@ -117,10 +118,10 @@ class SqlSink(SinkBase, SqlMixin):
                 ConsolePrinter.debug("Wrote %s to SQL %s.",
                                      plural("nested message type table", self._nested_types),
                                      self._filename)
-        self._types.clear()
         self._nested_types.clear()
-        self._topics.clear()
         del self._batch_metas[:]
+        SqlMixin.close(self)
+        super(SqlSink, self).close()
 
 
     def _ensure_open(self):
@@ -139,7 +140,7 @@ class SqlSink(SinkBase, SqlMixin):
         if topickey in self._topics:
             return
 
-        self._topics[topickey] = self.make_topic_data(topic, msg)
+        self._topics[topickey] = self._make_topic_data(topic, msg)
         self._write_entity("view", self._topics[topickey])
 
 
@@ -157,7 +158,9 @@ class SqlSink(SinkBase, SqlMixin):
             return None
 
         extra_cols = [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
-        self._types[typekey] = self.make_type_data(msg, extra_cols, rootmsg)
+        self._types[typekey] = self._make_type_data(msg, extra_cols, rootmsg)
+        self._schema[typekey] = collections.OrderedDict(self._types[typekey].pop("cols"))
+
         self._write_entity("table", self._types[typekey])
         if self._nesting: self._process_nested(msg, rootmsg)
         return self._types[typekey]["sql"]

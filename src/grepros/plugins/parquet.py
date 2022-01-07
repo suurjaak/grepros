@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    05.01.2022
+@modified    07.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -144,7 +144,7 @@ class ParquetSink(SinkBase):
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
 
         if self.args.VERBOSE:
-            ConsolePrinter.debug("Adding type %s.", typename)
+            ConsolePrinter.debug("Adding type %s in Parquet output.", typename)
         makedirs(pathname)
 
         schema = pyarrow.schema(cols)
