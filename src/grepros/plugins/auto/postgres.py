@@ -169,7 +169,7 @@ class PostgresSink(DataSinkBase):
         elif isinstance(v, (list, tuple)):
             scalartype = rosapi.scalar(typename)
             if scalartype in rosapi.ROS_TIME_TYPES:
-                v = [rosapi.to_decimal(x) for x in v]
+                v = [self._convert_time(x) for x in v]
             elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
                 else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
@@ -177,11 +177,13 @@ class PostgresSink(DataSinkBase):
             elif "BYTEA" == TYPES.get(typename):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
-                v = list(v)  # Values for psycopg2 cannot be tuples
+                v = self._convert_column_value(v, typename)
         elif rosapi.is_ros_time(v):
-            v = rosapi.to_decimal(v)
+            v = self._convert_time_value(v)
         elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
             v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
+        elif typename:
+            v = self._convert_column_value(v, typename)
         return v
 
 

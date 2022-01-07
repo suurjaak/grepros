@@ -826,6 +826,8 @@ dialectname:
   view_name_template:   topic view name template; args: topic, type, hash, package, class
   types:                Mapping between ROS and SQL common types for table columns,
                         e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
+  adapters:             Mapping between ROS types and callable converters for table columns,
+                        e.g. {"time": "decimal.Decimal"}
   defaulttype:          Fallback SQL type if no mapped type for ROS type;
                         if no mapped and no default type, column type will be ROS type as-is
   arraytype_template:   Array type template; args: type

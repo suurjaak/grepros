@@ -13,12 +13,13 @@ Released under the BSD License.
 """
 ## @namespace grepros.plugins.auto.sqlbase
 import copy
+import json
 import re
 
 import yaml
 
 from ... import rosapi
-from ... common import ConsolePrinter, ellipsize, merge_dicts
+from ... common import ConsolePrinter, ellipsize, import_item, merge_dicts
 
 
 
@@ -44,6 +45,7 @@ class SqlMixin(object):
         self._topics  = {}  # {(topic, typename, typehash): {topic, table_name, view_name, sql, ..}}
         self._types   = {}  # {(typename, typehash): {type, table_name, sql, ..}}
         self._dialect = args.WRITE_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
+        self._nesting = args.WRITE_OPTIONS.get("nesting")
 
 
     def validate(self):
@@ -65,6 +67,13 @@ class SqlMixin(object):
                     dialects = yaml.safe_load(f.read())
                 if any(not isinstance(v, dict) for v in dialects.values()):
                     raise Exception("Each dialect must be a dictionary.") 
+                for opts in dialects.values():
+                    for k, v in list(opts.get("adapters", {}).items()):
+                        try: opts["adapters"][k] = import_item(v)
+                        except ImportError:
+                            ok = False
+                            ConsolePrinter.error("Error loading adapter %r for %r "
+                                                 "in SQL dialect file %r.", v, k, filename)
                 merge_dicts(self.DIALECTS, dialects)
             except Exception as e:
                 ok = False
@@ -110,7 +119,8 @@ class SqlMixin(object):
         sqlargs = dict(nameargs, view=quote(view_name), table=quote(table_name, force=True),
                        topic=repr(topic), cols="*")
         if exclude_cols:
-            msg_cols = [".".join(p) for p, _, _ in rosapi.iter_message_fields(msg)]
+            scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
+            msg_cols = [".".join(p) for p, _, _ in rosapi.iter_message_fields(msg, scalars=scalars)]
             select_cols = msg_cols + [c for c in extra_cols if c not in exclude_cols]
             sqlargs["cols"] = ", ".join(quote(c) for c in select_cols)
         sql = self.get_dialect_option("view_template").strip().format(**sqlargs)
@@ -188,7 +198,8 @@ class SqlMixin(object):
         table_name = self._types[typekey]["table_name"]
         sql, cols, args = self._sql_cache.get(table_name), [], []
 
-        for p, v, t in rosapi.iter_message_fields(msg):
+        scalars = set(x for x in self.get_dialect_option("types") if x == rosapi.scalar(x))
+        for p, v, t in rosapi.iter_message_fields(msg, scalars=scalars):
             if not sql: cols.append(".".join(p))
             args.append(self._make_column_value(v, t))
         args = tuple(args) + tuple(v for _, v in extra_cols)
@@ -244,12 +255,51 @@ class SqlMixin(object):
 
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
-        v, scalartype = value, typename and rosapi.scalar(typename)
-        if isinstance(v, (list, tuple)) and typename \
-        and scalartype not in rosapi.ROS_BUILTIN_TYPES:
-            if self._nesting: v = []
-            else: v = [rosapi.message_to_dict(x) for x in v]
+        if not typename: return value
+
+        v = value
+        if isinstance(v, (list, tuple)):
+            scalartype = rosapi.scalar(typename)
+            if scalartype in rosapi.ROS_TIME_TYPES:
+                v = [self._convert_time(x) for x in v]
+            elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
+                if self._nesting: v = []
+                else: v = [rosapi.message_to_dict(x) for x in v]
+            else:
+                v = self._convert_column_value(v, typename)
+        elif rosapi.is_ros_time(v):
+            v = self._convert_time_value(v, typename)
+        elif typename not in rosapi.ROS_BUILTIN_TYPES:
+            v = json.dumps(rosapi.message_to_dict(v))
+        else:
+            v = self._convert_column_value(v, typename)
         return v
+
+
+    def _convert_column_value(self, value, typename):
+        """Returns ROS value converted to dialect value."""
+        ADAPTERS = self.get_dialect_option("adapters")
+        if not ADAPTERS: return value
+
+        adapter, iterate = ADAPTERS.get(typename), False
+        if not adapter and isinstance(value, (list, tuple)):
+            adapter, iterate = ADAPTERS.get(rosapi.scalar(typename)), True
+        if adapter:
+            value = [adapter(x) for x in value] if iterate else adapter(value)
+        return value
+
+
+    def _convert_time_value(self, value, typename):
+        """Returns ROS time/duration value converted to dialect value."""
+        adapter = self.get_dialect_option("adapters").get(typename)
+        if adapter:
+            try: is_int = issubclass(adapter, int)
+            except Exception: is_int = False
+            v = rosapi.to_sec(value) if is_int else "%d.%09d" % rosapi.to_sec_nsec(value)
+            result = adapter(v)
+        else:
+            result = rosapi.to_decimal(value)
+        return result
 
 
     def _make_name(self, category, name, existing=()):
@@ -316,15 +366,16 @@ CREATE VIEW {view} AS
 SELECT {cols}
 FROM {table}
 WHERE _topic = {topic};""",
-            "table_name_template":  "{type}",      # args: type, hash, package, class
-            "view_name_template":   "{topic}",     # args: topic, type, hash, package, class
-            "types":                {},            # Mapping between ROS and SQL common types
-            "defaulttype":          None,          # Fallback SQL type if no mapping for ROS type
-            "arraytype_template":   "{type}[]",    # Array type template, args: type
-            "maxlen_entity":        0,             # Maximum table/view name length, 0 disables
-            "maxlen_column":        0,             # Maximum column name length, 0 disables
-            "invalid_char_regex":   None,          # Regex for matching invalid characters in name
-            "invalid_char_repl":    "__",          # Replacement for invalid characters in name
+            "table_name_template":  "{type}",    # args: type, hash, package, class
+            "view_name_template":   "{topic}",   # args: topic, type, hash, package, class
+            "types":                {},          # Mapping between ROS and SQL common types
+            "adapters":             {},          # Mapping between ROS types and callable converters
+            "defaulttype":          None,        # Fallback SQL type if no mapping for ROS type
+            "arraytype_template":   "{type}[]",  # Array type template, args: type
+            "maxlen_entity":        0,           # Maximum table/view name length, 0 disables
+            "maxlen_column":        0,           # Maximum column name length, 0 disables
+            "invalid_char_regex":   None,        # Regex for matching invalid characters in name
+            "invalid_char_repl":    "__",        # Replacement for invalid characters in name
 
             "insert_topic": """
 INSERT INTO topics (name, type, md5, table_name, view_name)

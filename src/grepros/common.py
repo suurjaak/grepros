@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.01.2022
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
 import datetime
 import glob
+import importlib
 import itertools
 import math
 import os
@@ -569,6 +570,26 @@ def format_bytes(size, precision=2, inter=" ", strip=True):
 def format_stamp(stamp):
     """Returns ISO datetime from UNIX timestamp."""
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
+
+
+def import_item(name):
+    """
+    Returns imported module, or identifier from imported namespace; raises on error.
+
+    @param   name  Python module name like "my.module"
+                   or module namespace identifier like "my.module.Class"
+    """
+    result, parts = None, name.split(".")
+    for i, item in enumerate(parts):
+        path, success = ".".join(parts[:i + 1]), False
+        try: result, success = importlib.import_module(path), True
+        except ImportError: pass
+        if not success and i:
+            try: result, success = getattr(result, item), True
+            except AttributeError: pass
+        if not success:
+            raise ImportError("No module or identifier named %r" % path)
+    return result
 
 
 def makedirs(path):
