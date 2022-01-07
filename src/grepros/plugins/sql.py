@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    06.01.2022
+@modified    07.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -156,7 +156,8 @@ class SqlSink(SinkBase, SqlMixin):
         if typekey in self._types:
             return None
 
-        self._types[typekey] = self.make_type_data(msg, self.MESSAGE_TYPE_BASECOLS, rootmsg)
+        extra_cols = [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
+        self._types[typekey] = self.make_type_data(msg, extra_cols, rootmsg)
         self._write_entity("table", self._types[typekey])
         if self._nesting: self._process_nested(msg, rootmsg)
         return self._types[typekey]["sql"]
@@ -184,7 +185,7 @@ class SqlSink(SinkBase, SqlMixin):
         args = {
             "dialect":  self._dialect,
             "args":      " ".join(sys.argv[1:]),
-            "source":   "\n\n".join("-- Source:\n" + 
+            "source":   "\n\n".join("-- Source:\n" +
                                     "\n".join("-- " + x for x in s.strip().splitlines())
                                     for s in self._batch_metas),
             "dt":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -201,7 +202,7 @@ class SqlSink(SinkBase, SqlMixin):
         """Writes table or view SQL statement to file."""
         self._file.write(b"\n")
         if "table" == category:
-            self._file.write(("-- Message type %(type)s (%(md5)s)\n" % item).encode("utf-8"))
+            self._file.write(("-- Message type %(type)s (%(md5)s)\n--\n" % item).encode("utf-8"))
             self._file.write(("-- %s\n" % "\n-- ".join(item["definition"].splitlines())).encode("utf-8"))
         else:
             self._file.write(('-- Topic "%(name)s": %(type)s (%(md5)s)\n' % item).encode("utf-8"))
