@@ -8,11 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    07.01.2022
+@modified    08.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
-import ast
 import json
 import os
 import re
@@ -40,7 +39,27 @@ class ParquetSink(SinkBase):
     ## Number of dataframes to cache before writing, per type
     CHUNK_SIZE = 100
 
-    ## Mapping from ROS common types to pyarrow types
+    ## Mapping from pyarrow type names and aliases to pyarrow type constructors
+    ARROW_TYPES = {
+        "bool":       pyarrow.bool_,     "bool_":        pyarrow.bool_,
+        "float16":    pyarrow.float16,   "float64":      pyarrow.float64,
+        "float32":    pyarrow.float32,   "decimal128":   pyarrow.decimal128,
+        "int8":       pyarrow.int8,      "uint8":        pyarrow.uint8, 
+        "int16":      pyarrow.int16,     "uint16":       pyarrow.uint16,
+        "int32":      pyarrow.int32,     "uint32":       pyarrow.uint32,
+        "int64":      pyarrow.int64,     "uint64":       pyarrow.uint64,
+        "date32":     pyarrow.date32,    "time32":       pyarrow.time32,
+        "date64":     pyarrow.date64,    "time64":       pyarrow.time64,
+        "timestamp":  pyarrow.timestamp, "duration":     pyarrow.duration,
+        "binary":     pyarrow.binary,    "large_binary": pyarrow.large_binary,
+        "string":     pyarrow.string,    "large_string": pyarrow.large_string,
+        "utf8":       pyarrow.string,    "large_utf8":   pyarrow.large_utf8,
+        "list":       pyarrow.list_,     "list_":        pyarrow.list_,
+        "large_list": pyarrow.large_list,
+        "month_day_nano_interval": pyarrow.month_day_nano_interval,
+    } if pyarrow else {}
+
+    ## Mapping from ROS common type names to pyarrow type constructors
     COMMON_TYPES = {
         "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
         "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
@@ -224,18 +243,21 @@ class ParquetSink(SinkBase):
 
     def _configure(self):
         """Parses args.WRITE_OPTIONS."""
+        ok = True
         for k, v in self.args.WRITE_OPTIONS.items():
             if k.startswith("type-"):
-                # Split "time('ns')" into "time" and "('ns')"
-                base, argstr = re.split(r"([^(]+)(\([^)]*\))?", v, 1)[1:3]
-                cls = getattr(pyarrow, base)
-                args = ast.literal_eval(argstr) if argstr else ()
-                args = (args, ) if not isinstance(args, tuple) else args
-                self.COMMON_TYPES[k[len("type-"):]] = cls(*args)
+                # Eval pyarrow datatype from value like "float64()" or "list(uint8())"
+                try:
+                    arrowtype = eval(compile(v, "", "eval"), {"__builtins__": self.ARROW_TYPES})
+                    self.COMMON_TYPES[k[len("type-"):]] = arrowtype
+                except Exception as e:
+                    ok = False
+                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v, e)
             elif k.startswith("writer-"):
                 try: v = json.loads(v)
                 except Exception: pass
                 self.WRITER_ARGS[k[len("writer-"):]] = v
+        if not ok: raise SystemExit(1)
 
 
 def init(*_, **__):
@@ -243,7 +265,8 @@ def init(*_, **__):
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
         ("type-rostype=arrowtype",  "custom mapping between ROS and pyarrow type\n"
-                                     "for Parquet output, like type-time=\"timestamp('ns')\""),
+                                     "for Parquet output, like type-time=\"timestamp('ns')\"\n"
+                                     "or type-uint8[]=\"list(uint8())\""),
         ("writer-argname=argvalue",  "additional arguments for Parquet output\n"
                                      "given to pyarrow.parquet.ParquetWriter"),
     ])

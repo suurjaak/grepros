@@ -8,6 +8,7 @@ Changelog for package grepros
 * allow specifying dialect options in Postgres/SQLite output
 * allow overriding table and view names in SQL dialects
 * allow specifying field value adapters in SQL dialects
+* allow specifying structured type mappings in Parquet output like type-uint8[]="list(uint8())"
 * drop meta-table from Postgres output
 * drop default value from --publish-prefix option
 * fix error in parsing subtypes from message definitions

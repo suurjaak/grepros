@@ -764,9 +764,10 @@ Specifying `format=parquet` is not required if the filename ends with `.parquet`
 
 Requires [pandas](https://pypi.org/project/pandas) and [pyarrow](https://pypi.org/project/pyarrow).
 
-Supports custom mapping between ROS and pyarrow types:
+Supports custom mapping between ROS and pyarrow types with `type-rostype=arrowtype`:
 
-    --write path/to/my.parquet type-rostype=arrowtype
+    --write path/to/my.parquet type-time="timestamp('ns')"
+    --write path/to/my.parquet type-uint8[]="list(uint8())"
 
 Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
 unless they are mapped to pyarrow types explicitly, like:
