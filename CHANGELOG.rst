@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.1 (2022-01-07)
+0.4.1 (2022-01-08)
 -------------------
 * refactor database and SQL sinks onto a common base
 * allow specifying dialect options in Postgres/SQLite output

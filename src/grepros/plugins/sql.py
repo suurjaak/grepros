@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    07.01.2022
+@modified    08.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -157,7 +157,8 @@ class SqlSink(SinkBase, SqlMixin):
         if typekey in self._types:
             return None
 
-        extra_cols = [(c, self._make_column_type(t)) for c, t in self.MESSAGE_TYPE_BASECOLS]
+        extra_cols = [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
+                      for c, t in self.MESSAGE_TYPE_BASECOLS]
         self._types[typekey] = self._make_type_data(msg, extra_cols, rootmsg)
         self._schema[typekey] = collections.OrderedDict(self._types[typekey].pop("cols"))
 
