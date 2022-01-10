@@ -8,11 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    25.12.2021
+@modified    08.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
-import ast
 import json
 import os
 import re
@@ -40,7 +39,27 @@ class ParquetSink(SinkBase):
     ## Number of dataframes to cache before writing, per type
     CHUNK_SIZE = 100
 
-    ## Mapping from ROS common types to pyarrow types
+    ## Mapping from pyarrow type names and aliases to pyarrow type constructors
+    ARROW_TYPES = {
+        "bool":       pyarrow.bool_,     "bool_":        pyarrow.bool_,
+        "float16":    pyarrow.float16,   "float64":      pyarrow.float64,
+        "float32":    pyarrow.float32,   "decimal128":   pyarrow.decimal128,
+        "int8":       pyarrow.int8,      "uint8":        pyarrow.uint8, 
+        "int16":      pyarrow.int16,     "uint16":       pyarrow.uint16,
+        "int32":      pyarrow.int32,     "uint32":       pyarrow.uint32,
+        "int64":      pyarrow.int64,     "uint64":       pyarrow.uint64,
+        "date32":     pyarrow.date32,    "time32":       pyarrow.time32,
+        "date64":     pyarrow.date64,    "time64":       pyarrow.time64,
+        "timestamp":  pyarrow.timestamp, "duration":     pyarrow.duration,
+        "binary":     pyarrow.binary,    "large_binary": pyarrow.large_binary,
+        "string":     pyarrow.string,    "large_string": pyarrow.large_string,
+        "utf8":       pyarrow.string,    "large_utf8":   pyarrow.large_utf8,
+        "list":       pyarrow.list_,     "list_":        pyarrow.list_,
+        "large_list": pyarrow.large_list,
+        "month_day_nano_interval": pyarrow.month_day_nano_interval,
+    } if pyarrow else {}
+
+    ## Mapping from ROS common type names to pyarrow type constructors
     COMMON_TYPES = {
         "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
         "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
@@ -63,15 +82,15 @@ class ParquetSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                arguments object like argparse.Namespace
-        @param   args.META           whether to print metainfo
-        @param   args.DUMP_TARGET    base name of Parquet files to write
-        @param   args.DUMP_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
-        @param   args.VERBOSE        whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.META            whether to print metainfo
+        @param   args.WRITE           base name of Parquet files to write
+        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
+        @param   args.VERBOSE         whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
 
-        self._filebase  = args.DUMP_TARGET
+        self._filebase  = args.WRITE
         self._filenames = {}  # {(typename, typehash): Parquet file path}
         self._caches    = {}  # {(typename, typehash): [{data}, ]}
         self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
@@ -125,11 +144,10 @@ class ParquetSink(SinkBase):
 
     def _process_type(self, topic, msg):
         """Prepares Parquet schema and writer if not existing."""
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
-        if (topic, typename, typehash) not in self._counts and self._args.VERBOSE:
-            ConsolePrinter.debug("Adding topic %s.", topic)
+        with rosapi.TypeMeta.make(msg, topic) as m:
+            typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
+        if (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
+            ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
         if typekey in self._writers: return
 
         basedir, basename = os.path.split(self._filebase)
@@ -144,8 +162,8 @@ class ParquetSink(SinkBase):
         cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
 
-        if self._args.VERBOSE:
-            ConsolePrinter.debug("Adding type %s.", typename)
+        if self.args.VERBOSE:
+            ConsolePrinter.debug("Adding type %s in Parquet output.", typename)
         makedirs(pathname)
 
         schema = pyarrow.schema(cols)
@@ -162,10 +180,8 @@ class ParquetSink(SinkBase):
 
         Writes cache to disk if length reached chunk size.
         """
-        typename = rosapi.get_message_type(msg)
-        typehash = self.source.get_message_type_hash(msg)
-        typekey  = (typename, typehash)
         data = {}
+        typekey = rosapi.TypeMeta.make(msg, topic).typekey
         for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
@@ -226,19 +242,22 @@ class ParquetSink(SinkBase):
 
 
     def _configure(self):
-        """Parses args.DUMP_OPTIONS."""
-        for k, v in self._args.DUMP_OPTIONS.items():
+        """Parses args.WRITE_OPTIONS."""
+        ok = True
+        for k, v in self.args.WRITE_OPTIONS.items():
             if k.startswith("type-"):
-                # Split "time('ns')" into "time" and "('ns')"
-                base, argstr = re.split(r"([^(]+)(\([^)]*\))?", v, 1)[1:3]
-                cls = getattr(pyarrow, base)
-                args = ast.literal_eval(argstr) if argstr else ()
-                args = (args, ) if not isinstance(args, tuple) else args
-                self.COMMON_TYPES[k[len("type-"):]] = cls(*args)
+                # Eval pyarrow datatype from value like "float64()" or "list(uint8())"
+                try:
+                    arrowtype = eval(compile(v, "", "eval"), {"__builtins__": self.ARROW_TYPES})
+                    self.COMMON_TYPES[k[len("type-"):]] = arrowtype
+                except Exception as e:
+                    ok = False
+                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v, e)
             elif k.startswith("writer-"):
                 try: v = json.loads(v)
                 except Exception: pass
                 self.WRITER_ARGS[k[len("writer-"):]] = v
+        if not ok: raise SystemExit(1)
 
 
 def init(*_, **__):
@@ -246,7 +265,8 @@ def init(*_, **__):
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
         ("type-rostype=arrowtype",  "custom mapping between ROS and pyarrow type\n"
-                                     "for Parquet output, like type-time=\"timestamp('ns')\""),
+                                     "for Parquet output, like type-time=\"timestamp('ns')\"\n"
+                                     "or type-uint8[]=\"list(uint8())\""),
         ("writer-argname=argvalue",  "additional arguments for Parquet output\n"
                                      "given to pyarrow.parquet.ParquetWriter"),
     ])

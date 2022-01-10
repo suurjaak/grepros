@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    23.12.2021
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -523,3 +523,8 @@ def to_nsec(val):
 def to_sec(val):
     """Returns value in seconds if value is ROS1 time/duration, else value."""
     return val.to_sec() if isinstance(val, genpy.TVal) else val
+
+
+def to_sec_nsec(val):
+    """Returns value as (seconds, nanoseconds) if value is ROS1 time/duration, else value."""
+    return (val.secs, val.nsecs) if isinstance(val, genpy.TVal) else val

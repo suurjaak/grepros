@@ -2,6 +2,18 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.1 (2022-01-08)
+-------------------
+* refactor database and SQL sinks onto a common base
+* allow specifying dialect options in Postgres/SQLite output
+* allow overriding table and view names in SQL dialects
+* allow specifying field value adapters in SQL dialects
+* allow specifying structured type mappings in Parquet output like type-uint8[]="list(uint8())"
+* drop meta-table from Postgres output
+* drop default value from --publish-prefix option
+* fix error in parsing subtypes from message definitions
+* fix converting ROS2 temporal messages to seconds/nanoseconds
+
 0.4.0 (2021-12-26)
 -------------------
 * add --plugin grepros.plugins.parquet (Parquet output)

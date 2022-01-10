@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    24.12.2021
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -567,8 +567,7 @@ def qos_to_dict(qos):
             if isinstance(val, enum.Enum):
                 val = val.value
             elif isinstance(val, tuple(ROS_TIME_CLASSES)):
-                sec, nsec = divmod(to_nsec(val), 10**9)
-                val = {"sec": sec, "nsec": nsec}
+                val = dict(zip(["sec", "nsec"], to_sec_nsec(val)))
             result[name] = val
     return [result]
 
@@ -600,13 +599,27 @@ def to_nsec(val):
     """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
     if not isinstance(val, tuple(ROS_TIME_CLASSES)):
         return val
-    return val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
+    if hasattr(val, "nanoseconds"):  # rclpy.Time/Duration
+        return val.nanoseconds
+    return val.sec * 10**9 + val.nanosec  # builtin_interfaces.msg.Time/Duration
 
 
 def to_sec(val):
     """Returns value in seconds if value is ROS2 time/duration, else value."""
     if not isinstance(val, tuple(ROS_TIME_CLASSES)):
         return val
-    nanos = val.nanosec if hasattr(val, "nanosec") else val.nanoseconds
-    secs, nsecs = divmod(nanos, 10**9)
-    return secs + nsecs / 1E9
+    if hasattr(val, "nanoseconds"):  # rclpy.Time/Duration
+        secs, nsecs = divmod(val.nanoseconds, 10**9)
+        return secs + nsecs / 1E9
+    return val.sec + val.nanosec / 1E9  # builtin_interfaces.msg.Time/Duration
+
+
+def to_sec_nsec(val):
+    """Returns value as (seconds, nanoseconds) if value is ROS2 time/duration, else value."""
+    if not isinstance(val, tuple(ROS_TIME_CLASSES)):
+        return val
+    if hasattr(val, "seconds_nanoseconds"):  # rclpy.Time
+        return val.seconds_nanoseconds()
+    if hasattr(val, "nanoseconds"):  # rclpy.Duration
+        return divmod(val.nanoseconds, 10**9)
+    return (val.sec, val.nanosec)  # builtin_interfaces.msg.Time/Duration

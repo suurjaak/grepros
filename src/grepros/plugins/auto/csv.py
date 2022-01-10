@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    21.12.2021
+@modified    05.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -31,17 +31,17 @@ class CsvSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
-        @param   args.DUMP_TARGET   base name of CSV file to write,
-                                    will add topic name like "name.__my__topic.csv" for "/my/topic",
-                                    will add counter like "name.__my__topic.2.csv" if exists
-        @param   args.VERBOSE       whether to print debug information
+        @param   args           arguments object like argparse.Namespace
+        @param   args.WRITE     base name of CSV file to write,
+                                will add topic name like "name.__my__topic.csv" for "/my/topic",
+                                will add counter like "name.__my__topic.2.csv" if exists
+        @param   args.VERBOSE   whether to print debug information
         """
         super(CsvSink, self).__init__(args)
-        self._filebase      = args.DUMP_TARGET  # Filename base, will be made unique
-        self._files         = {}                # {(topic, typename, typehash): file()}
-        self._writers       = {}                # {(topic, typename, typehash): csv.writer}
-        self._lasttopickey  = None              # Last (topic, typename, typehash) emitted
+        self._filebase      = args.WRITE  # Filename base, will be made unique
+        self._files         = {}          # {(topic, typename, typehash): file()}
+        self._writers       = {}          # {(topic, typename, typehash): csv.writer}
+        self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
         self._close_printed = False
 
         atexit.register(self.close)
@@ -76,9 +76,9 @@ class CsvSink(SinkBase):
         """
         Returns a csv.writer for writing topic data.
 
-        File is populated with header if 
+        File is populated with header if not created during this session.
         """
-        topickey = topic, rosapi.get_message_type(msg), self.source.get_message_type_hash(msg)
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if not self._lasttopickey:
             makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
@@ -92,7 +92,7 @@ class CsvSink(SinkBase):
             f = open(name, **flags)
             w = csv.writer(f)
             if topickey not in self._files:
-                if self._args.VERBOSE:
+                if self.args.VERBOSE:
                     ConsolePrinter.debug("Creating %s.", name)
                 header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
                 metaheader = ["__time", "__datetime", "__type"]

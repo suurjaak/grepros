@@ -27,15 +27,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    21.12.2021
+@modified    06.01.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
 import glob
-import importlib
 import os
 
-from .. common import ConsolePrinter
+from .. common import ConsolePrinter, import_item
 from .. outputs import MultiSink
 from . import auto
 
@@ -213,23 +212,3 @@ def populate_write_formats():
     text = "\n".join(sorted("".join((LEADING, n, inters[n], fmt(n, h)))
                             for n, h in texts.items()))
     writearg["help"] += "\n" + text
-
-
-def import_item(name):
-    """
-    Returns imported module, or identifier from imported namespace; raises on error.
-
-    @param   name  Python module name like "my.module"
-                   or module namespace identifier like "my.module.Class"
-    """
-    result, parts = None, name.split(".")
-    for i, item in enumerate(parts):
-        path, success = ".".join(parts[:i + 1]), False
-        try: result, success = importlib.import_module(path), True
-        except ImportError: pass
-        if not success and i:
-            try: result, success = getattr(result, item), True
-            except AttributeError: pass
-        if not success:
-            raise ImportError("No module or identifier named %r" % path)
-    return result
