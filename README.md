@@ -25,6 +25,7 @@ Supports loading custom plugins, mainly for additional output formats.
 - [Example usage](#example-usage)
 - [Installation](#installation)
   - [Using pip](#using-pip)
+  - [Using apt](#using-apt)
   - [Using catkin](#using-catkin)
   - [Using colcon](#using-colcon)
 - [Inputs](#inputs)
@@ -128,6 +129,13 @@ minimal ROS1 Python packages can also be installed separately with:
 
     pip install rospy rosbag roslib roslz4 \
     --extra-index-url https://rospypi.github.io/simple/
+
+
+### Using apt
+
+  sudo apt install ros-noetic-grepros
+
+This will add the `grepros` command to the global ROS1 environment.
 
 
 ### Using catkin
