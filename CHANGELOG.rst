@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.2 (2022-02-02)
+-------------------
+* create message type definition from class if .msg file not available in ROS2
+
 0.4.1 (2022-01-08)
 -------------------
 * refactor database and SQL sinks onto a common base

@@ -444,12 +444,18 @@ def get_message_type_hash(msg_or_type):
 
 @memoize
 def _get_message_definition(typename):
-    """Returns ROS2 message type definition full text (internal caching method)."""
+    """Returns ROS2 message type definition full text, or "" on error (internal caching method)."""
     try:
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
-        typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
-        with open(typepath) as f:
-            texts[typename] = f.read()
+        try:
+            typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
+            with open(typepath) as f:
+                texts[typename] = f.read()
+        except Exception:  # .msg file unavailable: assemble plain definition
+            cls = get_message_class(typename)
+            lines = ["%s %s" % (t, n) for n, t in get_message_fields(cls).items()]
+            texts[typename] = "\n\n".join(lines)
+
         for line in texts[typename].splitlines():
             if not line or not line[0].isalpha():
                 continue  # for line
@@ -460,11 +466,12 @@ def _get_message_definition(typename):
                        if "Header" == linetype else "%s/%s" % (pkg, linetype)
             linedef = None if linetype in texts else get_message_definition(linetype)
             if linedef: texts[linetype] = linedef
+
         basedef = texts.pop(next(iter(texts)))
         subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
         return basedef + "\n".join(subdefs)
     except Exception as e:
-        ConsolePrinter.error("Error reading type definition of %s: %s", typename, e)
+        ConsolePrinter.error("Error collecting type definition of %s: %s", typename, e)
         return ""
 
 
