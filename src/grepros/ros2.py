@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    06.01.2022
+@modified    02.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -447,7 +447,7 @@ def _get_message_definition(typename):
     """Returns ROS2 message type definition full text (internal caching method)."""
     try:
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
-        typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename))
+        typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
         with open(typepath) as f:
             texts[typename] = f.read()
         for line in texts[typename].splitlines():
