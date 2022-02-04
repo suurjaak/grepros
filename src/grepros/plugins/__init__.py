@@ -27,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    06.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -54,9 +54,10 @@ def init(args=None):
     @param   args.PLUGINS   list of Python modules or classes to import,
                             as ["my.module", "other.module.SomeClass", ]
     """
-    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*.py"))):
+    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*"))):
+        if not f.lower().endswith((".py", ".pyc")): continue  # for f
         name = os.path.splitext(os.path.split(f)[-1])[0]
-        if name.startswith("__"): continue # for f
+        if name.startswith("__") or name in PLUGINS: continue # for f
 
         modulename = "%s.auto.%s" % (__package__, name)
         try:
@@ -147,7 +148,8 @@ def get_argument(name, group=None):
 def populate_known_plugins():
     """Adds known non-auto plugins to `--plugin` argument help."""
     plugins = []
-    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "*.py"))):
+    for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "*"))):
+        if not f.lower().endswith((".py", ".pyc")): continue  # for f
         name = os.path.splitext(os.path.split(f)[-1])[0]
         if not name.startswith("__"):
             plugins.append("%s.%s" % (__package__, name))
