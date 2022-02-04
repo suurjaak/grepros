@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    02.02.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -27,6 +27,8 @@ import rclpy.duration
 import rclpy.executors
 import rclpy.serialization
 import rclpy.time
+import rosidl_parser.parser
+import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
@@ -451,11 +453,8 @@ def _get_message_definition(typename):
             typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
             with open(typepath) as f:
                 texts[typename] = f.read()
-        except Exception:  # .msg file unavailable: assemble plain definition
-            cls = get_message_class(typename)
-            lines = ["%s %s" % (t, n) for n, t in get_message_fields(cls).items()]
-            texts[typename] = "\n\n".join(lines)
-
+        except Exception:  # .msg file unavailable: parse IDL
+            texts[typename] = get_message_definition_idl(typename)
         for line in texts[typename].splitlines():
             if not line or not line[0].isalpha():
                 continue  # for line
@@ -476,6 +475,87 @@ def _get_message_definition(typename):
 
 
 @memoize
+def get_message_definition_idl(typename):
+    """
+    Returns ROS2 message type definition parsed from IDL file.
+
+    @since   version 0.4.2
+    """
+
+    def format_comment(text):
+        """Returns annotation text formatted with comment prefixes and escapes."""
+        ESCAPES = {"\n":   "\\n", "\t":   "\\t", "\x07": "\\a",
+                   "\x08": "\\b", "\x0b": "\\v", "\x0c": "\\f"}
+        repl = lambda m: ESCAPES[m.group(0)]
+        return "#" + "\n#".join(re.sub("|".join(map(re.escape, ESCAPES)), repl, l)
+                                for l in text.split("\\n"))
+
+    def format_type(typeobj, msgpackage, constant=False):
+        """Returns canonical type name, like "uint8" or "string<=5" or "nav_msgs/Path"."""
+        result = None
+        if isinstance(typeobj, rosidl_parser.definition.AbstractNestedType):
+            # Array, BoundedSequence, UnboundedSequence
+            valuetype = format_type(typeobj.value_type, msgpackage, constant)
+            size, bounding = "", ""
+            if isinstance(typeobj, rosidl_parser.definition.Array):
+                size = typeobj.size
+            elif typeobj.has_maximum_size():
+                size = typeobj.maximum_size
+            if isinstance(typeobj, rosidl_parser.definition.BoundedSequence):
+                bounding = "<="
+            result = "%s[%s%s]" % (valuetype, bounding, size) # type[], type[N], type[<=N]
+        elif isinstance(typeobj, rosidl_parser.definition.AbstractWString):
+            result = "wstring"
+        elif isinstance(typeobj, rosidl_parser.definition.AbstractString):
+            result = "string"
+        elif isinstance(typeobj, rosidl_parser.definition.NamespacedType):
+            nameparts = typeobj.namespaced_name()
+            result = canonical("/".join(nameparts))
+            if nameparts[0].value == msgpackage or "std_msgs/Header" == result:
+                result = canonical("/".join(nameparts[-1:]))  # Omit package if local or Header
+        else:  # Primitive like int8
+            result = DDS_TYPES.get(typeobj.typename, typeobj.typename)
+
+        if isinstance(typeobj, rosidl_parser.definition.AbstractGenericString) \
+        and typeobj.has_maximum_size() and not constant:  # Constants get parsed into "string<=N"
+            result += "<=%s" % typeobj.maximum_size
+
+        return result
+
+    def get_comments(obj):
+        """Returns all comments for annotatable object, as [text, ]."""
+        return [v.get("text", "") for v in obj.get_annotation_values("verbatim")
+                if "comment" == v.get("language")]
+
+    typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".idl")
+    with open(typepath) as f:
+        idlcontent = rosidl_parser.parser.parse_idl_string(f.read())
+    msgidl = idlcontent.get_elements_of_type(rosidl_parser.definition.Message)[0]
+    package = msgidl.structure.namespaced_type.namespaces[0]
+    DUMMY = rosidl_parser.definition.EMPTY_STRUCTURE_REQUIRED_MEMBER_NAME
+
+    lines = []
+    # Add general comments
+    lines.extend(map(format_comment, get_comments(msgidl.structure)))
+    # Add blank line between general comments and constants
+    if lines and msgidl.constants: lines.append("")
+    # Add constants
+    for c in msgidl.constants:
+        ctype = format_type(c.type, package, constant=True)
+        lines.extend(map(format_comment, get_comments(c)))
+        lines.append("%s %s=%s" % (ctype, c.name, c.value))
+    # Parser adds dummy placeholder if constants-only message
+    if not (len(msgidl.structure.members) == 1 and DUMMY == msgidl.structure[0].name):
+        # Add blank line between constants and fields
+        if msgidl.constants and msgidl.structure.members: lines.append("")
+        # Add fields
+        for m in msgidl.structure.members:
+            lines.extend(map(format_comment, get_comments(m)))
+            lines.append("%s %s" % (format_type(m.type, package), m.name))
+    return "\n".join(lines)
+
+
+@memoize
 def _get_message_type_hash(typename):
     """Returns ROS2 message type MD5 hash (internal caching method)."""
     msgdef = get_message_definition(typename)
@@ -484,7 +564,7 @@ def _get_message_type_hash(typename):
 
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
-    if not is_ros_message(val): return val
+    if not is_ros_message(val): return {}
     fields = {k: canonical(v) for k, v in val.get_fields_and_field_types().items()}
     return collections.OrderedDict(fields)
 

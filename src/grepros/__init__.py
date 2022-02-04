@@ -6,10 +6,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     31.10.2021
-@modified    02.02.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros
 __title__        = "grepros"
-__version__      = "0.4.2.dev1"
-__version_info__ = (0, 4, 2, "dev1")
+__version__      = "0.4.2.dev2"
+__version_info__ = (0, 4, 2, "dev2")
