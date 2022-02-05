@@ -759,8 +759,9 @@ Significantly faster, but library tends to be unstable.
 
 ### parquet
 
-    --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
-                                                                [overwrite=true|false]
+    --plugin grepros.plugins.parquet --write path/to/my.parquet[format=parquet] \
+             [column-name=rostype:value] [overwrite=true|false] [type-rostype=arrowtype] \
+             [writer-argname=argvalue]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -773,6 +774,10 @@ e.g. `package__MessageType__typehash/my.2.parquet`, unless specified to overwrit
 Specifying `format=parquet` is not required if the filename ends with `.parquet`.
 
 Requires [pandas](https://pypi.org/project/pandas) and [pyarrow](https://pypi.org/project/pyarrow).
+
+Supports adding supplementary columns with fixed values to Parquet files:
+
+    --write path/to/my.parquet column-bag_hash=string:26dfba2c
 
 Supports custom mapping between ROS and pyarrow types with `type-rostype=arrowtype`:
 
@@ -913,6 +918,10 @@ optional arguments:
                                                    else for any nested types
                                                    (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
+                          overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
+                                                   instead of appending to if bag or database
+                                                   or appending unique counter to file name
+                                                   (default false)
                           template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
