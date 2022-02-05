@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    07.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -60,13 +60,16 @@ class SqliteSink(DataSinkBase):
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                        "message-yaml": populate messages.yaml (default true),
                                        "nesting": "array" to recursively insert arrays
-                                                  of nested types, or "all" for any nesting)}
+                                                  of nested types, or "all" for any nesting),
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
         super(SqliteSink, self).__init__(args)
 
         self._filename    = args.WRITE
         self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
+        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._id_counters = {}  # {table next: max ID}
 
 
@@ -81,6 +84,11 @@ class SqliteSink(DataSinkBase):
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
             config_ok = False
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for %s: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])
+            config_ok = False
         return config_ok
 
 
@@ -90,7 +98,9 @@ class SqliteSink(DataSinkBase):
         sqlite3.register_converter("JSON", json.loads)
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
-            ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
+            action = "Overwriting" if sz and self._overwrite else \
+                     "Appending to" if sz else "Creating"
+            ConsolePrinter.debug("%s %s%s.", action, self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
         super(SqliteSink, self)._init_db()
 
@@ -122,6 +132,7 @@ class SqliteSink(DataSinkBase):
     def _connect(self):
         """Returns new database connection."""
         makedirs(os.path.dirname(self._filename))
+        if self._overwrite: open(self._filename, "w").close()
         db = sqlite3.connect(self._filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None
@@ -172,6 +183,8 @@ def init(*_, **__):
                                      "else for any nested types\n"
                                      "(array fields in parent will be populated \n"
                                      " with foreign keys instead of messages as JSON)"),
+        ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
+                                     "instead of appending to file (default false)")
     ])
     writearg = plugins.get_argument("--write-format")
     if writearg:

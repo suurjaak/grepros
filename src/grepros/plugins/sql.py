@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    08.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -52,7 +52,9 @@ class SqlSink(SinkBase, SqlMixin):
         """
         @param   args                 arguments object like argparse.Namespace
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
-                                       "nesting": true|false to created nested type tables}
+                                       "nesting": true|false to created nested type tables,
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
         """
         super(SqlSink, self).__init__(args)
         SqlMixin.__init__(self, args)
@@ -62,6 +64,7 @@ class SqlSink(SinkBase, SqlMixin):
         self._batch         = None   # Current source batch
         self._nested_types  = {}     # {(typename, typehash): "CREATE TABLE .."}
         self._batch_metas   = []     # [source batch metainfo string, ]
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._close_printed = False
 
         # Whether to create tables for nested message types,
@@ -74,13 +77,18 @@ class SqlSink(SinkBase, SqlMixin):
 
     def validate(self):
         """
-        Returns whether "dialect" and "nesting" parameters contain supported values.
+        Returns whether "dialect" and "nesting" and "overwrite" parameters contain supported values.
         """
         ok, sqlconfig_ok = True, SqlMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
                                  "Choose one of {array,all}.",
                                  self.args.WRITE_OPTIONS["nesting"])
+            ok = False
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for SQL: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
             ok = False
         return sqlconfig_ok and ok
 
@@ -128,8 +136,12 @@ class SqlSink(SinkBase, SqlMixin):
         """Opens output file if not already open, writes header."""
         if self._file: return
 
-        self._filename = unique_path(self.args.WRITE)
+        self._filename = self.args.WRITE if self._overwrite else unique_path(self.args.WRITE)
         makedirs(os.path.dirname(self._filename))
+        if self.args.VERBOSE:
+            sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
+            action = "Overwriting" if sz and self._overwrite else "Creating"
+            ConsolePrinter.debug("%s %s.", action, self._filename)
         self._file = open(self._filename, "wb")
         self._write_header()
 
@@ -219,14 +231,15 @@ def init(*_, **__):
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("sql", SqlSink, "SQL", [
         ("dialect=" + "|".join(sorted(filter(bool, SqlSink.DIALECTS))),
-                                     "use specified SQL dialect in SQL output\n"
-                                     '(default "%s")' % SqlSink.DEFAULT_DIALECT),
+                                  "use specified SQL dialect in SQL output\n"
+                                  '(default "%s")' % SqlSink.DEFAULT_DIALECT),
         ("dialect-file=path/to/dialects.yaml",
-                                     "load additional SQL dialects\n"
-                                     "for SQL output\n"
-                                     "from a YAML or JSON file"),
-        ("nesting=array|all",        "create tables for nested message types\n"
-                                     "in SQL output,\n"
-                                     'only for arrays if "array" \n'
-                                     "else for any nested types"),
+                                  "load additional SQL dialects\n"
+                                  "for SQL output, from a YAML or JSON file"),
+        ("nesting=array|all",     "create tables for nested message types\n"
+                                  "in SQL output,\n"
+                                  'only for arrays if "array" \n'
+                                  "else for any nested types"),
+        ("overwrite=true|false",  "overwrite existing file in SQL output\n"
+                                  "instead of appending unique counter (default false)")
     ])

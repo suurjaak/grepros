@@ -206,7 +206,7 @@ def populate_write_formats():
         if len(namelabels[name]) > 1:
             for label in namelabels[name]:
                 texts[name] = texts[name].replace("%s output" % label, PLACEHOLDER)
-            labels = "/".join(sorted(filter(bool, namelabels[name])))
+            labels = "/".join(sorted(filter(bool, namelabels[name]), key=lambda x: x.lower()))
             texts[name] = texts[name].replace(PLACEHOLDER, labels + " output")
 
     fmt = lambda n, h: "\n".join((indent if i or "\n" == inters[n] else "") + l

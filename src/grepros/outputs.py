@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -336,13 +336,16 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
-        @param   args.META      whether to print metainfo
-        @param   args.WRITE     name of ROS bagfile to create or append to
-        @param   args.VERBOSE   whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.META            whether to print metainfo
+        @param   args.WRITE           name of ROS bagfile to create or append to
+        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
+                                                     (default false)}
+        @param   args.VERBOSE         whether to print debug information
         """
         super(BagSink, self).__init__(args)
         self._bag = None
+        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._close_printed = False
 
         atexit.register(self.close)
@@ -352,9 +355,12 @@ class BagSink(SinkBase):
         if not self._bag:
             if self.args.VERBOSE:
                 sz = os.path.isfile(self.args.WRITE) and os.path.getsize(self.args.WRITE)
-                ConsolePrinter.debug("%s %s%s.", "Appending to" if sz else "Creating",
+                ConsolePrinter.debug("%s %s%s.",
+                                     "Overwriting" if sz and self._overwrite else
+                                     "Appending to" if sz else "Creating",
                                      self.args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
             makedirs(os.path.dirname(self.args.WRITE))
+            if self._overwrite: open(self.args.WRITE, "w").close()
             self._bag = rosapi.create_bag_writer(self.args.WRITE)
 
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
@@ -366,7 +372,13 @@ class BagSink(SinkBase):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate()
+        result = True
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for bag: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
+            result = False
+        return rosapi.validate() and result
 
     def close(self):
         """Closes output bagfile, if any."""

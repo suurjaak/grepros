@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.4.2 (2022-02-04)
 -------------------
+* add overwrite=true|false to --write options
 * create message type definition from .idl if .msg file not available in ROS2
 
 0.4.1 (2022-01-08)

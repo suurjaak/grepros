@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    08.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -85,12 +85,15 @@ class ParquetSink(SinkBase):
         @param   args                 arguments object like argparse.Namespace
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of Parquet files to write
-        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
+        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter,
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
 
         self._filebase  = args.WRITE
+        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._filenames = {}  # {(typename, typehash): Parquet file path}
         self._caches    = {}  # {(typename, typehash): [{data}, ]}
         self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
@@ -103,14 +106,19 @@ class ParquetSink(SinkBase):
 
     def validate(self):
         """
-        Returns whether required libraries are available (pandas and pyarrow).
+        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid.
         """
-        pandas_ok, pyarrow_ok = bool(pandas), bool(pyarrow)
+        ok, pandas_ok, pyarrow_ok = True, bool(pandas), bool(pyarrow)
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
+            ok = False
         if not pandas_ok:
             ConsolePrinter.error("pandas not available: cannot write Parquet files.")
         if not pyarrow_ok:
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
-        return pandas_ok, pyarrow_ok
+        return ok and pandas_ok and pyarrow_ok
 
 
     def emit(self, topic, index, stamp, msg, match):
@@ -152,7 +160,9 @@ class ParquetSink(SinkBase):
 
         basedir, basename = os.path.split(self._filebase)
         pathname = os.path.join(basedir, re.sub(r"\W", "__", "%s__%s" % (typename, typehash)))
-        filename = unique_path(os.path.join(pathname, basename))
+        filename = os.path.join(pathname, basename)
+        if not self._overwrite:
+            filename = unique_path(filename)
 
         cols = []
         scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
@@ -163,7 +173,9 @@ class ParquetSink(SinkBase):
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
 
         if self.args.VERBOSE:
-            ConsolePrinter.debug("Adding type %s in Parquet output.", typename)
+            sz = os.path.isfile(filename) and os.path.getsize(filename)
+            action = "Overwriting" if sz and self._overwrite else "Adding"
+            ConsolePrinter.debug("%s type %s in Parquet output.", action, typename)
         makedirs(pathname)
 
         schema = pyarrow.schema(cols)
@@ -264,7 +276,9 @@ def init(*_, **__):
     """Adds Parquet output format support."""
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
-        ("type-rostype=arrowtype",  "custom mapping between ROS and pyarrow type\n"
+        ("overwrite=true|false",     "overwrite existing file in Parquet output\n"
+                                     "instead of appending unique counter (default false)"),
+        ("type-rostype=arrowtype",   "custom mapping between ROS and pyarrow type\n"
                                      "for Parquet output, like type-time=\"timestamp('ns')\"\n"
                                      "or type-uint8[]=\"list(uint8())\""),
         ("writer-argname=argvalue",  "additional arguments for Parquet output\n"

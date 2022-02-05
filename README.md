@@ -238,11 +238,11 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write path/to/my.bag [format=bag]
+    --write path/to/my.bag [format=bag] [overwrite=true|false]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
-it is appended to. 
+it is appended to, unless specified to overwrite.
 
 Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
@@ -250,7 +250,7 @@ if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 ### csv
 
-    --write path/to/my.csv [format=csv]
+    --write path/to/my.csv [format=csv] [overwrite=true|false]
 
 Write messages to CSV files, each topic to a separate file, named
 `path/to/my.full__topic__name.csv` for `/full/topic/name`.
@@ -259,14 +259,14 @@ Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
 If a file already exists, a unique counter is appended to the name of the new file,
-e.g. `my.full__topic__name.2.csv`.
+e.g. `my.full__topic__name.2.csv`, unless specified to overwrite.
 
 Specifying `format=csv` is not required if the filename ends with `.csv`.
 
 
 ### html
 
-    --write path/to/my.html [format=html]
+    --write path/to/my.html [format=html] [overwrite=true|false]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -276,7 +276,7 @@ message timeline, message type definitions, and a topically traversable message 
 Note: resulting file may be large, and take a long time to open in browser. 
 
 If the file already exists, a unique counter is appended to the name of the new file,
-e.g. `my.2.html`.
+e.g. `my.2.html`, unless specified to overwrite.
 
 Specifying `format=html` is not required if the filename ends with `.htm` or `.html`.
 
@@ -398,11 +398,11 @@ CREATE TABLE "std_msgs/Header" (
 
 ### sqlite
 
-    --write path/to/my.sqlite [format=sqlite]
+    --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
-If the database already exists, it is appended to.
+If the database already exists, it is appended to, unless specified to overwrite.
 
 Output is compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts. Note that a database
@@ -760,6 +760,7 @@ Significantly faster, but library tends to be unstable.
 ### parquet
 
     --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
+                                                                [overwrite=true|false]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -767,7 +768,7 @@ for `package/MessageType` (typehash is message type definition MD5 hashsum).
 Adds fields `_topic string()` and `_timestamp timestamp("ns")` to each type.
 
 If a file already exists, a unique counter is appended to the name of the new file,
-e.g. `package__MessageType__typehash/my.2.parquet`.
+e.g. `package__MessageType__typehash/my.2.parquet`, unless specified to overwrite.
 
 Specifying `format=parquet` is not required if the filename ends with `.parquet`.
 
@@ -797,10 +798,13 @@ The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`
 
 ### sql
 
-    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql]
+    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql] [overwrite=true|false]
 
 Write SQL schema to output file, CREATE TABLE for each message type
 and CREATE VIEW for each topic.
+
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.2.sql`, unless specified to overwrite.
 
 Specifying `format=sql` is not required if the filename ends with `.sql`.
 
