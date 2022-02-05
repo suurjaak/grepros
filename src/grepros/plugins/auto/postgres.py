@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    07.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -218,6 +218,3 @@ def init(*_, **__):
                                  "(array fields in parent will be populated \n"
                                  " with foreign keys instead of messages as JSON)"),
     ])
-    writearg = plugins.get_argument("--write-format")
-    if writearg:
-        writearg["help"] = writearg["help"].replace("Bag will be", "Bag or database will be")

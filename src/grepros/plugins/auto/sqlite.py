@@ -186,6 +186,3 @@ def init(*_, **__):
         ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
                                      "instead of appending to file (default false)")
     ])
-    writearg = plugins.get_argument("--write-format")
-    if writearg:
-        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")

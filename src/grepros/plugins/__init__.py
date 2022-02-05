@@ -134,7 +134,7 @@ def get_argument(name, group=None):
     """
     Returns a command-line argument dictionary, or None if not found.
 
-    @param   name   argument name like "--write-format"
+    @param   name   argument name like "--write"
     @param   group  argument group like "Output control", if any
     """
     from .. import main  # Late import to avoid circular
