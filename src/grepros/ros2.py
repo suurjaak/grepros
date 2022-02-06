@@ -477,7 +477,7 @@ def _get_message_definition(typename):
 
         basedef = texts.pop(next(iter(texts)))
         subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
-        return basedef + "\n".join(subdefs)
+        return basedef + ("\n" if subdefs else "") + "\n".join(subdefs)
     except Exception as e:
         ConsolePrinter.error("Error collecting type definition of %s: %s", typename, e)
         return ""
@@ -588,7 +588,7 @@ def get_message_value(msg, name, typename):
     v = getattr(msg, name)
     if isinstance(v, (bytes, array.array)) \
     or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        return list(v)
+        v = list(v)
     return v
 
 
