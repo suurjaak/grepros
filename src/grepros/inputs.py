@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.01.2022
+@modified    05.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -573,7 +573,8 @@ class BagSource(SourceBase, ConditionMixin):
             self._ensure_totals()
             self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
             self.bar.afterword = os.path.basename(self._filename)
-            self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items() if t == t_ and n in nn)
+            self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items()
+                                   if c and t == t_ and n in nn)
                                for t_, nn in self._topics.items())
             self.bar.update(value=0)
 
