@@ -442,7 +442,7 @@ VALUES (:topic_id, :timestamp, :data, :topic, :type, :dt, :yaml)
 
         "postgres": {
             "types": {
-                "byte":    "SMALLINT", " char":    "SMALLINT", "int8":    "SMALLINT",
+                "byte":    "SMALLINT", "char":     "SMALLINT", "int8":    "SMALLINT",
                 "int16":   "SMALLINT", "int32":    "INTEGER",  "int64":   "BIGINT",
                 "uint8":   "SMALLINT", "uint16":   "INTEGER",  "uint32":  "BIGINT",
                 "uint64":  "BIGINT",   "float32":  "REAL",     "float64": "DOUBLE PRECISION",
