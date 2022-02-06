@@ -61,12 +61,11 @@ class ParquetSink(SinkBase):
 
     ## Mapping from ROS common type names to pyarrow type constructors
     COMMON_TYPES = {
-        "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
-        "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
-        "uint8":   pyarrow.uint8(),  "uint16":   pyarrow.uint16(),  "uint32":  pyarrow.uint32(),
-        "uint64":  pyarrow.uint64(), "float32":  pyarrow.float32(), "float64": pyarrow.float64(),
-        "bool":    pyarrow.bool_(),  "string":   pyarrow.string(),  "wstring": pyarrow.string(),
-        "uint8[]": pyarrow.binary(), "char[]":   pyarrow.binary(),
+        "int8":    pyarrow.int8(),     "int16":   pyarrow.int16(),    "int32":   pyarrow.int32(),
+        "uint8":   pyarrow.uint8(),    "uint16":  pyarrow.uint16(),   "uint32":  pyarrow.uint32(),
+        "int64":   pyarrow.int64(),    "uint64":  pyarrow.uint64(),   "bool":    pyarrow.bool_(),
+        "string":  pyarrow.string(),   "wstring": pyarrow.string(),   "uint8[]": pyarrow.binary(),
+        "float32": pyarrow.float32(),  "float64": pyarrow.float64(),
     } if pyarrow else {}
 
     ## Fallback pyarrow type if mapped type not found
@@ -262,6 +261,15 @@ class ParquetSink(SinkBase):
     def _configure(self):
         """Parses args.WRITE_OPTIONS."""
         ok = True
+
+        # Populate ROS type aliases like "byte" and "char"
+        for rostype in list(self.COMMON_TYPES):
+            alias = rosapi.get_type_alias(rostype)
+            if alias:
+                self.COMMON_TYPES[alias] = self.COMMON_TYPES[rostype]
+            if alias and rostype + "[]" in self.COMMON_TYPES:
+                self.COMMON_TYPES[alias + "[]"] = self.COMMON_TYPES[rostype + "[]"]
+
         for k, v in self.args.WRITE_OPTIONS.items():
             if k.startswith("column-"):
                 # Parse "column-name=rostype:value"

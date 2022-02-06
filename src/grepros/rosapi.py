@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-## @namespace grepros.rosapi
 """
 ROS interface, shared facade for ROS1 and ROS2.
 
@@ -12,6 +11,7 @@ Released under the BSD License.
 @modified    06.02.2022
 ------------------------------------------------------------------------------
 """
+## @namespace grepros.rosapi
 import collections
 import datetime
 import decimal
@@ -51,6 +51,9 @@ ROS_TIME_CLASSES = {}
 
 ## All built-in basic types plus time types in ROS, populated after init
 ROS_COMMON_TYPES = []
+
+## Mapping between type aliases and real types, like {"byte": "int8"} in ROS1
+ROS_ALIAS_TYPES = {}
 
 ## Module grepros.ros1 or grepros.ros2
 realapi = None
@@ -209,7 +212,7 @@ def validate(live=False):
     @param   live  whether environment must support launching a ROS node
     """
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, \
-           ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES
+           ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES, ROS_ALIAS_TYPES
     if realapi:
         return True
 
@@ -231,6 +234,7 @@ def validate(live=False):
         ROS_COMMON_TYPES = ROS_BUILTIN_TYPES + realapi.ROS_TIME_TYPES
         ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
         ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
+        ROS_ALIAS_TYPES = realapi.ROS_ALIAS_TYPES
     return success
 
 
@@ -376,6 +380,24 @@ def get_topic_types():
     Omits topics that the current ROS node itself has published.
     """
     return realapi.get_topic_types()
+
+
+def get_type_alias(typename):
+    """
+    Returns alias like "char" for ROS built-in type, if any; reverse of get_type_alias().
+
+    In ROS1, byte and char are aliases for int8 and uint8; in ROS2 the reverse.
+    """
+    return next((k for k, v in ROS_ALIAS_TYPES.items() if v == typename), None)
+
+
+def get_alias_type(typename):
+    """
+    Returns ROS built-in type for alias like "char", if any; reverse of get_alias_type().
+
+    In ROS1, byte and char are aliases for int8 and uint8; in ROS2 the reverse.
+    """
+    return ROS_ALIAS_TYPES.get(typename)
 
 
 def is_ros_message(val, ignore_time=False):

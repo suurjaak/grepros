@@ -51,6 +51,9 @@ ROS_TIME_CLASSES = {rclpy.time.Time:                 "builtin_interfaces/Time",
                     rclpy.duration.Duration:         "builtin_interfaces/Duration",
                     builtin_interfaces.msg.Duration: "builtin_interfaces/Duration"}
 
+## Mapping between type aliases and real types, like {"byte": "uint8"}
+ROS_ALIAS_TYPES = {"byte": "uint8", "char": "int8"}
+
 ## Data Distribution Service types to ROS builtins
 DDS_TYPES = {"boolean":             "bool",
              "float":               "float32",

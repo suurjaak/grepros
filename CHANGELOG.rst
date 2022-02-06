@@ -8,6 +8,7 @@ Changelog for package grepros
 * add column-name=rostype:value to --write Parquet options
 * create message type definition from .idl if .msg file not available in ROS2
 * improve DDS type parsing in ROS2
+* handle ROS2 char and byte int8/uint8 reversal vs ROS1
 * fix assembling message type full definition in ROS2
 * fix processing byte values in ROS2
 * fix processing bounded string types in ROS2
