@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    04.02.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -16,6 +16,7 @@ import collections
 import json
 import os
 import sqlite3
+import sys
 
 from ... common import ConsolePrinter, format_bytes, makedirs
 from ... import rosapi
@@ -50,6 +51,9 @@ class SqliteSink(DataSinkBase):
 
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".sqlite", ".sqlite3")
+
+    ## Maximum integer size supported in SQLite, higher values inserted as string
+    MAX_INT = 2**63 - 1
 
 
     def __init__(self, args):
@@ -95,6 +99,9 @@ class SqliteSink(DataSinkBase):
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
+        sqlite3.register_adapter(int, lambda x: str(x) if abs(x) > self.MAX_INT else x)
+        if sys.version_info < (3, ):
+            sqlite3.register_adapter(long, lambda x: str(x) if abs(x) > self.MAX_INT else x)
         sqlite3.register_converter("JSON", json.loads)
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)

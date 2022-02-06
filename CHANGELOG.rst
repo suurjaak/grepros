@@ -11,6 +11,7 @@ Changelog for package grepros
 * fix assembling message type full definition in ROS2
 * fix processing byte values in ROS2
 * fix processing bounded string types in ROS2
+* fix inserting very large integers in SQLite
 
 0.4.1 (2022-01-08)
 -------------------
