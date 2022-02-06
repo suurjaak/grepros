@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    05.02.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -211,9 +211,12 @@ class ParquetSink(SinkBase):
 
         @param  fallback  fallback typename to use for lookup if typename not found
         """
-        coltype    = self.COMMON_TYPES.get(typename)
         scalartype = rosapi.scalar(typename)
         timetype   = rosapi.get_ros_time_category(scalartype)
+        coltype    = self.COMMON_TYPES.get(typename)
+
+        if not coltype and "[" not in typename and scalartype in self.COMMON_TYPES:
+            coltype = self.COMMON_TYPES[scalartype]  # Bounded type like "string<=10"
         if not coltype and scalartype in self.COMMON_TYPES:
             coltype = pyarrow.list_(self.COMMON_TYPES[scalartype])
         if not coltype and timetype in self.COMMON_TYPES:

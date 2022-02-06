@@ -10,6 +10,7 @@ Changelog for package grepros
 * improve DDS type parsing in ROS2
 * fix assembling message type full definition in ROS2
 * fix processing byte values in ROS2
+* fix processing bounded string types in ROS2
 
 0.4.1 (2022-01-08)
 -------------------

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    06.01.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 import collections
@@ -558,7 +558,8 @@ def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from uint8-array.
 
-    Returns type unchanged if an ordinary type.
+    Returns type unchanged if an ordinary type. In ROS2, returns unbounded type,
+    e.g. "string" from "string<=10[<=5]".
     """
     return realapi.scalar(typename)
 
