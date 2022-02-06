@@ -585,10 +585,15 @@ def get_message_type(msg):
 
 def get_message_value(msg, name, typename):
     """Returns object attribute value, with numeric arrays converted to lists."""
-    v = getattr(msg, name)
+    v, scalartype = getattr(msg, name), scalar(typename)
     if isinstance(v, (bytes, array.array)) \
     or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        v = list(v)
+        v = list(map(int, v))
+    if v and isinstance(v, (list, tuple)) and scalartype in ("byte", "uint8"):
+        if isinstance(v[0], bytes):
+            v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
+        elif scalartype == typename:
+            v = v[0]  # In ROS2, single byte values are given as bytes()
     return v
 
 
@@ -671,7 +676,7 @@ def qos_to_dict(qos):
 @memoize
 def scalar(typename):
     """
-    Returns scalar type from ROS2 message data type
+    Returns unbounded scalar type from ROS2 message data type
 
     Like "uint8" from "uint8[]", or "string" from "string<=10[<=5]".
     Returns type unchanged if not a collection or bounded type.

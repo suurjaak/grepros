@@ -9,6 +9,7 @@ Changelog for package grepros
 * create message type definition from .idl if .msg file not available in ROS2
 * improve DDS type parsing in ROS2
 * fix assembling message type full definition in ROS2
+* fix processing byte values in ROS2
 
 0.4.1 (2022-01-08)
 -------------------
