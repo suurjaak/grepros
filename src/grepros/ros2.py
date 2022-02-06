@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    04.02.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -55,7 +55,7 @@ ROS_TIME_CLASSES = {rclpy.time.Time:                 "builtin_interfaces/Time",
 DDS_TYPES = {"boolean":             "bool",
              "float":               "float32",
              "double":              "float64",
-             "octet":               "int8",
+             "octet":               "byte",
              "short":               "int16",
              "unsigned short":      "uint16",
              "long":                "int32",
@@ -354,10 +354,19 @@ def canonical(typename):
     Converts DDS types like "octet" to "byte", and "sequence<uint8, 100>" to "uint8[100]".
     """
     is_array, bound, dimension = False, "", ""
-    match = re.match(r"sequence<([^\,>]+)\,?\s*(.*)>", typename)
+
+    match = re.match("sequence<(.+)>", typename)
     if match:  # "sequence<uint8, 100>" or "sequence<uint8>"
-        typename, is_array = match.group(1), True
-        if match.group(2): dimension = match.group(2)
+        is_array = True
+        typename = match.group(1)
+        match = re.match(r"([^,]+)?,\s?(\d+)", typename)
+        if match:  # sequence<uint8, 10>
+            typename = match.group(1)
+            if match.lastindex > 1: dimension = match.group(2)
+
+    match = re.match("(w?string)<(.+)>", typename)
+    if match:  # string<5>
+        typename, bound = match.groups()
 
     if "[" in typename:  # "string<=5[<=10]" or "string<=5[10]"
         dimension = typename[typename.index("[") + 1:typename.index("]")]
