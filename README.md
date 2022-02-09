@@ -134,9 +134,13 @@ minimal ROS1 Python packages can also be installed separately with:
 
 ### Using apt
 
-  sudo apt install ros-noetic-grepros
+If ROS apt repository has been added to system:
 
-This will add the `grepros` command to the global ROS1 environment.
+  sudo apt install ros-noetic-grepros  # ROS1
+
+  sudo apt install ros-foxy-grepros    # ROS2
+
+This will add the `grepros` command to the global ROS1 / ROS2 environment.
 
 
 ### Using catkin
