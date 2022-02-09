@@ -25,6 +25,7 @@ Supports loading custom plugins, mainly for additional output formats.
 - [Example usage](#example-usage)
 - [Installation](#installation)
   - [Using pip](#using-pip)
+  - [Using apt](#using-apt)
   - [Using catkin](#using-catkin)
   - [Using colcon](#using-colcon)
 - [Inputs](#inputs)
@@ -120,7 +121,8 @@ Installation
 This will add the `grepros` command to path.
 
 Requires ROS Python packages
-(ROS1: rospy, roslib, rosbag, genpy; ROS2: rclpy, rosidl_runtime_py).
+(ROS1: rospy, roslib, rosbag, genpy;
+ ROS2: rclpy, rosidl_parser, rosidl_runtime_py).
 
 If you don't want to install the ROS1 stack, and are only interested
 in using bag files, not grepping from or publishing to live topics,
@@ -128,6 +130,17 @@ minimal ROS1 Python packages can also be installed separately with:
 
     pip install rospy rosbag roslib roslz4 \
     --extra-index-url https://rospypi.github.io/simple/
+
+
+### Using apt
+
+If ROS apt repository has been added to system:
+
+  sudo apt install ros-noetic-grepros  # ROS1
+
+  sudo apt install ros-foxy-grepros    # ROS2
+
+This will add the `grepros` command to the global ROS1 / ROS2 environment.
 
 
 ### Using catkin
@@ -229,11 +242,11 @@ accept raw control characters (`more -f` or `less -R`).
 
 ### bag
 
-    --write path/to/my.bag [format=bag]
+    --write path/to/my.bag [format=bag] [overwrite=true|false]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
-it is appended to. 
+it is appended to, unless specified to overwrite.
 
 Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
@@ -241,7 +254,7 @@ if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 ### csv
 
-    --write path/to/my.csv [format=csv]
+    --write path/to/my.csv [format=csv] [overwrite=true|false]
 
 Write messages to CSV files, each topic to a separate file, named
 `path/to/my.full__topic__name.csv` for `/full/topic/name`.
@@ -250,14 +263,14 @@ Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
 to a single list, with header fields like `/topic/field.subfield.listsubfield.0.data.1`.
 
 If a file already exists, a unique counter is appended to the name of the new file,
-e.g. `my.full__topic__name.2.csv`.
+e.g. `my.full__topic__name.2.csv`, unless specified to overwrite.
 
 Specifying `format=csv` is not required if the filename ends with `.csv`.
 
 
 ### html
 
-    --write path/to/my.html [format=html]
+    --write path/to/my.html [format=html] [overwrite=true|false]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -267,7 +280,7 @@ message timeline, message type definitions, and a topically traversable message 
 Note: resulting file may be large, and take a long time to open in browser. 
 
 If the file already exists, a unique counter is appended to the name of the new file,
-e.g. `my.2.html`.
+e.g. `my.2.html`, unless specified to overwrite.
 
 Specifying `format=html` is not required if the filename ends with `.htm` or `.html`.
 
@@ -389,11 +402,11 @@ CREATE TABLE "std_msgs/Header" (
 
 ### sqlite
 
-    --write path/to/my.sqlite [format=sqlite]
+    --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic. 
-If the database already exists, it is appended to.
+If the database already exists, it is appended to, unless specified to overwrite.
 
 Output is compatible with ROS2 `.db3` bagfiles, supplemented with
 full message YAMLs, and message type definition texts. Note that a database
@@ -750,7 +763,9 @@ Significantly faster, but library tends to be unstable.
 
 ### parquet
 
-    --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet]
+    --plugin grepros.plugins.parquet --write path/to/my.parquet[format=parquet] \
+             [column-name=rostype:value] [overwrite=true|false] [type-rostype=arrowtype] \
+             [writer-argname=argvalue]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -758,11 +773,15 @@ for `package/MessageType` (typehash is message type definition MD5 hashsum).
 Adds fields `_topic string()` and `_timestamp timestamp("ns")` to each type.
 
 If a file already exists, a unique counter is appended to the name of the new file,
-e.g. `package__MessageType__typehash/my.2.parquet`.
+e.g. `package__MessageType__typehash/my.2.parquet`, unless specified to overwrite.
 
 Specifying `format=parquet` is not required if the filename ends with `.parquet`.
 
 Requires [pandas](https://pypi.org/project/pandas) and [pyarrow](https://pypi.org/project/pyarrow).
+
+Supports adding supplementary columns with fixed values to Parquet files:
+
+    --write path/to/my.parquet column-bag_hash=string:26dfba2c
 
 Supports custom mapping between ROS and pyarrow types with `type-rostype=arrowtype`:
 
@@ -788,10 +807,13 @@ The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`
 
 ### sql
 
-    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql]
+    --plugin grepros.plugins.sql --write path/to/my.sql [format=sql] [overwrite=true|false]
 
 Write SQL schema to output file, CREATE TABLE for each message type
 and CREATE VIEW for each topic.
+
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.2.sql`, unless specified to overwrite.
 
 Specifying `format=sql` is not required if the filename ends with `.sql`.
 
@@ -900,6 +922,10 @@ optional arguments:
                                                    else for any nested types
                                                    (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
+                          overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
+                                                   instead of appending to if bag or database
+                                                   or appending unique counter to file name
+                                                   (default false)
                           template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin

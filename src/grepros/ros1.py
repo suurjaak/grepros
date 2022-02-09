@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    06.01.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -39,6 +39,9 @@ ROS_TIME_TYPES = ["time", "duration"]
 
 ## ROS1 time/duration types mapped to type names
 ROS_TIME_CLASSES = {rospy.Time: "time", rospy.Duration: "duration"}
+
+## Mapping between type aliases and real types, like {"byte": "int8"}
+ROS_ALIAS_TYPES = {"byte": "int8", "char": "uint8"}
 
 ## {(typename, typehash): message type class}
 TYPECLASSES = {}

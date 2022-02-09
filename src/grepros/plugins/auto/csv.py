@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    05.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -31,17 +31,20 @@ class CsvSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
-        @param   args.WRITE     base name of CSV file to write,
-                                will add topic name like "name.__my__topic.csv" for "/my/topic",
-                                will add counter like "name.__my__topic.2.csv" if exists
-        @param   args.VERBOSE   whether to print debug information
+        @param   args                 arguments object like argparse.Namespace
+        @param   args.WRITE           base name of CSV file to write,
+                                      will add topic name like "name.__my__topic.csv" for "/my/topic",
+                                      will add counter like "name.__my__topic.2.csv" if exists
+        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing files
+                                                    (default false)}
+        @param   args.VERBOSE         whether to print debug information
         """
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}
         self._writers       = {}          # {(topic, typename, typehash): csv.writer}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._close_printed = False
 
         atexit.register(self.close)
@@ -52,6 +55,17 @@ class CsvSink(SinkBase):
         metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(self._format_row(metadata + data))
         super(CsvSink, self).emit(topic, index, stamp, msg, match)
+
+    def validate(self):
+        """Returns whether overwrite option is valid.
+        """
+        result = True
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
+            result = False
+        return result
 
     def close(self):
         """Closes output file(s), if any."""
@@ -85,15 +99,20 @@ class CsvSink(SinkBase):
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
             name = self._files[topickey].name if topickey in self._files else None
+            action = "Creating"  # Or "Overwriting"
             if not name:
                 base, ext = os.path.splitext(self._filebase)
-                name = unique_path("%s.%s%s" % (base, topic.lstrip("/").replace("/", "__"), ext))
+                name = "%s.%s%s" % (base, topic.lstrip("/").replace("/", "__"), ext)
+                if self._overwrite:
+                    if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
+                    open(name, "w").close()
+                else: name = unique_path(name)
             flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
             f = open(name, **flags)
             w = csv.writer(f)
             if topickey not in self._files:
                 if self.args.VERBOSE:
-                    ConsolePrinter.debug("Creating %s.", name)
+                    ConsolePrinter.debug("%s %s.", action, name)
                 header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
                 metaheader = ["__time", "__datetime", "__type"]
                 w.writerow(self._format_row(metaheader + header))
@@ -137,4 +156,7 @@ class CsvSink(SinkBase):
 def init(*_, **__):
     """Adds CSV output format support."""
     from ... import plugins  # Late import to avoid circular
-    plugins.add_write_format("csv", CsvSink)
+    plugins.add_write_format("csv", CsvSink, "CSV", [
+        ("overwrite=true|false",  "overwrite existing files in CSV output\n"
+                                  "instead of appending unique counter (default false)")
+    ])

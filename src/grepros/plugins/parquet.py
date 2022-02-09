@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    08.01.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -61,12 +61,11 @@ class ParquetSink(SinkBase):
 
     ## Mapping from ROS common type names to pyarrow type constructors
     COMMON_TYPES = {
-        "byte":    pyarrow.uint8(),  "char":     pyarrow.int8(),    "int8":    pyarrow.int8(),
-        "int16":   pyarrow.int16(),  "int32":    pyarrow.int32(),   "int64":   pyarrow.int64(),
-        "uint8":   pyarrow.uint8(),  "uint16":   pyarrow.uint16(),  "uint32":  pyarrow.uint32(),
-        "uint64":  pyarrow.uint64(), "float32":  pyarrow.float32(), "float64": pyarrow.float64(),
-        "bool":    pyarrow.bool_(),  "string":   pyarrow.string(),  "wstring": pyarrow.string(),
-        "uint8[]": pyarrow.binary(), "char[]":   pyarrow.binary(),
+        "int8":    pyarrow.int8(),     "int16":   pyarrow.int16(),    "int32":   pyarrow.int32(),
+        "uint8":   pyarrow.uint8(),    "uint16":  pyarrow.uint16(),   "uint32":  pyarrow.uint32(),
+        "int64":   pyarrow.int64(),    "uint64":  pyarrow.uint64(),   "bool":    pyarrow.bool_(),
+        "string":  pyarrow.string(),   "wstring": pyarrow.string(),   "uint8[]": pyarrow.binary(),
+        "float32": pyarrow.float32(),  "float64": pyarrow.float64(),
     } if pyarrow else {}
 
     ## Fallback pyarrow type if mapped type not found
@@ -85,17 +84,22 @@ class ParquetSink(SinkBase):
         @param   args                 arguments object like argparse.Namespace
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of Parquet files to write
-        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter}
+        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter,
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
         super(ParquetSink, self).__init__(args)
 
-        self._filebase  = args.WRITE
-        self._filenames = {}  # {(typename, typehash): Parquet file path}
-        self._caches    = {}  # {(typename, typehash): [{data}, ]}
-        self._schemas   = {}  # {(typename, typehash): pyarrow.Schema}
-        self._writers   = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
+        self._filebase       = args.WRITE
+        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._filenames      = {}  # {(typename, typehash): Parquet file path}
+        self._caches         = {}  # {(typename, typehash): [{data}, ]}
+        self._schemas        = {}  # {(typename, typehash): pyarrow.Schema}
+        self._writers        = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
+        self._extra_basecols = []  # [(name, value)]
 
+        self._configure_ok  = True
         self._close_printed = False
 
         self._configure()
@@ -103,14 +107,19 @@ class ParquetSink(SinkBase):
 
     def validate(self):
         """
-        Returns whether required libraries are available (pandas and pyarrow).
+        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid.
         """
-        pandas_ok, pyarrow_ok = bool(pandas), bool(pyarrow)
+        ok, pandas_ok, pyarrow_ok = self._configure_ok, bool(pandas), bool(pyarrow)
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
+            ok = False
         if not pandas_ok:
             ConsolePrinter.error("pandas not available: cannot write Parquet files.")
         if not pyarrow_ok:
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
-        return pandas_ok, pyarrow_ok
+        return ok and pandas_ok and pyarrow_ok
 
 
     def emit(self, topic, index, stamp, msg, match):
@@ -152,7 +161,9 @@ class ParquetSink(SinkBase):
 
         basedir, basename = os.path.split(self._filebase)
         pathname = os.path.join(basedir, re.sub(r"\W", "__", "%s__%s" % (typename, typehash)))
-        filename = unique_path(os.path.join(pathname, basename))
+        filename = os.path.join(pathname, basename)
+        if not self._overwrite:
+            filename = unique_path(filename)
 
         cols = []
         scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
@@ -163,7 +174,9 @@ class ParquetSink(SinkBase):
                  for c, t in self.MESSAGE_TYPE_BASECOLS]
 
         if self.args.VERBOSE:
-            ConsolePrinter.debug("Adding type %s in Parquet output.", typename)
+            sz = os.path.isfile(filename) and os.path.getsize(filename)
+            action = "Overwriting" if sz and self._overwrite else "Adding"
+            ConsolePrinter.debug("%s type %s in Parquet output.", action, typename)
         makedirs(pathname)
 
         schema = pyarrow.schema(cols)
@@ -185,6 +198,7 @@ class ParquetSink(SinkBase):
         for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
+        data.update(self._extra_basecols)
         self._caches[typekey].append(data)
         if len(self._caches[typekey]) >= self.CHUNK_SIZE:
             self._write_table(typekey)
@@ -196,9 +210,12 @@ class ParquetSink(SinkBase):
 
         @param  fallback  fallback typename to use for lookup if typename not found
         """
-        coltype    = self.COMMON_TYPES.get(typename)
         scalartype = rosapi.scalar(typename)
         timetype   = rosapi.get_ros_time_category(scalartype)
+        coltype    = self.COMMON_TYPES.get(typename)
+
+        if not coltype and "[" not in typename and scalartype in self.COMMON_TYPES:
+            coltype = self.COMMON_TYPES[scalartype]  # Bounded type like "string<=10"
         if not coltype and scalartype in self.COMMON_TYPES:
             coltype = pyarrow.list_(self.COMMON_TYPES[scalartype])
         if not coltype and timetype in self.COMMON_TYPES:
@@ -244,9 +261,40 @@ class ParquetSink(SinkBase):
     def _configure(self):
         """Parses args.WRITE_OPTIONS."""
         ok = True
+
+        # Populate ROS type aliases like "byte" and "char"
+        for rostype in list(self.COMMON_TYPES):
+            alias = rosapi.get_type_alias(rostype)
+            if alias:
+                self.COMMON_TYPES[alias] = self.COMMON_TYPES[rostype]
+            if alias and rostype + "[]" in self.COMMON_TYPES:
+                self.COMMON_TYPES[alias + "[]"] = self.COMMON_TYPES[rostype + "[]"]
+
         for k, v in self.args.WRITE_OPTIONS.items():
-            if k.startswith("type-"):
+            if k.startswith("column-"):
+                # Parse "column-name=rostype:value"
+                try:
+                    name, (rostype, value), myok = k[len("column-"):], v.split(":", 1), True
+                    if "string" not in rostype:
+                        value = json.loads(value)
+                    if not name:
+                        ok = myok = False
+                        ConsolePrinter.error("Invalid name option in %s=%s", k, v)
+                    if rostype not in rosapi.ROS_BUILTIN_TYPES:
+                        ok = myok = False
+                        ConsolePrinter.error("Invalid type option in %s=%s", k, v)
+                    if myok:
+                        self.MESSAGE_TYPE_BASECOLS.append((name, rostype))
+                        self._extra_basecols.append((name, value))
+                except Exception as e:
+                    ok = False
+                    ConsolePrinter.error("Invalid column option in %s=%s: %s", k, v, e)
+            elif k.startswith("type-"):
                 # Eval pyarrow datatype from value like "float64()" or "list(uint8())"
+                if not k[len("type-"):]:
+                    ok = False
+                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v)
+                    continue  # for k, v
                 try:
                     arrowtype = eval(compile(v, "", "eval"), {"__builtins__": self.ARROW_TYPES})
                     self.COMMON_TYPES[k[len("type-"):]] = arrowtype
@@ -254,19 +302,27 @@ class ParquetSink(SinkBase):
                     ok = False
                     ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v, e)
             elif k.startswith("writer-"):
+                if not k[len("writer-"):]:
+                    ok = False
+                    ConsolePrinter.error("Invalid name in %s=%s: %s", k, v)
+                    continue  # for k, v
                 try: v = json.loads(v)
                 except Exception: pass
                 self.WRITER_ARGS[k[len("writer-"):]] = v
-        if not ok: raise SystemExit(1)
+        self._configure_ok = ok
 
 
 def init(*_, **__):
     """Adds Parquet output format support."""
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
-        ("type-rostype=arrowtype",  "custom mapping between ROS and pyarrow type\n"
-                                     "for Parquet output, like type-time=\"timestamp('ns')\"\n"
-                                     "or type-uint8[]=\"list(uint8())\""),
-        ("writer-argname=argvalue",  "additional arguments for Parquet output\n"
-                                     "given to pyarrow.parquet.ParquetWriter"),
+        ("column-name=rostype:value",  "additional column to add in Parquet output,\n"
+                                       "like column-bag_hash=string:26dfba2c"),
+        ("overwrite=true|false",       "overwrite existing file in Parquet output\n"
+                                       "instead of appending unique counter (default false)"),
+        ("type-rostype=arrowtype",     "custom mapping between ROS and pyarrow type\n"
+                                       "for Parquet output, like type-time=\"timestamp('ns')\"\n"
+                                       "or type-uint8[]=\"list(uint8())\""),
+        ("writer-argname=argvalue",    "additional arguments for Parquet output\n"
+                                       "given to pyarrow.parquet.ParquetWriter"),
     ])

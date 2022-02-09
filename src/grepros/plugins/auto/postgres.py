@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    07.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -161,6 +161,7 @@ class PostgresSink(DataSinkBase):
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
         TYPES = self._get_dialect_option("types")
+        plaintype = typename and rosapi.scalar(typename)  # "string<=10" -> "string"
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
@@ -180,10 +181,10 @@ class PostgresSink(DataSinkBase):
                 v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2
         elif rosapi.is_ros_time(v):
             v = self._convert_time_value(v, typename)
-        elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
+        elif plaintype not in rosapi.ROS_BUILTIN_TYPES:
             v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
-        elif typename:
-            v = self._convert_column_value(v, typename)
+        else:
+            v = self._convert_column_value(v, plaintype)
         return v
 
 
@@ -218,6 +219,3 @@ def init(*_, **__):
                                  "(array fields in parent will be populated \n"
                                  " with foreign keys instead of messages as JSON)"),
     ])
-    writearg = plugins.get_argument("--write-format")
-    if writearg:
-        writearg["help"] = writearg["help"].replace("Bag will be", "Bag or database will be")

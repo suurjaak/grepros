@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    07.01.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -16,6 +16,7 @@ import collections
 import json
 import os
 import sqlite3
+import sys
 
 from ... common import ConsolePrinter, format_bytes, makedirs
 from ... import rosapi
@@ -51,6 +52,9 @@ class SqliteSink(DataSinkBase):
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".sqlite", ".sqlite3")
 
+    ## Maximum integer size supported in SQLite, higher values inserted as string
+    MAX_INT = 2**63 - 1
+
 
     def __init__(self, args):
         """
@@ -60,13 +64,16 @@ class SqliteSink(DataSinkBase):
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                        "message-yaml": populate messages.yaml (default true),
                                        "nesting": "array" to recursively insert arrays
-                                                  of nested types, or "all" for any nesting)}
+                                                  of nested types, or "all" for any nesting),
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
         super(SqliteSink, self).__init__(args)
 
         self._filename    = args.WRITE
         self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
+        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._id_counters = {}  # {table next: max ID}
 
 
@@ -81,16 +88,26 @@ class SqliteSink(DataSinkBase):
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
             config_ok = False
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for %s: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])
+            config_ok = False
         return config_ok
 
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
+        sqlite3.register_adapter(int, lambda x: str(x) if abs(x) > self.MAX_INT else x)
+        if sys.version_info < (3, ):
+            sqlite3.register_adapter(long, lambda x: str(x) if abs(x) > self.MAX_INT else x)
         sqlite3.register_converter("JSON", json.loads)
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
-            ConsolePrinter.debug("%s %s%s.", "Adding to" if sz else "Creating", self._filename,
+            action = "Overwriting" if sz and self._overwrite else \
+                     "Appending to" if sz else "Creating"
+            ConsolePrinter.debug("%s %s%s.", action, self._filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
         super(SqliteSink, self)._init_db()
 
@@ -122,6 +139,7 @@ class SqliteSink(DataSinkBase):
     def _connect(self):
         """Returns new database connection."""
         makedirs(os.path.dirname(self._filename))
+        if self._overwrite: open(self._filename, "w").close()
         db = sqlite3.connect(self._filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None
@@ -172,7 +190,6 @@ def init(*_, **__):
                                      "else for any nested types\n"
                                      "(array fields in parent will be populated \n"
                                      " with foreign keys instead of messages as JSON)"),
+        ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
+                                     "instead of appending to file (default false)")
     ])
-    writearg = plugins.get_argument("--write-format")
-    if writearg:
-        writearg["help"] = writearg["help"].replace("bag will be", "bag or database will be")

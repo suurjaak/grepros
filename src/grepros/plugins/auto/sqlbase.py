@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    07.01.2022
+@modified    06.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -80,6 +80,16 @@ class SqlMixin(object):
             except Exception as e:
                 ok = False
                 ConsolePrinter.error("Error reading SQL dialect file %r: %s", filename, e)
+
+        # Populate ROS type aliases like "byte" and "char"
+        for opts in self.DIALECTS.values() if ok else ():
+            for rostype in list(opts.get("types", {})):
+                alias = rosapi.get_type_alias(rostype)
+                if alias:
+                    opts["types"][alias] = opts["types"][rostype]
+                if alias and rostype + "[]" in opts["types"]:
+                    opts["types"][alias + "[]"] = opts["types"][rostype + "[]"]
+
         return ok
 
 
@@ -309,9 +319,12 @@ class SqlMixin(object):
         ARRAYTEMPLATE = self._get_dialect_option("arraytype_template")
         DEFAULTTYPE   = self._get_dialect_option("defaulttype")
 
-        coltype    = TYPES.get(typename)
-        scalartype = rosapi.get_ros_time_category(rosapi.scalar(typename))
+        scalartype = rosapi.scalar(typename)
         timetype   = rosapi.get_ros_time_category(scalartype)
+        coltype    = TYPES.get(typename)
+
+        if not coltype and "[" not in typename and scalartype in TYPES:
+            coltype = TYPES[scalartype]  # Bounded type like "string<=10"
         if not coltype and scalartype in TYPES:
             coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])
         if not coltype and timetype in TYPES:
@@ -439,12 +452,11 @@ VALUES (:topic_id, :timestamp, :data, :topic, :type, :dt, :yaml)
 
         "postgres": {
             "types": {
-                "byte":    "SMALLINT", " char":    "SMALLINT", "int8":    "SMALLINT",
-                "int16":   "SMALLINT", "int32":    "INTEGER",  "int64":   "BIGINT",
-                "uint8":   "SMALLINT", "uint16":   "INTEGER",  "uint32":  "BIGINT",
-                "uint64":  "BIGINT",   "float32":  "REAL",     "float64": "DOUBLE PRECISION",
-                "bool":    "BOOLEAN",  "string":   "TEXT",     "wstring": "TEXT",
-                "uint8[]": "BYTEA",    "char[]":   "BYTEA",
+                "int8":    "SMALLINT",  "int16":   "SMALLINT",  "int32":   "INTEGER",
+                "uint8":   "SMALLINT",  "uint16":  "INTEGER",   "uint32":  "BIGINT",
+                "int64":   "BIGINT",    "uint64":  "BIGINT",    "bool":    "BOOLEAN",
+                "string":  "TEXT",      "wstring": "TEXT",      "uint8[]": "BYTEA",
+                "float32": "REAL",      "float64": "DOUBLE PRECISION",
             },
             "defaulttype":    "JSONB",
             "maxlen_entity":  63,
@@ -481,12 +493,11 @@ CREATE TABLE IF NOT EXISTS types (
         "clickhouse": {
             "table_template":      "CREATE TABLE IF NOT EXISTS {table} ({cols}) ENGINE = ENGINE;",
             "types": {
-                "byte":    "UInt8",  "char":     "Int8",    "int8":    "Int8",
-                "int16":   "Int16",  "int32":    "Int32",   "int64":   "Int64",
-                "uint8":   "UInt8",  "uint16":   "UInt16",  "uint32":  "UInt32",
-                "uint64":  "UInt64", "float32":  "Float32", "float64": "Float64",
-                "bool":    "UInt8",  "string":   "String",  "wstring": "String",
-                "uint8[]": "String", "char[]":   "String",
+                "int8":    "Int8",     "int16":   "Int16",    "int32":   "Int32",
+                "uint8":   "UInt8",    "uint16":  "UInt16",   "uint32":  "UInt32",
+                "int64":   "Int64",    "uint64":  "UInt64",   "bool":    "UInt8",
+                "float32": "Float32",  "float64": "Float64",  "uint8[]": "String",
+                "string":  "String",   "wstring": "String",
             },
             "defaulttype":         "String",
             "arraytype_template":  "Array({type})",

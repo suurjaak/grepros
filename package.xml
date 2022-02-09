@@ -19,6 +19,7 @@
 
   <depend condition="$ROS_VERSION == 2">builtin_interfaces</depend>
   <depend condition="$ROS_VERSION == 2">rclpy</depend>
+  <depend condition="$ROS_VERSION == 2">rosidl_parser</depend>
   <depend condition="$ROS_VERSION == 2">rosidl_runtime_py</depend>
 
   <depend>python3-yaml</depend>

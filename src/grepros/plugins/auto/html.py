@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    05.01.2022
+@modified    04.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -45,7 +45,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
         @param   args.META             whether to print metainfo
         @param   args.WRITE            name of HTML file to write,
                                        will add counter like .2 to filename if exists
-        @param   args.WRITE_OPTIONS    {"template": path to custom HTML template, if any}
+        @param   args.WRITE_OPTIONS    {"template": path to custom HTML template, if any,
+                                        "overwrite": whether to overwrite existing file
+                                                     (default false)}
         @param   args.VERBOSE          whether to print debug information
         @param   args.MATCH_WRAPPER    string to wrap around matched values,
                                        both sides if one value, start and end if more than one,
@@ -58,9 +60,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
-        self._queue    = queue.Queue()
-        self._writer   = None        # threading.Thread running _stream()
-        self._filename = args.WRITE  # Filename base, will be made unique
+        self._queue     = queue.Queue()
+        self._writer    = None        # threading.Thread running _stream()
+        self._filename  = args.WRITE  # Filename base, will be made unique
+        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
         self._close_printed = False
 
@@ -85,12 +88,17 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def validate(self):
         """
-        Returns whether custom template exists and ROS environment is set, prints error if not.
+        Returns whether write options are valid and ROS environment is set, prints error if not.
         """
         result = True
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ConsolePrinter.error("Invalid overwrite option for HTML: %r. "
+                                 "Choose one of {true, false}.",
+                                 self.args.WRITE_OPTIONS["overwrite"])
+            result = False
         return rosapi.validate() and result
 
     def close(self):
@@ -133,9 +141,12 @@ class HtmlSink(SinkBase, TextSinkMixin):
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                       timeline=not self.args.ORDERBY, messages=self._produce())
             makedirs(os.path.dirname(self._filename))
-            self._filename = unique_path(self._filename, empty_ok=True)
+            if not self._overwrite:
+                self._filename = unique_path(self._filename, empty_ok=True)
             if self.args.VERBOSE:
-                ConsolePrinter.debug("Creating %s.", self._filename)
+                sz = os.path.isfile(self._filename) and os.path.getsize(self._filename)
+                action = "Overwriting" if sz and self._overwrite else "Creating"
+                ConsolePrinter.debug("%s %s.", action, self._filename)
             with open(self._filename, "wb") as f:
                 template.stream(f, ns, unbuffered=True)
         except Exception as e:
@@ -167,5 +178,7 @@ def init(*_, **__):
     """Adds HTML output format support."""
     from ... import plugins  # Late import to avoid circular
     plugins.add_write_format("html", HtmlSink, "HTML", [
-        ("template=/my/path.tpl",  "custom template to use for HTML output")
+        ("template=/my/path.tpl",  "custom template to use for HTML output"),
+        ("overwrite=true|false",   "overwrite existing file in HTML output\n"
+                                   "instead of appending unique counter (default false)")
     ])
