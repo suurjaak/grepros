@@ -409,7 +409,7 @@ def process_args(args):
     args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
                                              or args.PATHS or any("*" in x for x in args.FILES))
 
-    for k, v in vars(args).items():  # Flatten lists  of lists and drop duplicates
+    for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
         if k != "WRITE" and isinstance(v, list):
             here = set()
             setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
