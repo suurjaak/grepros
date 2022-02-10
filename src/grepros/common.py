@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.01.2022
+@modified    10.02.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -62,6 +62,8 @@ class ConsolePrinter(object):
 
     _LINEOPEN = False  ## Whether last print was without linefeed
 
+    _UNIQUES = set()   ## Unique texts printed with `__once=True`
+
     @classmethod
     def configure(cls, color):
         """
@@ -96,10 +98,20 @@ class ConsolePrinter(object):
 
     @classmethod
     def print(cls, text="", *args, **kwargs):
-        """Prints text, formatted with args and kwargs."""
+        """
+        Prints text, formatted with args and kwargs.
+
+        @param   __file   file object to print to if not sys.stdout
+        @param   __end    line end to use if not linefeed "\n"
+        @param   __once   whether text should be printed only once
+                          and discarded on any further calls (applies to unformatted text)
+        """
+        text, fmted = str(text), False
+        if kwargs.pop("__once", False):
+            if text in cls._UNIQUES: return
+            cls._UNIQUES.add(text)
         fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
-        text, fmted = str(text), False
         try: text, fmted = (text % args if args else text), bool(args)
         except Exception: pass
         try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
