@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.4.3 (2022-02-10)
 -------------------
+* continue subscribing to other topics even if one causes error
 * subscribe to live topics in ROS2 with best-effort reliability
 
 0.4.2 (2022-02-09)
