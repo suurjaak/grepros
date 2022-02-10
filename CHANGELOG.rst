@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.3 (2022-02-10)
+-------------------
+* subscribe to live topics in ROS2 with best-effort reliability
+
 0.4.2 (2022-02-09)
 -------------------
 * add overwrite=true|false to --write options

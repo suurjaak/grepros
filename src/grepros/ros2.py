@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    06.02.2022
+@modified    10.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -408,9 +408,12 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns an rclpy.Subscription, with .unregister() and .get_qos()."""
-    cls = cls_or_typename
+    cls = typename = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
-    qos = rclpy.qos.QoSProfile(depth=queue_size)
+    else: typename = get_message_type(cls)
+
+    qos = rclpy.qos.QoSProfile(depth=queue_size,
+              reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT)
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
     sub.get_qos = lambda: qos_to_dict(sub.qos_profile)
@@ -482,7 +485,7 @@ def _get_message_definition(typename):
         subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
         return basedef + ("\n" if subdefs else "") + "\n".join(subdefs)
     except Exception as e:
-        ConsolePrinter.error("Error collecting type definition of %s: %s", typename, e)
+        ConsolePrinter.warn("Error collecting type definition of %s: %s", typename, e)
         return ""
 
 
