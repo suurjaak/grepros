@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    10.02.2022
+@modified    11.02.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -224,18 +224,30 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         sql += ((" WHERE " + " AND ".join(exprs)) if exprs else "")
         sql += " ORDER BY timestamp"
 
-        topicmap = {v["id"]: v for v in self._topics.values()}
-        msgtypes = {}  # {full typename: cls}
+        topicmap   = {v["id"]: v for v in self._topics.values()}
+        msgtypes   = {}     # {full typename: cls}
+        errortypes = set()  # {typename failed to instantiate, }
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
-            topic, tname = tdata["name"], tdata["type"]
-            cls = msgtypes.get(tname) or msgtypes.setdefault(tname, get_message_class(tname))
-            msg = rclpy.serialization.deserialize_message(row["data"], cls)
+            topic, typename = tdata["name"], tdata["type"]
+
+            try:
+                cls = msgtypes.get(typename) or \
+                      msgtypes.setdefault(typename, get_message_class(typename))
+                msg = rclpy.serialization.deserialize_message(row["data"], cls)
+            except Exception as e:
+                errortypes.add(typename)
+                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
+                                    (typename, topic), e, __once=True)
+                if errortypes == set(n for _, n in self._topics):
+                    break  # for row
+                continue  # for row
+            errortypes.discard(typename)
             stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
 
             yield topic, msg, stamp
             if not self._db:
-                break
+                break  # for row
 
 
     def write(self, topic, msg, stamp, meta=None):

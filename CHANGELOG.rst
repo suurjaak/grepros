@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.3 (2022-02-10)
+0.4.3 (2022-02-11)
 -------------------
-* continue subscribing to other topics even if one causes error
+* continue subscribing to other live topics even if one causes error
+* continue reading from ROS2 bag even if one message type causes error
 * subscribe to live topics in ROS2 with best-effort reliability
 
 0.4.2 (2022-02-09)
