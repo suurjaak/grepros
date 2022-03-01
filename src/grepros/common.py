@@ -14,6 +14,7 @@ Released under the BSD License.
 """
 from __future__ import print_function
 import datetime
+import functools
 import glob
 import importlib
 import itertools
@@ -622,9 +623,7 @@ def memoize(func):
         if key not in cache:
             cache[key] = func(*args, **kwargs)
         return cache[key]
-    for attr in ("__module__", "__name__", "__doc__"):
-        setattr(inner, attr, getattr(func, attr))
-    return inner
+    return functools.update_wrapper(inner, func)
 
 
 def merge_dicts(d1, d2):
