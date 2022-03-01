@@ -25,7 +25,7 @@ if($ENV{ROS_VERSION} EQUAL "1")
   catkin_package(CATKIN_DEPENDS genpy rosbag roslib rospy)
 
   catkin_install_python(PROGRAMS
-                        scripts/grepros
+                        scripts/${PROJECT_NAME}
                         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 else()
   find_package(ament_cmake REQUIRED)
@@ -50,6 +50,6 @@ else()
     ament_add_pytest_test(test_live_to_console test/test_live_to_console.py)
   endif()
 
-  ament_python_install_package(grepros PACKAGE_DIR src/grepros)
+  ament_python_install_package(${PROJECT_NAME} PACKAGE_DIR src/${PROJECT_NAME})
   ament_package()
 endif()
