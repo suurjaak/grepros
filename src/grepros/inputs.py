@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -489,7 +489,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._ensure_totals()
         result = super(BagSource, self).get_message_meta(topic, index, stamp, msg)
         result.update(total=self.topics[(topic, result["type"], result["hash"])],
-                      qos=self._bag.get_qos(topic, result["type"]))
+                      qoses=self._bag.get_qoses(topic, result["type"]))
         return result
 
     def get_message_class(self, typename, typehash=None):
@@ -725,7 +725,7 @@ class TopicSource(SourceBase, ConditionMixin):
         result = super(TopicSource, self).get_message_meta(topic, index, stamp, msg)
         topickey = (topic, result["type"], result["hash"])
         if topickey in self._subs:
-            result.update(qos=self._subs[topickey].get_qos())
+            result.update(qoses=self._subs[topickey].get_qoses())
         return result
 
     def format_meta(self):

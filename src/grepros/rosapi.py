@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    06.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -312,7 +312,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns a ROS subscriber instance, with .unregister() and .get_qos()."""
+    """Returns a ROS subscriber instance, with .unregister() and .get_qoses()."""
     return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 

@@ -105,7 +105,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._db     = None  # sqlite3.Connection instance
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
-        self._qoses  = {}    # {(topic, typename): {qos profile dict}}
+        self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
 
         ## Bagfile path
         self.filename = filename
@@ -168,8 +168,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return dict(self._counts)
 
 
-    def get_qos(self, topic, typename):
-        """Returns topic Quality of Service profile as a dictionary, or None if not available."""
+    def get_qoses(self, topic, typename):
+        """Returns topic Quality-of-Service profiles as a list of dicts, or None if not available."""
         topickey = (topic, typename)
         if topickey not in self._qoses and topickey in self._topics:
             topicrow = self._topics[topickey]
@@ -257,7 +257,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   topic  name of topic
         @param   msg    ROS2 message
         @param   stamp  rclpy.time.Time of message publication
-        @param   meta   message metainfo dict (meta["qos"] added to topics-table, if any)
+        @param   meta   message metainfo dict (meta["qoses"] added to topics-table, if any)
         """
         self._ensure_open(populate=True)
         self.get_topic_info()
@@ -269,11 +269,11 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             full_typename = make_full_typename(get_message_type(msg))
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
-            qos = yaml.safe_dump(meta["qos"], ) if meta and meta.get("qos") else ""
-            args = (topic, full_typename, "cdr", qos)
+            qoses = yaml.safe_dump(meta["qoses"], ) if meta and meta.get("qoses") else ""
+            args = (topic, full_typename, "cdr", qoses)
             cursor.execute(sql, args)
             tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename,
-                     "serialization_format": "cdr", "offered_qos_profiles": qos}
+                     "serialization_format": "cdr", "offered_qos_profiles": qoses}
             self._topics[topickey] = tdata
 
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
@@ -424,10 +424,17 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     if isinstance(cls, str): cls = get_message_class(cls)
     else: typename = get_message_type(cls)
 
-    qos = make_subscriber_qos(topic, typename, queue_size)
+    qos = rclpy.qos.QoSProfile(depth=queue_size)
+    qoses = [x.qos_profile for x in node.get_publishers_info_by_topic(topic)
+             if canonical(x.topic_type) == typename]
+    rels, durs = zip(*[(x.reliability, x.durability) for x in qoses])
+    # If subscription demands stricter QoS than publisher offers, no messages are received
+    if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
-    sub.get_qos = lambda: qos_to_dict(sub.qos_profile)
+    sub.get_qoses = (lambda qoslist: (lambda: qoslist))([qos_to_dict(x) for x in qoses] or None)
     return sub
 
 

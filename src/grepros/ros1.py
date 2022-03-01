@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    06.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -121,7 +121,7 @@ class BagReader(rosbag.Bag):
         return typehash or get_message_type_hash(typename)
 
 
-    def get_qos(self, topic, typename):
+    def get_qoses(self, topic, typename):
         """Returns None."""
         return None
 
@@ -366,7 +366,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """
-    Returns a rospy.Subscriber, with .get_qos().
+    Returns a rospy.Subscriber, with .get_qoses().
 
     Local message packages are not strictly required.
     """
@@ -375,7 +375,7 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     if cls is None and isinstance(cls_or_typename, str):
         sub = create_anymsg_subscriber(topic, cls_or_typename, handler, queue_size)
     else: sub = rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
-    sub.get_qos = lambda: None
+    sub.get_qoses = lambda: None
     return sub
 
 
