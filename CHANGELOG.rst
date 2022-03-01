@@ -2,6 +2,14 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.3 (2022-03-01)
+-------------------
+* continue subscribing to other live topics even if one causes error
+* continue reading from ROS2 bag even if one message type causes error
+* subscribe to live topics in ROS2 with QoS matching publisher
+* fix not saving publisher QoS profiles in written ROS2 bags
+* fix package build not including submodules (#1)
+
 0.4.2 (2022-02-09)
 -------------------
 * add overwrite=true|false to --write options

@@ -110,6 +110,9 @@ target matches if any value matches.
 Note that some expressions may need to be quoted to avoid shell auto-unescaping
 or auto-expanding them, e.g. `linear.x=2.?5` should be given as `"linear.x=2\.?5"`.
 
+Care must also be taken with unquoted wildcards, as they will auto-expanded by shell
+if they happen to match paths on disk.
+
 
 Installation
 ------------

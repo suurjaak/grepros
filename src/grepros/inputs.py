@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -489,7 +489,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._ensure_totals()
         result = super(BagSource, self).get_message_meta(topic, index, stamp, msg)
         result.update(total=self.topics[(topic, result["type"], result["hash"])],
-                      qos=self._bag.get_qos(topic, result["type"]))
+                      qoses=self._bag.get_qoses(topic, result["type"]))
         return result
 
     def get_message_class(self, typename, typehash=None):
@@ -725,7 +725,7 @@ class TopicSource(SourceBase, ConditionMixin):
         result = super(TopicSource, self).get_message_meta(topic, index, stamp, msg)
         topickey = (topic, result["type"], result["hash"])
         if topickey in self._subs:
-            result.update(qos=self._subs[topickey].get_qos())
+            result.update(qoses=self._subs[topickey].get_qoses())
         return result
 
     def format_meta(self):
@@ -754,17 +754,27 @@ class TopicSource(SourceBase, ConditionMixin):
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in rosapi.get_topic_types():
-            typehash = rosapi.get_message_type_hash(typename)
-            topickey = (topic, typename, typehash)
-            if topickey in self.topics:
-                continue  # for topic
             dct = filter_dict({topic: [typename]}, self.args.TOPICS, self.args.TYPES)
-            dct = filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True)
-            if dct:
-                handler = functools.partial(self._on_message, topic)
+            if not filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True):
+                continue  # for topic, typename
+            try: rosapi.get_message_class(typename)
+            except Exception as e:
+                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
+                                    (typename, topic), e, __once=True)
+                continue  # for topic, typename
+            topickey = (topic, typename, rosapi.get_message_type_hash(typename))
+            if topickey in self.topics:
+                continue  # for topic, typename
+
+            handler = functools.partial(self._on_message, topic)
+            try:
                 sub = rosapi.create_subscriber(topic, typename, handler,
                                                queue_size=self.args.QUEUE_SIZE_IN)
-                self._subs[topickey] = sub
+            except Exception as e:
+                ConsolePrinter.warn("Error subscribing to topic %s: %%r" % topic,
+                                    e, __once=True)
+                continue  # for topic, typename
+            self._subs[topickey] = sub
             self.topics[topickey] = None
 
     def _init_progress(self):

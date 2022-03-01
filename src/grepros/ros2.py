@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    06.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -105,7 +105,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         self._db     = None  # sqlite3.Connection instance
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
-        self._qoses  = {}    # {(topic, typename): {qos profile dict}}
+        self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
 
         ## Bagfile path
         self.filename = filename
@@ -168,8 +168,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return dict(self._counts)
 
 
-    def get_qos(self, topic, typename):
-        """Returns topic Quality of Service profile as a dictionary, or None if not available."""
+    def get_qoses(self, topic, typename):
+        """Returns topic Quality-of-Service profiles as a list of dicts, or None if not available."""
         topickey = (topic, typename)
         if topickey not in self._qoses and topickey in self._topics:
             topicrow = self._topics[topickey]
@@ -224,18 +224,30 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         sql += ((" WHERE " + " AND ".join(exprs)) if exprs else "")
         sql += " ORDER BY timestamp"
 
-        topicmap = {v["id"]: v for v in self._topics.values()}
-        msgtypes = {}  # {full typename: cls}
+        topicmap   = {v["id"]: v for v in self._topics.values()}
+        msgtypes   = {}     # {full typename: cls}
+        errortypes = set()  # {typename failed to instantiate, }
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
-            topic, tname = tdata["name"], tdata["type"]
-            cls = msgtypes.get(tname) or msgtypes.setdefault(tname, get_message_class(tname))
-            msg = rclpy.serialization.deserialize_message(row["data"], cls)
+            topic, typename = tdata["name"], tdata["type"]
+
+            try:
+                cls = msgtypes.get(typename) or \
+                      msgtypes.setdefault(typename, get_message_class(typename))
+                msg = rclpy.serialization.deserialize_message(row["data"], cls)
+            except Exception as e:
+                errortypes.add(typename)
+                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
+                                    (typename, topic), e, __once=True)
+                if errortypes == set(n for _, n in self._topics):
+                    break  # for row
+                continue  # for row
+            errortypes.discard(typename)
             stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
 
             yield topic, msg, stamp
             if not self._db:
-                break
+                break  # for row
 
 
     def write(self, topic, msg, stamp, meta=None):
@@ -245,7 +257,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   topic  name of topic
         @param   msg    ROS2 message
         @param   stamp  rclpy.time.Time of message publication
-        @param   meta   message metainfo dict (meta["qos"] added to topics-table, if any)
+        @param   meta   message metainfo dict (meta["qoses"] added to topics-table, if any)
         """
         self._ensure_open(populate=True)
         self.get_topic_info()
@@ -257,11 +269,11 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             full_typename = make_full_typename(get_message_type(msg))
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
-            qos = yaml.safe_dump(meta["qos"], ) if meta and meta.get("qos") else ""
-            args = (topic, full_typename, "cdr", qos)
+            qoses = yaml.safe_dump(meta["qoses"], ) if meta and meta.get("qoses") else ""
+            args = (topic, full_typename, "cdr", qoses)
             cursor.execute(sql, args)
             tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename,
-                     "serialization_format": "cdr", "offered_qos_profiles": qos}
+                     "serialization_format": "cdr", "offered_qos_profiles": qoses}
             self._topics[topickey] = tdata
 
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
@@ -408,12 +420,21 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """Returns an rclpy.Subscription, with .unregister() and .get_qos()."""
-    cls = cls_or_typename
+    cls = typename = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
+    else: typename = get_message_type(cls)
+
     qos = rclpy.qos.QoSProfile(depth=queue_size)
+    qoses = [x.qos_profile for x in node.get_publishers_info_by_topic(topic)
+             if canonical(x.topic_type) == typename]
+    rels, durs = zip(*[(x.reliability, x.durability) for x in qoses])
+    # If subscription demands stricter QoS than publisher offers, no messages are received
+    if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
-    sub.get_qos = lambda: qos_to_dict(sub.qos_profile)
+    sub.get_qoses = (lambda qoslist: (lambda: qoslist))([qos_to_dict(x) for x in qoses] or None)
     return sub
 
 
@@ -482,7 +503,7 @@ def _get_message_definition(typename):
         subdefs = ["%s\nMSG: %s\n%s" % ("=" * 80, k, v) for k, v in texts.items()]
         return basedef + ("\n" if subdefs else "") + "\n".join(subdefs)
     except Exception as e:
-        ConsolePrinter.error("Error collecting type definition of %s: %s", typename, e)
+        ConsolePrinter.warn("Error collecting type definition of %s: %s", typename, e)
         return ""
 
 
@@ -657,6 +678,22 @@ def make_full_typename(typename):
     if "/msg/" in typename or "/" not in typename:
         return typename
     return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
+def make_subscriber_qos(topic, typename, queue_size=10):
+    """
+    Returns rclpy.qos.QoSProfile that matches the most permissive publisher.
+
+    @param   queue_size  QoSProfile.depth
+    """
+    qos = rclpy.qos.QoSProfile(depth=queue_size)
+    infos = node.get_publishers_info_by_topic(topic)
+    rels, durs = zip(*[(x.qos_profile.reliability, x.durability.reliability)
+                       for x in infos if canonical(x.topic_type) == typename])
+    # If subscription demands stricter QoS than publisher offers, no messages are received
+    if rels: qos.reliability  = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durabilities = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+    return qos
 
 
 def qos_to_dict(qos):
