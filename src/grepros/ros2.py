@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    11.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -424,8 +424,7 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     if isinstance(cls, str): cls = get_message_class(cls)
     else: typename = get_message_type(cls)
 
-    qos = rclpy.qos.QoSProfile(depth=queue_size,
-              reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT)
+    qos = make_subscriber_qos(topic, typename, queue_size)
     sub = node.create_subscription(cls, topic, handler, qos)
     sub.unregister = sub.destroy
     sub.get_qos = lambda: qos_to_dict(sub.qos_profile)
@@ -672,6 +671,22 @@ def make_full_typename(typename):
     if "/msg/" in typename or "/" not in typename:
         return typename
     return "%s/msg/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+
+
+def make_subscriber_qos(topic, typename, queue_size=10):
+    """
+    Returns rclpy.qos.QoSProfile that matches the most permissive publisher.
+
+    @param   queue_size  QoSProfile.depth
+    """
+    qos = rclpy.qos.QoSProfile(depth=queue_size)
+    infos = node.get_publishers_info_by_topic(topic)
+    rels, durs = zip(*[(x.qos_profile.reliability, x.durability.reliability)
+                       for x in infos if canonical(x.topic_type) == typename])
+    # If subscription demands stricter QoS than publisher offers, no messages are received
+    if rels: qos.reliability  = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durabilities = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+    return qos
 
 
 def qos_to_dict(qos):
