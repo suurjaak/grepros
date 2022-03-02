@@ -410,7 +410,7 @@ class BagSource(SourceBase, ConditionMixin):
         self._running = True
         names, paths = self.args.FILES, self.args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
-        exts = ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
+        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
 
         encountereds = set()
         for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
@@ -418,10 +418,10 @@ class BagSource(SourceBase, ConditionMixin):
                 continue  # for filename
 
             fullname = os.path.realpath(os.path.abspath(filename))
-            result = Decompressor.make_decompressed_name(fullname) not in encountereds
+            skip = Decompressor.make_decompressed_name(fullname) in encountereds
             encountereds.add(fullname)
 
-            if not self._configure(filename):
+            if skip or not self._configure(filename):
                 continue  # for filename
 
             topicsets = [self._topics]

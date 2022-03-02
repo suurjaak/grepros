@@ -188,7 +188,7 @@ class Decompressor(object):
         fmt = lambda s: format_bytes(s, strip=False)
         if progress:
             tpl = " Decompressing %s (%s): {afterword}" % (os.path.basename(path), fmt(size))
-            bar = ProgressBar(size, aftertemplate=tpl)
+            bar = ProgressBar(pulse=True, aftertemplate=tpl)
 
         ConsolePrinter.warn("Compressed file %s (%s), decompressing to %s.", path, fmt(size), path2)
         bar and bar.update(0).start()  # Start progress pulse
@@ -196,19 +196,17 @@ class Decompressor(object):
             with open(path, "rb") as f, open(path2, "wb") as g:
                 reader = zstandard.ZstdDecompressor().stream_reader(f)
                 while True:
-                    chunk = reader.read(65536)
+                    chunk = reader.read(1048576)
                     if not chunk: break  # while
 
                     g.write(chunk)
                     processed += len(chunk)
-                    bar and setattr(bar, "afterword", fmt(processed))
-                    bar and bar.update(processed)
-                bar and bar.update(bar.max)
+                    bar and (setattr(bar, "afterword", fmt(processed)), bar.update(processed))
                 reader.close()
         except Exception:
             os.remove(path2)
             raise
-        finally: bar and bar.update(bar.value, flush=True).stop()
+        finally: bar and (setattr(bar, "pulse", False), bar.update(processed).stop())
         return path2
 
 
