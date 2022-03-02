@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    19.12.2021
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -21,7 +21,7 @@ except ImportError: embag = None
 try: import genpy
 except ImportError: genpy = None
 
-from .. common import ConsolePrinter
+from .. common import ConsolePrinter, Decompressor
 from .. import rosapi
 
 
@@ -30,7 +30,15 @@ class EmbagReader(object):
     """embag reader interface, partially mimicking rosbag.Bag."""
 
 
-    def __init__(self, filename):
+    def __init__(self, filename, decompress=False, progress=False):
+        """
+        @param   decompress  decompress archived bag to file directory
+        @param   progress    show progress bar during decompression
+        """
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
         self._topics   = {}  # {(topic, typename, typehash): message count}
         self._types    = {}  # {(typename, typehash): message type class}
         self._hashdefs = {}  # {(topic, typehash): typename}

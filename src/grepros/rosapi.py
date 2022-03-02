@@ -280,7 +280,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
 
 
-def create_bag_reader(filename, reindex=False, reindex_progress=False):
+def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
     """
     Returns an object for reading ROS bags.
 
@@ -290,10 +290,12 @@ def create_bag_reader(filename, reindex=False, reindex_progress=False):
     Supplemented with get_message_class(), get_message_definition(),
     get_message_type_hash(), and get_topic_info().
 
-    @param   reindex           reindex unindexed bag (ROS1 only), making a backup if indexed format
-    @param   reindex_progress  show progress bar with reindexing status
+    @param   decompress   decompress archived bag to file directory
+    @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
+    @param   progress     show progress bar with decompression or reindexing status
     """
-    return realapi.create_bag_reader(filename, reindex, reindex_progress)
+    return realapi.create_bag_reader(filename, decompress=decompress,
+                                     reindex=reindex, progress=progress)
 
 
 def create_bag_writer(filename):

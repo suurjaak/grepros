@@ -25,8 +25,9 @@ import re
 import threading
 import time
 
-from . common import ConsolePrinter, ProgressBar, drop_zeros, filter_dict, find_files, \
-                     format_bytes, format_stamp, format_timedelta, plural, wildcard_to_regex
+from . common import ConsolePrinter, Decompressor, ProgressBar, drop_zeros, filter_dict, \
+                     find_files, format_bytes, format_stamp, format_timedelta, plural, \
+                     wildcard_to_regex
 from . import rosapi
 
 
@@ -388,6 +389,7 @@ class BagSource(SourceBase, ConditionMixin):
                                     for message to be processable
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
+        @param   args.DECOMPRESS    decompress archived bags to file directory
         @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
@@ -408,8 +410,18 @@ class BagSource(SourceBase, ConditionMixin):
         self._running = True
         names, paths = self.args.FILES, self.args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
-        for filename in find_files(names, paths, exts, skip_exts, recurse=self.args.RECURSE):
-            if not self._running or not self._configure(filename):
+        exts = ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
+
+        encountereds = set()
+        for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
+            if not self._running:
+                continue  # for filename
+
+            fullname = os.path.realpath(os.path.abspath(filename))
+            result = Decompressor.make_decompressed_name(fullname) not in encountereds
+            encountereds.add(fullname)
+
+            if not self._configure(filename):
                 continue  # for filename
 
             topicsets = [self._topics]
@@ -601,13 +613,14 @@ class BagSource(SourceBase, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, self.args.REINDEX, self.args.PROGRESS)
+            bag = rosapi.create_bag_reader(filename, decompress=self.args.DECOMPRESS,
+                                           reindex=self.args.REINDEX, progress=self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
 
         self._bag      = bag
-        self._filename = filename
+        self._filename = bag.filename
 
         dct = fulldct = {}  # {topic: [typename, ]}
         for (t, n, h), c in bag.get_topic_info().items():

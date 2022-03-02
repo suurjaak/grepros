@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.4 (2022-03-01)
+-------------------
+* add support for reading zstd-compressed bagfiles
+
 0.4.3 (2022-03-01)
 -------------------
 * continue subscribing to other live topics even if one causes error

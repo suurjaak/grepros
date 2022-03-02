@@ -50,6 +50,7 @@ Supports loading custom plugins, mainly for additional output formats.
   - [sql](#sql)
 - [SQL dialects](#sql-dialects)
 - [All command-line arguments](#all-command-line-arguments)
+- [Dependencies](#dependencies)
 - [Attribution](#attribution)
 - [License](#license)
 
@@ -195,6 +196,14 @@ Reindex unindexed ROS1 bags before processing
 (warning: creates backup copies of files, into same directory as file):
 
     --reindex-if-unindexed
+    --reindex-if-unindexed --progress
+
+Decompress archived ROS bags before processing
+(`.zst` `.zstd` extensions, requires `zstandard` Python package)
+(warning: unpacks archived file to disk, into same directory as file):
+
+    --decompress
+    --decompress --progress
 
 Order bag messages first by topic or type, and only then by time:
 
@@ -1052,6 +1061,7 @@ Bag input control:
                         order bag messages by topic or type first and then by time
   --reindex-if-unindexed
                         reindex unindexed bags (ROS1 only; makes backup copies)
+  --decompress          decompress archived bags with recognized extensions (.zst .zstd)
 
 Live topic control:
   --publish-prefix PREFIX
@@ -1067,6 +1077,19 @@ Live topic control:
   --ros-time-in         use ROS time instead of system time for incoming message
                         timestamps from subsribed live ROS topics
 ```
+
+
+Dependencies
+------------
+
+Requires the following 3rd-party Python packages:
+
+- ROS1: rospy, roslib, rosbag, genpy
+- ROS2: rclpy, rosidl_parser, rosidl_runtime_py
+
+Optional, for decompressing archived bags:
+
+- zstandard (https://pypi.org/project/zstandard/)
 
 
 Attribution

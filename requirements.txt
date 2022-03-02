@@ -3,4 +3,5 @@
 # embag input: embag
 # parquet output: pandas, pyarrow
 # postgres output: psycopg2
+# decompressing archived bags: zstandard
 pyyaml

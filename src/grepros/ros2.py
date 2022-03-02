@@ -32,7 +32,7 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, memoize
+from . common import ConsolePrinter, Decompressor, MatchMarkers, memoize
 from . import rosapi
 
 
@@ -101,7 +101,16 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
     """
 
 
-    def __init__(self, filename):
+    def __init__(self, filename, decompress=False, progress=False, **_):
+        """
+        @param   filename    bag file path to open
+        @param   decompress  decompress archived bag to file directory
+        @param   progress    show progress bar with decompression status
+        """
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
         self._db     = None  # sqlite3.Connection instance
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
@@ -397,9 +406,14 @@ def canonical(typename):
     return DDS_TYPES.get(typename, typename) + suffix
 
 
-def create_bag_reader(filename, *_, **__):
-    """Returns a ROS2 bag reader with rosbag.Bag-like interface."""
-    return Bag(filename)
+def create_bag_reader(filename, decompress=False, progress=False, **__):
+    """
+    Returns a ROS2 bag reader with rosbag.Bag-like interface.
+
+    @param   decompress   decompress archived bag to file directory
+    @param   progress     show progress bar with decompression status
+    """
+    return Bag(filename, decompress=decompress, progress=progress)
 
 
 def create_bag_writer(filename):

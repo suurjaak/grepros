@@ -330,9 +330,13 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="ORDERBY", choices=["topic", "type"],
              help="order bag messages by topic or type first and then by time"),
 
+        dict(args=["--decompress"],
+             dest="DECOMPRESS", action="store_true",
+             help="decompress archived bagfiles with recognized extensions (.zst .zstd)"),
+
         dict(args=["--reindex-if-unindexed"],
              dest="REINDEX", action="store_true",
-             help="reindex unindexed bags (ROS1 only), makes backup copies"),
+             help="reindex unindexed bagfiles (ROS1 only), makes backup copies"),
 
     ], "Live topic control": [
 

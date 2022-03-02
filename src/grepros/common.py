@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.02.2022
+@modified    01.03.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -28,6 +28,9 @@ import threading
 import time
 try: import curses
 except ImportError: curses = None
+
+try: import zstandard
+except ImportError: zstandard = None
 
 
 class MatchMarkers(object):
@@ -161,6 +164,76 @@ class ConsolePrinter(object):
         """Ends current open line, if any."""
         if cls._LINEOPEN: print()
         cls._LINEOPEN = False
+
+
+class Decompressor(object):
+    """Decompresses zstandard archives."""
+
+    ## Supported archive extensions
+    EXTENSIONS = (".zst", ".zstd")
+
+    ## zstd file header magic 4 bytes
+    ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+
+
+    @classmethod
+    def decompress(cls, path, progress=False):
+        """
+        Decompresses file to same directory, showing optional progress bar.
+
+        @return  uncompressed file path
+        """
+        cls.validate()
+        path2, bar, size, processed = os.path.splitext(path)[0], None, os.path.getsize(path), 0
+        fmt = lambda s: format_bytes(s, strip=False)
+        if progress:
+            tpl = " Decompressing %s (%s): {afterword}" % (os.path.basename(path), fmt(size))
+            bar = ProgressBar(size, aftertemplate=tpl)
+
+        ConsolePrinter.warn("Compressed file %s (%s), decompressing to %s.", path, fmt(size), path2)
+        bar and bar.update(0).start()  # Start progress pulse
+        try:
+            with open(path, "rb") as f, open(path2, "wb") as g:
+                reader = zstandard.ZstdDecompressor().stream_reader(f)
+                while True:
+                    chunk = reader.read(65536)
+                    if not chunk: break  # while
+
+                    g.write(chunk)
+                    processed += len(chunk)
+                    bar and setattr(bar, "afterword", fmt(processed))
+                    bar and bar.update(processed)
+                bar and bar.update(bar.max)
+                reader.close()
+        except Exception:
+            os.remove(path2)
+            raise
+        finally: bar and bar.update(bar.value, flush=True).stop()
+        return path2
+
+
+    @classmethod
+    def is_compressed(cls, path):
+        """Returns whether file is a recognized archive."""
+        result = os.path.isfile(path)
+        if result:
+            result = any(path.lower().endswith(x) for x in cls.EXTENSIONS)
+        if result:
+            with open(path, "rb") as f:
+                result = (f.read(4) == cls.ZSTD_MAGIC)
+        return result
+
+
+    @classmethod
+    def make_decompressed_name(cls, path):
+        """Returns the path without archive extension, if any."""
+        return os.path.splitext(path)[0] if cls.is_compressed(path) else path
+
+
+    @classmethod
+    def validate(cls):
+        """Raises error if decompression library not available."""
+        if not zstandard: raise Exception("zstandard not installed, cannot decompress")
 
 
 
@@ -508,7 +581,7 @@ def filter_fields(fieldmap, top=(), include=(), exclude=()):
 
 def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
     """
-    Yields filenames from current directory or given paths.
+    Yields filenames from current directory or given paths, .
 
     Seeks only files with given extensions if names not given.
     Prints errors for names and paths not found.
@@ -525,7 +598,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
         if os.path.isfile(directory):
             ConsolePrinter.error("%s: Is a file", directory)
             return
-        for path in glob.glob(directory):  # Expand * wildcards, if any
+        for path in sorted(glob.glob(directory)):  # Expand * wildcards, if any
             pathsfound.add(directory)
             for n in names:
                 p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
@@ -537,7 +610,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
                     namesfound.add(n)
                     yield f
             for root, _, files in os.walk(path) if not names else ():
-                for f in (os.path.join(root, f) for f in files
+                for f in (os.path.join(root, f) for f in sorted(files)
                           if (not extensions or any(map(f.endswith, extensions)))
                           and not any(map(f.endswith, skip_extensions))):
                     yield f

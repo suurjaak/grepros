@@ -24,7 +24,7 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
+from . common import ConsolePrinter, Decompressor, MatchMarkers, ProgressBar, format_bytes, memoize
 from . rosapi import calculate_definition_hash, parse_definition_subtypes
 
 
@@ -68,16 +68,22 @@ class BagReader(rosbag.Bag):
 
     def __init__(self, *args, **kwargs):
         """
-        @param   reindex           if true and bag is unindexed, makes a copy
-                                   of the file (unless unindexed format) and reindexes original
-        @param   reindex_progress  show progress bar with reindexing status
+        @param   decompress  decompress archived bag to file directory
+        @param   reindex     if true and bag is unindexed, make a copy
+                             of the file (unless unindexed format) and reindex original
+        @param   progress    show progress bar with decompression and reindexing status
         """
-        reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "reindex_progress"))
+        decompress = kwargs.pop("decompress", False)
+        reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
+        filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
         try:
             super(BagReader, self).__init__(*args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
-            filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
             BagReader.reindex(filename, progress, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
@@ -330,17 +336,19 @@ def validate(live=False):
     return not missing
 
 
-def create_bag_reader(filename, reindex=False, reindex_progress=False):
+def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
     """
     Returns rosbag.Bag.
 
     Supplemented with get_message_class(), get_message_definition(),
     get_message_type_hash(), and get_topic_info().
 
-    @param   reindex           reindex unindexed bag, making a backup if indexed format
-    @param   reindex_progress  show progress bar with reindexing status
+    @param   decompress   decompress archived bag to file directory
+    @param   reindex      reindex unindexed bag, making a backup if indexed format
+    @param   progress     show progress bar with reindexing and reindexing status
     """
-    return BagReader(filename, skip_index=True, reindex=reindex, reindex_progress=reindex_progress)
+    return BagReader(filename, skip_index=True, decompress=decompress,
+                     reindex=reindex, progress=progress)
 
 
 def create_bag_writer(filename):
