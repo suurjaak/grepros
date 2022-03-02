@@ -5,6 +5,7 @@ Changelog for package grepros
 0.4.4 (2022-03-01)
 -------------------
 * add support for reading zstd-compressed bagfiles
+* strip leading "./" from printed filename prefix if grepping working directory
 
 0.4.3 (2022-03-01)
 -------------------

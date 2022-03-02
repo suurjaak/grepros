@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.03.2022
+@modified    02.03.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -621,6 +621,8 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
     for f in (f for p in paths or ["."] for f in iter_files(p)):
         if os.path.abspath(f) not in processed:
             processed.add(os.path.abspath(f))
+            if not paths and f == os.path.join(".", os.path.basename(f)):
+                f = os.path.basename(f)  # Strip leading "./"
             yield f
 
     for path in (p for p in paths if p not in pathsfound):
