@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    01.03.2022
+@modified    02.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -216,7 +216,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @return              (topic, msg, rclpy.time.Time)
         """
         self.get_topic_info()
-        if not self._topics:
+        if not self._topics or (topics is not None and not topics):
             return
 
         sql, exprs, args = "SELECT * FROM messages", [], ()
