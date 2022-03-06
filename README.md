@@ -126,7 +126,7 @@ This will add the `grepros` command to path.
 
 Requires ROS Python packages
 (ROS1: rospy, roslib, rosbag, genpy;
- ROS2: rclpy, rosidl_parser, rosidl_runtime_py).
+ ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces).
 
 If you don't want to install the ROS1 stack, and are only interested
 in using bag files, not grepping from or publishing to live topics,
@@ -1085,7 +1085,7 @@ Dependencies
 Requires the following 3rd-party Python packages:
 
 - ROS1: rospy, roslib, rosbag, genpy
-- ROS2: rclpy, rosidl_parser, rosidl_runtime_py
+- ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces
 
 Optional, for decompressing archived bags:
 
