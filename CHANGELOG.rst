@@ -2,11 +2,12 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.4 (2022-03-02)
+0.4.4 (2022-03-06)
 -------------------
 * add support for reading zstd-compressed bagfiles
 * strip leading "./" from printed filename prefix if grepping working directory
 * fix not skipping ROS2 bag if all topics filtered out
+* fix making compatible QoS for topic subscriptions
 
 0.4.3 (2022-03-01)
 -------------------

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    02.03.2022
+@modified    06.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -702,11 +702,11 @@ def make_subscriber_qos(topic, typename, queue_size=10):
     """
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     infos = node.get_publishers_info_by_topic(topic)
-    rels, durs = zip(*[(x.qos_profile.reliability, x.durability.reliability)
+    rels, durs = zip(*[(x.qos_profile.reliability, x.qos_profile.durability)
                        for x in infos if canonical(x.topic_type) == typename])
     # If subscription demands stricter QoS than publisher offers, no messages are received
-    if rels: qos.reliability  = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
-    if durs: qos.durabilities = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+    if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
     return qos
 
 
