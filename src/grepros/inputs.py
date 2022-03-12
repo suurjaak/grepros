@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -741,6 +741,26 @@ class TopicSource(SourceBase, ConditionMixin):
             result.update(qoses=self._subs[topickey].get_qoses())
         return result
 
+    def get_message_class(self, typename, typehash=None):
+        """Returns message type class, from active subscription if available."""
+        sub = next((s for (t, n, h), s in self._subs.items()
+                    if n == typename and typehash in (s.get_message_type_hash(), None)), None)
+        return sub and sub.get_message_class() or rosapi.get_message_class(typename)
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        if rosapi.is_ros_message(msg_or_type):
+            return rosapi.get_message_definition(msg_or_type)
+        sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
+        return sub and sub.get_message_definition() or rosapi.get_message_definition(msg_or_type)
+
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS message type MD5 hash."""
+        if rosapi.is_ros_message(msg_or_type):
+            return rosapi.get_message_type_hash(msg_or_type)
+        sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
+        return sub and sub.get_message_type_hash() or rosapi.get_message_type_hash(msg_or_type)
+
     def format_meta(self):
         """Returns source metainfo string."""
         metadata = self.get_meta()
@@ -770,12 +790,12 @@ class TopicSource(SourceBase, ConditionMixin):
             dct = filter_dict({topic: [typename]}, self.args.TOPICS, self.args.TYPES)
             if not filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True):
                 continue  # for topic, typename
-            try: rosapi.get_message_class(typename)
+            try: rosapi.get_message_class(typename)  # Raises error in ROS2
             except Exception as e:
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
                                     (typename, topic), e, __once=True)
                 continue  # for topic, typename
-            topickey = (topic, typename, rosapi.get_message_type_hash(typename))
+            topickey = (topic, typename, None)
             if topickey in self.topics:
                 continue  # for topic, typename
 

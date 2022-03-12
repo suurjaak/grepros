@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    01.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -314,7 +314,12 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns a ROS subscriber instance, with .unregister() and .get_qoses()."""
+    """
+    Returns a ROS subscriber instance.
+    
+    Supplemented with .unregister(), .get_message_class(), .get_message_definition(),
+    .get_message_type_hash(), and .get_qoses().
+    """
     return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 
@@ -353,9 +358,9 @@ def get_message_fields(val):
     return realapi.get_message_fields(val)
 
 
-def get_message_type(msg):
+def get_message_type(msg_or_cls):
     """Returns ROS message type name, like "std_msgs/Header"."""
-    return realapi.get_message_type(msg)
+    return realapi.get_message_type(msg_or_cls)
 
 
 def get_message_value(msg, name, typename):

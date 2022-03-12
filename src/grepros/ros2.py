@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    06.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import array
 import collections
 import enum
+import inspect
 import os
 import re
 import sqlite3
@@ -433,7 +434,12 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns an rclpy.Subscription, with .unregister() and .get_qos()."""
+    """
+    Returns an rclpy.Subscription.
+
+    Supplemented with .get_message_class(), .get_message_definition(),
+    .get_message_type_hash(), .get_qoses(), and.unregister().
+    """
     cls = typename = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     else: typename = get_message_type(cls)
@@ -446,9 +452,13 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
     if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
 
+    qosdicts = [qos_to_dict(x) for x in qoses] or None
     sub = node.create_subscription(cls, topic, handler, qos)
-    sub.unregister = sub.destroy
-    sub.get_qoses = (lambda qoslist: (lambda: qoslist))([qos_to_dict(x) for x in qoses] or None)
+    sub.get_message_class      = lambda: cls
+    sub.get_message_definition = lambda: get_message_definition(cls)
+    sub.get_message_type_hash  = lambda: get_message_type_hash(cls)
+    sub.get_qoses              = lambda: qosdicts
+    sub.unregister             = sub.destroy
     return sub
 
 
@@ -616,9 +626,10 @@ def get_message_fields(val):
     return collections.OrderedDict(fields)
 
 
-def get_message_type(msg):
+def get_message_type(msg_or_cls):
     """Returns ROS2 message type name, like "std_msgs/Header"."""
-    return canonical("%s/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__))
+    cls = msg_or_cls if inspect.isclass(msg_or_cls) else type(msg_or_cls)
+    return canonical("%s/%s" % (cls.__module__.split(".")[0], cls.__name__))
 
 
 def get_message_value(msg, name, typename):
