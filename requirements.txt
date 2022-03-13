@@ -4,4 +4,5 @@
 # parquet output: pandas, pyarrow
 # postgres output: psycopg2
 # decompressing archived bags: zstandard
+# for generating API documentation: doxypypy
 pyyaml

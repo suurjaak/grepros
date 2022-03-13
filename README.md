@@ -1125,6 +1125,23 @@ Optional, for decompressing archived bags:
 
 - zstandard (https://pypi.org/project/zstandard/)
 
+Optional, for faster reading of ROS1 bags:
+
+- embag (https://github.com/embarktrucks/embag)
+
+Optional, for Postgres output:
+
+- psycopg2 (https://pypi.org/project/psycopg2)
+
+Optional, for Parquet output:
+
+- pandas (https://pypi.org/project/pandas)
+- pyarrow (https://pypi.org/project/pyarrow)
+
+Optional, for generating API documentation:
+
+- doxypypy (https://pypi.org/project/doxypypy)
+
 
 Attribution
 -----------
