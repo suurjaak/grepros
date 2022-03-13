@@ -49,6 +49,7 @@ Supports loading custom plugins, mainly for additional output formats.
   - [parquet](#parquet)
   - [sql](#sql)
 - [SQL dialects](#sql-dialects)
+- [Notes on ROS1 vs ROS2](#notes-on-ros1-vs-ros2)
 - [All command-line arguments](#all-command-line-arguments)
 - [Dependencies](#dependencies)
 - [Attribution](#attribution)
@@ -128,9 +129,8 @@ Requires ROS Python packages
 (ROS1: rospy, roslib, rosbag, genpy;
  ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces).
 
-If you don't want to install the ROS1 stack, and are only interested
-in using bag files, not grepping from or publishing to live topics,
-minimal ROS1 Python packages can also be installed separately with:
+For ROS1, if only using bag files and no live topics, minimal ROS1 Python
+packages can also be installed separately with:
 
     pip install rospy rosbag roslib roslz4 \
     --extra-index-url https://rospypi.github.io/simple/
@@ -899,6 +899,40 @@ will be taken from the default dialect configuration:
   invalid_char_repl:    '__'
 ```
 
+
+Notes on ROS1 vs ROS2
+---------------------
+
+In ROS1, each message type has a hash code computed from its type definition text,
+available both in live topic metadata, and bag metadata. Message type packages
+do not need to be installed locally, as they can be generated at run-time
+from the type definition text; this is what rosbag does automatically,
+and so does grepros. 
+
+The message type definition hash code allows to recognize changes
+in message type packages and use the correct version of the message type.
+
+ROS2 does not have the concept of a message type hash. Also, it does not provide
+the message type definition, neither in live topics nor in bagfiles. Due to this,
+the message type packages need to be installed on both ends, to be able to work
+with those messages.
+
+As such, **any changes in message type definitions are not detectable in ROS2**.
+If a local message type package has newer, modified type definitions, working
+with a bag recorded with older definitions will result in undefined behaviour.
+If the serialized message structure happens to match (e.g. the change swapped 
+the order of two `int32` fields), messages will be deserialized seemingly
+successfully but probably with invalid content. If the serialized structure
+does not match, the result is a run-time error.
+
+grepros tries to smooth over this difference somewhat, by calculating
+the message type hash in ROS2 from the locally available message type definition
+on its own, and providing the hash in exports. But the inability to detect changes
+in message type definitions, and the requirement of needing to have the message
+type packages locally installed, is a fundamental limitation in ROS2.
+
+Because of this, when recording ROS2 bags, it is prudent to always include
+a snapshot archive of used message type packages. 
 
 
 All command-line arguments
