@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.02.2022
+@modified    14.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -184,6 +184,30 @@ class TextSinkMixin(object):
                     lines[i] = l[:CUT] + MatchMarkers.END + EXTRA
             return lines
 
+        def truncate(v):
+            """Returns text or list/tuple truncated to length used in final output."""
+            if self.args.LINES_AROUND_MATCH \
+            or (not self.args.MAX_MESSAGE_LINES and (self.args.END_LINE or 0) <= 0): return v
+
+            MAX_CHAR_LEN = 1 + len(MatchMarkers.START) + len(MatchMarkers.END)
+            # For list/tuple, account for comma and space
+            if isinstance(v, (list, tuple)): textlen = bytelen = 2 + len(v) * (2 + MAX_CHAR_LEN)
+            else: textlen, bytelen = self._wrapper.strlen(v), len(v)
+            if textlen < 10000: return v
+
+            # Heuristic optimization: shorten superlong texts before converting to YAML
+            # if outputting a maximum number of lines per message
+            # (e.g. a lidar pointcloud can be 10+MB of text and take 10+ seconds to format).
+            MIN_CHARS_PER_LINE = self._wrapper.width
+            if MAX_CHAR_LEN != 1:
+                MIN_CHARS_PER_LINE = self._wrapper.width // MAX_CHAR_LEN * 2
+            MAX_LINES = self.args.MAX_MESSAGE_LINES or self.args.END_LINE
+            MAX_CHARS = MAX_LEN = MAX_LINES * MIN_CHARS_PER_LINE * self._wrapper.width + 100
+            if bytelen > MAX_CHARS:  # Use worst-case max length plus some extra
+                if isinstance(v, (list, tuple)): MAX_LEN = MAX_CHARS // 3
+                v = v[:MAX_LEN]
+            return v
+
         indent = "  " * len(top)
         if isinstance(val, (int, float, bool)):
             return str(val)
@@ -191,14 +215,14 @@ class TextSinkMixin(object):
             if val in ("", MatchMarkers.EMPTY):
                 return MatchMarkers.EMPTY_REPL if val else "''"
             # default_style='"' avoids trailing "...\n"
-            return yaml.safe_dump(val, default_style='"', width=sys.maxsize).rstrip("\n")
+            return yaml.safe_dump(truncate(val), default_style='"', width=sys.maxsize).rstrip("\n")
         if isinstance(val, (list, tuple)):
             if not val:
                 return "[]"
-            if "string" == rosapi.scalar(typename):
-                yaml_str = yaml.safe_dump(val).rstrip('\n')
+            if rosapi.scalar(typename) in rosapi.ROS_STRING_TYPES:
+                yaml_str = yaml.safe_dump(truncate(val)).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
-            vals = [x for v in val for x in [self.message_to_yaml(v, top, typename)] if x]
+            vals = [x for v in truncate(val) for x in [self.message_to_yaml(v, top, typename)] if x]
             if rosapi.scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
@@ -212,7 +236,7 @@ class TextSinkMixin(object):
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:
                     continue  # for k, t
 
-                v = unquote(v) if "string" != t else v  # Unquote casts to "<match>v</match>"
+                if t not in rosapi.ROS_STRING_TYPES: v = unquote(v)
                 if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
                     is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
                     is_num = rosapi.scalar(t) in rosapi.ROS_NUMERIC_TYPES
