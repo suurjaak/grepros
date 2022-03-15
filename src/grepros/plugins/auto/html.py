@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    04.02.2022
+@modified    15.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -140,9 +140,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                       timeline=not self.args.ORDERBY, messages=self._produce())
-            makedirs(os.path.dirname(self._filename))
+            makedirs(os.path.dirname(self.args.WRITE))
             if not self._overwrite:
-                self._filename = unique_path(self._filename, empty_ok=True)
+                self._filename = unique_path(self.args.WRITE, empty_ok=True)
             if self.args.VERBOSE:
                 sz = os.path.isfile(self._filename) and os.path.getsize(self._filename)
                 action = "Overwriting" if sz and self._overwrite else "Creating"
