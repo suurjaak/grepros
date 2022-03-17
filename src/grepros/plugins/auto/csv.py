@@ -8,13 +8,15 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    04.02.2022
+@modified    16.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
 from __future__ import absolute_import
 import atexit
 import csv
+import io
+import itertools
 import os
 import sys
 
@@ -42,7 +44,7 @@ class CsvSink(SinkBase):
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}
-        self._writers       = {}          # {(topic, typename, typehash): csv.writer}
+        self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
         self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
         self._close_printed = False
@@ -51,14 +53,13 @@ class CsvSink(SinkBase):
 
     def emit(self, topic, index, stamp, msg, match):
         """Writes message to output file."""
-        data = [v for _, v in self._iter_fields(msg)]
+        data = (v for _, v in self._iter_fields(msg))
         metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
-        self._make_writer(topic, msg).writerow(self._format_row(metadata + data))
+        self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))
         super(CsvSink, self).emit(topic, index, stamp, msg, match)
 
     def validate(self):
-        """Returns whether overwrite option is valid.
-        """
+        """Returns whether overwrite option is valid."""
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
@@ -109,23 +110,16 @@ class CsvSink(SinkBase):
                 else: name = unique_path(name)
             flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
             f = open(name, **flags)
-            w = csv.writer(f)
+            w = CsvWriter(f)
             if topickey not in self._files:
                 if self.args.VERBOSE:
                     ConsolePrinter.debug("%s %s.", action, name)
-                header = [topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg)]
+                header = (topic + "/" + ".".join(map(str, p)) for p, _ in self._iter_fields(msg))
                 metaheader = ["__time", "__datetime", "__type"]
-                w.writerow(self._format_row(metaheader + header))
+                w.writerow(itertools.chain(metaheader, header))
             self._files[topickey], self._writers[topickey] = f, w
         self._lasttopickey = topickey
         return self._writers[topickey]
-
-    def _format_row(self, data):
-        """Returns row suitable for writing to CSV."""
-        data = [int(v) if isinstance(v, bool) else v for v in data]
-        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
-            data = [v.encode("utf-8") if isinstance(v, unicode) else v for v in data]
-        return data
 
     def _iter_fields(self, msg, top=()):
         """
@@ -133,14 +127,14 @@ class CsvSink(SinkBase):
 
         Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
         """
-        fieldmap = rosapi.get_message_fields(msg)
+        fieldmap, identity = rosapi.get_message_fields(msg), lambda x: x
         for k, t in fieldmap.items() if fieldmap != msg else ():
-            v, path = rosapi.get_message_value(msg, k, t), top + (k, )
-            is_sublist = isinstance(v, (list, tuple)) and \
-                         rosapi.scalar(t) not in rosapi.ROS_BUILTIN_TYPES
+            v, path, baset = rosapi.get_message_value(msg, k, t), top + (k, ), rosapi.scalar(t)
+            is_sublist = isinstance(v, (list, tuple)) and baset not in rosapi.ROS_BUILTIN_TYPES
+            cast = rosapi.to_sec if baset in rosapi.ROS_TIME_TYPES else identity
             if isinstance(v, (list, tuple)) and not is_sublist:
                 for i, lv in enumerate(v):
-                    yield path + (i, ), rosapi.to_sec(lv)
+                    yield path + (i, ), cast(lv)
             elif is_sublist:
                 for i, lmsg in enumerate(v):
                     for lp, lv in self._iter_fields(lmsg, path + (i, )):
@@ -149,7 +143,68 @@ class CsvSink(SinkBase):
                 for mp, mv in self._iter_fields(v, path):
                     yield mp, mv
             else:
-                yield path, rosapi.to_sec(v)
+                yield path, cast(v)
+
+
+class CsvWriter(object):
+    """Wraps csv.writer with bool conversion, iterator support, and lesser memory use."""
+
+    def __init__(self, csvfile, dialect="excel", **fmtparams):
+        """
+        @param   csvfile    file-like object with `write()` method
+        @param   dialect    CSV dialect to use, one from `csv.list_dialects()`
+        @param   fmtparams  override individual format parameters in dialect
+        """
+        self._file    = csvfile
+        self._buffer  = io.BytesIO() if sys.version_info < (3, 0) else io.StringIO()
+        self._writer  = csv.writer(self._buffer, dialect, **dict(fmtparams, lineterminator=""))
+        self._dialect = csv.writer(self._buffer, dialect, **fmtparams).dialect
+        self._format  = lambda v: int(v) if isinstance(v, bool) else v
+        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
+            self._format = lambda v: int(v) if isinstance(v, bool) else \
+                                     v.encode("utf-8") if isinstance(v, unicode) else v
+
+    @property
+    def dialect(self):
+        """A read-only description of the dialect in use by the writer."""
+        return self._dialect
+
+    def writerow(self, row):
+        """
+        Writes the row to the writer’s file object.
+
+        Fields will be formatted according to the current dialect.
+
+        @param   row  iterable of field values
+        @return       return value of the call to the write method of the underlying file object
+        """
+        def write_columns(cols, inter):
+            """Writes columns to file, returns number of bytes written."""
+            count = self._file.write(inter) if inter else 0
+            self._writer.writerow(cols)                         # Hack: use csv.writer to format
+            count += self._file.write(self._buffer.getvalue())  # a slice at a time, as it can get
+            self._buffer.seek(0); self._buffer.truncate()       # very memory-hungry for huge rows
+            return count
+            
+        result, chunk, inter, STEP = 0, [], "", 10000
+        for v in row:
+            chunk.append(self._format(v))
+            if len(chunk) >= STEP:
+                result += write_columns(chunk, inter)
+                chunk, inter = [], self.dialect.delimiter
+        if chunk: result += write_columns(chunk, inter)
+        result += self._file.write(self.dialect.lineterminator)
+        return result
+
+    def writerows(self, rows):
+        """
+        Writes the rows to the writer’s file object.
+
+        Fields will be formatted according to the current dialect.
+
+        @param   rows  iterable of iterables of field values
+        """
+        for row in rows: self.writerow(row)
 
 
 

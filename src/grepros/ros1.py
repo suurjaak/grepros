@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    01.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -24,7 +24,7 @@ import rosbag
 import roslib
 import rospy
 
-from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
+from . common import ConsolePrinter, Decompressor, MatchMarkers, ProgressBar, format_bytes, memoize
 from . rosapi import calculate_definition_hash, parse_definition_subtypes
 
 
@@ -68,16 +68,22 @@ class BagReader(rosbag.Bag):
 
     def __init__(self, *args, **kwargs):
         """
-        @param   reindex           if true and bag is unindexed, makes a copy
-                                   of the file (unless unindexed format) and reindexes original
-        @param   reindex_progress  show progress bar with reindexing status
+        @param   decompress  decompress archived bag to file directory
+        @param   reindex     if true and bag is unindexed, make a copy
+                             of the file (unless unindexed format) and reindex original
+        @param   progress    show progress bar with decompression and reindexing status
         """
-        reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "reindex_progress"))
+        decompress = kwargs.pop("decompress", False)
+        reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
+        filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
         try:
-            super(BagReader, self).__init__(*args, **kwargs)
+            super(BagReader, self).__init__(filename, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
-            filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
             BagReader.reindex(filename, progress, *args, **kwargs)
             super(BagReader, self).__init__(filename, *args, **kwargs)
 
@@ -330,17 +336,19 @@ def validate(live=False):
     return not missing
 
 
-def create_bag_reader(filename, reindex=False, reindex_progress=False):
+def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
     """
     Returns rosbag.Bag.
 
     Supplemented with get_message_class(), get_message_definition(),
     get_message_type_hash(), and get_topic_info().
 
-    @param   reindex           reindex unindexed bag, making a backup if indexed format
-    @param   reindex_progress  show progress bar with reindexing status
+    @param   decompress   decompress archived bag to file directory
+    @param   reindex      reindex unindexed bag, making a backup if indexed format
+    @param   progress     show progress bar with reindexing and reindexing status
     """
-    return BagReader(filename, skip_index=True, reindex=reindex, reindex_progress=reindex_progress)
+    return BagReader(filename, skip_index=True, decompress=decompress,
+                     reindex=reindex, progress=progress)
 
 
 def create_bag_writer(filename):
@@ -364,27 +372,19 @@ def create_publisher(topic, cls_or_typename, queue_size):
     return pub
 
 
-def create_subscriber(topic, cls_or_typename, handler, queue_size):
+def create_subscriber(topic, typename, handler, queue_size):
     """
-    Returns a rospy.Subscriber, with .get_qoses().
-
-    Local message packages are not strictly required.
-    """
-    cls = cls_or_typename
-    if isinstance(cls, str): cls = get_message_class(cls)
-    if cls is None and isinstance(cls_or_typename, str):
-        sub = create_anymsg_subscriber(topic, cls_or_typename, handler, queue_size)
-    else: sub = rospy.Subscriber(topic, cls, handler, queue_size=queue_size)
-    sub.get_qoses = lambda: None
-    return sub
-
-
-def create_anymsg_subscriber(topic, typename, handler, queue_size):
-    """
-    Returns a rospy.Subscriber not requiring local message packages.
-
-    Subscribes as AnyMsg, creates message class dynamically from connection info,
+    Returns a rospy.Subscriber.
+    
+    Local message packages are not required. Subscribes as AnyMsg,
+    creates message class dynamically from connection info,
     and deserializes message before providing to handler.
+
+    Supplemented with .get_message_class(), .get_message_definition(),
+    .get_message_type_hash(), and .get_qoses().
+
+    The supplementary .get_message_xyz() methods should only be invoked after at least one message
+    has been received from the topic, as they get populated from live connection metadata.
     """
     def myhandler(msg):
         if msg._connection_header["type"] != typename:
@@ -396,7 +396,14 @@ def create_anymsg_subscriber(topic, typename, handler, queue_size):
                 TYPECLASSES.setdefault((name, cls._md5sum), cls)
         handler(TYPECLASSES[typekey]().deserialize(msg._buff))
 
-    return rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
+    sub = rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
+    sub.get_message_class      = lambda: next(c for (n, h), c in TYPECLASSES.items()
+                                              if n == typename)
+    sub.get_message_definition = lambda: next(get_message_definition(c)
+                                              for (n, h), c in TYPECLASSES.items() if n == typename)
+    sub.get_message_type_hash  = lambda: next(h for n, h in TYPECLASSES if n == typename)
+    sub.get_qoses              = lambda: None
+    return sub
 
 
 def format_message_value(msg, name, value):
@@ -448,9 +455,9 @@ def get_message_fields(val):
     return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
 
 
-def get_message_type(msg):
+def get_message_type(msg_or_cls):
     """Returns ROS1 message type name, like "std_msgs/Header"."""
-    return msg._type
+    return msg_or_cls._type
 
 
 def get_message_value(msg, name, typename):

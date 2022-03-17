@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -25,8 +25,9 @@ import re
 import threading
 import time
 
-from . common import ConsolePrinter, ProgressBar, drop_zeros, filter_dict, find_files, \
-                     format_bytes, format_stamp, format_timedelta, plural, wildcard_to_regex
+from . common import ConsolePrinter, Decompressor, ProgressBar, drop_zeros, filter_dict, \
+                     find_files, format_bytes, format_stamp, format_timedelta, plural, \
+                     wildcard_to_regex
 from . import rosapi
 
 
@@ -388,6 +389,7 @@ class BagSource(SourceBase, ConditionMixin):
                                     for message to be processable
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
+        @param   args.DECOMPRESS    decompress archived bags to file directory
         @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
@@ -408,8 +410,18 @@ class BagSource(SourceBase, ConditionMixin):
         self._running = True
         names, paths = self.args.FILES, self.args.PATHS
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
-        for filename in find_files(names, paths, exts, skip_exts, recurse=self.args.RECURSE):
-            if not self._running or not self._configure(filename):
+        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
+
+        encountereds = set()
+        for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
+            if not self._running:
+                continue  # for filename
+
+            fullname = os.path.realpath(os.path.abspath(filename))
+            skip = Decompressor.make_decompressed_name(fullname) in encountereds
+            encountereds.add(fullname)
+
+            if skip or not self._configure(filename):
                 continue  # for filename
 
             topicsets = [self._topics]
@@ -601,13 +613,14 @@ class BagSource(SourceBase, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, self.args.REINDEX, self.args.PROGRESS)
+            bag = rosapi.create_bag_reader(filename, decompress=self.args.DECOMPRESS,
+                                           reindex=self.args.REINDEX, progress=self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
 
         self._bag      = bag
-        self._filename = filename
+        self._filename = bag.filename
 
         dct = fulldct = {}  # {topic: [typename, ]}
         for (t, n, h), c in bag.get_topic_info().items():
@@ -728,6 +741,26 @@ class TopicSource(SourceBase, ConditionMixin):
             result.update(qoses=self._subs[topickey].get_qoses())
         return result
 
+    def get_message_class(self, typename, typehash=None):
+        """Returns message type class, from active subscription if available."""
+        sub = next((s for (t, n, h), s in self._subs.items()
+                    if n == typename and typehash in (s.get_message_type_hash(), None)), None)
+        return sub and sub.get_message_class() or rosapi.get_message_class(typename)
+
+    def get_message_definition(self, msg_or_type):
+        """Returns ROS message type definition full text, including subtype definitions."""
+        if rosapi.is_ros_message(msg_or_type):
+            return rosapi.get_message_definition(msg_or_type)
+        sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
+        return sub and sub.get_message_definition() or rosapi.get_message_definition(msg_or_type)
+
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS message type MD5 hash."""
+        if rosapi.is_ros_message(msg_or_type):
+            return rosapi.get_message_type_hash(msg_or_type)
+        sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
+        return sub and sub.get_message_type_hash() or rosapi.get_message_type_hash(msg_or_type)
+
     def format_meta(self):
         """Returns source metainfo string."""
         metadata = self.get_meta()
@@ -757,12 +790,12 @@ class TopicSource(SourceBase, ConditionMixin):
             dct = filter_dict({topic: [typename]}, self.args.TOPICS, self.args.TYPES)
             if not filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True):
                 continue  # for topic, typename
-            try: rosapi.get_message_class(typename)
+            try: rosapi.get_message_class(typename)  # Raises error in ROS2
             except Exception as e:
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
                                     (typename, topic), e, __once=True)
                 continue  # for topic, typename
-            topickey = (topic, typename, rosapi.get_message_type_hash(typename))
+            topickey = (topic, typename, None)
             if topickey in self.topics:
                 continue  # for topic, typename
 

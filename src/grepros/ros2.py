@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    01.03.2022
+@modified    12.03.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import array
 import collections
 import enum
+import inspect
 import os
 import re
 import sqlite3
@@ -32,7 +33,7 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, memoize
+from . common import ConsolePrinter, Decompressor, MatchMarkers, memoize
 from . import rosapi
 
 
@@ -101,7 +102,16 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
     """
 
 
-    def __init__(self, filename):
+    def __init__(self, filename, decompress=False, progress=False, **_):
+        """
+        @param   filename    bag file path to open
+        @param   decompress  decompress archived bag to file directory
+        @param   progress    show progress bar with decompression status
+        """
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
         self._db     = None  # sqlite3.Connection instance
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
@@ -207,7 +217,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @return              (topic, msg, rclpy.time.Time)
         """
         self.get_topic_info()
-        if not self._topics:
+        if not self._topics or (topics is not None and not topics):
             return
 
         sql, exprs, args = "SELECT * FROM messages", [], ()
@@ -397,9 +407,14 @@ def canonical(typename):
     return DDS_TYPES.get(typename, typename) + suffix
 
 
-def create_bag_reader(filename, *_, **__):
-    """Returns a ROS2 bag reader with rosbag.Bag-like interface."""
-    return Bag(filename)
+def create_bag_reader(filename, decompress=False, progress=False, **__):
+    """
+    Returns a ROS2 bag reader with rosbag.Bag-like interface.
+
+    @param   decompress   decompress archived bag to file directory
+    @param   progress     show progress bar with decompression status
+    """
+    return Bag(filename, decompress=decompress, progress=progress)
 
 
 def create_bag_writer(filename):
@@ -419,7 +434,12 @@ def create_publisher(topic, cls_or_typename, queue_size):
 
 
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
-    """Returns an rclpy.Subscription, with .unregister() and .get_qos()."""
+    """
+    Returns an rclpy.Subscription.
+
+    Supplemented with .get_message_class(), .get_message_definition(),
+    .get_message_type_hash(), .get_qoses(), and.unregister().
+    """
     cls = typename = cls_or_typename
     if isinstance(cls, str): cls = get_message_class(cls)
     else: typename = get_message_type(cls)
@@ -432,9 +452,13 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
     if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
 
+    qosdicts = [qos_to_dict(x) for x in qoses] or None
     sub = node.create_subscription(cls, topic, handler, qos)
-    sub.unregister = sub.destroy
-    sub.get_qoses = (lambda qoslist: (lambda: qoslist))([qos_to_dict(x) for x in qoses] or None)
+    sub.get_message_class      = lambda: cls
+    sub.get_message_definition = lambda: get_message_definition(cls)
+    sub.get_message_type_hash  = lambda: get_message_type_hash(cls)
+    sub.get_qoses              = lambda: qosdicts
+    sub.unregister             = sub.destroy
     return sub
 
 
@@ -602,9 +626,10 @@ def get_message_fields(val):
     return collections.OrderedDict(fields)
 
 
-def get_message_type(msg):
+def get_message_type(msg_or_cls):
     """Returns ROS2 message type name, like "std_msgs/Header"."""
-    return canonical("%s/%s" % (type(msg).__module__.split(".")[0], type(msg).__name__))
+    cls = msg_or_cls if inspect.isclass(msg_or_cls) else type(msg_or_cls)
+    return canonical("%s/%s" % (cls.__module__.split(".")[0], cls.__name__))
 
 
 def get_message_value(msg, name, typename):
@@ -688,11 +713,11 @@ def make_subscriber_qos(topic, typename, queue_size=10):
     """
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     infos = node.get_publishers_info_by_topic(topic)
-    rels, durs = zip(*[(x.qos_profile.reliability, x.durability.reliability)
+    rels, durs = zip(*[(x.qos_profile.reliability, x.qos_profile.durability)
                        for x in infos if canonical(x.topic_type) == typename])
     # If subscription demands stricter QoS than publisher offers, no messages are received
-    if rels: qos.reliability  = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
-    if durs: qos.durabilities = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
+    if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
+    if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
     return qos
 
 

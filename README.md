@@ -49,7 +49,9 @@ Supports loading custom plugins, mainly for additional output formats.
   - [parquet](#parquet)
   - [sql](#sql)
 - [SQL dialects](#sql-dialects)
+- [Notes on ROS1 vs ROS2](#notes-on-ros1-vs-ros2)
 - [All command-line arguments](#all-command-line-arguments)
+- [Dependencies](#dependencies)
 - [Attribution](#attribution)
 - [License](#license)
 
@@ -125,11 +127,10 @@ This will add the `grepros` command to path.
 
 Requires ROS Python packages
 (ROS1: rospy, roslib, rosbag, genpy;
- ROS2: rclpy, rosidl_parser, rosidl_runtime_py).
+ ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces).
 
-If you don't want to install the ROS1 stack, and are only interested
-in using bag files, not grepping from or publishing to live topics,
-minimal ROS1 Python packages can also be installed separately with:
+For ROS1, if only using bag files and no live topics, minimal ROS1 Python
+packages can also be installed separately with:
 
     pip install rospy rosbag roslib roslz4 \
     --extra-index-url https://rospypi.github.io/simple/
@@ -195,6 +196,14 @@ Reindex unindexed ROS1 bags before processing
 (warning: creates backup copies of files, into same directory as file):
 
     --reindex-if-unindexed
+    --reindex-if-unindexed --progress
+
+Decompress archived ROS bags before processing
+(`.zst` `.zstd` extensions, requires `zstandard` Python package)
+(warning: unpacks archived file to disk, into same directory as file):
+
+    --decompress
+    --decompress --progress
 
 Order bag messages first by topic or type, and only then by time:
 
@@ -891,6 +900,42 @@ will be taken from the default dialect configuration:
 ```
 
 
+Notes on ROS1 vs ROS2
+---------------------
+
+In ROS1, message type packages do not need to be installed locally to be able to
+read messages from bags or live topics, as bags and topic publishers provide
+message type definition texts, and message classes can be generated at run-time
+from the type definition text. This is what rosbag does automatically,
+and so does grepros.
+
+Additionally, each ROS1 message type has a hash code computed from its type
+definition text, available both in live topic metadata, and bag metadata.
+The message type definition hash code allows to recognize changes
+in message type packages and use the correct version of the message type.
+
+ROS2 does not provide message type definitions, neither in bagfiles nor in live
+topics. Due to this, the message type packages always need to be installed.
+Also, ROS2 does not provide options for generating type classes at run-time,
+and it does not have the concept of a message type hash.
+
+These are serious limitations in ROS2 compared to ROS1, at least with versions
+up to ROS2 Foxy and ROS2 Galactic, and require extra work to smooth over.
+Without knowing which version of a message type package a bag was recorded with,
+reading bag messages with changed definitions can result in undefined behaviour.
+
+If the serialized message structure happens to match (e.g. a change swapped 
+the order of two `int32` fields), messages will probably be deserialized
+seemingly successfully but with invalid content. If the serialized structure
+does not match, the result is a run-time error.
+
+Because of this, it is prudent to always include a snapshot archive of used
+message type packages, when recording ROS2 bags.
+
+grepros does provide the message type hash itself in ROS2 exports, by calculating
+the ROS2 message type hash on its own from the locally installed type definition.
+
+
 
 All command-line arguments
 --------------------------
@@ -1052,6 +1097,7 @@ Bag input control:
                         order bag messages by topic or type first and then by time
   --reindex-if-unindexed
                         reindex unindexed bags (ROS1 only; makes backup copies)
+  --decompress          decompress archived bags with recognized extensions (.zst .zstd)
 
 Live topic control:
   --publish-prefix PREFIX
@@ -1067,6 +1113,36 @@ Live topic control:
   --ros-time-in         use ROS time instead of system time for incoming message
                         timestamps from subsribed live ROS topics
 ```
+
+
+Dependencies
+------------
+
+Requires the following 3rd-party Python packages:
+
+- ROS1: rospy, roslib, rosbag, genpy
+- ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces
+
+Optional, for decompressing archived bags:
+
+- zstandard (https://pypi.org/project/zstandard/)
+
+Optional, for faster reading of ROS1 bags:
+
+- embag (https://github.com/embarktrucks/embag)
+
+Optional, for Postgres output:
+
+- psycopg2 (https://pypi.org/project/psycopg2)
+
+Optional, for Parquet output:
+
+- pandas (https://pypi.org/project/pandas)
+- pyarrow (https://pypi.org/project/pyarrow)
+
+Optional, for generating API documentation:
+
+- doxypypy (https://pypi.org/project/doxypypy)
 
 
 Attribution

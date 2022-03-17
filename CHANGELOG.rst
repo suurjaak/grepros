@@ -2,6 +2,17 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.4 (2022-03-16)
+-------------------
+* add support for reading zstd-compressed bagfiles
+* use message type definition from ROS1 live topics instead of locally installed package
+* optimize partial printing of very long array fields
+* optimize CSV output of very long array fields
+* strip leading "./" from printed filename prefix if grepping working directory
+* fix not skipping ROS2 bag if all topics filtered out
+* fix making compatible QoS for ROS2 topic subscriptions
+* fix making unique filename on error in HTML output
+
 0.4.3 (2022-03-01)
 -------------------
 * continue subscribing to other live topics even if one causes error
