@@ -23,7 +23,6 @@
   <depend condition="$ROS_VERSION == 2">rosidl_runtime_py</depend>
 
   <depend>python3-yaml</depend>
-  <depend>zstd</depend>
 
   <test_depend>std_msgs</test_depend>
   <test_depend condition="$ROS_VERSION == 1">rostest</test_depend>
