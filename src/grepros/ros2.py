@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    12.03.2022
+@modified    19.04.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -447,7 +447,7 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     qos = rclpy.qos.QoSProfile(depth=queue_size)
     qoses = [x.qos_profile for x in node.get_publishers_info_by_topic(topic)
              if canonical(x.topic_type) == typename]
-    rels, durs = zip(*[(x.reliability, x.durability) for x in qoses])
+    rels, durs = zip(*[(x.reliability, x.durability) for x in qoses]) if qoses else ([], [])
     # If subscription demands stricter QoS than publisher offers, no messages are received
     if rels: qos.reliability = max(rels)  # DEFAULT < RELIABLE < BEST_EFFORT
     if durs: qos.durability  = max(durs)  # DEFAULT < TRANSIENT_LOCAL < VOLATILE
@@ -637,7 +637,7 @@ def get_message_value(msg, name, typename):
     v, scalartype = getattr(msg, name), scalar(typename)
     if isinstance(v, (bytes, array.array)) \
     or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        v = list(map(int, v))
+        v = list(v)
     if v and isinstance(v, (list, tuple)) and scalartype in ("byte", "uint8"):
         if isinstance(v[0], bytes):
             v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
