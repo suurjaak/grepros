@@ -1156,6 +1156,6 @@ released under the MIT license.
 License
 -------
 
-Copyright (c) by Erki Suurjaak.
+Copyright (c) 2021 by Erki Suurjaak.
 Released as free open source software under the BSD License,
 see [LICENSE.md](LICENSE.md) for full details.

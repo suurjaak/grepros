@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.5 (2022-04-15)
+0.4.5 (2022-04-19)
 -------------------
+* fix forcing all numeric array fields to integer lists regardless of type
 * fix error on subscribing to defunct topic
 
 0.4.4 (2022-03-16)

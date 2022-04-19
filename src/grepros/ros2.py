@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    15.04.2022
+@modified    19.04.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -637,7 +637,7 @@ def get_message_value(msg, name, typename):
     v, scalartype = getattr(msg, name), scalar(typename)
     if isinstance(v, (bytes, array.array)) \
     or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        v = list(map(int, v))
+        v = list(v)
     if v and isinstance(v, (list, tuple)) and scalartype in ("byte", "uint8"):
         if isinstance(v[0], bytes):
             v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
