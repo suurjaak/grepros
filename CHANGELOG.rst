@@ -4,6 +4,7 @@ Changelog for package grepros
 
 0.4.6 (2022-05-26)
 -------------------
+* add forgotten implementation for --every-nth-match
 * fix --every-nth-message
 * fix error on grepping bags where no topic or type name matches given filter
 

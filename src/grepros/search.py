@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    05.01.2022
+@modified    26.05.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -86,13 +86,17 @@ class Searcher(object):
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
             source.notify(matched)
-            if matched:
+            if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
                 sink.emit_meta()
                 self._emit_context(topickey, before=True)
                 sink.emit(topic, self._counts[topickey][None], stamp, msg, matched)
-            elif self.args.AFTER and self._has_in_window(topickey, self.args.AFTER + 1, status=True):
+            elif matched:  # Not NTH_MATCH, skip emitting
+                self._statuses[topickey][msgid] = True
+                self._counts[topickey][True] += 1
+            elif self.args.AFTER \
+            and self._has_in_window(topickey, self.args.AFTER + 1, status=True):
                 self._emit_context(topickey, before=False)
             batch_matched = batch_matched or bool(matched)
 
@@ -236,7 +240,7 @@ class Searcher(object):
         """
 
         def wrap_matches(v, top, is_collection=False):
-            """Returns string with parts matching patterns wrapped in marker tags."""
+            """Returns string with matching parts wrapped in marker tags; updates `matched`."""
             spans = []
             # Omit collection brackets from match unless empty: allow matching "[]"
             v1 = v2 = v[1:-1] if is_collection and v != "[]" else v
@@ -254,8 +258,8 @@ class Searcher(object):
                 v2 = v2[:a] + MatchMarkers.START + v2[a:b] + MatchMarkers.END + v2[b:]
             return "[%s]" % v2 if is_collection and v != "[]" else v2
 
-        def decorate_message(obj, top=()):
-            """Recursively converts field values to pattern-matched strings."""
+        def process_message(obj, top=()):
+            """Recursively converts field values to pattern-matched strings; updates `matched`."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
             fieldmap = fieldmap0 = rosapi.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
@@ -264,9 +268,9 @@ class Searcher(object):
                 v, path = rosapi.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))
                 if rosapi.is_ros_message(v):
-                    decorate_message(v, path)
+                    process_message(v, path)
                 elif v and is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
-                    rosapi.set_message_value(obj, k, [decorate_message(x, path) for x in v])
+                    rosapi.set_message_value(obj, k, [process_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
                     v2 = wrap_matches(v1, path, is_collection)
@@ -289,6 +293,6 @@ class Searcher(object):
                 return None  # Skip detailed matching if patterns not present at all
 
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
-        decorate_message(result)
+        process_message(result)
         yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
         return result if yes else None
