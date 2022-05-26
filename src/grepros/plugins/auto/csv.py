@@ -185,7 +185,7 @@ class CsvWriter(object):
             count += self._file.write(self._buffer.getvalue())  # a slice at a time, as it can get
             self._buffer.seek(0); self._buffer.truncate()       # very memory-hungry for huge rows
             return count
-            
+
         result, chunk, inter, STEP = 0, [], "", 10000
         for v in row:
             chunk.append(self._format(v))

@@ -247,7 +247,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
                 msg = rclpy.serialization.deserialize_message(row["data"], cls)
             except Exception as e:
                 errortypes.add(typename)
-                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
+                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
                                     (typename, topic), e, __once=True)
                 if errortypes == set(n for _, n in self._topics):
                     break  # for row

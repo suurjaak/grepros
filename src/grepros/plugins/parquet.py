@@ -44,7 +44,7 @@ class ParquetSink(SinkBase):
         "bool":       pyarrow.bool_,     "bool_":        pyarrow.bool_,
         "float16":    pyarrow.float16,   "float64":      pyarrow.float64,
         "float32":    pyarrow.float32,   "decimal128":   pyarrow.decimal128,
-        "int8":       pyarrow.int8,      "uint8":        pyarrow.uint8, 
+        "int8":       pyarrow.int8,      "uint8":        pyarrow.uint8,
         "int16":      pyarrow.int16,     "uint16":       pyarrow.uint16,
         "int32":      pyarrow.int32,     "uint32":       pyarrow.uint32,
         "int64":      pyarrow.int64,     "uint64":       pyarrow.uint64,

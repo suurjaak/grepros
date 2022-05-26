@@ -375,7 +375,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 def create_subscriber(topic, typename, handler, queue_size):
     """
     Returns a rospy.Subscriber.
-    
+
     Local message packages are not required. Subscribes as AnyMsg,
     creates message class dynamically from connection info,
     and deserializes message before providing to handler.
