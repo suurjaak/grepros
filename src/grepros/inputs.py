@@ -113,7 +113,7 @@ class SourceBase(object):
     def get_message_meta(self, topic, index, stamp, msg):
         """Returns message metainfo data dict."""
         with rosapi.TypeMeta.make(msg, topic) as m:
-            return dict(topic=topic, type=m.typename, index=index, hash=m.typehash, 
+            return dict(topic=topic, type=m.typename, index=index, hash=m.typehash,
                         dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
                         stamp=drop_zeros(rosapi.to_sec(stamp)), schema=m.definition)
 
@@ -139,7 +139,7 @@ class SourceBase(object):
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             last_accepted = self._processables.get(topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted:
-            if index < last_accepted[0] + self.args.NTH_MESSAGE:
+            if (index - 1) % self.args.NTH_MESSAGE:
                 return False
         if self.args.NTH_INTERVAL > 0 and last_accepted:
             if rosapi.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
@@ -568,7 +568,7 @@ class BagSource(SourceBase, ConditionMixin):
             yield topic, msg, stamp
 
             if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-                self._processables[topickey]  = (self._counts[topickey], stamp)
+                self._processables[topickey] = (self._counts[topickey], stamp)
             if self._status and self.args.AFTER and not self._sticky \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
@@ -704,7 +704,7 @@ class TopicSource(SourceBase, ConditionMixin):
 
                 yield topic, msg, stamp
                 if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-                    self._processables[topickey]  = (self._counts[topickey], stamp)
+                    self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
 
@@ -792,7 +792,7 @@ class TopicSource(SourceBase, ConditionMixin):
                 continue  # for topic, typename
             try: rosapi.get_message_class(typename)  # Raises error in ROS2
             except Exception as e:
-                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" % 
+                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
                                     (typename, topic), e, __once=True)
                 continue  # for topic, typename
             topickey = (topic, typename, None)
