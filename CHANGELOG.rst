@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.6 (2022-05-26)
+-------------------
+* fix error on grepping bags where no topic or type name matches given filter
+
 0.4.5 (2022-04-19)
 -------------------
 * fix forcing all numeric array fields to integer lists regardless of type

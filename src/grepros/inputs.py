@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.03.2022
+@modified    26.05.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -435,7 +435,7 @@ class BagSource(SourceBase, ConditionMixin):
 
             self._init_progress()
             for topics in topicsets:
-                for topic, msg, stamp in self._produce(topics):
+                for topic, msg, stamp in self._produce(topics) if topics else ():
                     self.conditions_register_message(topic, msg)
                     if not self.is_conditions_topic(topic, pure=True):
                         yield topic, msg, stamp
@@ -554,7 +554,7 @@ class BagSource(SourceBase, ConditionMixin):
             if not self._running or not self._bag:
                 break  # for topic
             typename = rosapi.get_message_type(msg)
-            if typename not in topics[topic]:
+            if topics and typename not in topics[topic]:
                 continue  # for topic
 
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
