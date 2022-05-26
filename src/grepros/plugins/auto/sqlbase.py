@@ -68,7 +68,7 @@ class SqlMixin(object):
                 with open(filename) as f:
                     dialects = yaml.safe_load(f.read())
                 if any(not isinstance(v, dict) for v in dialects.values()):
-                    raise Exception("Each dialect must be a dictionary.") 
+                    raise Exception("Each dialect must be a dictionary.")
                 for opts in dialects.values():
                     for k, v in list(opts.get("adapters", {}).items()):
                         try: opts["adapters"][k] = import_item(v)

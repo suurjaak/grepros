@@ -452,7 +452,7 @@ def validate_args(args):
         try: v = float(v)
         except Exception: pass
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
-        except Exception: errors[""].append("Invalid ISO datetime for %s: %s" % 
+        except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
     for v in args.PATTERNS if not args.RAW else ():
@@ -466,7 +466,7 @@ def validate_args(args):
         v = inputs.ConditionMixin.TOPIC_RGX.sub("dummy", v)
         try: compile(v, "", "eval")
         except SyntaxError as e:
-            errors["Invalid condition"].append("'%s': %s at %schar %s" % 
+            errors["Invalid condition"].append("'%s': %s at %schar %s" %
                 (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
         except Exception as e:
             errors["Invalid condition"].append("'%s': %s" % (v, e))

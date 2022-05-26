@@ -140,9 +140,9 @@ packages can also be installed separately with:
 
 If ROS apt repository has been added to system:
 
-  sudo apt install ros-noetic-grepros  # ROS1
+    sudo apt install ros-noetic-grepros  # ROS1
 
-  sudo apt install ros-foxy-grepros    # ROS2
+    sudo apt install ros-foxy-grepros    # ROS2
 
 This will add the `grepros` command to the global ROS1 / ROS2 environment.
 
@@ -193,14 +193,14 @@ Scan specific paths instead of current directory (supports * wildcards):
     --path my/dir
 
 Reindex unindexed ROS1 bags before processing
-(warning: creates backup copies of files, into same directory as file):
+(note: creates backup copies of files, into same directory as file):
 
     --reindex-if-unindexed
     --reindex-if-unindexed --progress
 
 Decompress archived ROS bags before processing
 (`.zst` `.zstd` extensions, requires `zstandard` Python package)
-(warning: unpacks archived file to disk, into same directory as file):
+(note: unpacks archived file to disk, into same directory as file):
 
     --decompress
     --decompress --progress
@@ -257,7 +257,7 @@ accept raw control characters (`more -f` or `less -R`).
     --write path/to/my.bag [format=bag] [overwrite=true|false]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
-or the `.db3` SQLite database format in ROS2. If the bagfile already exists, 
+or the `.db3` SQLite database format in ROS2. If the bagfile already exists,
 it is appended to, unless specified to overwrite.
 
 Specifying `format=bag` is not required
@@ -289,7 +289,7 @@ message timeline, message type definitions, and a topically traversable message 
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/media/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/media/screen_html.png)
 
-Note: resulting file may be large, and take a long time to open in browser. 
+Note: resulting file may be large, and take a long time to open in browser.
 
 If the file already exists, a unique counter is appended to the name of the new file,
 e.g. `my.2.html`, unless specified to overwrite.
@@ -306,7 +306,7 @@ A custom template file can be specified, in [step](https://github.com/dotpy/step
     --write postgresql://username@host/dbname [format=postgres]
 
 Write messages to a Postgres database, with tables `pkg/MsgType` for each ROS message type,
-and views `/full/topic/name` for each topic. 
+and views `/full/topic/name` for each topic.
 Plus table `topics` with a list of topics, `types` with message types and definitions,
 and `meta` with table/view/column name changes from shortenings and conflicts, if any
 (Postgres name length is limited to 63 characters).
@@ -417,7 +417,7 @@ CREATE TABLE "std_msgs/Header" (
     --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
-and nested type, and views `/full/topic/name` for each topic. 
+and nested type, and views `/full/topic/name` for each topic.
 If the database already exists, it is appended to, unless specified to overwrite.
 
 Output is compatible with ROS2 `.db3` bagfiles, supplemented with
@@ -523,7 +523,7 @@ CREATE TABLE "std_msgs/Header" (
 
     --publish
 
-Publish messages to live ROS topics. Topic prefix and suffix can be changed, 
+Publish messages to live ROS topics. Topic prefix and suffix can be changed,
 or topic name set to one specific name:
 
     --publish-prefix  /myroot
@@ -630,7 +630,7 @@ Emit a specified number of matches per topic (per each file if bag input):
 
 Emit every Nth match in topic:
 
-    --every-nth-match 10  # (skips 10 matches in topic after each match emitted)
+    --every-nth-match 10  # (skips 9 matches in topic after each match emitted)
 
 
 ### Filtering
@@ -696,7 +696,7 @@ Stop scanning at a specific message index in topic:
 
 Scan every Nth message in topic:
 
-    --every-nth-message 10  # (skips 10 messages in topic with each step)
+    --every-nth-message 10  # (skips 9 messages in topic with each step)
 
 Scan messages in topic with timestamps at least N seconds apart:
 
@@ -749,7 +749,7 @@ Supported (but not required) plugin interface methods:
 
 - `init(args)`: invoked at startup with command-line arguments
 - `load(category, args)`: invoked with category "search" or "source" or "sink",
-                          using returned value if not None
+                          using returned value for specified component if not None
 
 Plugins are free to modify `grepros` internals, like adding command-line arguments
 to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
@@ -924,7 +924,7 @@ up to ROS2 Foxy and ROS2 Galactic, and require extra work to smooth over.
 Without knowing which version of a message type package a bag was recorded with,
 reading bag messages with changed definitions can result in undefined behaviour.
 
-If the serialized message structure happens to match (e.g. a change swapped 
+If the serialized message structure happens to match (e.g. a change swapped
 the order of two `int32` fields), messages will probably be deserialized
 seemingly successfully but with invalid content. If the serialized structure
 does not match, the result is a run-time error.
@@ -966,9 +966,9 @@ optional arguments:
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
                                                    in Postgres/SQL/SQLite output,
-                                                   only for arrays if "array" 
+                                                   only for arrays if "array"
                                                    else for any nested types
-                                                   (array fields in parent will be populated 
+                                                   (array fields in parent will be populated
                                                     with foreign keys instead of messages as JSON)
                           overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
                                                    instead of appending to if bag or database
@@ -977,7 +977,7 @@ optional arguments:
                           template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
-                        (built-in plugins: grepros.plugins.embag, 
+                        (built-in plugins: grepros.plugins.embag,
                          grepros.plugins.parquet, grepros.plugins.sql)
 
 Filtering:

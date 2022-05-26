@@ -179,7 +179,7 @@ def populate_write_formats():
     if not WRITE_OPTIONS: return
 
     MAXNAME    = 24    # Maximum space for name on same line as help
-    LEADING    = "  "  # Leading indent on all option lines 
+    LEADING    = "  "  # Leading indent on all option lines
 
     texts      = {}  # {name: help}
     inters     = {}  # {name: indent between name and first line of help}

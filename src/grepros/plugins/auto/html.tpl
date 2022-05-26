@@ -20,7 +20,7 @@ Released under the BSD License.
 import datetime, os, re
 from grepros import __version__, rosapi
 
-dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M") 
+dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 sourcemeta = source.get_meta()
 subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "live"
 %>
@@ -124,7 +124,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       min-width:              6px;
       position:               relative;
       left:                   3px;
-      top:                    -1px; 
+      top:                    -1px;
     }
     th .sort.asc::after {
       content:                "\\2193";  /** Downwards arrow ↓. */
@@ -742,7 +742,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
       /** Returns a sensibly rounded interval for timeline steps, as nanoseconds. */
       self.calculateInterval = function(count) {
-        var st1 = MSGSTAMPS[0], stN = MSGSTAMPS[MSGSTAMPS.length - 1];  // [seconds, nanoseconds], 
+        var st1 = MSGSTAMPS[0], stN = MSGSTAMPS[MSGSTAMPS.length - 1];  // [seconds, nanoseconds],
         var st2 = MSGSTAMPS[Math.min(1, MSGSTAMPS.length - 1)];
         var entryspan_ns = ((stN[0] - st1[0]) * 10**9 + (stN[1] - st1[1])) / count;  // Ensure max precision
 
@@ -883,7 +883,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       /** Attaches scroll observer to message rows. */
       self.initHighlight = function() {
         if (!window.IntersectionObserver) return;
-          
+
         var scroll_options = {"root": null, "threshold": [0, 1]};
         var scroll_observer = new IntersectionObserver(self.onScrollMessages, scroll_options);
 

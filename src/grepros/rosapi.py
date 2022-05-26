@@ -284,7 +284,7 @@ def create_bag_reader(filename, decompress=False, reindex=False, progress=False)
     """
     Returns an object for reading ROS bags.
 
-    Result is rosbag.Bag in ROS1, or an object with a partially conforming API 
+    Result is rosbag.Bag in ROS1, or an object with a partially conforming API
     if using embag in ROS1, or if using ROS2.
 
     Supplemented with get_message_class(), get_message_definition(),
@@ -316,7 +316,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
 def create_subscriber(topic, cls_or_typename, handler, queue_size):
     """
     Returns a ROS subscriber instance.
-    
+
     Supplemented with .unregister(), .get_message_class(), .get_message_definition(),
     .get_message_type_hash(), and .get_qoses().
     """
