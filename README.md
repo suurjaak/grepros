@@ -920,7 +920,7 @@ Also, ROS2 does not provide options for generating type classes at run-time,
 and it does not have the concept of a message type hash.
 
 These are serious limitations in ROS2 compared to ROS1, at least with versions
-up to ROS2 Foxy and ROS2 Galactic, and require extra work to smooth over.
+up to ROS2 Humble, and require extra work to smooth over.
 Without knowing which version of a message type package a bag was recorded with,
 reading bag messages with changed definitions can result in undefined behaviour.
 

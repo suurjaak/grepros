@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.03.2022
+@modified    20.06.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -165,9 +165,10 @@ class TypeMeta(object):
     @classmethod
     def discard(cls, msg):
         """Discards message metadata from cache, if any, including nested messages."""
-        cls._CACHE.pop(id(msg), None)
-        for childid in cls._CHILDREN.pop(id(msg), []):
-            cls._CACHE.pop(childid, None)
+        msgid = id(msg)
+        cls._CACHE.pop(msgid, None), cls._TIMINGS.pop(msgid, None)
+        for childid in cls._CHILDREN.pop(msgid, []):
+            cls._CACHE.pop(childid, None), cls._TIMINGS.pop(childid, None)
         cls.sweep()
 
     @classmethod
@@ -178,9 +179,9 @@ class TypeMeta(object):
 
         for msgid, tm in list(cls._TIMINGS.items()):
             drop = (tm > now) or (tm < now - cls.LIFETIME)
-            drop and cls._CACHE.pop(msgid, None)
+            drop and (cls._CACHE.pop(msgid, None), cls._TIMINGS.pop(msgid, None))
             for childid in cls._CHILDREN.pop(msgid, []) if drop else ():
-                cls._CACHE.pop(childid, None)
+                cls._CACHE.pop(childid, None), cls._TIMINGS.pop(childid, None)
         cls._LASTSWEEP = now
 
     @classmethod
