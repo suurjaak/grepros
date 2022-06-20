@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    26.05.2022
+@modified    20.06.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -167,9 +167,9 @@ class Searcher(object):
         WINDOW = max(self.args.BEFORE, self.args.AFTER) + 1
         for dct in (self._messages, self._stamps, self._statuses):
             while len(dct[topickey]) > WINDOW:
-                item = next(iter(dct[topickey]))
-                dct[topickey].pop(item)
-                dct is self._messages and rosapi.TypeMeta.discard(item)
+                msgid = next(iter(dct[topickey]))
+                value = dct[topickey].pop(msgid)
+                dct is self._messages and rosapi.TypeMeta.discard(value)
 
 
     def _parse_patterns(self):
