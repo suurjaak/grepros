@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.8 (2022-10-14)
+-------------------
+* fix error in example usage
+
 0.4.7 (2022-06-20)
 -------------------
 * fix space leak in caching message metadata

@@ -67,7 +67,7 @@ Print 30 lines of the first message from each live ROS topic:
 
     grepros --max-per-topic 1 --lines-per-message 30 --live
 
-Find first message containing "future" (case-insensitive) in my.bag:
+Find first message containing "future" (case-sensitive) in my.bag:
 
     grepros future -I --max-count 1 --name my.bag
 
