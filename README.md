@@ -775,7 +775,7 @@ Significantly faster, but library tends to be unstable.
 
 ### parquet
 
-    --plugin grepros.plugins.parquet --write path/to/my.parquet[format=parquet] \
+    --plugin grepros.plugins.parquet --write path/to/my.parquet [format=parquet] \
              [column-name=rostype:value] [overwrite=true|false] [type-rostype=arrowtype] \
              [writer-argname=argvalue]
 
