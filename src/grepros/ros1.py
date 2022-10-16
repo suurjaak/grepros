@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.03.2022
+@modified    16.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -53,8 +53,8 @@ SLEEP_INTERVAL = 0.5
 master = None
 
 
-class BagReader(rosbag.Bag):
-    """Add message type getters to rosbag.Bag."""
+class Bag(rosbag.Bag):
+    """Add message type getters and grepros-specific write() to rosbag.Bag."""
 
     # {(typename, typehash): message type class}
     __TYPES    = {}
@@ -68,24 +68,21 @@ class BagReader(rosbag.Bag):
 
     def __init__(self, *args, **kwargs):
         """
-        @param   decompress  decompress archived bag to file directory
+        @param   mode        mode to open bag in, defaults to "r" (read mode)
         @param   reindex     if true and bag is unindexed, make a copy
                              of the file (unless unindexed format) and reindex original
-        @param   progress    show progress bar with decompression and reindexing status
+        @param   progress    show progress bar with reindexing status
         """
-        decompress = kwargs.pop("decompress", False)
+        kwargs.setdefault("skip_index", True)
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
         filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
-        if Decompressor.is_compressed(filename):
-            if decompress: filename = Decompressor.decompress(filename, progress)
-            else: raise Exception("decompression not enabled")
-
+        mode,     args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
         try:
-            super(BagReader, self).__init__(filename, *args, **kwargs)
+            super(Bag, self).__init__(filename, mode, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
-            BagReader.reindex(filename, progress, *args, **kwargs)
-            super(BagReader, self).__init__(filename, *args, **kwargs)
+            Bag.reindex(filename, progress, *args, **kwargs)
+            super(Bag, self).__init__(filename, mode, *args, **kwargs)
 
         self.__topics = {}  # {(topic, typename, typehash): message count}
 
@@ -160,15 +157,20 @@ class BagReader(rosbag.Bag):
         kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
                       connection_filter=connection_filter, raw=raw)
         if not dupes:
-            for topic, msg, stamp in super(BagReader, self).read_messages(**kwargs):
+            for topic, msg, stamp in super(Bag, self).read_messages(**kwargs):
                 yield topic, msg, stamp
             return
 
-        for topic, msg, stamp in super(BagReader, self).read_messages(**kwargs):
+        for topic, msg, stamp in super(Bag, self).read_messages(**kwargs):
             # Workaround for rosbag bug of using wrong type for identical type hashes
             if dupes.get(topic, msg._type) != msg._type:
                 msg = self.__convert_message(msg, *dupes[topic])
             yield topic, msg, stamp
+
+
+    def write(self, topic, msg, stamp, *_, **__):
+        """Writes a message to the bag."""
+        return super(Bag, self).write(topic, msg, stamp)
 
 
     def __convert_message(self, msg, typename2, typehash2=None):
@@ -248,7 +250,7 @@ class BagReader(rosbag.Bag):
             try:
                 inbag  = rosbag.Bag(f2, **dict(kwargs, mode="r"))
                 outbag = rosbag.Bag(f, **outkwargs)
-                BagReader._reindex_bag(inbag, outbag, bar)
+                Bag._reindex_bag(inbag, outbag, bar)
                 bar and bar.update(bar.max)
             except BaseException:
                 inbag and inbag.close()
@@ -334,29 +336,6 @@ def validate(live=False):
         ConsolePrinter.error("ROS environment not supported: need ROS_VERSION=1.")
         missing = True
     return not missing
-
-
-def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
-    """
-    Returns rosbag.Bag.
-
-    Supplemented with get_message_class(), get_message_definition(),
-    get_message_type_hash(), and get_topic_info().
-
-    @param   decompress   decompress archived bag to file directory
-    @param   reindex      reindex unindexed bag, making a backup if indexed format
-    @param   progress     show progress bar with reindexing and reindexing status
-    """
-    return BagReader(filename, skip_index=True, decompress=decompress,
-                     reindex=reindex, progress=progress)
-
-
-def create_bag_writer(filename):
-    """Returns a rosbag.Bag, with write() taking an additional optional parameter `meta`."""
-    mode = "a" if os.path.isfile(filename) and os.path.getsize(filename) else "w"
-    bag = rosbag.Bag(filename, mode)
-    bag.write = lambda topic, msg, stamp, meta=None: rosbag.Bag.write(bag, topic, msg, stamp)
-    return bag
 
 
 def create_publisher(topic, cls_or_typename, queue_size):

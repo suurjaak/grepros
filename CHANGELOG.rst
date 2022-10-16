@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.4.8 (2022-10-14)
+0.5.0 (2022-10-16)
 -------------------
-* fix error in example usage
+* refactor internal bag API
+* fix error in example usage text
 
 0.4.7 (2022-06-20)
 -------------------

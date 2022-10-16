@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.03.2022
+@modified    16.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -384,8 +384,7 @@ class BagSink(SinkBase):
                                      "Appending to" if sz else "Creating",
                                      self.args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
             makedirs(os.path.dirname(self.args.WRITE))
-            if self._overwrite: open(self.args.WRITE, "w").close()
-            self._bag = rosapi.create_bag_writer(self.args.WRITE)
+            self._bag = rosapi.Bag(self.args.WRITE, mode="w" if self._overwrite else "a")
 
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:

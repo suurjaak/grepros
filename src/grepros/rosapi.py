@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    20.06.2022
+@modified    16.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields, memoize
+from . common import ConsolePrinter, Decompressor, filter_fields, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -192,6 +192,58 @@ class TypeMeta(object):
         cls._TIMINGS.clear()
 
 
+class Bag(object):
+    """ROS bag creation wrapper."""
+
+    ## Bag reader classes, as {Cls, }
+    READER_CLASSES = set()
+
+    ## Bag writer classes, as {Cls, }
+    WRITER_CLASSES = set()
+
+    def __new__(cls, filename, mode="r", decompress=False, reindex=False, progress=False):
+        """
+        Returns an object for reading or writing ROS bags.
+
+        Result is rosbag.Bag in ROS1, or an object with a partially conforming API
+        if using embag in ROS1, or if using ROS2.
+
+        Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
+        Classes can have a static/class method `autodetect(filename)`
+        returning whether given file is readable for the plugin class.
+
+        Extra methods compared with rosbag.Bag: get_message_class(),
+        get_message_definition(), get_message_type_hash(), and get_topic_info().
+
+        @param   mode         return reader if "r" else writer
+        @param   decompress   decompress archived bag to file directory
+        @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
+        @param   progress     show progress bar with decompression or reindexing status
+        """
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
+        if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
+            mode = "w"  # rosbag raises error on append if no file or empty file
+            os.path.exists(filename) and os.remove(filename)
+        classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
+        for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
+            use, discard = not detect, False
+            try:  # Try auto-detecting suitable class first
+                if detect and callable(getattr(mycls, "autodetect", None)):
+                    use, discard = mycls.autodetect(filename), True
+                if use:
+                    result = mycls(filename, mode=mode, reindex=reindex, progress=progress)
+                    if result: return result
+            except Exception as e:
+                discard = True
+                ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
+                                    filename, "reading" if "r" == mode else "writing", mycls, e)
+            discard and classes.discard(mycls)
+        raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
+
+
 def init_node(name=None):
     """
     Initializes a ROS1 or ROS2 node if not already initialized.
@@ -236,6 +288,8 @@ def validate(live=False):
         ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
         ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
         ROS_ALIAS_TYPES = realapi.ROS_ALIAS_TYPES
+        Bag.READER_CLASSES.add(realapi.Bag)
+        Bag.WRITER_CLASSES.add(realapi.Bag)
     return success
 
 
@@ -279,34 +333,6 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
                 typestr = calculate_definition_hash(subtype, subtypedefs[subtype], extradefs)
             lines.append("%s %s" % (typestr, namestr))
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
-
-
-def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
-    """
-    Returns an object for reading ROS bags.
-
-    Result is rosbag.Bag in ROS1, or an object with a partially conforming API
-    if using embag in ROS1, or if using ROS2.
-
-    Supplemented with get_message_class(), get_message_definition(),
-    get_message_type_hash(), and get_topic_info().
-
-    @param   decompress   decompress archived bag to file directory
-    @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
-    @param   progress     show progress bar with decompression or reindexing status
-    """
-    return realapi.create_bag_reader(filename, decompress=decompress,
-                                     reindex=reindex, progress=progress)
-
-
-def create_bag_writer(filename):
-    """
-    Returns an object for writing ROS bags.
-
-    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2;
-    write()-method has an additional optional parameter `meta` (message metainfo dict).
-    """
-    return realapi.create_bag_writer(filename)
 
 
 def create_publisher(topic, cls_or_typename, queue_size):

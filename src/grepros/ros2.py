@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    19.04.2022
+@modified    16.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -33,7 +33,7 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
-from . common import ConsolePrinter, Decompressor, MatchMarkers, memoize
+from . common import ConsolePrinter, MatchMarkers, memoize
 from . import rosapi
 
 
@@ -102,17 +102,13 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
     """
 
 
-    def __init__(self, filename, decompress=False, progress=False, **_):
+    def __init__(self, filename, mode="a", *_, **__):
         """
-        @param   filename    bag file path to open
-        @param   decompress  decompress archived bag to file directory
-        @param   progress    show progress bar with decompression status
+        @param   filename  bag file path to open
+        @param   mode      file will be overwritten if "w"
         """
-        if Decompressor.is_compressed(filename):
-            if decompress: filename = Decompressor.decompress(filename, progress)
-            else: raise Exception("decompression not enabled")
-
         self._db     = None  # sqlite3.Connection instance
+        self._mode   = mode
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
@@ -295,7 +291,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Closes the bag file."""
         if self._db:
             self._db.close()
-            self._db = None
+            self._db   = None
+            self._mode = None
 
 
     @property
@@ -308,6 +305,8 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         """Opens bag database if not open, can populate schema if not present."""
         if self._db:
             return
+        if "w" == self._mode and os.path.exists(self.filename):
+            os.remove(self.filename)
         self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
                                    isolation_level=None, check_same_thread=False)
         self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
@@ -405,21 +404,6 @@ def canonical(typename):
 
     suffix = ("<=%s" % bound if bound else "") + ("[%s]" % dimension if is_array else "")
     return DDS_TYPES.get(typename, typename) + suffix
-
-
-def create_bag_reader(filename, decompress=False, progress=False, **__):
-    """
-    Returns a ROS2 bag reader with rosbag.Bag-like interface.
-
-    @param   decompress   decompress archived bag to file directory
-    @param   progress     show progress bar with decompression status
-    """
-    return Bag(filename, decompress=decompress, progress=progress)
-
-
-def create_bag_writer(filename):
-    """Returns a ROS2 bag writer with rosbag.Bag-like interface."""
-    return Bag(filename)
 
 
 def create_publisher(topic, cls_or_typename, queue_size):

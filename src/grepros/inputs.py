@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.05.2022
+@modified    15.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -613,8 +613,8 @@ class BagSource(SourceBase, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, decompress=self.args.DECOMPRESS,
-                                           reindex=self.args.REINDEX, progress=self.args.PROGRESS)
+            bag = rosapi.Bag(filename, mode="r", decompress=self.args.DECOMPRESS,
+                             reindex=self.args.REINDEX, progress=self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False
