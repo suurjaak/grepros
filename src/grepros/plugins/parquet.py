@@ -29,9 +29,7 @@ from .. import rosapi
 
 
 class ParquetSink(SinkBase):
-    """
-    Writes messages to Apache Parquet files.
-    """
+    """Writes messages to Apache Parquet files."""
 
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".parquet", )
