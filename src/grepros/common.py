@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.03.2022
+@modified    14.10.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -218,7 +218,7 @@ class Decompressor(object):
             result = any(path.lower().endswith(x) for x in cls.EXTENSIONS)
         if result:
             with open(path, "rb") as f:
-                result = (f.read(4) == cls.ZSTD_MAGIC)
+                result = (f.read(len(cls.ZSTD_MAGIC)) == cls.ZSTD_MAGIC)
         return result
 
 
