@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    16.10.2022
+@modified    17.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -596,7 +596,7 @@ def parse_definition_subtypes(typedef):
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
     FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     for subtype, subdef in list(result.items()):
-        pkg = subtype.rsplit("/", 1)[0]
+        pkg, seen = subtype.rsplit("/", 1)[0], set()
         for line in subdef.splitlines():
             m = FIELD_RGX.match(line)
             if m and m.group(1):
@@ -604,9 +604,10 @@ def parse_definition_subtypes(typedef):
                 if scalartype not in ROS_COMMON_TYPES:
                     fulltype = scalartype if "/" in scalartype else "std_msgs/Header" \
                                if "Header" == scalartype else "%s/%s" % (pkg, scalartype)
-                if fulltype in result:
+                if fulltype in result and fulltype not in seen:
                     addendum = "%s\nMSG: %s\n%s" % ("=" * 80, fulltype, result[fulltype])
                     result[subtype] = result[subtype].rstrip() + ("\n\n%s\n" % addendum)
+                    seen.add(fulltype)
     return result
 
 
