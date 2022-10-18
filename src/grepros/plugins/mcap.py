@@ -57,6 +57,7 @@ class McapReader(object):
         self._end_time       = None  # Bag end time, as UNIX timestamp
         self._file           = open(filename, "rb")
         self._reader         = mcap.reader.make_reader(self._file)
+        self._decoder        = mcap_ros.decoder.Decoder()
 
         ## Bagfile path
         self.filename = filename
@@ -127,17 +128,10 @@ class McapReader(object):
         @return              (topic, msg, rclpy.time.Time)
         """
         topics = topics if isinstance(topics, list) else [topics] if topics else []
-        decoder = mcap_ros.decoder.Decoder()
-        start_time_ns, end_time_ns = (x and x * 10**9 for x in (start_time, end_time))
-        for schema, channel, msg in self._reader.iter_messages(topics, start_time_ns, end_time_ns):
-            m = decoder.decode(schema=schema, message=msg)
-            if ros2:
-                m = self._patch_message(m, *self._schemas[schema.id])
-                # Register serialized binary, as MCAP does not support serializing its own creations
-                rosapi-TypeMeta.make(m, channel.topic, raw=message.data)
-            typekey = self._schemas[schema.id]
-            if typekey not in self._types: self._types[typekey] = type(m)
-            yield channel.topic, m, rosapi.make_time(nsecs=msg.publish_time)
+        start_ns, end_ns = (x and x * 10**9 for x in (start_time, end_time))
+        for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
+            msg = self._decode_message(message, channel, schema)
+            yield channel.topic, msg, rosapi.make_time(nsecs=message.publish_time)
 
 
     def close(self):
@@ -151,6 +145,33 @@ class McapReader(object):
     def size(self):
         """Returns current file size."""
         return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+
+
+    def _decode_message(self, message, channel, schema):
+        """
+        Returns ROS message deserialized from binary data.
+
+        @param   message  mcap.records.Message instance
+        @param   channel  mcap.records.Channel instance for message
+        @param   shcema   mcap.records.Schema instance for message type
+        """
+        typekey = (typename, typehash) = self._schemas[schema.id]
+        if ros2 and typekey not in self._types:
+            try:  # Try loading class from disk for full compatibility
+                cls = rosapi.get_message_class(typename)
+                clshash = rosapi.get_message_type_hash(cls)
+                if typehash == clshash: self._types[typekey] = cls
+            except Exception: pass  # ModuleNotFoundError, AttributeError etc
+        if ros2 and typekey in self._types:
+            msg = ros2.deserialize_message(message.data, self._types[typekey])
+        else:
+            msg = self._decoder.decode(schema=schema, message=message)
+            if ros2:  # MCAP ROS2 message classes need monkey-patching with expected API
+                msg = self._patch_message(msg, *self._schemas[schema.id])
+                # Register serialized binary, as MCAP does not support serializing its own creations
+                rosapi.TypeMeta.make(msg, channel.topic, data=message.data)
+        if typekey not in self._types: self._types[typekey] = type(msg)
+        return msg
 
 
     def _patch_message(self, message, typename, typehash):

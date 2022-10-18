@@ -722,7 +722,7 @@ and refer to message fields directly.
     --condition "<topic /robot/mode>[-2].value == <topic /robot/mode>[-1].value"
 
     # (Match while control is enabled and robot is moving straight and level)
-    --condition "<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0" \
+    --condition "<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0 " \
                 "and <topic */cmd_vel>.angular.z < 0.02"
 
 Condition namespace:
@@ -731,7 +731,7 @@ Condition namespace:
 - `topic`:                  full name of current message topic
 - `<topic /my/topic>`:      topic by full name or * wildcard
 - `len(<topic ..>)`:        number of messages encountered in topic
-- `bool(<topic ..>)`:       has any message been encountered in topic
+- `bool(<topic ..>)`:       whether any message encountered in topic
 - `<topic ..>.xyz`:         attribute `xyz` of last message in topic
 - `<topic ..>[index]`:      topic message at position
                             (from first encountered if index >= 0, last encountered if < 0)
@@ -784,12 +784,18 @@ Requires [mcap](https://pypi.org/project/mcap), and
 [mcap_ros1_support](https://pypi.org/project/mcap-ros1-support) for ROS1
 or [mcap_ros2_support](https://pypi.org/project/mcap-ros2-support) for ROS2.
 
+In ROS2, messages grepped from MCAP files can only be published to live topics
+if the same message type packages are locally installed.
+
 Write bags in MCAP format:
 
     --plugin grepros.plugins.mcap --write path/to/my.mcap [format=mcap] \
              [overwrite=true|false]
 
-Specifying `format=mcap` is not required if the filename ends with `.mcap`.
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. `my.2.mcap`, unless specified to overwrite.
+
+Specifying write `format=mcap` is not required if the filename ends with `.mcap`.
 
 
 ### parquet

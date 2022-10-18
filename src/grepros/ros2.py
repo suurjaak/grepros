@@ -446,6 +446,11 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     return sub
 
 
+def deserialize_message(raw, cls):
+    """Returns ROS2 message or service request/response instantiated from serialized binary."""
+    return rclpy.serialization.deserialize_message(raw, cls)
+
+
 def format_message_value(msg, name, value):
     """
     Returns a message attribute value as string.
