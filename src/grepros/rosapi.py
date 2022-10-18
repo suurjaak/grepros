@@ -84,9 +84,10 @@ class TypeMeta(object):
     ## time.time() of last cleaning of stale messages
     _LASTSWEEP = time.time()
 
-    def __init__(self, msg, topic=None):
+    def __init__(self, msg, topic=None, data=None):
         self._msg      = msg
         self._topic    = topic
+        self._data     = data
         self._type     = None  # Message typename as "pkg/MsgType"
         self._def      = None  # Message type definition with full subtype definitions
         self._hash     = None  # Message type definition MD5 hash
@@ -124,6 +125,11 @@ class TypeMeta(object):
         return self._def
 
     @property
+    def data(self):
+        """Returns message serialized binary, as bytes(), or None if not cached."""
+        return self._data
+
+    @property
     def typeclass(self):
         """Returns message class object."""
         if not self._cls:
@@ -146,21 +152,25 @@ class TypeMeta(object):
         return self._typekey
 
     @classmethod
-    def make(cls, msg, topic=None, root=None):
+    def make(cls, msg, topic=None, root=None, data=None):
         """
         Returns TypeMeta instance, registering message in cache if not present.
 
+        Other parameters are only required for first registration.
+
         @param   topic  topic the message is in if root message
         @param   root   root message that msg is a nested value of, if any
+        @param   data   message serialized binary, if any
         """
         msgid = id(msg)
         if msgid not in cls._CACHE:
-            cls._CACHE[msgid] = TypeMeta(msg, topic)
+            cls._CACHE[msgid] = TypeMeta(msg, topic, data)
             if root and root is not msg:
                 cls._CHILDREN.setdefault(id(root), set()).add(msgid)
             cls._TIMINGS[msgid] = time.time()
+        result = cls._CACHE[msgid]
         cls.sweep()
-        return cls._CACHE[msgid]
+        return result
 
     @classmethod
     def discard(cls, msg):

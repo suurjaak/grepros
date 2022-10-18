@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    16.10.2022
+@modified    18.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -470,6 +470,8 @@ def get_message_class(typename):
 
 def get_message_data(msg):
     """Returns ROS2 message as a serialized binary."""
+    with rosapi.TypeMeta.make(msg) as m:
+        if m.data is not None: return m.data
     return rclpy.serialization.serialize_message(msg)
 
 
