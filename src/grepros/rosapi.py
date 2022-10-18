@@ -572,14 +572,56 @@ def message_to_dict(msg, replace=None):
 
 
 @memoize
-def parse_definition_subtypes(typedef):
+def parse_definition_fields(typename, typedef):
+    """
+    Returns field names and type names from a message definition text.
+
+    Dpes not recurse into subtypes.
+
+    @param   typename  ROS message type name, like "my_pkg/MyCls"
+    @param   typedef   ROS message definition, like "Header header\nbool a\nMyCls2 b"
+    @return            ordered {field name: type name},
+                       like {"header": "std_msgs/Header", "a": "bool", "b": "my_pkg/MyCls2"}
+    """
+    result = collections.OrderedDict()  # {subtypename: subtypedef}
+
+    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
+    pkg = typename.rsplit("/", 1)[0]
+    for line in filter(bool, typedef.splitlines()):
+        if set(line) == set("="):  # Subtype separator
+            break  # for line
+        if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+        match = FIELD_RGX.match(line)
+        if not match or match.group(3):  # Constant or not field
+            continue  # for line
+
+        name, typename, scalartype = match.group(2), match.group(1), scalar(match.group(1))
+        if scalartype not in ROS_COMMON_TYPES:
+            pkg2 = "" if "/" in scalartype else "std_msgs" if "Header" == scalartype else pkg
+            typename = "%s/%s" % (pkg2, typename) if pkg2 else typename
+        result[name] = typename
+    return result
+
+
+@memoize
+def parse_definition_subtypes(typedef, nesting=False):
     """
     Returns subtype names and type definitions from a full message definition.
 
-    @return  {"pkg/MsgType": "full definition for MsgType including subtypes"}
+    @param   typename   message type name
+    @param   typedef    message type definition including all subtype definitions
+    @param   nesting    whether to additionally return type nesting information as
+                        {typename: [typename contained in parent]}
+    @return             {"pkg/MsgType": "full definition for MsgType including subtypes"}
+                        or ({typedefs}, {nesting}) if nesting
     """
-    result = collections.OrderedDict()  # {subtypename: subtypedef}
+    result  = collections.OrderedDict()      # {subtypename: subtypedef}
+    nesteds = collections.defaultdict(list)  # {subtypename: [subtypename2, ]})
+
+    # Parse individual subtype definitions from full definition
     curtype, curlines = "", []
+    # Separator line, and definition header like 'MSG: std_msgs/MultiArrayLayout'
     rgx = re.compile(r"^((=+)|(MSG: (.+)))$")  # Group 2: separator, 4: new type
     for line in typedef.splitlines():
         m = rgx.match(line)
@@ -588,13 +630,14 @@ def parse_definition_subtypes(typedef):
             curtype, curlines = "", []
         elif m and m.group(4):  # Start of nested definition "MSG: pkg/MsgType"
             curtype, curlines = m.group(4), []
-        elif not m and curtype:  # Nested definition content
+        elif not m and curtype:  # Definition content
             curlines.append(line)
     if curtype:
         result[curtype] = "\n".join(curlines)
 
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
     FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    # Concatenate nested subtype definitions to parent subtype definitions
     for subtype, subdef in list(result.items()):
         pkg, seen = subtype.rsplit("/", 1)[0], set()
         for line in subdef.splitlines():
@@ -607,8 +650,9 @@ def parse_definition_subtypes(typedef):
                 if fulltype in result and fulltype not in seen:
                     addendum = "%s\nMSG: %s\n%s" % ("=" * 80, fulltype, result[fulltype])
                     result[subtype] = result[subtype].rstrip() + ("\n\n%s\n" % addendum)
+                    nesteds[subtype].append(fulltype)
                     seen.add(fulltype)
-    return result
+    return (result, nesteds) if nesting else result
 
 
 def scalar(typename):

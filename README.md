@@ -8,7 +8,7 @@ expression patterns or plain text, regardless of field type.
 Can also look for specific values in specific message fields only.
 
 By default, matches are printed to console. Additionally, matches can be written
-to a bagfile or HTML/CSV/Parquet/Postgres/SQL/SQLite, or published to live topics.
+to a bagfile or HTML/CSV/MCAP/Parquet/Postgres/SQL/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
 
@@ -46,6 +46,7 @@ Supports loading custom plugins, mainly for additional output formats.
   - [Conditions](#conditions)
 - [Plugins](#plugins)
   - [embag](#embag)
+  - [mcap](#mcap)
   - [parquet](#parquet)
   - [sql](#sql)
 - [SQL dialects](#sql-dialects)
@@ -771,6 +772,24 @@ Built-in plugins:
 Use the [embag](https://github.com/embarktrucks/embag) library for reading ROS1 bags.
 
 Significantly faster, but library tends to be unstable.
+
+
+### mcap
+
+    --plugin grepros.plugins.mcap
+
+Read or write messages in [MCAP](https://mcap.dev) format.
+
+Requires [mcap](https://pypi.org/project/mcap), and
+[mcap_ros1_support](https://pypi.org/project/mcap-ros1-support) for ROS1
+or [mcap_ros2_support](https://pypi.org/project/mcap-ros2-support) for ROS2.
+
+Write bags in MCAP format:
+
+    --plugin grepros.plugins.mcap --write path/to/my.mcap [format=mcap] \
+             [overwrite=true|false]
+
+Specifying `format=mcap` is not required if the filename ends with `.mcap`.
 
 
 ### parquet
