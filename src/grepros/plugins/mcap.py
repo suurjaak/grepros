@@ -131,7 +131,10 @@ class McapReader(object):
         start_time_ns, end_time_ns = (x and x * 10**9 for x in (start_time, end_time))
         for schema, channel, msg in self._reader.iter_messages(topics, start_time_ns, end_time_ns):
             m = decoder.decode(schema=schema, message=msg)
-            if ros2: m = self._patch_message(m, *self._schemas[schema.id])
+            if ros2:
+                m = self._patch_message(m, *self._schemas[schema.id])
+                # Register serialized binary, as MCAP does not support serializing its own creations
+                rosapi-TypeMeta.make(m, channel.topic, raw=message.data)
             typekey = self._schemas[schema.id]
             if typekey not in self._types: self._types[typekey] = type(m)
             yield channel.topic, m, rosapi.make_time(nsecs=msg.publish_time)
