@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.10.2022
+@modified    19.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -105,8 +105,9 @@ class Bag(rosbag.Bag):
 
         @param   typehash  message type definition hash, if any
         """
-        typekey = (typename, typehash)
         self.__ensure_typedef(typename, typehash)
+        typehash = typehash or next((h for n, h in self.__TYPEDEFS if n == typename), None)
+        typekey = (typename, typehash)
         if typekey not in self.__TYPES and typekey in self.__TYPEDEFS:
             for n, c in genpy.dynamic.generate_dynamic(typename, self.__TYPEDEFS[typekey]).items():
                 self.__TYPES[(n, c._md5sum)] = c

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    18.10.2022
+@modified    19.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -89,8 +89,8 @@ class McapReader(object):
 
         @param   typehash  message type definition hash, if any
         """
-        typehash = typehash or next((t for n, t in self._types if n == typename), None)
-        return self._types.get((typename, typehash))
+        typekey = (typename, typehash or next((t for n, t in self._types if n == typename), None))
+        return self._types.get(typekey)
 
 
     def get_message_definition(self, msg_or_type):

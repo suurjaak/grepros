@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    15.10.2022
+@modified    19.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -78,7 +78,7 @@ class EmbagReader(object):
 
         @param   typehash  message type definition hash, if any
         """
-        typekey = (typename, typehash)
+        typekey = (typename, typehash or next((h for n, h in self.__types if n == typename), None))
         if typekey not in self._types and typekey in self._typedefs:
             for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
                 self._types[(n, c._md5sum)] = c
