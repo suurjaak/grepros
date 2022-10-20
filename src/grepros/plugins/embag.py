@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    19.10.2022
+@modified    20.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -31,6 +31,8 @@ from .. import rosapi
 class EmbagReader(object):
     """embag reader interface, partially mimicking rosbag.Bag."""
 
+    ## ROS1 bag file header magic start bytes
+    ROSBAG_MAGIC = b"#ROSBAG"
 
     def __init__(self, filename, decompress=False, progress=False, **__):
         """
@@ -166,10 +168,10 @@ class EmbagReader(object):
                 msgv = list(v)
             elif typename in rosapi.ROS_TIME_TYPES:       # Single temporal type
                 cls = next(k for k, v in rosapi.ROS_TIME_CLASSES.items() if v == typename)
-                msgv = cls(*self._parse_time(v))
+                msgv = cls(v.secs, v.nsecs)
             elif scalarname in rosapi.ROS_TIME_TYPES:     # List of temporal types
                 cls = next(k for k, v in rosapi.ROS_TIME_CLASSES.items() if v == scalarname)
-                msgv = [cls(*self._parse_time(x)) for x in v]
+                msgv = [cls(x.secs, x.nsecs) for x in v]
             elif typename == scalarname:                  # Single subtype
                 msgv = self._populate_message(self.get_message_class(typename)(), v)
             else:                                         # List of subtypes
@@ -179,10 +181,14 @@ class EmbagReader(object):
         return msg
 
 
-    def _parse_time(self, embagval):
-        """Returns (seconds, nanoseconds) from embag.RosValue representing time or duration."""
-        m = re.search(r"(\d+)s (\d+)ns", str(embagval))
-        return int(m.group(1)), int(m.group(2))
+    @classmethod
+    def autodetect(cls, filename):
+        """Returns whether file is readable as ROS1 bag."""
+        result = os.path.isfile(filename)
+        if result:
+            with open(filename, "rb") as f:
+                result = (f.read(len(cls.ROSBAG_MAGIC)) == cls.ROSBAG_MAGIC)
+        return result
 
 
 def init(*_, **__):
@@ -190,5 +196,4 @@ def init(*_, **__):
     if not embag:
         ConsolePrinter.error("embag not available: cannot read bag files.")
         raise ImportWarning()
-    rosapi.Bag.READER_CLASSES.discard(ros1.Bag)
     rosapi.Bag.READER_CLASSES.add(EmbagReader)
