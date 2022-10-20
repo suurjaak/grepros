@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    19.10.2022
+@modified    20.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -39,7 +39,7 @@ if "2" == os.getenv("ROS_VERSION"):
 class McapReader(object):
     """MCAP reader interface, partially mimicking rosbag.Bag."""
 
-    ## MCAP file header magic 8 bytes
+    ## MCAP file header magic start bytes
     MCAP_MAGIC = b"\x89MCAP\x30\r\n"
 
     def __init__(self, filename, **__):
