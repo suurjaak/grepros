@@ -1145,12 +1145,13 @@ Dependencies
 
 Requires the following 3rd-party Python packages:
 
+- pyyaml (https://pypi.org/project/PyYAML)
 - ROS1: rospy, roslib, rosbag, genpy
 - ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces
 
 Optional, for decompressing archived bags:
 
-- zstandard (https://pypi.org/project/zstandard/)
+- zstandard (https://pypi.org/project/zstandard)
 
 Optional, for faster reading of ROS1 bags:
 
