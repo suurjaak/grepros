@@ -497,7 +497,7 @@ class MultiSink(SinkBase):
     ## Autobinding between argument flags and sink classes
     FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
 
-    ## Autobinding between --write .. format=FORMAT and sink classes
+    ## Autobinding between `--write .. format=FORMAT` and sink classes
     FORMAT_CLASSES = {"bag": BagSink}
 
     def __init__(self, args):

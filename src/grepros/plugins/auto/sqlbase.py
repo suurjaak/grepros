@@ -107,7 +107,7 @@ class SqlMixin(object):
 
 
     def close(self):
-        """Clears data strucrtures."""
+        """Clears data structures."""
         self._topics.clear()
         self._types.clear()
         self._schema.clear()

@@ -210,7 +210,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         @param   topics      list of topics or a single topic to filter by, if at all
         @param   start_time  earliest timestamp of message to return, as UNIX timestamp
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
-        @return              (topic, msg, rclpy.time.Time)
+        @return              generator of (topic, message, rclpy.time.Time) tuples
         """
         self.get_topic_info()
         if not self._topics or (topics is not None and not topics):
