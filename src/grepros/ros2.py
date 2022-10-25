@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    18.10.2022
+@modified    25.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -297,8 +297,12 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 
     @property
     def size(self):
-        """Returns current file size."""
-        return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        """Returns current file size in bytes (including journaling files)."""
+        result = os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        for suffix in ("-journal", "-wal") if result else ():
+            path = self.filename + suffix
+            result += os.path.getsize(path) if os.path.isfile(path) else 0
+        return result
 
 
     def _ensure_open(self, populate=False):
