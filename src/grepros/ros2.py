@@ -244,7 +244,7 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
             except Exception as e:
                 errortypes.add(typename)
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
-                                    (typename, topic), e, __once=True)
+                                    (canonical(typename), topic), e, __once=True)
                 if errortypes == set(n for _, n in self._topics):
                     break  # for row
                 continue  # for row
@@ -383,20 +383,21 @@ def canonical(typename):
     """
     is_array, bound, dimension = False, "", ""
 
-    match = re.match("sequence<(.+)>", typename)
-    if match:  # "sequence<uint8, 100>" or "sequence<uint8>"
-        is_array = True
-        typename = match.group(1)
-        match = re.match(r"([^,]+)?,\s?(\d+)", typename)
-        if match:  # sequence<uint8, 10>
+    if "<" in typename:
+        match = re.match("sequence<(.+)>", typename)
+        if match:  # "sequence<uint8, 100>" or "sequence<uint8>"
+            is_array = True
             typename = match.group(1)
-            if match.lastindex > 1: dimension = match.group(2)
+            match = re.match(r"([^,]+)?,\s?(\d+)", typename)
+            if match:  # sequence<uint8, 10>
+                typename = match.group(1)
+                if match.lastindex > 1: dimension = match.group(2)
 
-    match = re.match("(w?string)<(.+)>", typename)
-    if match:  # string<5>
-        typename, bound = match.groups()
+        match = re.match("(w?string)<(.+)>", typename)
+        if match:  # string<5>
+            typename, bound = match.groups()
 
-    if "[" in typename:  # "string<=5[<=10]" or "string<=5[10]"
+    if "[" in typename:  # "string<=5[<=10]" or "string<=5[10]" or "byte[10]" or "byte[]"
         dimension = typename[typename.index("[") + 1:typename.index("]")]
         typename, is_array = typename[:typename.index("[")], True
 
