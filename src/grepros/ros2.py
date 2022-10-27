@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    25.10.2022
+@modified    27.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -203,13 +203,15 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         return get_message_type_hash(msg_or_type)
 
 
-    def read_messages(self, topics=None, start_time=None, end_time=None):
+    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False, *_, **__):
         """
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
         @param   start_time  earliest timestamp of message to return, as UNIX timestamp
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @param   raw         if True, then returned messages are tuples of
+                             (typename, bytes, typehash, typeclass)
         @return              generator of (topic, message, rclpy.time.Time) tuples
         """
         self.get_topic_info()
@@ -231,21 +233,26 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
         sql += " ORDER BY timestamp"
 
         topicmap   = {v["id"]: v for v in self._topics.values()}
-        msgtypes   = {}     # {full typename: cls}
+        msgtypes   = {}  # {typename: cls}
+        topicset   = set(topics or [t for t, _ in self._topics])
         errortypes = set()  # {typename failed to instantiate, }
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
-            topic, typename = tdata["name"], tdata["type"]
+            topic, typename = tdata["name"], canonical(tdata["type"])
+            if not raw and msgtypes.get(typename, typename) is None: continue # for row
+            typehash = next(h for t, n, h in self._counts if (t, n) == (topic, typename))
 
             try:
                 cls = msgtypes.get(typename) or \
                       msgtypes.setdefault(typename, get_message_class(typename))
-                msg = rclpy.serialization.deserialize_message(row["data"], cls)
+                if raw: msg = (typename, row["data"], typehash, cls)
+                else:   msg = rclpy.serialization.deserialize_message(row["data"], cls)
             except Exception as e:
                 errortypes.add(typename)
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
-                                    (canonical(typename), topic), e, __once=True)
-                if errortypes == set(n for _, n in self._topics):
+                                    (typename, topic), e, __once=True)
+                if raw: msg = (typename, row["data"], typehash, None)
+                elif set(n for n, c in msgtypes.items() if c is None) == topicset:
                     break  # for row
                 continue  # for row
             errortypes.discard(typename)
