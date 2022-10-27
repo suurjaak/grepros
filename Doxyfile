@@ -955,7 +955,7 @@ INPUT_FILTER           =
 # for classes/functions one line higher to retain correct line numbers.
 
 # rst: replace "^^^\ntext\n^^^" with "\nCHANGELOG\n========="
-FILTER_PATTERNS        = *.py="myfilter() { if python3 -m doxypypy.doxypypy -h > /dev/null 2>&1 ; then python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#-{40,}$/,/^#-{40,}$/{s/.+//g}' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g' | sed -r ':r;$!{N;br};s/(# +@param [^\n]+\n *#\n)/\1\n/g' | sed -r ':r;$!{N;br};s/\n(\n( *@[^\n]+\n)? *## @brief [^\n]+\n *(def|class) [^\n]+\n)/\1\n/g' ; else cat $1 ; fi; }; myfilter" *.rst="sed -r ':r;$!{N;br};s/\^{20,}\n[^\n]+\n\^{20,}\n/\nCHANGELOG\n=========\n/g'"
+FILTER_PATTERNS        = *.py="myfilter() { if python3 -m doxypypy.doxypypy -a -c $1 > /dev/null 2>&1 ; then python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#-{40,}$/,/^#-{40,}$/{s/.+//g}' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g' | sed -r ':r;$!{N;br};s/(# +@param [^\n]+\n *#\n)/\1\n/g' | sed -r ':r;$!{N;br};s/\n(\n( *@[^\n]+\n)? *## @brief [^\n]+\n *(def|class) [^\n]+\n)/\1\n/g' ; else cat $1 ; fi; }; myfilter" *.rst="sed -r ':r;$!{N;br};s/\^{20,}\n[^\n]+\n\^{20,}\n/\nCHANGELOG\n=========\n/g'"
 
 # If the FILTER_SOURCE_FILES tag is set to YES, the input filter (if set using
 # INPUT_FILTER) will also be used to filter the input files that are used for
