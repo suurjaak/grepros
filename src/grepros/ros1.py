@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    24.10.2022
+@modified    27.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -163,8 +163,13 @@ class Bag(rosbag.Bag):
 
         for topic, msg, stamp in super(Bag, self).read_messages(**kwargs):
             # Workaround for rosbag bug of using wrong type for identical type hashes
-            if topic in dupes and dupes[topic] != (msg._type, msg._md5sum):
-                msg = self.__convert_message(msg, *dupes[topic])
+            if topic in dupes:
+                typename, typehash = (msg[0], msg[2]) if raw else (msg._type, msg._md5sum)
+                if dupes[topic] != (typename, typehash):
+                    if raw:
+                        msg = msg[:-1] + (self.get_message_class(typename, typehash), )
+                    else:
+                        msg = self.__convert_message(msg, *dupes[topic])
             yield topic, msg, stamp
 
 
