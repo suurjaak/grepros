@@ -99,6 +99,9 @@ CREATE TABLE IF NOT EXISTS topics (
 );
 
 CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
+
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
     """
 
 
