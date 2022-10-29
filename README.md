@@ -1168,7 +1168,8 @@ Optional, for Parquet output:
 
 Optional, for generating API documentation:
 
-- doxypypy (https://pypi.org/project/doxypypy)
+- doxypypy (https://pypi.org/project/doxypypy;
+            needs latest master: `pip install git+https://github.com/Feneric/doxypypy`)
 
 
 Attribution
