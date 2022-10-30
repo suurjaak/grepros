@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.05.2022
+@modified    16.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -500,8 +500,9 @@ class BagSource(SourceBase, ConditionMixin):
         """Returns message metainfo data dict."""
         self._ensure_totals()
         result = super(BagSource, self).get_message_meta(topic, index, stamp, msg)
-        result.update(total=self.topics[(topic, result["type"], result["hash"])],
-                      qoses=self._bag.get_qoses(topic, result["type"]))
+        result.update(total=self.topics[(topic, result["type"], result["hash"])])
+        if callable(getattr(self._bag, "get_qoses", None)):
+            result.update(qoses=self._bag.get_qoses(topic, result["type"]))
         return result
 
     def get_message_class(self, typename, typehash=None):
@@ -613,8 +614,8 @@ class BagSource(SourceBase, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.create_bag_reader(filename, decompress=self.args.DECOMPRESS,
-                                           reindex=self.args.REINDEX, progress=self.args.PROGRESS)
+            bag = rosapi.Bag(filename, mode="r", decompress=self.args.DECOMPRESS,
+                             reindex=self.args.REINDEX, progress=self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False

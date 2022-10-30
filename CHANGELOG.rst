@@ -2,6 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.5.0 (2022-10-18)
+-------------------
+* add --plugin grepros.plugins.mcap (MCAP input and output)
+* refactor internal bag API
+* fix message type definition parsing yielding duplicate subtypes
+* fix error in example usage text
+
 0.4.7 (2022-06-20)
 -------------------
 * fix space leak in caching message metadata

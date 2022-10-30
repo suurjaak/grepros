@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    20.06.2022
+@modified    18.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -78,7 +78,7 @@ class Searcher(object):
             if batch != source.get_batch():
                 total_matched += sum(x[True] for x in self._counts.values())
                 counter, batch, batch_matched = 0, source.get_batch(), False
-                self._clear_data()
+                if self._counts: self._clear_data()
 
             msgid = counter = counter + 1
             topickey = rosapi.TypeMeta.make(msg, topic).topickey

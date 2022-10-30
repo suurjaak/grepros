@@ -1,8 +1,9 @@
 # ROS1 deps not pip-installable: genpy, rosbag, roslib, rospy
 # ROS2 deps not pip-installable: builtin_interfaces, rclpy, rosidl_runtime_py
 # embag input: embag
+# mcap support: mcap, mcap_ros1_support, mcap_ros2_support
 # parquet output: pandas, pyarrow
 # postgres output: psycopg2
 # decompressing archived bags: zstandard
-# for generating API documentation: doxypypy
+# for generating API documentation: git+https://github.com/Feneric/doxypypy
 pyyaml

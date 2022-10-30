@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    20.06.2022
+@modified    17.10.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields, memoize
+from . common import ConsolePrinter, Decompressor, filter_fields, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -84,9 +84,10 @@ class TypeMeta(object):
     ## time.time() of last cleaning of stale messages
     _LASTSWEEP = time.time()
 
-    def __init__(self, msg, topic=None):
+    def __init__(self, msg, topic=None, data=None):
         self._msg      = msg
         self._topic    = topic
+        self._data     = data
         self._type     = None  # Message typename as "pkg/MsgType"
         self._def      = None  # Message type definition with full subtype definitions
         self._hash     = None  # Message type definition MD5 hash
@@ -124,6 +125,11 @@ class TypeMeta(object):
         return self._def
 
     @property
+    def data(self):
+        """Returns message serialized binary, as bytes(), or None if not cached."""
+        return self._data
+
+    @property
     def typeclass(self):
         """Returns message class object."""
         if not self._cls:
@@ -146,21 +152,25 @@ class TypeMeta(object):
         return self._typekey
 
     @classmethod
-    def make(cls, msg, topic=None, root=None):
+    def make(cls, msg, topic=None, root=None, data=None):
         """
         Returns TypeMeta instance, registering message in cache if not present.
 
+        Other parameters are only required for first registration.
+
         @param   topic  topic the message is in if root message
         @param   root   root message that msg is a nested value of, if any
+        @param   data   message serialized binary, if any
         """
         msgid = id(msg)
         if msgid not in cls._CACHE:
-            cls._CACHE[msgid] = TypeMeta(msg, topic)
+            cls._CACHE[msgid] = TypeMeta(msg, topic, data)
             if root and root is not msg:
                 cls._CHILDREN.setdefault(id(root), set()).add(msgid)
             cls._TIMINGS[msgid] = time.time()
+        result = cls._CACHE[msgid]
         cls.sweep()
-        return cls._CACHE[msgid]
+        return result
 
     @classmethod
     def discard(cls, msg):
@@ -190,6 +200,58 @@ class TypeMeta(object):
         cls._CACHE.clear()
         cls._CHILDREN.clear()
         cls._TIMINGS.clear()
+
+
+class Bag(object):
+    """ROS bag creation wrapper."""
+
+    ## Bag reader classes, as {Cls, }
+    READER_CLASSES = set()
+
+    ## Bag writer classes, as {Cls, }
+    WRITER_CLASSES = set()
+
+    def __new__(cls, filename, mode="r", decompress=False, reindex=False, progress=False):
+        """
+        Returns an object for reading or writing ROS bags.
+
+        Result is rosbag.Bag in ROS1, or an object with a partially conforming API
+        if using embag in ROS1, or if using ROS2.
+
+        Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
+        Classes can have a static/class method `autodetect(filename)`
+        returning whether given file is readable for the plugin class.
+
+        Extra methods compared with rosbag.Bag: get_message_class(),
+        get_message_definition(), get_message_type_hash(), and get_topic_info().
+
+        @param   mode         return reader if "r" else writer
+        @param   decompress   decompress archived bag to file directory
+        @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
+        @param   progress     show progress bar with decompression or reindexing status
+        """
+        if Decompressor.is_compressed(filename):
+            if decompress: filename = Decompressor.decompress(filename, progress)
+            else: raise Exception("decompression not enabled")
+
+        if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
+            mode = "w"  # rosbag raises error on append if no file or empty file
+            os.path.exists(filename) and os.remove(filename)
+        classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
+        for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
+            use, discard = not detect, False
+            try:  # Try auto-detecting suitable class first
+                if detect and callable(getattr(mycls, "autodetect", None)):
+                    use, discard = mycls.autodetect(filename), True
+                if use:
+                    result = mycls(filename, mode=mode, reindex=reindex, progress=progress)
+                    if result: return result
+            except Exception as e:
+                discard = True
+                ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
+                                    filename, "reading" if "r" == mode else "writing", mycls, e)
+            discard and classes.discard(mycls)
+        raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
 
 
 def init_node(name=None):
@@ -236,6 +298,8 @@ def validate(live=False):
         ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
         ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
         ROS_ALIAS_TYPES = realapi.ROS_ALIAS_TYPES
+        Bag.READER_CLASSES.add(realapi.Bag)
+        Bag.WRITER_CLASSES.add(realapi.Bag)
     return success
 
 
@@ -279,34 +343,6 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
                 typestr = calculate_definition_hash(subtype, subtypedefs[subtype], extradefs)
             lines.append("%s %s" % (typestr, namestr))
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
-
-
-def create_bag_reader(filename, decompress=False, reindex=False, progress=False):
-    """
-    Returns an object for reading ROS bags.
-
-    Result is rosbag.Bag in ROS1, or an object with a partially conforming API
-    if using embag in ROS1, or if using ROS2.
-
-    Supplemented with get_message_class(), get_message_definition(),
-    get_message_type_hash(), and get_topic_info().
-
-    @param   decompress   decompress archived bag to file directory
-    @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
-    @param   progress     show progress bar with decompression or reindexing status
-    """
-    return realapi.create_bag_reader(filename, decompress=decompress,
-                                     reindex=reindex, progress=progress)
-
-
-def create_bag_writer(filename):
-    """
-    Returns an object for writing ROS bags.
-
-    Result is rosbag.Bag in ROS1, and an object with a partially conforming API in ROS2;
-    write()-method has an additional optional parameter `meta` (message metainfo dict).
-    """
-    return realapi.create_bag_writer(filename)
 
 
 def create_publisher(topic, cls_or_typename, queue_size):
@@ -546,14 +582,56 @@ def message_to_dict(msg, replace=None):
 
 
 @memoize
-def parse_definition_subtypes(typedef):
+def parse_definition_fields(typename, typedef):
+    """
+    Returns field names and type names from a message definition text.
+
+    Dpes not recurse into subtypes.
+
+    @param   typename  ROS message type name, like "my_pkg/MyCls"
+    @param   typedef   ROS message definition, like "Header header\nbool a\nMyCls2 b"
+    @return            ordered {field name: type name},
+                       like {"header": "std_msgs/Header", "a": "bool", "b": "my_pkg/MyCls2"}
+    """
+    result = collections.OrderedDict()  # {subtypename: subtypedef}
+
+    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
+    pkg = typename.rsplit("/", 1)[0]
+    for line in filter(bool, typedef.splitlines()):
+        if set(line) == set("="):  # Subtype separator
+            break  # for line
+        if "#" in line and not STR_CONST_RGX.match(line): line = line[:line.index("#")]
+        match = FIELD_RGX.match(line)
+        if not match or match.group(3):  # Constant or not field
+            continue  # for line
+
+        name, typename, scalartype = match.group(2), match.group(1), scalar(match.group(1))
+        if scalartype not in ROS_COMMON_TYPES:
+            pkg2 = "" if "/" in scalartype else "std_msgs" if "Header" == scalartype else pkg
+            typename = "%s/%s" % (pkg2, typename) if pkg2 else typename
+        result[name] = typename
+    return result
+
+
+@memoize
+def parse_definition_subtypes(typedef, nesting=False):
     """
     Returns subtype names and type definitions from a full message definition.
 
-    @return  {"pkg/MsgType": "full definition for MsgType including subtypes"}
+    @param   typename   message type name
+    @param   typedef    message type definition including all subtype definitions
+    @param   nesting    whether to additionally return type nesting information as
+                        {typename: [typename contained in parent]}
+    @return             {"pkg/MsgType": "full definition for MsgType including subtypes"}
+                        or ({typedefs}, {nesting}) if nesting
     """
-    result = collections.OrderedDict()  # {subtypename: subtypedef}
+    result  = collections.OrderedDict()      # {subtypename: subtypedef}
+    nesteds = collections.defaultdict(list)  # {subtypename: [subtypename2, ]})
+
+    # Parse individual subtype definitions from full definition
     curtype, curlines = "", []
+    # Separator line, and definition header like 'MSG: std_msgs/MultiArrayLayout'
     rgx = re.compile(r"^((=+)|(MSG: (.+)))$")  # Group 2: separator, 4: new type
     for line in typedef.splitlines():
         m = rgx.match(line)
@@ -562,15 +640,16 @@ def parse_definition_subtypes(typedef):
             curtype, curlines = "", []
         elif m and m.group(4):  # Start of nested definition "MSG: pkg/MsgType"
             curtype, curlines = m.group(4), []
-        elif not m and curtype:  # Nested definition content
+        elif not m and curtype:  # Definition content
             curlines.append(line)
     if curtype:
         result[curtype] = "\n".join(curlines)
 
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
     FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    # Concatenate nested subtype definitions to parent subtype definitions
     for subtype, subdef in list(result.items()):
-        pkg = subtype.rsplit("/", 1)[0]
+        pkg, seen = subtype.rsplit("/", 1)[0], set()
         for line in subdef.splitlines():
             m = FIELD_RGX.match(line)
             if m and m.group(1):
@@ -578,10 +657,12 @@ def parse_definition_subtypes(typedef):
                 if scalartype not in ROS_COMMON_TYPES:
                     fulltype = scalartype if "/" in scalartype else "std_msgs/Header" \
                                if "Header" == scalartype else "%s/%s" % (pkg, scalartype)
-                if fulltype in result:
+                if fulltype in result and fulltype not in seen:
                     addendum = "%s\nMSG: %s\n%s" % ("=" * 80, fulltype, result[fulltype])
                     result[subtype] = result[subtype].rstrip() + ("\n\n%s\n" % addendum)
-    return result
+                    nesteds[subtype].append(fulltype)
+                    seen.add(fulltype)
+    return (result, nesteds) if nesting else result
 
 
 def scalar(typename):
