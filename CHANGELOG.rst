@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.0 (2022-10-18)
+0.5.0 (2022-10-30)
 -------------------
 * add --plugin grepros.plugins.mcap (MCAP input and output)
 * refactor internal bag API
