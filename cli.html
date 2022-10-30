@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Command-line options</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Command-line options</h2>
+
+<p>
+All command-line arguments:
+</p>
+
+<pre>
+positional arguments:
+  PATTERN               pattern(s) to find in message field values,
+                        all messages match if not given,
+                        can specify message field as NAME=PATTERN
+                        (supports nested.paths and * wildcards)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
+  -I, --no-ignore-case  use case-sensitive matching in PATTERNs
+  -v, --invert-match    select non-matching messages
+  --version             display version information and exit
+  --live                read messages from live ROS topics instead of bagfiles
+  --publish             publish matched messages to live ROS topics
+  --write TARGET [format=bag|csv|html|postgres|sqlite] [KEY=VALUE ...]
+                        write matched messages to specified output,
+                        format is autodetected from TARGET if not specified.
+                        Bag or database will be appended to if it already exists.
+                        Keyword arguments are given to output writer.
+                          commit-interval=NUM      transaction size for Postgres/SQLite output
+                                                   (default 1000, 0 is autocommit)
+                          dialect-file=path/to/dialects.yaml
+                                                   load additional SQL dialect options
+                                                   for Postgres/SQLite output
+                                                   from a YAML or JSON file
+                          message-yaml=true|false  whether to populate table field messages.yaml
+                                                   in SQLite output (default true)
+                          nesting=array|all        create tables for nested message types
+                                                   in Postgres/SQLite output,
+                                                   only for arrays if "array" 
+                                                   else for any nested types
+                                                   (array fields in parent will be populated 
+                                                    with foreign keys instead of messages as JSON)
+                          overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
+                                                   instead of appending to if bag or database
+                                                   or appending unique counter to file name
+                                                   (default false)
+                          template=/my/path.tpl    custom template to use for HTML output
+  --plugin PLUGIN [PLUGIN ...]
+                        load a Python module or class as plugin
+                        (built-in plugins: grepros.plugins.embag, 
+                         grepros.plugins.mcap, grepros.plugins.parquet, 
+                         grepros.plugins.sql)
+
+Filtering:
+  -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
+                        ROS topics to scan if not all (supports * wildcards)
+  -nt TOPIC [TOPIC ...], --no-topic TOPIC [TOPIC ...]
+                        ROS topics to skip (supports * wildcards)
+  -d TYPE [TYPE ...], --type TYPE [TYPE ...]
+                        ROS message types to scan if not all (supports * wildcards)
+  -nd TYPE [TYPE ...], --no-type TYPE [TYPE ...]
+                        ROS message types to skip (supports * wildcards)
+  --condition CONDITION [CONDITION ...]
+                        extra conditions to require for matching messages,
+                        as ordinary Python expressions, can refer to last messages
+                        in topics as {topic /my/topic}; topic name can contain wildcards.
+                        E.g. --condition "{topic /robot/enabled}.data" matches
+                        messages only while last message in '/robot/enabled' has data=true.
+  -t0 TIME, --start-time TIME
+                        earliest timestamp of messages to scan
+                        as relative seconds if signed,
+                        or epoch timestamp or ISO datetime
+                        (for bag input, relative to bag start time
+                        if positive or end time if negative,
+                        for live input relative to system time,
+                        datetime may be partial like 2021-10-14T12)
+  -t1 TIME, --end-time TIME
+                        latest timestamp of messages to scan
+                        as relative seconds if signed,
+                        or epoch timestamp or ISO datetime
+                        (for bag input, relative to bag start time
+                        if positive or end time if negative,
+                        for live input relative to system time,
+                        datetime may be partial like 2021-10-14T12)
+  -n0 INDEX, --start-index INDEX
+                        message index within topic to start from
+                        (1-based if positive, counts back from bag total if negative)
+  -n1 INDEX, --end-index INDEX
+                        message index within topic to stop at
+                        (1-based if positive, counts back from bag total if negative)
+  --every-nth-message NUM
+                        scan every Nth message within topic
+  --every-nth-interval SECONDS
+                        scan messages at least N seconds apart within topic
+  --every-nth-match NUM
+                        emit every Nth match in topic
+  -sf FIELD [FIELD ...], --select-field FIELD [FIELD ...]
+                        message fields to use in matching if not all
+                        (supports nested.paths and * wildcards)
+  -ns FIELD [FIELD ...], --no-select-field FIELD [FIELD ...]
+                        message fields to skip in matching
+                        (supports nested.paths and * wildcards)
+  -m NUM, --max-count NUM
+                        number of matched messages to emit (per each file if bag input)
+  --max-per-topic NUM   number of matched messages to emit from each topic
+                        (per each file if bag input)
+  --max-topics NUM      number of topics to emit matches from (per each file if bag input)
+  --unique-only         only emit matches that are unique in topic,
+                        taking --select-field and --no-select-field into account
+                        (per each file if bag input)
+
+Output control:
+  -B NUM, --before-context NUM
+                        emit NUM messages of leading context before match
+  -A NUM, --after-context NUM
+                        emit NUM messages of trailing context after match
+  -C NUM, --context NUM
+                        emit NUM messages of leading and trailing context
+                        around match
+  -pf FIELD [FIELD ...], --print-field FIELD [FIELD ...]
+                        message fields to print in console output if not all
+                        (supports nested.paths and * wildcards)
+  -np FIELD [FIELD ...], --no-print-field FIELD [FIELD ...]
+                        message fields to skip in console output
+                        (supports nested.paths and * wildcards)
+  -mo, --matched-fields-only
+                        print only the fields where PATTERNs find a match
+  -la NUM, --lines-around-match NUM
+                        print only matched fields and NUM message lines
+                        around match
+  -lf NUM, --lines-per-field NUM
+                        maximum number of lines to print per field
+  -l0 NUM, --start-line NUM
+                        message line number to start printing from
+                        (1-based if positive, counts back from total if negative)
+  -l1 NUM, --end-line NUM
+                        message line number to stop printing at
+                        (1-based if positive, counts back from total if negative)
+  -lm NUM, --lines-per-message NUM
+                        maximum number of lines to print per message
+  --match-wrapper [STR [STR ...]]
+                        string to wrap around matched values,
+                        both sides if one value, start and end if more than one,
+                        or no wrapping if zero values
+                        (default "**" in colorless output)
+  --wrap-width NUM      character width to wrap message YAML output at,
+                        0 disables (defaults to detected terminal width)
+  --color {auto,always,never}
+                        use color output in console (default "always")
+  --no-meta             do not print source and message metainfo to console
+  --no-filename         do not print bag filename prefix on each console message line
+  --no-console-output   do not print matches to console
+  --progress            show progress bar when not printing matches to console
+  --verbose             print status messages during console output
+                        for publishing and writing
+  --no-verbose          do not print status messages during console output
+                        for publishing and writing
+
+Bag input control:
+  -n FILE [FILE ...], --filename FILE [FILE ...]
+                        names of ROS bagfiles to scan if not all in directory
+                        (supports * wildcards)
+  -p PATH [PATH ...], --path PATH [PATH ...]
+                        paths to scan if not current directory
+                        (supports * wildcards)
+  -r, --recursive       recurse into subdirectories when looking for bagfiles
+  --order-bag-by {topic,type}
+                        order bag messages by topic or type first and then by time
+  --decompress          decompress archived bagfiles with recognized extensions (.zst .zstd)
+  --reindex-if-unindexed
+                        reindex unindexed bagfiles (ROS1 only), makes backup copies
+
+Live topic control:
+  --publish-prefix PREFIX
+                        prefix to prepend to input topic name on publishing match
+  --publish-suffix SUFFIX
+                        suffix to append to input topic name on publishing match
+  --publish-fixname TOPIC
+                        single output topic name to publish all matches to,
+                        overrides prefix and suffix
+  --queue-size-in SIZE  live ROS topic subscriber queue size (default 10)
+  --queue-size-out SIZE
+                        output publisher queue size (default 10)
+  --ros-time-in         use ROS time instead of system time for incoming message
+                        timestamps from subsribed live ROS topics
+</pre>
+
+Loaded plugins will add their additional arguments to help output.
+
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

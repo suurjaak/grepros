@@ -1,0 +1,688 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Outputs</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script src="js/common.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html#/">Outputs</a><br />
+          <span class="subview">
+            <a href="#console">console</a><br />
+            <a href="#bag">bag</a><br />
+            <a href="#csv">csv</a><br />
+            <a href="#live">live</a><br />
+            <a href="#html">html</a><br />
+            <a href="#postgres">postgres</a><br />
+            <a href="#sqlite">sqlite</a><br />
+            <a href="#formatting">Message formatting in console / html</a><br />
+            <a href="#nested">Nested messages in postgres / sqlite</a><br />
+            <a href="#sql-dialects">SQL dialects</a><br />
+          </span>
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Outputs</h2>
+
+<p>
+There can be any number of outputs: printing to console (default),
+publishing to live ROS topics, or writing to file or database.
+</p>
+
+<p>
+Some outputs require <a href="plugins.html">loading extra plugins</a>.
+</p>
+
+<h3 id="console">console</h3>
+
+<p>
+Default output is to console, in ANSI colors, mimicking <code>grep</code> output.
+</p>
+
+<p>
+Disable printing messages to console:
+</p>
+<pre>
+--no-console-output
+</pre>
+
+<p>
+Manage color output:
+</p>
+<pre>
+--color always  (default)
+--color auto    (auto-detect terminal support)
+--color never   (disable colors)
+</pre>
+
+<p>
+Note that when paging color output with <code>more</code> or <code>less</code>,
+the pager needs to accept raw control characters (<code>more -f</code> or <code>less -R</code>).
+</p>
+
+
+<h3 id="bag">bag</h3>
+
+<pre>
+--write path/to/my.bag [format=bag] [overwrite=true|false]
+</pre>
+
+<p>
+Write messages to a ROS bag file, the custom <code>.bag</code> format in ROS1
+or the <code>.db3</code> SQLite database format in ROS2. If the bagfile already exists,
+it is appended to, unless specified to overwrite.
+</p>
+
+<p>
+Specifying <code>format=bag</code> is not required
+if the filename ends with <code>.bag</code> in ROS1 or <code>.db3</code> in ROS2.
+</p>
+
+
+<h3 id="live">live</h3>
+
+<pre>
+--publish
+</pre>
+
+<p>
+Publish messages to live ROS topics. Topic prefix and suffix can be changed,
+or topic name set to one specific name:
+</p>
+
+<pre>
+--publish-prefix  /myroot
+--publish-suffix  /myend
+--publish-fixname /my/singular/name
+</pre>
+
+<p>
+One of the above arguments needs to be specified if publishing to live ROS topics
+while grepping from live ROS topics, to avoid endless loops.
+</p>
+
+<p>
+Set custom queue size for publishers (default 10):
+</p>
+<pre>
+--queue-size-out 100
+</pre>
+
+
+<h3 id="csv">csv</h3>
+
+<pre>
+--write path/to/my.csv [format=csv] [overwrite=true|false]
+</pre>
+
+<p>
+Write messages to CSV files, each topic to a separate file, named
+<code>path/to/my.full__topic__name.csv</code> for <code>/full/topic/name</code>.
+</p>
+
+<p>
+Output mimicks CSVs compatible with PlotJuggler, all messages values flattened
+to a single list, with header fields like <code>/topic/field.subfield.listsubfield.0.data.1</code>.
+</p>
+
+<p>
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. <code>my.full__topic__name.2.csv</code>, unless specified to overwrite.
+</p>
+
+<p>
+Specifying <code>format=csv</code> is not required if the filename ends with <code>.csv</code>.
+</p>
+
+
+<h3 id="html">html</h3>
+
+<pre>
+--write path/to/my.html [format=html] [overwrite=true|false]
+        [template=/path/to/html.template]
+</pre>
+
+<p>
+Write messages to an HTML file, with a linked table of contents,
+message timeline, message type definitions, and a topically traversable message list.
+</p>
+
+<a href="img/screen_html.png" rel="lightbox" title="HTML output example"><img src="img/th_screen_html.png" alt="HTML output example" /></a>
+
+<p>
+Note: resulting file may be large, and take a long time to open in browser.
+</p>
+
+<p>
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. <code>my.2.html</code>, unless specified to overwrite.
+</p>
+
+<p>
+Specifying <code>format=html</code> is not required
+if the filename ends with <code>.htm</code> or <code>.html</code>.
+</p>
+
+<p>
+A custom template file can be specified, in <a href="https://github.com/dotpy/step">step</a> syntax:
+</p>
+
+<pre>
+--write path/to/my.html template=/my/html.template
+</pre>
+
+
+<h3 id="postgres">postgres</h3>
+
+<pre>
+--write postgresql://username@host/dbname [format=postgres]
+        [commit-interval=NUM] [nesting=array|all]
+        [dialect-file=path/to/dialects.yaml]
+</pre>
+
+<p>
+Write messages to a Postgres database, with tables <code>pkg/MsgType</code> for each ROS message type,
+and views <code>/full/topic/name</code> for each topic.
+<br />
+Plus table <code>topics</code> with a list of topics,
+<code>types</code> with message types and definitions,
+and <code>meta</code> with table/view/column name changes from shortenings and conflicts, 
+if any (Postgres name length is limited to 63 characters).
+<p>
+
+<p>
+ROS primitive types are inserted as Postgres data types (time/duration types as <code>NUMERIC</code>),
+<code>uint8[]</code> arrays as <code>BYTEA</code>, other primitive arrays as <code>ARRAY</code>,
+and arrays of subtypes as <code>JSONB</code>.
+</p>
+
+<p>
+If the database already exists, it is appended to. If there are conflicting names
+(same package and name but different message type definition),
+table/view name becomes "name (MD5 hash of type definition)".
+</p>
+
+<p>
+Specifying <code>format=postgres</code> is not required if the parameter uses the
+Postgres URI scheme <code>postgresql://</code>.
+</p>
+
+<p>
+Parameter <code>--write</code> can also use the Postgres keyword=value format, e.g.:
+</p>
+<pre>
+--write "host=localhost port=5432 dbname=mydb username=postgres connect_timeout=10"
+</pre>
+
+<p>
+Requires <a href="https://pypi.org/project/psycopg2">psycopg2</a>.
+</p>
+
+<p>
+Standard Postgres environment variables are also supported (PGPASSWORD et al).
+</p>
+
+<p>
+<a href="img/screen_postgres.png" rel="lightbox" title="Postgres output example"><img src="img/th_screen_postgres.png" alt="Postgres output example" /></a>
+</p>
+
+<p>
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
+</p>
+<pre>
+--write postgresql://username@host/dbname commit-interval=NUM
+</pre>
+
+<p>
+Nested message types can be recursively populated to separate tables, linked
+to parent messages via foreign keys.
+</p>
+<pre>
+--write postgresql://username@host/dbname nesting=array
+--write postgresql://username@host/dbname nesting=all
+</pre>
+
+<p>
+<a href="#nested">More on nested messages</a>.
+</p>
+
+<p>
+Updates to Postgres SQL dialect can be loaded from a YAML or JSON file:
+</p>
+<pre>
+--write postgresql://username@host/dbname dialect-file=path/to/dialects.yaml
+</pre>
+
+<p>
+<a href="#sql-dialects">More on SQL dialects</a>.
+</p>
+
+
+<h3 id="sqlite">sqlite</h3>
+
+<pre>
+--write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
+        [commit-interval=NUM] [message-yaml=true|false] [nesting=array|all]
+        [dialect-file=path/to/dialects.yaml]
+</pre>
+
+<p>
+Write an SQLite database with tables <code>pkg/MsgType</code> for each ROS message type
+and nested type, and views <code>/full/topic/</code> for each topic.
+If the database already exists, it is appended to, unless specified to overwrite.
+</p>
+
+<p>
+Output is compatible with ROS2 <code>.db3</code> bagfiles, supplemented with
+full message YAMLs, and message type definition texts. Note that a database
+dumped from a ROS1 source will most probably not be usable as a ROS2 bag,
+due to breaking changes in ROS2 standard built-in types and message types.
+</p>
+
+<p>
+Specifying <code>format=sqlite</code> is not required
+if the filename ends with <code>.sqlite</code> or <code>.sqlite3</code>.
+</p>
+
+<p>
+<a href="img/screen_sqlite.png" rel="lightbox" title="SQLite output example"><img src="img/th_screen_sqlite.png" alt="SQLite output example" /></a>
+</p>
+
+
+<p>
+A custom transaction size can be specified (default is 1000; 0 is autocommit):
+</p>
+<pre>
+--write path/to/my.sqlite commit-interval=NUM
+</pre>
+
+<p>
+By default, table <code>messages</code> is populated with full message YAMLs, unless:
+</p>
+<pre>
+--write path/to/my.sqlite message-yaml=false
+</pre>
+
+<p>
+Nested message types can be recursively populated to separate tables, linked
+to parent messages via foreign keys.
+</p>
+<pre>
+--write path/to/my.sqlite nesting=array
+--write path/to/my.sqlite nesting=all
+</pre>
+
+<p>
+<a href="#nested">More on nested messages</a>.
+</p>
+
+<p>
+Updates to SQLite SQL dialect can be loaded from a YAML or JSON file:
+</p>
+<pre>
+--write path/to/my.sqlite dialect-file=path/to/dialects.yaml
+</pre>
+
+<p>
+<a href="#sql-dialects">More on SQL dialects</a>.
+</p>
+
+
+<h3 id="formatting">Message formatting in console / html</h3>
+
+<p>
+Set maximum number of lines to output per message:
+</p>
+<pre>
+--lines-per-message 5
+</pre>
+
+<p>
+Set maximum number of lines to output per message field:
+</p>
+<pre>
+--lines-per-field 2
+</pre>
+
+<p>
+Start message output from, or stop output at, message line number:
+</p>
+<pre>
+--start-line  2   <code class="comment"># (1-based if positive</code>
+--end-line   -2   <code class="comment"># (count back from total if negative)</code>
+</pre>
+
+<p>
+Output only the fields where patterns find a match:
+</p>
+<pre>
+--matched-fields-only
+</pre>
+
+<p>
+Output only matched fields and specified number of lines around match:
+</p>
+<pre>
+--lines-around-match 5
+</pre>
+
+<p>
+Output only specific message fields (supports nested.paths and <code>*</code> wildcards):
+</p>
+<pre>
+--print-field *data
+</pre>
+
+<p>
+Skip outputting specific message fields (supports nested.paths and <code>*</code> wildcards):
+</p>
+<pre>
+--no-print-field header.stamp
+</pre>
+
+<p>
+Wrap matches in custom texts:
+</p>
+<pre>
+--match-wrapper @@@
+--match-wrapper "&lt;&lt;&lt;&lt;" "&gt;&gt;&gt;&gt;"
+</pre>
+
+<p>
+Set custom width for wrapping message YAML printed to console (auto-detected from terminal by default):
+</p>
+<pre>
+--wrap-width 120
+</pre>
+
+
+<h3 id="nested">Nested messages in postgres / sqlite</h3>
+
+<p>
+Nested message types can be recursively populated to separate tables, linked
+to parent messages via foreign keys.
+</p>
+
+<p>
+To recursively populate nested array fields:
+</p>
+
+<pre>
+--write postgresql://username@host/dbname nesting=array
+--write path/to/my.sqlite nesting=array
+</pre>
+
+<p>
+E.g. for <code>diagnostic_msgs/DiagnosticArray</code>, this would populate the following tables:
+</p>
+
+<pre class="collapsible">
+<code class="comment">-- In postgres:</code>
+CREATE TABLE "diagnostic_msgs/DiagnosticArray" (
+  "header.seq"          BIGINT,
+  "header.stamp.secs"   INTEGER,
+  "header.stamp.nsecs"  INTEGER,
+  "header.frame_id"     TEXT,
+  status                JSONB,       <code class="comment">-- [_id from "diagnostic_msgs/DiagnosticStatus", ]</code>
+  _topic                TEXT,
+  _timestamp            NUMERIC,
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,
+  _parent_id            BIGINT
+);
+
+CREATE TABLE "diagnostic_msgs/DiagnosticStatus" (
+  level                 SMALLINT,
+  name                  TEXT,
+  message               TEXT,
+  hardware_id           TEXT,
+  "values"              JSONB,       <code class="comment">-- [_id from "diagnostic_msgs/KeyValue", ]</code>
+  _topic                TEXT,        <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  _timestamp            NUMERIC,     <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,        <code class="comment">-- "diagnostic_msgs/DiagnosticArray"</code>
+  _parent_id            BIGINT       <code class="comment">-- _id from "diagnostic_msgs/DiagnosticArray"</code>
+);
+
+CREATE TABLE "diagnostic_msgs/KeyValue" (
+  "key"                 TEXT,
+  value                 TEXT,
+  _topic                TEXT,        <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticStatus"</code>
+  _timestamp            NUMERIC,     <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticStatus"</code>
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,        <code class="comment">-- "diagnostic_msgs/DiagnosticStatus"</code>
+  _parent_id            BIGINT       <code class="comment">-- _id from "diagnostic_msgs/DiagnosticStatus"</code>
+);<a class="toggle"></a>
+</pre>
+
+<pre class="collapsible">
+<code class="comment">-- In sqlite:</code>
+CREATE TABLE "diagnostic_msgs/DiagnosticArray" (
+  "header.seq"          INTEGER,
+  "header.stamp.secs"   INTEGER,
+  "header.stamp.nsecs"  INTEGER,
+  "header.frame_id"     TEXT,        <code class="comment">-- [_id from "diagnostic_msgs/DiagnosticStatus", ]</code>
+  status                "DIAGNOSTIC_MSGS/DIAGNOSTICSTATUS[]",
+  _topic                TEXT,
+  _timestamp            INTEGER,
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,
+  _parent_id            INTEGER
+);
+
+CREATE TABLE "diagnostic_msgs/DiagnosticStatus" (
+  level                 SMALLINT,
+  name                  TEXT,
+  message               TEXT,
+  hardware_id           TEXT,
+  -- [_id from "diagnostic_msgs/KeyValue", ]
+  "values"              "DIAGNOSTIC_MSGS/KEYVALUE[]",
+  _topic                TEXT,        <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  _timestamp            INTEGER,     <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,        <code class="comment">-- "diagnostic_msgs/DiagnosticArray"</code>
+  _parent_id            INTEGER      <code class="comment">-- _id from "diagnostic_msgs/DiagnosticArray"</code>
+);
+
+CREATE TABLE "diagnostic_msgs/KeyValue" (
+  "key"                 TEXT,
+  value                 TEXT,
+  _topic                TEXT,        <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticStatus"</code>
+  _timestamp            INTEGER,     <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticStatus"</code>
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,        <code class="comment">-- "diagnostic_msgs/DiagnosticStatus"</code>
+  _parent_id            INTEGER      <code class="comment">-- _id from "diagnostic_msgs/DiagnosticStatus"</code>
+);<a class="toggle"></a>
+</pre>
+
+
+<p>
+Without nesting, array field values are inserted as JSON with full subtype content.
+</p>
+
+<p>
+To recursively populate all nested message types:
+</p>
+<pre>
+--write postgresql://username@host/dbname nesting=all
+--write path/to/my.sqlite nesting=all
+</pre>
+
+<p>
+E.g. for <code>diagnostic_msgs/DiagnosticArray</code>, this would,
+in addition to the above, populate:
+</p>
+
+<pre class="collapsible">
+<code class="comment">-- In postgres:</code>
+CREATE TABLE "std_msgs/Header" (
+  seq                   BIGINT,
+  "stamp.secs"          INTEGER,
+  "stamp.nsecs"         INTEGER,
+  frame_id              TEXT,
+  _topic                TEXT,       <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  _timestamp            NUMERIC,    <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  _id                   BIGSERIAL,
+  _parent_type          TEXT,       <code class="comment">-- "diagnostic_msgs/DiagnosticArray"</code>
+  _parent_id            BIGINT      <code class="comment">-- _id from "diagnostic_msgs/DiagnosticArray"</code>
+);<a class="toggle"></a>
+</pre>
+
+<pre class="collapsible">
+<code class="comment">-- In sqlite:</code>
+CREATE TABLE "std_msgs/Header" (
+  seq                   UINT32,
+  "stamp.secs"          INT32,
+  "stamp.nsecs"         INT32,
+  frame_id              TEXT,
+  _topic                STRING,     <code class="comment">-- _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  _timestamp            INTEGER,    <code class="comment">-- _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  _id                   INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  _parent_type          TEXT,       <code class="comment">-- "diagnostic_msgs/DiagnosticArray"</code>
+  _parent_id            INTEGER     <code class="comment">-- _id from "diagnostic_msgs/DiagnosticArray"</code>
+);<a class="toggle"></a>
+</pre>
+
+
+<h3 id="sql-dialects">SQL dialects</h3>
+
+<p>
+Postgres, SQLite and <a href="plugins.html#sql">SQL</a> outputs support loading additional options for SQL dialect.
+</p>
+
+<p>
+Dialect file format:
+</p>
+<pre>
+dialectname:
+  table_template:       CREATE TABLE template; args: table, cols, type, hash, package, class
+  view_template:        CREATE VIEW template; args: view, cols, table, topic, type, hash, package, class
+  table_name_template:  message type table name template; args: type, hash, package, class
+  view_name_template:   topic view name template; args: topic, type, hash, package, class
+  types:                Mapping between ROS and SQL common types for table columns,
+                        e.g. {"uint8": "SMALLINT", "uint8[]": "BYTEA", ..}
+  adapters:             Mapping between ROS types and callable converters for table columns,
+                        e.g. {"time": "decimal.Decimal"}
+  defaulttype:          Fallback SQL type if no mapped type for ROS type;
+                        if no mapped and no default type, column type will be ROS type as-is
+  arraytype_template:   Array type template; args: type
+  maxlen_entity:        Maximum table/view name length, 0 disables
+  maxlen_column:        Maximum column name length, 0 disables
+  invalid_char_regex:   Regex for matching invalid characters in name, if any
+  invalid_char_repl:    Replacement for invalid characters in name
+</pre>
+
+
+<p>
+Template parameters like <code>table_name_template</code> use Python <code>str.format()</code> keyword syntax,
+<br />
+e.g. <code>{"table_name_template": "{type}", "view_name_template": "{topic}"}</code>.
+<p>
+
+<p>
+Time/duration types are flattened into separate integer columns <code>secs</code> and <code>nsecs</code>,
+<br />
+unless the dialect maps them to SQL types explicitly, e.g. <code>{"time": "BIGINT"}</code>.
+<p>
+
+<p>
+Any dialect options not specified in the given dialect or built-in dialects,
+will be taken from the default dialect configuration (sqlite):
+<p>
+
+<pre>
+table_template:       'CREATE TABLE IF NOT EXISTS {table} ({cols});'
+view_template:        'DROP VIEW IF EXISTS {view};
+                       CREATE VIEW {view} AS
+                       SELECT {cols}
+                       FROM {table}
+                       WHERE _topic = {topic};'
+table_name_template:  '{type}',
+view_name_template:   '{topic}',
+types:                {}
+defaulttype:          null
+arraytype_template:   '{type}[]'
+maxlen_entity:        0
+maxlen_column:        0
+invalid_char_regex:   null
+invalid_char_repl:    '__'
+</pre>
+
+<pre class="collapsible">
+<code class="comment">-- clickhouse dialect defaults:</code>
+arraytype_template:   Array({type})
+defaulttype:          String
+table_template:       CREATE TABLE IF NOT EXISTS {table} ({cols}) ENGINE = ENGINE;
+types:
+  bool:               UInt8
+  float32:            Float32
+  float64:            Float64
+  int16:              Int16
+  int32:              Int32
+  int64:              Int64
+  int8:               Int8
+  string:             String
+  uint16:             UInt16
+  uint32:             UInt32
+  uint64:             UInt64
+  uint8:              UInt8
+  uint8[]:            String
+  wstring:            String<a class="toggle"></a>
+</pre>
+
+<pre class="collapsible">
+<code class="comment">-- postgres dialect defaults:</code>
+defaulttype:          JSONB
+maxlen_column:        63
+maxlen_entity:        63
+types:
+  bool:               BOOLEAN
+  float32:            REAL
+  float64:            DOUBLE PRECISION
+  int16:              SMALLINT
+  int32:              INTEGER
+  int64:              BIGINT
+  int8:               SMALLINT
+  string:             TEXT
+  uint16:             INTEGER
+  uint32:             BIGINT
+  uint64:             BIGINT
+  uint8:              SMALLINT
+  uint8[]:            BYTEA
+  wstring:            TEXT<a class="toggle"></a>
+</pre>
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+    <script type="text/javascript"> bindToggles(); </script>
+
+  </body>
+</html>

@@ -1,0 +1,288 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Matching and filtering</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html#/">Matching and filtering</a><br />
+          <span class="subview">
+            <a href="#limits">Limits</a><br />
+            <a href="#filtering">Filtering</a><br />
+            <a href="#conditions">Conditions</a><br />
+          </span>
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Matching and filtering</h2>
+
+<p>
+Any number of patterns can be specified, message matches if all patterns find a match.
+<br /> 
+If no patterns are given, any message matches.
+</p>
+
+<p>
+Match messages containing any of the words:
+</p>
+<pre>
+cpu memory speed
+</pre>
+
+<p>
+Match messages where <code>frame_id</code> contains "world":
+</p>
+<pre>
+frame_id=world
+</pre>
+
+<p>
+Match messages where <code>header.frame_id</code> is present:
+</p>
+<pre>
+header.frame_id=.*
+</pre>
+
+<p>
+Match as plaintext, not Python regular expression patterns:
+</p>
+<pre>
+-F
+--fixed-strings
+</pre>
+
+<p>
+Select non-matching messages instead:
+</p>
+<pre>
+-v
+--invert-match
+</pre>
+
+<p>
+Use case-sensitive matching in patterns (default is insensitive):
+</p>
+<pre>
+-I
+--no-ignore-case
+</pre>
+
+
+<h3 id="limits">Limits</h3>
+
+<p>
+Stop after matching a specified number of messages (per each file if bag input):
+</p>
+<pre>
+-m          100
+--max-count 100
+</pre>
+
+<p>
+Scan only a specified number of topics (per each file if bag input):
+</p>
+<pre>
+--max-topics 10
+</pre>
+
+<p>
+Emit a specified number of matches per topic (per each file if bag input):
+</p>
+<pre>
+--max-per-topic 20
+</pre>
+
+<p>
+Emit every Nth match in topic:
+</p>
+<pre>
+--every-nth-match 10  <code class="comment"># (skips 9 matches in topic after each match emitted)</code>
+</pre>
+
+
+<h3 id="filtering">Filtering</h3>
+
+<p>
+Scan specific topics only (supports * wildcards):
+</p>
+<pre>
+-t      *lidar* *ins*
+--topic /robot/sensors/*
+</pre>
+
+<p>
+Skip specific topics (supports * wildcards):
+</p>
+<pre>
+-nt        *lidar* *ins*
+--no-topic /robot/sensors/*
+</pre>
+
+<p>
+Scan specific message types only (supports * wildcards):
+</p>
+<pre>
+-d     *Twist*
+--type sensor_msgs/*
+</pre>
+
+<p>
+Skip specific message types from scanning (supports * wildcards):
+</p>
+<pre>
+-nd       *Twist*
+--no-type sensor_msgs/*
+</pre>
+
+<p>
+Set specific message fields to scan (supports nested.paths and * wildcards):
+</p>
+<pre>
+-sf            twist.linear
+--select-field *data
+</pre>
+
+<p>
+Skip specific message fields in scan (supports nested.paths and * wildcards):
+</p>
+<pre>
+-ns               twist.linear
+--no-select-field *data
+</pre>
+
+<p>
+Only emit matches that are unique in topic,
+<br />
+taking <code>--select-field</code> and <code>--no-select-field</code> into account (per each file if bag input):
+</p>
+<pre>
+--unique-only
+</pre>
+
+<p>
+Start scanning from a specific timestamp:
+</p>
+<pre>
+-t0          2021-11     <code class="comment"># (using partial ISO datetime)</code>
+--start-time 1636900000  <code class="comment"># (using UNIX timestamp)</code>
+--start-time +100        <code class="comment"># (seconds from bag start time, or from script startup time if live input)</code>
+--start-time -100        <code class="comment"># (seconds from bag end time, or script startup time if live input)</code>
+</pre>
+
+<p>
+Stop scanning at a specific timestamp:
+</p>
+<pre>
+-t1        2021-11     <code class="comment"># (using partial ISO datetime)</code>
+--end-time 1636900000  <code class="comment"># (using UNIX timestamp)</code>
+--end-time +100        <code class="comment"># (seconds from bag start time, or from script startup time if live input)</code>
+--end-time -100        <code class="comment"># (seconds from bag end time, or from script startup time if live input)</code>
+</pre>
+
+<p>
+Start scanning from a specific message index in topic:
+</p>
+<pre>
+-n0           -100  <code class="comment"># (counts back from topic total message count in bag)</code>
+--start-index   10  <code class="comment"># (1-based index)</code>
+</pre>
+
+<p>
+Stop scanning at a specific message index in topic:
+</p>
+<pre>
+-n1         -100  <code class="comment"># (counts back from topic total message count in bag)</code>
+--end-index   10  <code class="comment"># (1-based index)</code>
+</pre>
+
+<p>
+Scan every Nth message in topic:
+</p>
+<pre>
+--every-nth-message 10  <code class="comment"># (skips 9 messages in topic with each step)</code>
+</pre>
+
+<p>
+Scan messages in topic with timestamps at least N seconds apart:
+</p>
+<pre>
+--every-nth-interval 5  <code class="comment"># (samples topic messages no more often than every 5 seconds)</code>
+</pre>
+
+
+<h3 id="conditions">Conditions</h3>
+
+<pre>
+--condition "PYTHON EXPRESSION"
+</pre>
+
+<p>
+Specify one or more Python expressions that must evaluate as true to search
+encountered messages. Expressions can access topics, by name or * wildcard,
+and refer to message fields directly.
+</p>
+
+<pre>
+<code class="comment"># (Match while last message in '/robot/enabled' has data=true)</code>
+--condition "<topic /robot/enabled>.data"
+
+<code class="comment"># (Match if at least 10 messages have been encountered in /robot/alerts)</code>
+--condition "len(<topic /robot/alerts>) > 10"
+
+<code class="comment"># (Match if last two messages in /robot/mode have equal .value)</code>
+--condition "<topic /robot/mode>[-2].value == <topic /robot/mode>[-1].value"
+
+<code class="comment"># (Match while control is enabled and robot is moving straight and level)</code>
+--condition "<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0 and <topic */cmd_vel>.angular.z < 0.02"
+</pre>
+
+Condition namespace:
+
+<table>
+<tr><th>Item                                </th><th>Description</th></tr>
+<tr><td><code>msg</code>                    </td><td>current message from data source</td></tr>
+<tr><td><code>topic</code>                  </td><td>full name of current message topic</td></tr>
+<tr><td><code><topic /my/topic></code>      </td><td>topic by full name or * wildcard</td></tr>
+<tr><td><code>len(<topic ..>)</code>        </td><td>number of messages encountered in topic</td></tr>
+<tr><td><code>bool(<topic ..>)</code>       </td><td>whether any message encountered in topic</td></tr>
+<tr><td><code><topic ..>.xyz</code>         </td><td>attribute <code>xyz</code> of last message in topic</td></tr>
+<tr><td><code><topic ..>[index]</code>      </td><td>topic message at position
+                                                      (from first encountered if index >= 0, last encountered if < 0)</td></tr>
+<tr><td><code><topic ..>[index].xyz</code>  </td><td>attribute <code>xyz</code> of topic message at position</td></tr>
+</table>
+
+Condition is automatically false if trying to access attributes of a message not yet received.
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

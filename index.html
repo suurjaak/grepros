@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2>grep for ROS bag files and live topics</h2>
+
+<p>Searches through ROS messages and matches any message field value by regular expression patterns or plain text, regardless of field type. Can also look for specific values in specific message fields only.</p>
+
+<p>By default, matches are printed to console. Additionally, matches can be written to a bagfile or HTML/CSV/Parquet/Postgres/SQL/SQLite, or published to live topics.</p>
+
+<p>Supports both ROS1 and ROS2. ROS environment variables need to be set, at least <code>ROS_VERSION</code>.</p>
+
+<p>In ROS1, messages can be grepped even if Python packages for message types are not installed. Using ROS1 live topics requires ROS master to be running.</p>
+
+<p>Using ROS2 requires Python packages for message types to be available in path.</p>
+
+<p>Supports loading custom plugins, mainly for additional output formats.</p>
+
+<a href="img/screen.png" rel="lightbox" title="Command-line example"><img src="img/th_screen.png" alt="Command-line example" /></a>
+</p>
+
+
+<h2>Notes on ROS1 vs ROS2</h2>
+
+<p>
+In ROS1, message type packages do not need to be installed locally to be able to
+read messages from bags or live topics, as bags and topic publishers provide
+message type definition texts, and message classes can be generated at run-time
+from the type definition text. This is what rosbag does automatically,
+and so does grepros.
+</p>
+
+<p>
+Additionally, each ROS1 message type has a hash code computed from its type
+definition text, available both in live topic metadata, and bag metadata.
+The message type definition hash code allows to recognize changes
+in message type packages and use the correct version of the message type.
+</p>
+
+<p>
+ROS2 does not provide message type definitions, neither in bagfiles nor in live
+topics. Due to this, the message type packages always need to be installed.
+Also, ROS2 does not provide options for generating type classes at run-time,
+and it does not have the concept of a message type hash.
+</p>
+
+<p>
+These are serious limitations in ROS2 compared to ROS1, at least with versions
+up to ROS2 Humble and counting, and require extra work to smooth over.
+Without knowing which version of a message type package a bag was recorded with,
+reading bag messages with changed definitions can result in undefined behaviour.
+</p>
+
+<p>
+If the serialized message structure happens to match (e.g. a change swapped
+the order of two <code>int32</code> fields), messages will probably be deserialized
+seemingly successfully but with invalid content. If the serialized structure
+does not match, the result is a run-time error.
+</p>
+
+<p>
+Because of this, it is prudent to always include a snapshot archive of used
+message type packages, when recording ROS2 bags.
+</p>
+
+<p>
+grepros does provide the message type hash itself in ROS2 exports, by calculating
+the ROS2 message type hash on its own from the locally installed type definition.
+</p>
+
+
+<h2>Attribution</h2>
+
+<p>grepros is written in Python.</p>
+
+<p>
+Includes a modified version of step, Simple Template Engine for Python,<br />
+(c) 2012, Daniele Mazzocchio, <a href="https://github.com/dotpy/step">github.com/dotpy/step</a>,
+released under the MIT license.</p>
+
+<h2>License</h2>
+
+<p>
+(The 3-Clause BSD License)
+</p>
+
+<p>
+Copyright (C) 2021 by Erki Suurjaak. All rights reserved.
+</p>
+
+<p>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+</p>
+
+<ol>
+<li>
+    Redistributions of source code must retain the above copyright notice, this
+    list of conditions and the following disclaimer.
+</li>
+<li>
+    Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+</li>
+<li>
+    Neither the name of the copyright holder nor the names of its contributors
+    may be used to endorse or promote products derived from this software without
+    specific prior written permission.
+</li>
+</ol>
+
+<p>
+This software is provided by the copyright holders and contributors "as is" and
+any express or implied warranties, including, but not limited to, the implied
+warranties of merchantability and fitness for a particular purpose are
+disclaimed. In no event shall the copyright holder or contributors be liable for
+any direct, indirect, incidental, special, exemplary, or consequential damages
+(including, but not limited to, procurement of substitute goods or services;
+loss of use, data, or profits; or business interruption) however caused and on
+any theory of liability, whether in contract, strict liability, or tort
+(including negligence or otherwise) arising in any way out of the use of this
+software, even if advised of the possibility of such damage.
+</p>
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

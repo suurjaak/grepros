@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Installation</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html#/">Installation</a><br />
+          <span class="subview">
+            <a href="#using-pip">Using pip</a><br />
+            <a href="#using-apt">Using apt</a><br />
+            <a href="#using-catkin">Using catkin</a><br />
+            <a href="#using-colcon">Using colcon</a><br />
+            <a href="#dependencies">Dependencies</a><br />
+          </span>
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Installation</h2>
+
+<p>
+grepros is written in Python, supporting both Python 2 and Python 3.
+</p>
+
+<p>
+Developed and tested under ROS1 noetic and ROS2 foxy,
+<br />
+it should also work in later ROS2 versions;
+it <em>may</em> work in earlier ROS1 versions. 
+</p>
+
+<h3 id="using-pip">Using pip</h3>
+
+<pre>
+pip install grepros
+</pre>
+
+<p>This will add the <code>grepros</code> command to path.</p>
+
+<p>Requires ROS Python packages
+(ROS1: rospy, roslib, rosbag, genpy;
+ ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces).</p>
+
+<p>For ROS1, if only using bag files and no live topics, minimal ROS1 Python
+packages can also be installed separately with:</p>
+
+<pre>
+pip install rospy rosbag roslib roslz4 \
+            --extra-index-url https://rospypi.github.io/simple/
+</pre>
+
+
+<h3 id="using-apt">Using apt</h3>
+
+<p>If ROS apt repository has been added to system:</p>
+
+<pre>
+sudo apt install ros-noetic-grepros  <code class="comment"># ROS1</code>
+
+sudo apt install ros-foxy-grepros    <code class="comment"># ROS2</code>
+</pre>
+
+<p>This will add the <code>grepros</code> command to the global ROS1 / ROS2 environment.</p>
+
+
+<h3 id="using-catkin">Using catkin</h3>
+
+<p>In a ROS1 workspace, under the source directory:</p>
+
+<pre>
+git clone https://github.com/suurjaak/grepros.git
+cd grepros
+catkin build --this
+</pre>
+
+<p>This will add the <code>grepros</code> command to the local ROS1 workspace path.</p>
+
+
+<h3 id="using-colcon">Using colcon</h3>
+
+<p>In a ROS2 workspace, at the workspace root:</p>
+
+<pre>
+git clone https://github.com/suurjaak/grepros.git src/grepros
+colcon build --packages-select grepros
+</pre>
+
+<p>
+This will add the <code>grepros</code> command to the local ROS2 workspace path.
+</p>
+
+
+<h3 id="dependencies">Dependencies</h3>
+
+grepros requires Python 3.8+ or Python 2.7, and the following 3rd-party Python packages:
+
+
+<ul>
+  <li>pyyaml (<a href="https://pypi.org/project/PyYAML">pypi.org/project/PyYAML</a>)</li>
+  <li>ROS1: rospy, roslib, rosbag, genpy</li>
+  <li>ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces</li>
+</ul>
+
+Optional, for decompressing archived bags:
+
+<ul>
+  <li>zstandard (<a href="https://pypi.org/project/zstandard">pypi.org/project/zstandard</a>)</li>
+</ul>
+
+Optional, for faster reading of ROS1 bags:
+
+<ul>
+  <li>embag (<a href="https://github.com/embarktrucks/embag">github.com/embarktrucks/embag</a>)</li>
+</ul>
+
+Optional, for Postgres output:
+
+<ul>
+  <li>psycopg2 (<a href="https://pypi.org/project/psycopg2">pypi.org/project/psycopg2</a>)</li>
+</ul>
+
+Optional, for Parquet output:
+
+<ul>
+  <li>pandas (<a href="https://pypi.org/project/pandas">pypi.org/project/pandas</a>)</li>
+  <li>pyarrow (<a href="https://pypi.org/project/pyarrow">pypi.org/project/pyarrow</a>)</li>
+</ul>
+
+Optional, for MCAP input-output:
+
+<ul>
+  <li>mcap (<a href="https://pypi.org/project/mcap">pypi.org/project/mcap</a>)</li>
+  <li>mcap_ros1_support (<a href="https://pypi.org/project/mcap_ros1_support">pypi.org/project/mcap_ros1_support</a>)</li>
+  <li>mcap_ros2_support (<a href="https://pypi.org/project/mcap_ros1_support">pypi.org/project/mcap_ros1_support</a>)</li>
+</ul>
+
+Optional, for generating API documentation:
+
+<ul>
+  <li>doxypypy (<a href="https://pypi.org/project/doxypypy">pypi.org/project/doxypypy</a>)
+      <br />
+      needs latest master: <code>pip install git+https://github.com/Feneric/doxypypy</code>
+  </li>
+</ul>
+
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

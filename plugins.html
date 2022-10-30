@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Plugins</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html#/">Plugins</a><br />
+          <span class="subview">
+            <a href="#embag">embag</a><br />
+            <a href="#mcap">mcap</a><br />
+            <a href="#parquet">parquet</a><br />
+            <a href="#sql">sql</a><br />
+            <a href="#custom">Writing your own</a><br />
+          </span>
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Plugins</h2>
+
+<p>
+grepros supports loading custom plugins, mainly for additional output formats.
+</p>
+
+<p>
+Load one or more Python modules or classes as plugins:
+</p>
+<pre>
+--plugin some.python.module some.other.module.Class
+</pre>
+<p>
+Specifying <code>--plugin someplugin</code> and <code>--help</code> will include plugin options in printed help.
+</p>
+
+
+<p>
+There are a number of built-in plugins not loaded by default:
+</p>
+
+<h3 id="embag">embag</h3>
+
+<pre>
+--plugin grepros.plugins.embag
+</pre>
+
+<p>
+Use the <a hreF="https://github.com/embarktrucks/embag">embag</a> library for reading ROS1 bags.
+</p>
+
+<p>
+Significantly faster, but library tends to be unstable.
+</p>
+
+
+<h3 id="mcap">mcap</h3>
+
+<pre>
+--plugin grepros.plugins.mcap
+</pre>
+
+<p>
+Read or write messages in <a href="https://mcap.dev">MCAP</a> format.
+</p>
+
+<p>
+Requires <a href="https://pypi.org/project/mcap">mcap</a>,
+and <a href="https://pypi.org/project/mcap-ros1-support">mcap_ros1_support</a>
+or  <a href="https://pypi.org/project/mcap-ros2-support">mcap_ros2_support</a>.
+</p>
+
+<p>
+In ROS2, messages grepped from MCAP files can only be published to live topics
+if the same message type packages are locally installed.
+</p>
+
+<p>
+Write bags in MCAP format:
+</p>
+
+<pre>
+--plugin grepros.plugins.mcap \
+--write path/to/my.mcap [format=mcap] [overwrite=true|false]
+</pre>
+
+<p>
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. <code>my.2.mcap</code>, unless specified to overwrite.
+</p>
+
+<p>
+Specifying write <code>format=mcap</code> is not required
+if the filename ends with <code>.mcap</code>.
+</p>
+
+
+<h3 id="parquet">parquet</h3>
+
+<pre>
+--plugin grepros.plugins.parquet \
+--write path/to/my.parquet [format=parquet] [overwrite=true|false] \
+        [column-name=rostype:value] [type-rostype=arrowtype] \
+        [writer-argname=argvalue]
+</pre>
+
+<p>
+Write messages to Apache Parquet files (columnar storage format, version 2.6),
+each message type to a separate file, named <code>path/to/package__MessageType__typehash/my.parquet</code>
+for <code>package/MessageType</code> (typehash is message type definition MD5 hashsum).
+<br />
+Adds fields <code>_topic string()</code> and <code>_timestamp timestamp("ns")</code> to each type.
+</p>
+
+<p>
+If a file already exists, a unique counter is appended to the name of the new file,
+e.g. <code>package__MessageType__typehash/my.2.parquet</code>, unless specified to overwrite.
+</p>
+
+<p>
+Specifying <code>format=parquet</code> is not required if the filename ends with <code>.parquet</code>.
+</p>
+
+<p>
+Requires <a href="https://pypi.org/project/pandas">pandas</a> and <a href="https://pypi.org/project/pyarrow">pyarrow</a>.
+</p>
+
+<p>
+Supports adding supplementary columns with fixed values to Parquet files:
+</p>
+<pre>
+--write path/to/my.parquet column-bag_hash=string:26dfba2c
+</pre>
+
+<p>
+Supports custom mapping between ROS and pyarrow types with <code>type-rostype=arrowtype</code>:
+</p>
+<pre>
+--write path/to/my.parquet type-time="timestamp('ns')"
+--write path/to/my.parquet type-uint8[]="list(uint8())"
+</pre>
+
+<p>
+Time/duration types are flattened into separate integer columns <code>secs</code> and <code>nsecs</code>,
+unless they are mapped to pyarrow types explicitly, like:
+</p>
+<pre>
+--write path/to/my.parquet type-time="timestamp('ns')" type-duration="duration('ns')"
+</pre>
+
+<p>
+Supports additional arguments given to <a href="https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html">pyarrow.parquet.ParquetWriter</a>, as:
+</p>
+<pre>
+--write path/to/my.parquet writer-argname=argvalue
+</pre>
+
+<p>
+For example, specifying no compression:
+</p>
+<pre>
+--write path/to/my.parquet writer-compression=null
+</pre>
+
+<p>
+The value is interpreted as JSON if possible, e.g. <code>writer-use_dictionary=false</code>.
+</p>
+
+
+<h3 id="sql">sql</h3>
+
+<pre>
+--plugin grepros.plugins.sql \
+--write path/to/my.sql [format=sql] [overwrite=true|false] \
+        [nesting=array|all] [dialect=clickhouse|postgres|sqlite] \
+        [dialect-file=path/to/dialects.yaml]
+</pre>
+
+<p>
+Write SQL schema to output file, CREATE TABLE for each message type
+and CREATE VIEW for each topic.
+</p>
+
+<p>
+If the file already exists, a unique counter is appended to the name of the new file,
+e.g. <code>my.2.sql</code>, unless specified to overwrite.
+</p>
+
+<p>
+Specifying <code>format=sql</code> is not required if the filename ends with <code>.sql</code>.
+</p>
+
+<p>
+To create tables for nested array message type fields:
+</p>
+<pre>
+--write path/to/my.sql nesting=array
+</pre>
+
+<p>
+To create tables for all nested message types:
+</p>
+<pre>
+--write path/to/my.sql nesting=all
+</pre>
+
+<p>
+<a href="outputs.html#nested">More on nested messages</a>.
+</p>
+
+<p>
+A specific SQL dialect can be specified (defaults to <code>sqlite</code>):
+</p>
+<pre>
+--write path/to/my.sql dialect=clickhouse|postgres|sqlite
+</pre>
+
+<p>
+Additional dialects, or updates for existing dialects, can be loaded from a YAML or JSON file:
+</p>
+<pre>
+--write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
+</pre>
+
+<p>
+<a href="outputs.html#sql-dialects">More on SQL dialects</a>.
+</p>
+
+
+<h3 id="custom">Writing your own</h3>
+
+<p>
+Supported (but not required) plugin interface methods:
+<ul>
+<li><code>init(args)</code>: invoked at startup with command-line arguments</li>
+<li><code>load(category, args)</code>: invoked with category "search" or "source" or "sink",
+                                       using returned value for specified component if not None</li>
+</ul>
+</p>
+
+<p>
+Plugins are free to modify <code>grepros</code> internals, like adding command-line arguments
+to <code>grepros.main.ARGUMENTS</code> or adding sink types to <code>grepros.outputs.MultiSink</code>.
+</p>
+
+<p>
+Convenience methods:
+<ul>
+<li><code>plugins.add_write_format(name, cls, label=None, options=())</code>:
+   adds an output plugin to defaults</li>
+<li><code>plugins.get_argument(name)</code>: returns a command-line argument dictionary, or None</li>
+</ul>
+</p>
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

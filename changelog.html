@@ -1,0 +1,261 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Changelog</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html#/">Installation</a><br />
+          <a href="usage.html">Using the program</a><br />
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2>Changelog</h2>
+
+
+<h4>0.5.0 (2022-10-30)</h4>
+<ul>
+  <li>add --plugin grepros.plugins.mcap (MCAP input and output)</li>
+  <li>refactor internal bag API</li>
+  <li>fix message type definition parsing yielding duplicate subtypes</li>
+  <li>fix error in example usage text</li>
+</ul>
+
+<h4>0.4.7 (2022-06-20)</h4>
+<ul>
+  <li>fix space leak in caching message metadata</li>
+</ul>
+
+<h4>0.4.6 (2022-05-26)</h4>
+<ul>
+  <li>add forgotten implementation for --every-nth-match</li>
+  <li>fix --every-nth-message</li>
+  <li>fix error on grepping bags where no topic or type name matches given filter</li>
+</ul>
+
+<h4>0.4.5 (2022-04-19)</h4>
+<ul>
+  <li>fix forcing all numeric array fields to integer lists regardless of type</li>
+  <li>fix error on subscribing to defunct topic</li>
+</ul>
+
+<h4>0.4.4 (2022-03-16)</h4>
+<ul>
+  <li>add support for reading zstd-compressed bagfiles</li>
+  <li>use message type definition from ROS1 live topics instead of locally installed package</li>
+  <li>optimize partial printing of very long array fields</li>
+  <li>optimize CSV output of very long array fields</li>
+  <li>strip leading "./" from printed filename prefix if grepping working directory</li>
+  <li>fix not skipping ROS2 bag if all topics filtered out</li>
+  <li>fix making compatible QoS for ROS2 topic subscriptions</li>
+  <li>fix making unique filename on error in HTML output</li>
+</ul>
+
+<h4>0.4.3 (2022-03-01)</h4>
+<ul>
+  <li>continue subscribing to other live topics even if one causes error</li>
+  <li>continue reading from ROS2 bag even if one message type causes error</li>
+  <li>subscribe to live topics in ROS2 with QoS matching publisher</li>
+  <li>fix not saving publisher QoS profiles in written ROS2 bags</li>
+  <li>fix package build not including submodules (#1)</li>
+</ul>
+
+<h4>0.4.2 (2022-02-09)</h4>
+<ul>
+  <li>add overwrite=true|false to --write options</li>
+  <li>add column-name=rostype:value to --write Parquet options</li>
+  <li>add scripts/generate_msgs.py</li>
+  <li>create message type definition from .idl if .msg file not available in ROS2</li>
+  <li>improve DDS type parsing in ROS2</li>
+  <li>handle ROS2 char and byte int8/uint8 reversal vs ROS1</li>
+  <li>fix assembling message type full definition in ROS2</li>
+  <li>fix processing byte values in ROS2</li>
+  <li>fix processing bounded string types in ROS2</li>
+  <li>fix inserting chars in Postgres</li>
+  <li>fix inserting very large integers in SQLite</li>
+</ul>
+
+<h4>0.4.1 (2022-01-08)</h4>
+<ul>
+  <li>refactor database and SQL sinks onto a common base</li>
+  <li>allow specifying dialect options in Postgres/SQLite output</li>
+  <li>allow overriding table and view names in SQL dialects</li>
+  <li>allow specifying field value adapters in SQL dialects</li>
+  <li>allow specifying structured type mappings in Parquet output like type-uint8[]="list(uint8())"</li>
+  <li>drop meta-table from Postgres output</li>
+  <li>drop default value from --publish-prefix option</li>
+  <li>fix error in parsing subtypes from message definitions</li>
+  <li>fix converting ROS2 temporal messages to seconds/nanoseconds</li>
+</ul>
+
+<h4>0.4.0 (2021-12-26)</h4>
+<ul>
+  <li>add --plugin grepros.plugins.parquet (Parquet output)</li>
+  <li>add --plugin grepros.plugins.sql (SQL schema output)</li>
+  <li>add --plugin grepros.plugins.embag (faster ROS1 bag reader)</li>
+  <li>add --reindex-if-unindexed option</li>
+  <li>add --every-nth-match option</li>
+  <li>add --every-nth-message option</li>
+  <li>add --every-nth-interval option</li>
+  <li>allow multiple write sinks, combine --write-format and --write-option to --write</li>
+  <li>refactor plugins interface</li>
+  <li>populate topics.offered_qos_profiles in ROS2 bag output where possible</li>
+  <li>fix progress bar afterword not updating when grepping multiple bags</li>
+  <li>fix error on empty bag with no messages</li>
+  <li>fix error in Postgres output for NaNs in nested JSON values</li>
+  <li>fix skipping some messages in ROS1 bag for types with identical hashes</li>
+  <li>fix not being able to specify list arguments several times</li>
+  <li>ensure no conflicts from changed message types or identical type hashes</li>
+  <li>add tests</li>
+</ul>
+
+<h4>0.3.5 (2021-12-14)</h4>
+<ul>
+  <li>fix Postgres output not having content</li>
+</ul>
+
+<h4>0.3.4 (2021-12-14)</h4>
+<ul>
+  <li>add --write-option message-yaml=true|false, for SQLite output</li>
+  <li>speed up SQLite output (~4-8x)</li>
+  <li>speed up YAML formatting (~2x)</li>
+  <li>fix no engine name in console texts for Postgres output</li>
+</ul>
+
+<h4>0.3.3 (2021-12-13)</h4>
+<ul>
+  <li>fix errors in Postgres/SQLite output</li>
+</ul>
+
+<h4>0.3.2 (2021-12-12)</h4>
+<ul>
+  <li>rename --write-option commit_interval to commit-interval</li>
+  <li>raise Postgres default commit-interval from 100 to 1000</li>
+  <li>add --write-option commit-interval support to SQLite output</li>
+  <li>add --write-option subtypes=array|all, for Postgres/SQLite output</li>
+  <li>speed up SQLite output (~2x)</li>
+  <li>refactor Postgres/SQLite sinks onto common base class</li>
+</ul>
+
+<h4>0.3.1 (2021-12-06)</h4>
+<ul>
+  <li>add --write-option template=/my/html.template, for HTML output</li>
+  <li>add --write-option commit_interval=NUM, for Postgres output</li>
+  <li>drop --write-format-template</li>
+  <li>fix highlighting subtype arrays</li>
+</ul>
+
+<h4>0.3.0 (2021-12-05)</h4>
+<ul>
+  <li>add --write-format postgres</li>
+  <li>add --no-verbose option</li>
+  <li>add --condition option</li>
+  <li>add --plugin option</li>
+  <li>add wildcard support to fields in "field=PATTERN"</li>
+  <li>use up to nanosecond precision in HTML output timeline</li>
+  <li>highlight empty arrays on any-match regardless of type</li>
+  <li>select meta-fields as last in SQLite topic views</li>
+  <li>fix potential error on using --max-per-topic with live topics</li>
+  <li>fix detecting ROS2 bags</li>
+  <li>fix using --progress with --live</li>
+</ul>
+
+<h4>0.2.5 (2021-11-28)</h4>
+<ul>
+  <li>add --progress option</li>
+  <li>match anything by default if no patterns given</li>
+  <li>add timeline to HTML output</li>
+  <li>auto-detect output format from given filename</li>
+  <li>fix breaking too early on --max-per-topic</li>
+  <li>fix adding topic views to existing SQLite output database</li>
+  <li>fix error on adding message type tables for empty list values in SQLite output</li>
+  <li>fix sorting table of contents in HTML output</li>
+  <li>do not auto-expand table of contents in HTML output</li>
+</ul>
+
+<h4>0.2.4 (2021-11-18)</h4>
+<ul>
+  <li>skip retrieving full message counts from ROS2 bag before any match</li>
+  <li>ensure message YAMLs in html output always in color and wrapped at 120 characters</li>
+  <li>fix inserting duplicate types-rows when adding to an existing SQLite output file</li>
+  <li>improve wrapping lists and nunbers</li>
+</ul>
+
+<h4>0.2.3 (2021-11-15)</h4>
+<ul>
+  <li>add --write-format csv</li>
+  <li>add --write-format sqlite</li>
+  <li>local Python packages no longer required for custom message types in ROS1</li>
+  <li>add topic toggle checkboxes to HTML output</li>
+  <li>add topic count to live source metainfo</li>
+  <li>break early when max matches per topic reached</li>
+  <li>improve HTML output</li>
+</ul>
+
+<h4>0.2.2 (2021-11-10)</h4>
+<ul>
+  <li>shut down ROS2 live node properly</li>
+  <li>better support for ROS2 primitive types</li>
+  <li>make HTML output table of contents sortable</li>
+  <li>stop requiring unneeded environment variables</li>
+</ul>
+
+<h4>0.2.1 (2021-11-09)</h4>
+<ul>
+  <li>add --write-format option, with HTML support</li>
+  <li>add --wrap-width option</li>
+  <li>add --order-bag-by option</li>
+  <li>handle topics with multiple message types</li>
+  <li>improve console output wrapping</li>
+  <li>fix detecting ROS2 primitive array types</li>
+  <li>fix using ROS2 bag start-end timestamps</li>
+</ul>
+
+<h4>0.2.0 (2021-11-04)</h4>
+<ul>
+  <li>add ROS2 support</li>
+  <li>flush stdout on every print, to avoid buffering in redirected output</li>
+  <li>add --ros-time-in option</li>
+  <li>add --unique-only option</li>
+  <li>rename options --noselect-field and --noprint-field to --no-select-field and --no-print-field</li>
+</ul>
+
+<h4>0.1.0 (2021-10-31)</h4>
+<ul>
+  <li>grep for ROS1 bag files and live topics, able to print and publish and write bagfiles</li>
+</ul>
+
+
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>

@@ -1,0 +1,245 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>grepros | Using the program</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
+    <script src="js/shadowbox.js"></script>
+    <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>grepros</h1>
+        <p>grep for ROS bag files and live topics</p>
+        <p class="view">
+          <a href="index.html">Index</a><br />
+          <a href="install.html">Installation</a><br />
+          <a href="usage.html#/">Using the program</a><br />
+          <span class="subview">
+            <a href="#example-usage">Example usage</a><br />
+            <a href="#inputs">Inputs</a><br />
+            <span class="subview">
+              <a href="#inputs-bag">bag</a><br />
+              <a href="#inputs-live">live</a><br />
+            </span>
+          </span>
+          <a href="matching.html">Matching and filtering</a><br />
+          <a href="outputs.html">Outputs</a><br />
+          <a href="cli.html">Command-line options</a><br />
+          <a href="plugins.html">Plugins</a><br />
+          <a href="changelog.html">Changelog</a><br />
+          <br />
+          <a href="api">API documentation</a><br />
+          <a href="https://github.com/suurjaak/grepros">View the Project on GitHub <small>suurjaak/grepros</small></a>
+        </p>
+      </header>
+      <section>
+
+<h2 id="/">Using the program</h2>
+
+
+<h3 id="example-usage">Example usage</h3>
+
+<p>
+Search for "my text" in all bags under current directory and subdirectories:
+</p>
+<pre>
+grepros -r "my text"
+</pre>
+
+<p>
+Print 30 lines of the first message from each live ROS topic:
+</p>
+<pre>
+grepros --max-per-topic 1 --lines-per-message 30 --live
+</pre>
+
+<p>
+Find first message containing "future" (case-sensitive) in my.bag:
+</p>
+<pre>
+grepros future -I --max-count 1 --name my.bag
+</pre>
+
+<p>
+Find 10 messages, from <code>geometry_msgs</code> package, in "map" frame,
+from bags in current directory, reindexing any unindexed bags:
+</p>
+<pre>
+grepros frame_id=map --type geometry_msgs/* --max-count 10 --reindex-if-unindexed
+</pre>
+
+<p>
+Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
+</p>
+<pre>
+grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
+</pre>
+
+<p>
+Find messages with field "key" containing "0xA002",
+in topics ending with "diagnostics", in bags under "/tmp":
+</p>
+<pre>
+grepros key=0xA002 --topic *diagnostics --path /tmp
+</pre>
+
+<p>
+Find <code>diagnostics_msgs</code> messages in bags in current directory,
+containing "navigation" in fields "name" or "message", 
+print only header stamp and values:
+</p>
+<pre>
+grepros --type diagnostic_msgs/* --select-field name message \
+        --print-field header.stamp status.values -- navigation
+</pre>
+
+<p>
+Print first message from each lidar topic on host 1.2.3.4:
+</p>
+<pre>
+ROS_MASTER_URI=http://1.2.3.4::11311 \
+grepros --live --topic *lidar* --max-per-topic 1
+</pre>
+
+<p>
+Export all bag messages to SQLite and Postgres, print only export progress:
+</p>
+<pre>
+grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
+
+grepros -n my.bag --write postgresql://user@host/dbname \
+        --no-console-output --no-verbose --progress
+</pre>
+
+<p>
+Patterns use Python regular expression syntax, message matches if all match.
+<code>*</code> wildcards use simple globbing as zero or more characters,
+target matches if any value matches.
+</p>
+
+<p>
+<a href="matchfilter.html">More on matching and filtering</a>.
+</p>
+
+<p>
+Note that some expressions may need to be quoted to avoid shell auto-unescaping
+or auto-expanding them, e.g. <code>linear.x=2.?5</code> should be given as <code>"linear.x=2\.?5"</code>.
+</p>
+
+<p>
+Care must also be taken with unquoted wildcards, as they will auto-expanded by shell
+if they happen to match paths on disk.
+</p>
+
+
+<h2 id="inputs">Inputs</h2>
+
+<p>
+Input is either from one or more ROS bag files (default), or from live ROS topics.
+</p>
+
+<h3 id="inputs-bag">bag</h3>
+
+<p>
+Read messages from ROS bag files, by default all in current directory.
+</p>
+
+<p>
+Recurse into subdirectories when looking for bagfiles:
+</p>
+<pre>
+-r
+--recursive
+</pre>
+
+<p>
+Read specific filenames (supports <code>*</code> wildcards):
+</p>
+<pre>
+--n        /tmp/*.bag
+--filename my.bag 2021-11-*.bag
+</pre>
+
+<p>
+Scan specific paths instead of current directory (supports <code>*</code> wildcards):
+</p>
+<pre>
+-p     /home/bags/2021-11-*
+--path my/dir
+</pre>
+
+<p>
+Reindex unindexed ROS1 bags before processing
+<br />
+(note: creates backup copies of files, into same directory as file):
+</p>
+<pre>
+--reindex-if-unindexed
+--reindex-if-unindexed --progress
+</pre>
+
+<p>
+Decompress archived ROS bags before processing
+(<code>.zst .zstd</code> extensions, requires <code>zstandard</code> Python package)
+<br />
+(note: unpacks archived file to disk, into same directory as file):
+</p>
+<pre>
+--decompress
+--decompress --progress
+</pre>
+
+<p>
+Order bag messages first by topic or type, and only then by time:
+</p>
+<pre>
+--order-bag-by topic
+--order-bag-by type
+</pre>
+
+
+<h3 id="inputs-live">live</h3>
+
+<pre>
+--live
+</pre>
+
+<p>
+Read messages from live ROS topics instead of bagfiles.
+</p>
+<p>
+Requires <code>ROS_MASTER_URI</code> and <code>ROS_ROOT</code> to be set in environment if ROS1.
+</p>
+
+<p>
+Set custom queue size for subscribing (default 10):
+</p>
+<pre>
+--queue-size-in 100
+</pre>
+
+<p>
+Use ROS time instead of system time for incoming message timestamps:
+</p>
+<pre>
+--ros-time-in
+</pre>
+
+
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/suurjaak">suurjaak</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="js/scale.fix.js"></script>
+
+  </body>
+</html>
