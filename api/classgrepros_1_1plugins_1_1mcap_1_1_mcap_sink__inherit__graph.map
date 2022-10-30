@@ -1,0 +1,4 @@
+<map id="McapSink" name="McapSink">
+<area shape="rect" id="node1" title="Writes messages to MCAP files." alt="" coords="5,80,91,107"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1outputs_1_1_sink_base.html" title="Output base class." alt="" coords="7,5,89,32"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="SqlSink" name="SqlSink">
+<area shape="rect" id="node1" title="Writes SQL schema file for message type tables and topic views." alt="" coords="63,80,134,107"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1outputs_1_1_sink_base.html" title="Output base class." alt="" coords="5,5,88,32"/>
+<area shape="rect" id="node3" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title="Base class for producing SQL for topics and messages." alt="" coords="113,5,191,32"/>
+</map>

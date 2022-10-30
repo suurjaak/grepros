@@ -1,0 +1,5 @@
+<map id="ConsoleSink" name="ConsoleSink">
+<area shape="rect" id="node1" title="Prints messages to console." alt="" coords="57,80,159,107"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1outputs_1_1_sink_base.html" title="Output base class." alt="" coords="5,5,88,32"/>
+<area shape="rect" id="node3" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="113,5,226,32"/>
+</map>

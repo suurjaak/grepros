@@ -1,0 +1,5 @@
+<map id="SourceBase" name="SourceBase">
+<area shape="rect" id="node1" title="Message producer base class." alt="" coords="60,5,159,32"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1inputs_1_1_bag_source.html" title="Produces messages from ROS bagfiles." alt="" coords="5,80,96,107"/>
+<area shape="rect" id="node3" href="$classgrepros_1_1inputs_1_1_topic_source.html" title="Produces messages from live ROS topics." alt="" coords="120,80,219,107"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="BagSink" name="BagSink">
+<area shape="rect" id="node1" title="Writes messages to bagfile." alt="" coords="9,80,84,107"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1outputs_1_1_sink_base.html" title="Output base class." alt="" coords="5,5,88,32"/>
+</map>

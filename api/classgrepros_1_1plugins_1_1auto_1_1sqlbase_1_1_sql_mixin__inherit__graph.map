@@ -1,0 +1,7 @@
+<map id="SqlMixin" name="SqlMixin">
+<area shape="rect" id="node1" title="Base class for producing SQL for topics and messages." alt="" coords="137,5,215,32"/>
+<area shape="rect" id="node2" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_data_sink_base.html" title="Base class for writing messages to a database." alt="" coords="62,80,175,107"/>
+<area shape="rect" id="node5" href="$classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html" title="Writes SQL schema file for message type tables and topic views." alt="" coords="199,80,270,107"/>
+<area shape="rect" id="node3" href="$classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html" title="Writes messages to a Postgres database." alt="" coords="5,155,112,181"/>
+<area shape="rect" id="node4" href="$classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html" title="Writes messages to an SQLite database." alt="" coords="137,155,223,181"/>
+</map>
