@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    06.02.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -18,7 +18,7 @@ import os
 import sqlite3
 import sys
 
-from ... common import ConsolePrinter, format_bytes, makedirs
+from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs
 from ... import rosapi
 from . dbbase import DataSinkBase, quote
 
@@ -58,7 +58,7 @@ class SqliteSink(DataSinkBase):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
         @param   args.WRITE           name of SQLite file to write, will be appended to if exists
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
@@ -69,6 +69,7 @@ class SqliteSink(DataSinkBase):
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(SqliteSink, self).__init__(args)
 
         self._filename    = args.WRITE

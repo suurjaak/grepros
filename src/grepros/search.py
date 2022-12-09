@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    18.10.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -16,7 +16,7 @@ import copy
 import collections
 import re
 
-from . common import MatchMarkers, filter_fields, merge_spans, wildcard_to_regex
+from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
 from . import rosapi
 
 
@@ -29,7 +29,7 @@ class Searcher(object):
 
     def __init__(self, args):
         """
-        @param   args                     arguments object like argparse.Namespace
+        @param   args                     arguments as namespace or dictionary, case-insensitive
         @param   args.PATTERNS            pattern(s) to find in message field values
         @param   args.RAW                 PATTERNS are ordinary strings, not regular expressions
         @param   args.CASE                use case-sensitive matching in PATTERNS
@@ -42,6 +42,7 @@ class Searcher(object):
         @param   args.NTH_MATCH           emit every Nth match in topic
         @param   args.SELECT_FIELDS       message fields to use in matching if not all
         @param   args.NOSELECT_FIELDS     message fields to skip in matching
+        @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
@@ -59,7 +60,7 @@ class Searcher(object):
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
 
-        self.args = copy.deepcopy(args)
+        self.args = copy.deepcopy(ensure_namespace(args))
         self._parse_patterns()
 
 

@@ -9,10 +9,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.10.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
+import argparse
 import datetime
 import functools
 import glob
@@ -525,6 +526,25 @@ def ellipsize(text, limit, ellipsis=".."):
     if limit <= 0 or len(text) < limit:
         return text
     return text[:max(0, limit - len(ellipsis))] + ellipsis
+
+
+def ensure_namespace(val, **defaults):
+    """
+    Returns value as `argparse.Namespace` if value is dictionary else given value.
+
+    All keys are turned uppercase.
+
+    @param  defaults  additional keywords to set to namespace if missing
+    """
+    if isinstance(val, dict): val = argparse.Namespace(**val)
+    if isinstance(val, argparse.Namespace):
+        for k, v in vars(val).items():
+            if not k.isupper():
+                delattr(val, k)
+                setattr(val, k.upper(), v)
+        for k, v in ((k.upper(), v) for k, v in defaults.items()):
+            if not hasattr(val, k): setattr(val, k, v)
+    return val
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):

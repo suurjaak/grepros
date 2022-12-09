@@ -27,14 +27,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    04.02.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
 import glob
 import os
 
-from .. common import ConsolePrinter, import_item
+from .. common import ConsolePrinter, ensure_namespace, import_item
 from .. outputs import MultiSink
 from . import auto
 
@@ -50,10 +50,11 @@ def init(args=None):
     """
     Imports and initializes all plugins from auto and from given arguments.
 
-    @param   args           arguments object like argparse.Namespace
+    @param   args           arguments as namespace or dictionary, case-insensitive
     @param   args.PLUGINS   list of Python modules or classes to import,
                             as ["my.module", "other.module.SomeClass", ]
     """
+    args = ensure_namespace(args)
     for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*"))):
         if not f.lower().endswith((".py", ".pyc")): continue  # for f
         name = os.path.splitext(os.path.split(f)[-1])[0]
@@ -75,10 +76,11 @@ def configure(args):
     """
     Imports plugin Python packages, invokes init(args) if any, raises on error.
 
-    @param   args           arguments object like argparse.Namespace
+    @param   args           arguments as namespace or dictionary, case-insensitive
     @param   args.PLUGINS   list of Python modules or classes to import,
                             as ["my.module", "other.module.SomeClass", ]
     """
+    args = ensure_namespace(args)
     for name in (n for n in args.PLUGINS if n not in PLUGINS):
         try:
             plugin = import_item(name)
@@ -96,11 +98,12 @@ def load(category, args, collect=False):
     Returns a plugin category instance loaded from any configured plugin, or None.
 
     @param   category  item category like "source", "sink", or "search"
-    @param   args      arguments object like argparse.Namespace
+    @param   args      arguments as namespace or dictionary, case-insensitive
     @param   collect   if true, returns a list of instances,
                        using all plugins that return something
     """
     result = []
+    args = ensure_namespace(args)
     for name, plugin in PLUGINS.items():
         if callable(getattr(plugin, "load", None)):
             try:

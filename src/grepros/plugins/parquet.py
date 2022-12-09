@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    06.02.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -23,7 +23,7 @@ except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
 
-from .. common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import SinkBase
 from .. import rosapi
 
@@ -79,7 +79,7 @@ class ParquetSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of Parquet files to write
         @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter,
@@ -87,6 +87,7 @@ class ParquetSink(SinkBase):
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    20.10.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -28,7 +28,7 @@ elif "2" == os.getenv("ROS_VERSION"):
 else: mcap_ros = None
 import yaml
 
-from .. common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import SinkBase
 from .. import rosapi
 ros2 = None
@@ -313,13 +313,14 @@ class McapSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of MCAP files to write
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(McapSink, self).__init__(args)
 
         self._filename      = None  # Output filename

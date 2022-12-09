@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    07.01.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -16,7 +16,7 @@ import atexit
 import collections
 
 from ... import rosapi
-from ... common import ConsolePrinter, plural
+from ... common import ConsolePrinter, ensure_namespace, plural
 from ... outputs import SinkBase
 from . sqlbase import SqlMixin, quote
 
@@ -63,7 +63,7 @@ class DataSinkBase(SinkBase, SqlMixin):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE           database connection string
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
@@ -71,6 +71,7 @@ class DataSinkBase(SinkBase, SqlMixin):
         @param   args.META            whether to print metainfo
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(DataSinkBase, self).__init__(args)
         SqlMixin.__init__(self, args)
 

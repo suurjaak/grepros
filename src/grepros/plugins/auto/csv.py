@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    16.03.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -20,7 +20,7 @@ import itertools
 import os
 import sys
 
-from ... common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import SinkBase
 
@@ -33,7 +33,7 @@ class CsvSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE           base name of CSV file to write,
                                       will add topic name like "name.__my__topic.csv" for "/my/topic",
                                       will add counter like "name.__my__topic.2.csv" if exists
@@ -41,6 +41,7 @@ class CsvSink(SinkBase):
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}

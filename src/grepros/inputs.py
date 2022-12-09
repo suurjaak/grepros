@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    16.10.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -25,9 +25,9 @@ import re
 import threading
 import time
 
-from . common import ConsolePrinter, Decompressor, ProgressBar, drop_zeros, filter_dict, \
-                     find_files, format_bytes, format_stamp, format_timedelta, plural, \
-                     wildcard_to_regex
+from . common import ConsolePrinter, Decompressor, ProgressBar, ensure_namespace, drop_zeros, \
+                     filter_dict, find_files, format_bytes, format_stamp, format_timedelta, \
+                     plural, wildcard_to_regex
 from . import rosapi
 
 
@@ -39,7 +39,7 @@ class SourceBase(object):
 
     def __init__(self, args):
         """
-        @param   args                    arguments object like argparse.Namespace
+        @param   args                    arguments as namespace or dictionary, case-insensitive
         @param   args.START_TIME         earliest timestamp of messages to scan
         @param   args.END_TIME           latest timestamp of messages to scan
         @param   args.UNIQUE             emit messages that are unique in topic
@@ -57,7 +57,7 @@ class SourceBase(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
-        self.args = copy.deepcopy(args)
+        self.args = copy.deepcopy(ensure_namespace(args))
         ## outputs.SinkBase instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
@@ -237,7 +237,7 @@ class ConditionMixin(object):
 
     def __init__(self, args):
         """
-        @param   args              arguments object like argparse.Namespace
+        @param   args              arguments as namespace or dictionary, case-insensitive
         @param   args.CONDITIONS   Python expressions that must evaluate as true
                                    for message to be processable
         """
@@ -253,7 +253,7 @@ class ConditionMixin(object):
 
         ## {condition with <topic x> as get_topic("x"): compiled code object}
         self._conditions = collections.OrderedDict()
-        self._configure_conditions(args)
+        self._configure_conditions(ensure_namespace(args))
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether current state passes conditions, if any."""
@@ -373,7 +373,7 @@ class BagSource(SourceBase, ConditionMixin):
 
     def __init__(self, args):
         """
-        @param   args               arguments object like argparse.Namespace
+        @param   args               arguments as namespace or dictionary, case-insensitive
         @param   args.FILES         names of ROS bagfiles to scan if not all in directory
         @param   args.PATHS         paths to scan if not current directory
         @param   args.RECURSE       recurse into subdirectories when looking for bagfiles
@@ -394,6 +394,7 @@ class BagSource(SourceBase, ConditionMixin):
         @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
         """
+        args = ensure_namespace(args)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -658,7 +659,7 @@ class TopicSource(SourceBase, ConditionMixin):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.TOPICS          ROS topics to scan if not all
         @param   args.TYPES           ROS message types to scan if not all
         @param   args.SKIP_TOPICS     ROS topics to skip

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    16.10.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -22,7 +22,7 @@ import sys
 
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, TextWrapper, filter_fields, \
+from . common import ConsolePrinter, MatchMarkers, TextWrapper, ensure_namespace, filter_fields, \
                      format_bytes, makedirs, merge_spans, plural, wildcard_to_regex
 from . import rosapi
 
@@ -33,15 +33,15 @@ class SinkBase(object):
     ## Auto-detection file extensions for subclasses, as (".ext", )
     FILE_EXTENSIONS = ()
 
-    def __init__(self, args):
+    def __init__(self, args=None):
         """
-        @param   args        arguments object like argparse.Namespace
+        @param   args        arguments as namespace or dictionary, case-insensitive
         @param   args.META   whether to print metainfo
         """
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {(topic, typename, typehash): count}
 
-        self.args = copy.deepcopy(args)
+        self.args = copy.deepcopy(ensure_namespace(args))
         ## inputs.SourceBase instance bound to this sink
         self.source = None
 
@@ -104,7 +104,7 @@ class TextSinkMixin(object):
 
     def __init__(self, args):
         """
-        @param   args                       arguments object like argparse.Namespace
+        @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.COLOR                 "never" for not using colors in replacements
         @param   args.PRINT_FIELDS          message fields to use in output if not all
         @param   args.NOPRINT_FIELDS        message fields to skip in output
@@ -125,7 +125,7 @@ class TextSinkMixin(object):
         self._format_repls = {}    # {text to replace if highlight: replacement text}
         self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
-        self._configure(args)
+        self._configure(ensure_namespace(args))
 
 
     def format_message(self, msg, highlight=False):
@@ -297,7 +297,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                       arguments object like argparse.Namespace
+        @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.META                  whether to print metainfo
         @param   args.PRINT_FIELDS          message fields to print in output if not all
         @param   args.NOPRINT_FIELDS        message fields to skip in output
@@ -310,6 +310,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
         """
+        args = ensure_namespace(args)
         if args.WRAP_WIDTH is None:
             args = copy.deepcopy(args)
             args.WRAP_WIDTH = ConsolePrinter.WIDTH
@@ -360,13 +361,14 @@ class BagSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
         @param   args.WRITE           name of ROS bagfile to create or append to
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
                                                      (default false)}
         @param   args.VERBOSE         whether to print debug information
         """
+        args = ensure_namespace(args)
         super(BagSink, self).__init__(args)
         self._bag = None
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
@@ -426,7 +428,7 @@ class TopicSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args                   arguments object like argparse.Namespace
+        @param   args                   arguments as namespace or dictionary, case-insensitive
         @param   args.LIVE              whether reading messages from live ROS topics
         @param   args.META              whether to print metainfo
         @param   args.QUEUE_SIZE_OUT    publisher queue size
@@ -436,6 +438,7 @@ class TopicSink(SinkBase):
                                         overrides prefix and suffix if given
         @param   args.VERBOSE           whether to print debug information
         """
+        args = ensure_namespace(args)
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
@@ -502,11 +505,12 @@ class MultiSink(SinkBase):
 
     def __init__(self, args):
         """
-        @param   args           arguments object like argparse.Namespace
+        @param   args           arguments as namespace or dictionary, case-insensitive
         @param   args.CONSOLE   print matches to console
         @param   args.WRITE     [[target, format=FORMAT, key=value, ], ]
         @param   args.PUBLISH   publish matches to live topics
         """
+        args = ensure_namespace(args)
         super(MultiSink, self).__init__(args)
         self._valid = True
 

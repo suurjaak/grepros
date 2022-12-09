@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    15.03.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -21,7 +21,8 @@ import re
 import sys
 import threading
 
-from ... common import ConsolePrinter, MatchMarkers, format_bytes, makedirs, plural, unique_path
+from ... common import ConsolePrinter, MatchMarkers, \
+                       ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import SinkBase, TextSinkMixin
 from ... vendor import step
@@ -41,7 +42,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
 
     def __init__(self, args):
         """
-        @param   args                  arguments object like argparse.Namespace
+        @param   args                  arguments as namespace or dictionary, case-insensitive
         @param   args.META             whether to print metainfo
         @param   args.WRITE            name of HTML file to write,
                                        will add counter like .2 to filename if exists
@@ -54,7 +55,7 @@ class HtmlSink(SinkBase, TextSinkMixin):
                                        or no wrapping if zero values
         @param   args.ORDERBY          "topic" or "type" if any to group results by
         """
-        args = copy.deepcopy(args)
+        args = copy.deepcopy(ensure_namespace(args))
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = "always"
 

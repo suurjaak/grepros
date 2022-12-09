@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    04.02.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -19,7 +19,7 @@ import os
 import sys
 
 from .. import rosapi
-from .. common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
+from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import SinkBase
 from . auto.sqlbase import SqlMixin
 
@@ -50,12 +50,13 @@ class SqlSink(SinkBase, SqlMixin):
 
     def __init__(self, args):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
         """
+        args = ensure_namespace(args)
         super(SqlSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 
