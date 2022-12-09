@@ -26,15 +26,16 @@ Supports loading custom plugins, mainly for additional output formats.
 | grepros.search                | Search core 
 
 
-### Command-line Scripts
+#### Command-line Scripts
 
 |                              ||
 | ----------------------------- | ----------------------------------------------------------
 | generate_msgs                 | Test script, generating and publishing random ROS messages
+| grepros                       | Main command-line tool
 
-### Plugins Interface
+#### Plugins Interface
 
-#### Auto-loaded plugins
+##### Auto-loaded plugins
 
 |                              ||
 | ----------------------------- | ----------------------------------------------------------
@@ -45,7 +46,7 @@ Supports loading custom plugins, mainly for additional output formats.
 | grepros.plugins.auto.sqlbase  | Base class for producing SQL for topics and messages
 | grepros.plugins.auto.sqlite   | SQLite output for search results
 
-#### Explicitly loaded plugins
+##### Explicitly loaded plugins
 
 |                              ||
 | ----------------------------- | ----------------------------------------------------------
