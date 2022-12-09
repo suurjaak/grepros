@@ -26,8 +26,13 @@ class Searcher(object):
     ## Match patterns for global any-match
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(PATTERNS=(), CASE=False, RAW=False, INVERT=False, NTH_MATCH=1,
+                        BEFORE=0, AFTER=0, MAX_MATCHES=0, MAX_TOPIC_MATCHES=0, MAX_TOPICS=0,
+                        SELECT_FIELDS=(), NOSELECT_FIELDS=())
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                     arguments as namespace or dictionary, case-insensitive
         @param   args.PATTERNS            pattern(s) to find in message field values
@@ -60,7 +65,7 @@ class Searcher(object):
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
 
-        self.args = copy.deepcopy(ensure_namespace(args))
+        self.args = copy.deepcopy(ensure_namespace(args, self.DEFAULT_ARGS, **kwargs))
         self._parse_patterns()
 
 

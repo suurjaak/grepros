@@ -528,22 +528,22 @@ def ellipsize(text, limit, ellipsis=".."):
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
 
-def ensure_namespace(val, **defaults):
+def ensure_namespace(val, defaults=None, **kwargs):
     """
-    Returns value as `argparse.Namespace` if value is dictionary else given value.
+    Returns value as `argparse.Namespace`, with all keys uppercase.
 
-    All keys are turned uppercase.
-
-    @param  defaults  additional keywords to set to namespace if missing
+    @param  value     `argparse.Namespace` or dictionary or `None`
+    @param  defaults  additional arguments to set to namespace if missing
+    @param  kwargs    any and all argument overrides as keyword overrides
     """
-    if isinstance(val, dict): val = argparse.Namespace(**val)
-    if isinstance(val, argparse.Namespace):
-        for k, v in vars(val).items():
-            if not k.isupper():
-                delattr(val, k)
-                setattr(val, k.upper(), v)
-        for k, v in ((k.upper(), v) for k, v in defaults.items()):
-            if not hasattr(val, k): setattr(val, k, v)
+    if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
+    for k, v in vars(val).items():
+        if not k.isupper():
+            delattr(val, k)
+            setattr(val, k.upper(), v)
+    for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
+        if not hasattr(val, k): setattr(val, k, v)
+    for k, v in ((k.upper(), v) for k, v in kwargs.items()): setattr(val, k, v)
     return val
 
 
