@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    04.02.2022
+@modified    09.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -80,7 +80,7 @@ class PostgresSink(DataSinkBase):
     def __init__(self, args):
         """
         @param   args                 arguments object like argparse.Namespace
-        @param   args.WRITE           Postgres connection string postgresql://user@host/db
+        @param   args.WRITE           Postgres connection string like "postgresql://user@host/db"
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
@@ -191,14 +191,14 @@ class PostgresSink(DataSinkBase):
     def _make_db_label(self):
         """Returns formatted label for database."""
         target = self.args.WRITE
-        if not target.startswith("postgresql://"): target = repr(target)
+        if not target.startswith(("postgres://", "postgresql://")): target = repr(target)
         return target
 
 
     @classmethod
     def autodetect(cls, target):
         """Returns true if target is recognizable as a Postgres connection string."""
-        return (target or "").startswith("postgresql://")
+        return (target or "").startswith(("postgres://", "postgresql://"))
 
 
 
