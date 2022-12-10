@@ -28,17 +28,17 @@ class Searcher(object):
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(PATTERNS=(), CASE=False, RAW=False, INVERT=False, NTH_MATCH=1,
+    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, NTH_MATCH=1,
                         BEFORE=0, AFTER=0, MAX_MATCHES=0, MAX_TOPIC_MATCHES=0, MAX_TOPICS=0,
-                        SELECT_FIELDS=(), NOSELECT_FIELDS=())
+                        SELECT_FIELD=(), NOSELECT_FIELD=())
 
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                     arguments as namespace or dictionary, case-insensitive
-        @param   args.PATTERNS            pattern(s) to find in message field values
-        @param   args.RAW                 PATTERNS are ordinary strings, not regular expressions
-        @param   args.CASE                use case-sensitive matching in PATTERNS
+        @param   args.PATTERN             pattern(s) to find in message field values
+        @param   args.RAW                 PATTERN contains ordinary strings, not regular expressions
+        @param   args.CASE                use case-sensitive matching in PATTERN
         @param   args.INVERT              select non-matching messages
         @param   args.BEFORE              number of messages of leading context to emit before match
         @param   args.AFTER               number of messages of trailing context to emit after match
@@ -46,8 +46,8 @@ class Searcher(object):
         @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
         @param   args.MAX_TOPICS          number of topics to print matches from
         @param   args.NTH_MATCH           emit every Nth match in topic
-        @param   args.SELECT_FIELDS       message fields to use in matching if not all
-        @param   args.NOSELECT_FIELDS     message fields to skip in matching
+        @param   args.SELECT_FIELD        message fields to use in matching if not all
+        @param   args.NOSELECT_FIELD      message fields to skip in matching
         @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
@@ -249,7 +249,7 @@ class Searcher(object):
         self._patterns.clear()
         del self._brute_prechecks[:]
         contents = []
-        for v in self.args.PATTERNS:
+        for v in self.args.PATTERN:
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
@@ -259,11 +259,11 @@ class Searcher(object):
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
             if BRUTE and (self.args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
-        if not self.args.PATTERNS:  # Add match-all pattern
+        if not self.args.PATTERN:  # Add match-all pattern
             contents.append(self.ANY_MATCHES[0])
         self._patterns["content"] = contents
 
-        selects, noselects = self.args.SELECT_FIELDS, self.args.NOSELECT_FIELDS
+        selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 

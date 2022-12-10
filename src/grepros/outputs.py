@@ -106,7 +106,7 @@ class TextSinkMixin(object):
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR="always", PRINT_FIELDS=(), NOPRINT_FIELDS=(), MAX_FIELD_LINES=None,
+    DEFAULT_ARGS = dict(COLOR="always", PRINT_FIELD=(), NOPRINT_FIELD=(), MAX_FIELD_LINES=None,
                         START_LINE=None, END_LINE=None, MAX_MESSAGE_LINES=None,
                         LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None,
                         MATCH_WRAPPER=None)
@@ -115,8 +115,8 @@ class TextSinkMixin(object):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.COLOR                 "never" for not using colors in replacements
-        @param   args.PRINT_FIELDS          message fields to use in output if not all
-        @param   args.NOPRINT_FIELDS        message fields to skip in output
+        @param   args.PRINT_FIELD           message fields to use in output if not all
+        @param   args.NOPRINT_FIELD         message fields to skip in output
         @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
         @param   args.START_LINE            message line number to start output from
         @param   args.END_LINE              message line number to stop output at
@@ -264,7 +264,7 @@ class TextSinkMixin(object):
 
     def _configure(self, args):
         """Initializes output settings."""
-        prints, noprints = args.PRINT_FIELDS, args.NOPRINT_FIELDS
+        prints, noprints = args.PRINT_FIELD, args.NOPRINT_FIELD
         for key, vals in [("print", prints), ("noprint", noprints)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
@@ -305,7 +305,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, PRINT_FIELDS=(), NOPRINT_FIELDS=(), LINE_PREFIX=True,
+    DEFAULT_ARGS = dict(META=False, PRINT_FIELD=(), NOPRINT_FIELD=(), LINE_PREFIX=True,
                         MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
                         MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
                         WRAP_WIDTH=None)
@@ -314,8 +314,8 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.META                  whether to print metainfo
-        @param   args.PRINT_FIELDS          message fields to print in output if not all
-        @param   args.NOPRINT_FIELDS        message fields to skip in output
+        @param   args.PRINT_FIELD           message fields to print in output if not all
+        @param   args.NOPRINT_FIELD         message fields to skip in output
         @param   args.LINE_PREFIX           print source prefix like bag filename on each message line
         @param   args.MAX_FIELD_LINES       maximum number of lines to print per field
         @param   args.START_LINE            message line number to start output from

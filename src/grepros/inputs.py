@@ -38,20 +38,20 @@ class SourceBase(object):
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, UNIQUE=False, SELECT_FIELDS=(),
-                        NOSELECT_FIELDS=(), NTH_MESSAGE=1, NTH_INTERVAL=0)
+    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, UNIQUE=False, SELECT_FIELD=(),
+                        NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0)
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                    arguments as namespace or dictionary, case-insensitive
-        @param   args.START_TIME         earliest timestamp of messages to scan
-        @param   args.END_TIME           latest timestamp of messages to scan
-        @param   args.UNIQUE             emit messages that are unique in topic
-        @param   args.SELECT_FIELDS      message fields to use for uniqueness if not all
-        @param   args.NOSELECT_FIELDS    message fields to skip for uniqueness
-        @param   args.NTH_MESSAGE        scan every Nth message in topic
-        @param   args.NTH_INTERVAL       minimum time interval between messages in topic
-        @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
+        @param   args                   arguments as namespace or dictionary, case-insensitive
+        @param   args.START_TIME        earliest timestamp of messages to scan
+        @param   args.END_TIME          latest timestamp of messages to scan
+        @param   args.UNIQUE            emit messages that are unique in topic
+        @param   args.SELECT_FIELD      message fields to use for uniqueness if not all
+        @param   args.NOSELECT_FIELD    message fields to skip for uniqueness
+        @param   args.NTH_MESSAGE       scan every Nth message in topic
+        @param   args.NTH_INTERVAL      minimum time interval between messages in topic
+        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
@@ -166,7 +166,7 @@ class SourceBase(object):
 
     def _parse_patterns(self):
         """Parses pattern arguments into re.Patterns."""
-        selects, noselects = self.args.SELECT_FIELDS, self.args.NOSELECT_FIELDS
+        selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
@@ -201,7 +201,7 @@ class ConditionMixin(object):
     TOPIC_RGX = re.compile(r"<topic\s+([^\s><]+)\s*>")  # "<topic /some/thing>"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(CONDITIONS=())
+    DEFAULT_ARGS = dict(CONDITION=())
 
     class NoMessageException(Exception): pass
 
@@ -245,10 +245,10 @@ class ConditionMixin(object):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args              arguments as namespace or dictionary, case-insensitive
-        @param   args.CONDITIONS   Python expressions that must evaluate as true
-                                   for message to be processable
-        @param   kwargs            any and all arguments as keyword overrides, case-insensitive
+        @param   args             arguments as namespace or dictionary, case-insensitive
+        @param   args.CONDITION   Python expressions that must evaluate as true
+                                  for message to be processable
+        @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
         self._topic_states         = {}  # {topic: whether only used for condition, not matching}
         self._topics_per_condition = []  # [[topics in 1st condition], ]
@@ -350,7 +350,7 @@ class ConditionMixin(object):
 
     def _configure_conditions(self, args):
         """Parses condition expressions and populates local structures."""
-        for v in args.CONDITIONS:
+        for v in args.CONDITION:
             topics = list(set(self.TOPIC_RGX.findall(v)))
             self._topic_states.update({t: True for t in topics})
             self._topics_per_condition.append(topics)
@@ -359,7 +359,7 @@ class ConditionMixin(object):
             expr = self.TOPIC_RGX.sub(r'get_topic("\1")', v)
             self._conditions[expr] = compile(expr, "", "eval")
 
-        for v in args.CONDITIONS:  # Set history length from <topic x>[index]
+        for v in args.CONDITION:  # Set history length from <topic x>[index]
             indexexprs = re.findall(self.TOPIC_RGX.pattern + r"\s*\[([^\]]+)\]", v)
             for topic, indexexpr in indexexprs:
                 limits = self._topic_limits[topic]
@@ -382,26 +382,26 @@ class BagSource(SourceBase, ConditionMixin):
                             "File span {delta} ({start} - {end})"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(FILES=(), PATHS=(), RECURSE=False, TOPICS=(), TYPES=(),
-                        SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None, END_TIME=None,
-                        START_INDEX=None, END_INDEX=None, CONDITIONS=(), AFTER=0, ORDERBY=None,
+    DEFAULT_ARGS = dict(FILE=(), PATH=(), RECURSE=False, TOPIC=(), TYPE=(),
+                        SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
+                        START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False)
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args               arguments as namespace or dictionary, case-insensitive
-        @param   args.FILES         names of ROS bagfiles to scan if not all in directory
-        @param   args.PATHS         paths to scan if not current directory
+        @param   args.FILE          names of ROS bagfiles to scan if not all in directory
+        @param   args.PATH          paths to scan if not current directory
         @param   args.RECURSE       recurse into subdirectories when looking for bagfiles
-        @param   args.TOPICS        ROS topics to scan if not all
-        @param   args.TYPES         ROS message types to scan if not all
-        @param   args.SKIP_TOPICS   ROS topics to skip
-        @param   args.SKIP_TYPES    ROS message types to skip
+        @param   args.TOPIC         ROS topics to scan if not all
+        @param   args.TYPE          ROS message types to scan if not all
+        @param   args.SKIP_TOPIC    ROS topics to skip
+        @param   args.SKIP_TYPE     ROS message types to skip
         @param   args.START_TIME    earliest timestamp of messages to scan
         @param   args.END_TIME      latest timestamp of messages to scan
         @param   args.START_INDEX   message index within topic to start from
         @param   args.END_INDEX     message index within topic to stop at
-        @param   args.CONDITIONS    Python expressions that must evaluate as true
+        @param   args.CONDITION     Python expressions that must evaluate as true
                                     for message to be processable
         @param   args.AFTER         emit NUM messages of trailing context after match
         @param   args.ORDERBY       "topic" or "type" if any to group results by
@@ -426,7 +426,7 @@ class BagSource(SourceBase, ConditionMixin):
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
         self._running = True
-        names, paths = self.args.FILES, self.args.PATHS
+        names, paths = self.args.FILE, self.args.PATH
         exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
         exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
 
@@ -649,8 +649,8 @@ class BagSource(SourceBase, ConditionMixin):
         for topic in self.conditions_get_topics():
             self.conditions_set_topic_state(topic, True)
 
-        dct = filter_dict(dct, self.args.TOPICS, self.args.TYPES)
-        dct = filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True)
+        dct = filter_dict(dct, self.args.TOPIC, self.args.TYPE)
+        dct = filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True)
         for topic in self.conditions_get_topics():  # Add topics used in conditions
             matches = [t for p in [wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
@@ -675,27 +675,27 @@ class TopicSource(SourceBase, ConditionMixin):
     MASTER_INTERVAL = 2
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(TOPICS=(), TYPES=(), SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None,
-                        END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITIONS=(),
+    DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
+                        END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITION=(),
                         QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False)
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.TOPICS          ROS topics to scan if not all
-        @param   args.TYPES           ROS message types to scan if not all
-        @param   args.SKIP_TOPICS     ROS topics to skip
-        @param   args.SKIP_TYPES      ROS message types to skip
+        @param   args.TOPIC           ROS topics to scan if not all
+        @param   args.TYPE            ROS message types to scan if not all
+        @param   args.SKIP_TOPIC      ROS topics to skip
+        @param   args.SKIP_TYPE       ROS message types to skip
         @param   args.START_TIME      earliest timestamp of messages to scan
         @param   args.END_TIME        latest timestamp of messages to scan
         @param   args.START_INDEX     message index within topic to start from
         @param   args.END_INDEX       message index within topic to stop at
-        @param   args.CONDITIONS      Python expressions that must evaluate as true
+        @param   args.CONDITION       Python expressions that must evaluate as true
                                       for message to be processable
         @param   args.QUEUE_SIZE_IN   subscriber queue size
         @param   args.ROS_TIME_IN     stamp messages with ROS time instead of wall time
         @param   args.PROGRESS        whether to print progress bar
-        @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
         super(TopicSource, self).__init__(args)
@@ -813,8 +813,8 @@ class TopicSource(SourceBase, ConditionMixin):
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in rosapi.get_topic_types():
-            dct = filter_dict({topic: [typename]}, self.args.TOPICS, self.args.TYPES)
-            if not filter_dict(dct, self.args.SKIP_TOPICS, self.args.SKIP_TYPES, reverse=True):
+            dct = filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
+            if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
             try: rosapi.get_message_class(typename)  # Raises error in ROS2
             except Exception as e:
@@ -880,31 +880,31 @@ class AppSource(SourceBase, ConditionMixin):
     """Produces messages from iterable or pushed data."""
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(TOPICS=(), TYPES=(), SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None,
+    DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
                         END_TIME=None, START_INDEX=None, END_INDEX=None, UNIQUE=False,
-                        SELECT_FIELDS=(), NOSELECT_FIELDS=(), NTH_MESSAGE=1, NTH_INTERVAL=0,
-                        CONDITIONS=())
+                        SELECT_FIELD=(), NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0,
+                        CONDITION=())
 
     def __init__(self, args=None, iterable=None, **kwargs):
         """
-        @param   args                   arguments as namespace or dictionary, case-insensitive
-        @param   args.TOPICS            ROS topics to scan if not all
-        @param   args.TYPES             ROS message types to scan if not all
-        @param   args.SKIP_TOPICS       ROS topics to skip
-        @param   args.SKIP_TYPES        ROS message types to skip
-        @param   args.START_TIME        earliest timestamp of messages to scan
-        @param   args.END_TIME          latest timestamp of messages to scan
-        @param   args.START_INDEX       message index within topic to start from
-        @param   args.END_INDEX         message index within topic to stop at
-        @param   args.UNIQUE            emit messages that are unique in topic
-        @param   args.SELECT_FIELDS     message fields to use for uniqueness if not all
-        @param   args.NOSELECT_FIELDS   message fields to skip for uniqueness
-        @param   args.NTH_MESSAGE       scan every Nth message in topic
-        @param   args.NTH_INTERVAL      minimum time interval between messages in topic
-        @param   args.CONDITIONS        Python expressions that must evaluate as true
-                                        for message to be processable
-        @param   iterable               iterable yielding (topic, msg, stamp), if any
-        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
+        @param   args                  arguments as namespace or dictionary, case-insensitive
+        @param   args.TOPIC            ROS topics to scan if not all
+        @param   args.TYPE             ROS message types to scan if not all
+        @param   args.SKIP_TOPIC       ROS topics to skip
+        @param   args.SKIP_TYPE        ROS message types to skip
+        @param   args.START_TIME       earliest timestamp of messages to scan
+        @param   args.END_TIME         latest timestamp of messages to scan
+        @param   args.START_INDEX      message index within topic to start from
+        @param   args.END_INDEX        message index within topic to stop at
+        @param   args.UNIQUE           emit messages that are unique in topic
+        @param   args.SELECT_FIELD     message fields to use for uniqueness if not all
+        @param   args.NOSELECT_FIELD   message fields to skip for uniqueness
+        @param   args.NTH_MESSAGE      scan every Nth message in topic
+        @param   args.NTH_INTERVAL     minimum time interval between messages in topic
+        @param   args.CONDITION        Python expressions that must evaluate as true
+                                       for message to be processable
+        @param   iterable              iterable yielding (topic, msg, stamp), if any
+        @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)

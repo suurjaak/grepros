@@ -27,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -46,17 +46,17 @@ PLUGINS = {}
 WRITE_OPTIONS = {}
 
 ## Function argument defaults
-DEFAULT_ARGS = dict(PLUGINS=[])
+DEFAULT_ARGS = dict(PLUGIN=[])
 
 
 def init(args=None, **kwargs):
     """
     Imports and initializes all plugins from auto and from given arguments.
 
-    @param   args           arguments as namespace or dictionary, case-insensitive
-    @param   args.PLUGINS   list of Python modules or classes to import,
-                            as ["my.module", "other.module.SomeClass", ]
-    @param   kwargs         any and all arguments as keyword overrides, case-insensitive
+    @param   args          arguments as namespace or dictionary, case-insensitive
+    @param   args.PLUGIN   list of Python modules or classes to import,
+                           as ["my.module", "other.module.SomeClass", ]
+    @param   kwargs        any and all arguments as keyword overrides, case-insensitive
     """
     args = ensure_namespace(args, DEFAULT_ARGS, **kwargs)
     for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*"))):
@@ -80,13 +80,13 @@ def configure(args=None, **kwargs):
     """
     Imports plugin Python packages, invokes init(args) if any, raises on error.
 
-    @param   args           arguments as namespace or dictionary, case-insensitive
-    @param   args.PLUGINS   list of Python modules or classes to import,
-                            as ["my.module", "other.module.SomeClass", ]
-    @param   kwargs         any and all arguments as keyword overrides, case-insensitive
+    @param   args          arguments as namespace or dictionary, case-insensitive
+    @param   args.PLUGIN   list of Python modules or classes to import,
+                           as ["my.module", "other.module.SomeClass", ]
+    @param   kwargs        any and all arguments as keyword overrides, case-insensitive
     """
     args = ensure_namespace(args, DEFAULT_ARGS, **kwargs)
-    for name in (n for n in args.PLUGINS if n not in PLUGINS):
+    for name in (n for n in args.PLUGIN if n not in PLUGINS):
         try:
             plugin = import_item(name)
             if callable(getattr(plugin, "init", None)): plugin.init(args)

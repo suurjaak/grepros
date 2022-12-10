@@ -74,7 +74,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     """,
 
     "arguments": [
-        dict(args=["PATTERNS"], nargs="*", metavar="PATTERN",
+        dict(args=["PATTERN"], nargs="*",
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
@@ -121,30 +121,30 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="WRITE_OPTIONS", default=argparse.SUPPRESS, help=argparse.SUPPRESS),
 
         dict(args=["--plugin"],
-             dest="PLUGINS", metavar="PLUGIN", nargs="+", default=[], action="append",
+             dest="PLUGIN", nargs="+", default=[], action="append",
              help="load a Python module or class as plugin"),
     ],
 
     "groups": {"Filtering": [
 
         dict(args=["-t", "--topic"],
-             dest="TOPICS", metavar="TOPIC", nargs="+", default=[], action="append",
+             dest="TOPIC", nargs="+", default=[], action="append",
              help="ROS topics to scan if not all (supports * wildcards)"),
 
         dict(args=["-nt", "--no-topic"],
-             dest="SKIP_TOPICS", metavar="TOPIC", nargs="+", default=[], action="append",
+             dest="SKIP_TOPIC", metavar="TOPIC", nargs="+", default=[], action="append",
              help="ROS topics to skip (supports * wildcards)"),
 
         dict(args=["-d", "--type"],
-             dest="TYPES", metavar="TYPE", nargs="+", default=[], action="append",
+             dest="TYPE", nargs="+", default=[], action="append",
              help="ROS message types to scan if not all (supports * wildcards)"),
 
         dict(args=["-nd", "--no-type"],
-             dest="SKIP_TYPES", metavar="TYPE", nargs="+", default=[], action="append",
+             dest="SKIP_TYPE", metavar="TYPE", nargs="+", default=[], action="append",
              help="ROS message types to skip (supports * wildcards)"),
 
         dict(args=["--condition"],
-             dest="CONDITIONS", metavar="CONDITION", nargs="+", default=[], action="append",
+             dest="CONDITION", nargs="+", default=[], action="append",
              help="extra conditions to require for matching messages,\n"
                   "as ordinary Python expressions, can refer to last messages\n"
                   "in topics as {topic /my/topic}; topic name can contain wildcards.\n"
@@ -194,12 +194,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="emit every Nth match in topic"),
 
         dict(args=["-sf", "--select-field"],
-             dest="SELECT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
+             dest="SELECT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to use in matching if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-ns", "--no-select-field"],
-             dest="NOSELECT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
+             dest="NOSELECT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to skip in matching\n"
                   "(supports nested.paths and * wildcards)"),
 
@@ -238,12 +238,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "around match"),
 
         dict(args=["-pf", "--print-field"],
-             dest="PRINT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
+             dest="PRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to print in console output if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-np", "--no-print-field"],
-             dest="NOPRINT_FIELDS", metavar="FIELD", nargs="+", default=[], action="append",
+             dest="NOPRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to skip in console output\n"
                   "(supports nested.paths and * wildcards)"),
 
@@ -313,12 +313,12 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     ], "Bag input control": [
 
         dict(args=["-n", "--filename"],
-             dest="FILES", metavar="FILE", nargs="+", default=[], action="append",
+             dest="FILE", nargs="+", default=[], action="append",
              help="names of ROS bagfiles to scan if not all in directory\n"
                   "(supports * wildcards)"),
 
         dict(args=["-p", "--path"],
-             dest="PATHS", metavar="PATH", nargs="+", default=[], action="append",
+             dest="PATH", nargs="+", default=[], action="append",
              help="paths to scan if not current directory\n"
                   "(supports * wildcards)"),
 
@@ -410,8 +410,8 @@ def process_args(args):
     args.PROGRESS = args.PROGRESS and not args.CONSOLE
 
     # Print filename prefix on each console message line if not single specific file
-    args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILES) != 1
-                                             or args.PATHS or any("*" in x for x in args.FILES))
+    args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
+                                             or args.PATH or any("*" in x for x in args.FILE))
 
     for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
         if k != "WRITE" and isinstance(v, list):
@@ -455,14 +455,14 @@ def validate_args(args):
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
-    for v in args.PATTERNS if not args.RAW else ():
+    for v in args.PATTERN if not args.RAW else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.RAW else v)
         except Exception as e:
             errors["Invalid regular expression"].append("'%s': %s" % (v, e))
 
-    for v in args.CONDITIONS:
+    for v in args.CONDITION:
         v = inputs.ConditionMixin.TOPIC_RGX.sub("dummy", v)
         try: compile(v, "", "eval")
         except SyntaxError as e:
