@@ -519,6 +519,37 @@ class TopicSink(SinkBase):
         rosapi.shutdown_node()
 
 
+class AppSink(SinkBase):
+    """Provides messages to callback function."""
+
+    def __init__(self, emit=None, metaemit=None, highlight=False, **__):
+        """
+        @param   emit        callback(topic, msg, stamp, highlighted msg, index in topic)
+        @param   metaemit    callback(metadata dict) invoked before first emit from source batch
+        @param   highlight   whether to highlight matching fields in emitted messages
+        """
+        super(AppSink, self).__init__()
+        self._emit      = emit
+        self._metaemit  = metaemit
+        self._highlight = bool(highlight)
+
+    def emit_meta(self):
+        """Invokes registered metaemit callback, if any, and not already invoked."""
+        batch = self._metaemit and self.source.get_batch()
+        if self._metaemit and batch not in self._batch_meta:
+            meta = self._batch_meta[batch] = self.source.get_meta()
+            self._metaemit(meta)
+
+    def emit(self, topic, index, stamp, msg, match):
+        """Registers message and invokes registered emit callback, if any."""
+        super(AppSink, self).emit(topic, index, stamp, msg, match)
+        if self._emit: self._emit(topic, index, stamp, msg, match)
+
+    def is_highlighting(self):
+        """Returns whether emitted matches are highlighted."""
+        return self._highlight
+
+
 class MultiSink(SinkBase):
     """Combines any number of sinks."""
 
