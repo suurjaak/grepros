@@ -14,6 +14,7 @@ Released under the BSD License.
 """
 from __future__ import print_function
 import argparse
+import copy
 import datetime
 import functools
 import glob
@@ -532,6 +533,8 @@ def ensure_namespace(val, defaults=None, **kwargs):
     """
     Returns value as `argparse.Namespace`, with all keys uppercase.
 
+    Arguments with list/tuple values in defaults are ensured to have list/tuple values.
+
     @param  value     `argparse.Namespace` or dictionary or `None`
     @param  defaults  additional arguments to set to namespace if missing
     @param  kwargs    any and all argument overrides as keyword overrides
@@ -542,8 +545,11 @@ def ensure_namespace(val, defaults=None, **kwargs):
             delattr(val, k)
             setattr(val, k.upper(), v)
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
-        if not hasattr(val, k): setattr(val, k, v)
+        if not hasattr(val, k): setattr(val, k, copy.deepcopy(v))
     for k, v in ((k.upper(), v) for k, v in kwargs.items()): setattr(val, k, v)
+    for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
+        if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
+            setattr(val, k, [getattr(val, k)])
     return val
 
 

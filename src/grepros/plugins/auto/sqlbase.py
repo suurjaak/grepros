@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -34,14 +34,18 @@ class SqlMixin(object):
     ## Default SQL dialect used if dialect not specified
     DEFAULT_DIALECT = "sqlite"
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, MATCH_WRAPPER=None, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables}
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        self._args      = copy.deepcopy(ensure_namespace(args))
+        self._args      = copy.deepcopy(ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs))
         self._topics    = {}  # {(topic, typename, typehash): {name, table_name, view_name, sql, ..}}
         self._types     = {}  # {(typename, typehash): {type, table_name, sql, ..}}
         self._schema    = {}  # {(typename, typehash): {cols}}

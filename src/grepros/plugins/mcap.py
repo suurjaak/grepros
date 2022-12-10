@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -310,8 +310,11 @@ class McapSink(SinkBase):
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".mcap", )
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
@@ -319,8 +322,9 @@ class McapSink(SinkBase):
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, McapSink.DEFAULT_ARGS, **kwargs)
         super(McapSink, self).__init__(args)
 
         self._filename      = None  # Output filename

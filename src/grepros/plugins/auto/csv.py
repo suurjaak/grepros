@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -31,7 +31,10 @@ class CsvSink(SinkBase):
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".csv", )
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE           base name of CSV file to write,
@@ -40,8 +43,9 @@ class CsvSink(SinkBase):
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing files
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, CsvSink.DEFAULT_ARGS, **kwargs)
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}

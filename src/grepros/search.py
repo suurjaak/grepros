@@ -68,7 +68,7 @@ class Searcher(object):
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
 
-        self.args = copy.deepcopy(ensure_namespace(args, self.DEFAULT_ARGS, **kwargs))
+        self.args = copy.deepcopy(ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs))
         self._parse_patterns()
 
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -60,8 +60,11 @@ class DataSinkBase(SinkBase, SqlMixin):
     MESSAGE_TYPE_NESTCOLS  = [("_parent_type", "TEXT"),
                               ("_parent_id",   "INTEGER"), ]
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE           database connection string
@@ -70,8 +73,9 @@ class DataSinkBase(SinkBase, SqlMixin):
                                                   of nested types, or "all" for any nesting)}
         @param   args.META            whether to print metainfo
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, DataSinkBase.DEFAULT_ARGS, **kwargs)
         super(DataSinkBase, self).__init__(args)
         SqlMixin.__init__(self, args)
 

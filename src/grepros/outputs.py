@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -33,15 +33,19 @@ class SinkBase(object):
     ## Auto-detection file extensions for subclasses, as (".ext", )
     FILE_EXTENSIONS = ()
 
-    def __init__(self, args=None):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args        arguments as namespace or dictionary, case-insensitive
         @param   args.META   whether to print metainfo
+        @param   kwargs      any and all arguments as keyword overrides, case-insensitive
         """
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {(topic, typename, typehash): count}
 
-        self.args = copy.deepcopy(ensure_namespace(args))
+        self.args = copy.deepcopy(ensure_namespace(args, SinkBase.DEFAULT_ARGS, **kwargs))
         ## inputs.SourceBase instance bound to this sink
         self.source = None
 
@@ -101,8 +105,13 @@ class TextSinkMixin(object):
     ## Default highlight wrappers if not color output
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
-
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(COLOR="always", PRINT_FIELDS=(), NOPRINT_FIELDS=(), MAX_FIELD_LINES=None,
+                        START_LINE=None, END_LINE=None, MAX_MESSAGE_LINES=None,
+                        LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None,
+                        MATCH_WRAPPER=None)
+    
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.COLOR                 "never" for not using colors in replacements
@@ -118,6 +127,7 @@ class TextSinkMixin(object):
         @param   args.MATCH_WRAPPER         string to wrap around matched values,
                                             both sides if one value, start and end if more than one,
                                             or no wrapping if zero values
+        @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
         self._prefix       = ""    # Put before each message line (filename if grepping 1+ files)
         self._wrapper      = None  # TextWrapper instance
@@ -125,7 +135,7 @@ class TextSinkMixin(object):
         self._format_repls = {}    # {text to replace if highlight: replacement text}
         self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
-        self._configure(ensure_namespace(args))
+        self._configure(ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs))
 
 
     def format_message(self, msg, highlight=False):
@@ -294,8 +304,13 @@ class ConsoleSink(SinkBase, TextSinkMixin):
     CONTEXT_PREFIX_SEP   = "-"    # Printed after bag filename for context message lines
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, PRINT_FIELDS=(), NOPRINT_FIELDS=(), LINE_PREFIX=True,
+                        MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
+                        MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
+                        WRAP_WIDTH=None)
 
-    def __init__(self, args):
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.META                  whether to print metainfo
@@ -309,8 +324,9 @@ class ConsoleSink(SinkBase, TextSinkMixin):
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
         if args.WRAP_WIDTH is None:
             args = copy.deepcopy(args)
             args.WRAP_WIDTH = ConsolePrinter.WIDTH
@@ -359,7 +375,10 @@ class ConsoleSink(SinkBase, TextSinkMixin):
 class BagSink(SinkBase):
     """Writes messages to bagfile."""
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
@@ -367,8 +386,9 @@ class BagSink(SinkBase):
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
                                                      (default false)}
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
         self._bag = None
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
@@ -426,7 +446,11 @@ class BagSink(SinkBase):
 class TopicSink(SinkBase):
     """Publishes messages to ROS topics."""
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(LIVE=False, META=False, QUEUE_SIZE_OUT=10, PUBLISH_PREFIX="",
+                        PUBLISH_SUFFIX="", PUBLISH_FIXNAME="", VERBOSE=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
         @param   args.LIVE              whether reading messages from live ROS topics
@@ -437,8 +461,9 @@ class TopicSink(SinkBase):
         @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
                                         overrides prefix and suffix if given
         @param   args.VERBOSE           whether to print debug information
+        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False

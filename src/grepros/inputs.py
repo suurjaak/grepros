@@ -37,7 +37,11 @@ class SourceBase(object):
     ## Template for message metainfo line
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, UNIQUE=False, SELECT_FIELDS=(),
+                        NOSELECT_FIELDS=(), NTH_MESSAGE=1, NTH_INTERVAL=0)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                    arguments as namespace or dictionary, case-insensitive
         @param   args.START_TIME         earliest timestamp of messages to scan
@@ -47,6 +51,7 @@ class SourceBase(object):
         @param   args.NOSELECT_FIELDS    message fields to skip for uniqueness
         @param   args.NTH_MESSAGE        scan every Nth message in topic
         @param   args.NTH_INTERVAL       minimum time interval between messages in topic
+        @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
@@ -57,7 +62,7 @@ class SourceBase(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
-        self.args = copy.deepcopy(ensure_namespace(args))
+        self.args = copy.deepcopy(ensure_namespace(args, SourceBase.DEFAULT_ARGS, **kwargs))
         ## outputs.SinkBase instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
@@ -195,6 +200,9 @@ class ConditionMixin(object):
 
     TOPIC_RGX = re.compile(r"<topic\s+([^\s><]+)\s*>")  # "<topic /some/thing>"
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(CONDITIONS=())
+
     class NoMessageException(Exception): pass
 
 
@@ -235,11 +243,12 @@ class ConditionMixin(object):
         def __nonzero__(self):       return False
 
 
-    def __init__(self, args):
+    def __init__(self, args=None, **kwargs):
         """
         @param   args              arguments as namespace or dictionary, case-insensitive
         @param   args.CONDITIONS   Python expressions that must evaluate as true
                                    for message to be processable
+        @param   kwargs            any and all arguments as keyword overrides, case-insensitive
         """
         self._topic_states         = {}  # {topic: whether only used for condition, not matching}
         self._topics_per_condition = []  # [[topics in 1st condition], ]
@@ -253,7 +262,7 @@ class ConditionMixin(object):
 
         ## {condition with <topic x> as get_topic("x"): compiled code object}
         self._conditions = collections.OrderedDict()
-        self._configure_conditions(ensure_namespace(args))
+        self._configure_conditions(ensure_namespace(args, ConditionMixin.DEFAULT_ARGS, **kwargs))
 
     def is_processable(self, topic, index, stamp, msg):
         """Returns whether current state passes conditions, if any."""
@@ -366,12 +375,19 @@ class BagSource(SourceBase, ConditionMixin):
 
     ## Template for message metainfo line
     MESSAGE_META_TEMPLATE = "{topic} {index}/{total} ({type}  {dt}  {stamp})"
+
     ## Template for bag metainfo header
     META_TEMPLATE         = "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n" \
                             "File period {startdt} - {enddt}\n" \
                             "File span {delta} ({start} - {end})"
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(FILES=(), PATHS=(), RECURSE=False, TOPICS=(), TYPES=(),
+                        SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None, END_TIME=None,
+                        START_INDEX=None, END_INDEX=None, CONDITIONS=(), AFTER=0, ORDERBY=None,
+                        DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args               arguments as namespace or dictionary, case-insensitive
         @param   args.FILES         names of ROS bagfiles to scan if not all in directory
@@ -393,8 +409,9 @@ class BagSource(SourceBase, ConditionMixin):
         @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
+        @param   kwargs             any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = copy.deepcopy(args)  # Original arguments
@@ -657,7 +674,12 @@ class TopicSource(SourceBase, ConditionMixin):
     ## Seconds between refreshing available topics from ROS master.
     MASTER_INTERVAL = 2
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(TOPICS=(), TYPES=(), SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None,
+                        END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITIONS=(),
+                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.TOPICS          ROS topics to scan if not all
@@ -673,7 +695,9 @@ class TopicSource(SourceBase, ConditionMixin):
         @param   args.QUEUE_SIZE_IN   subscriber queue size
         @param   args.ROS_TIME_IN     stamp messages with ROS time instead of wall time
         @param   args.PROGRESS        whether to print progress bar
+        @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
         """
+        args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
         super(TopicSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._running = False  # Whether is in process of yielding messages from topics
@@ -855,6 +879,12 @@ class TopicSource(SourceBase, ConditionMixin):
 class AppSource(SourceBase, ConditionMixin):
     """Produces messages from iterable or pushed data."""
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(TOPICS=(), TYPES=(), SKIP_TOPICS=(), SKIP_TYPES=(), START_TIME=None,
+                        END_TIME=None, START_INDEX=None, END_INDEX=None, UNIQUE=False,
+                        SELECT_FIELDS=(), NOSELECT_FIELDS=(), NTH_MESSAGE=1, NTH_INTERVAL=0,
+                        CONDITIONS=())
+
     def __init__(self, args=None, iterable=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
@@ -876,7 +906,7 @@ class AppSource(SourceBase, ConditionMixin):
         @param   iterable               iterable yielding (topic, msg, stamp), if any
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, **kwargs)
+        args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._iterable = iterable

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -76,8 +76,11 @@ class ParquetSink(SinkBase):
     ## Custom arguments for pyarrow.parquet.ParquetWriter
     WRITER_ARGS = {"version": "2.6"}
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
@@ -86,8 +89,9 @@ class ParquetSink(SinkBase):
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, ParquetSink.DEFAULT_ARGS, **kwargs)
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE

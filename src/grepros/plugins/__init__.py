@@ -45,16 +45,20 @@ PLUGINS = {}
 ## Added write options, as {plugin label: [(name, help), ]}
 WRITE_OPTIONS = {}
 
+## Function argument defaults
+DEFAULT_ARGS = dict(PLUGINS=[])
 
-def init(args=None):
+
+def init(args=None, **kwargs):
     """
     Imports and initializes all plugins from auto and from given arguments.
 
     @param   args           arguments as namespace or dictionary, case-insensitive
     @param   args.PLUGINS   list of Python modules or classes to import,
                             as ["my.module", "other.module.SomeClass", ]
+    @param   kwargs         any and all arguments as keyword overrides, case-insensitive
     """
-    args = ensure_namespace(args)
+    args = ensure_namespace(args, DEFAULT_ARGS, **kwargs)
     for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "auto", "*"))):
         if not f.lower().endswith((".py", ".pyc")): continue  # for f
         name = os.path.splitext(os.path.split(f)[-1])[0]
@@ -72,15 +76,16 @@ def init(args=None):
     populate_write_formats()
 
 
-def configure(args):
+def configure(args=None, **kwargs):
     """
     Imports plugin Python packages, invokes init(args) if any, raises on error.
 
     @param   args           arguments as namespace or dictionary, case-insensitive
     @param   args.PLUGINS   list of Python modules or classes to import,
                             as ["my.module", "other.module.SomeClass", ]
+    @param   kwargs         any and all arguments as keyword overrides, case-insensitive
     """
-    args = ensure_namespace(args)
+    args = ensure_namespace(args, DEFAULT_ARGS, **kwargs)
     for name in (n for n in args.PLUGINS if n not in PLUGINS):
         try:
             plugin = import_item(name)

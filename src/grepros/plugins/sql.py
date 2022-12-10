@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -47,8 +47,11 @@ class SqlSink(SinkBase, SqlMixin):
     MESSAGE_TYPE_BASECOLS  = [("_topic",      "string"),
                               ("_timestamp",  "time"), ]
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(WRITE_OPTIONS={})
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
@@ -56,7 +59,7 @@ class SqlSink(SinkBase, SqlMixin):
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, SqlSink.DEFAULT_ARGS, **kwargs)
         super(SqlSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 

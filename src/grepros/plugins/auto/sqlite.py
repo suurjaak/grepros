@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -55,8 +55,11 @@ class SqliteSink(DataSinkBase):
     ## Maximum integer size supported in SQLite, higher values inserted as string
     MAX_INT = 2**63 - 1
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
@@ -68,8 +71,9 @@ class SqliteSink(DataSinkBase):
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, SqliteSink.DEFAULT_ARGS, **kwargs)
         super(SqliteSink, self).__init__(args)
 
         self._filename    = args.WRITE

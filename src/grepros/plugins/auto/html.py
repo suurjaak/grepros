@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -40,7 +40,10 @@ class HtmlSink(SinkBase, TextSinkMixin):
     ## Character wrap width for message YAML
     WRAP_WIDTH = 120
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, MATCH_WRAPPER=None, VERBOSE=False)
+
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                  arguments as namespace or dictionary, case-insensitive
         @param   args.META             whether to print metainfo
@@ -54,8 +57,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
                                        both sides if one value, start and end if more than one,
                                        or no wrapping if zero values
         @param   args.ORDERBY          "topic" or "type" if any to group results by
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = copy.deepcopy(ensure_namespace(args))
+        args = copy.deepcopy(ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = "always"
 
