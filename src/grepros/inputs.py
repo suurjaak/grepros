@@ -73,6 +73,10 @@ class SourceBase(object):
         self._parse_patterns()
         rosapi.TypeMeta.SOURCE = self
 
+    def __iter__(self):
+        """Yields messages from source, as (topic, msg, ROS time)."""
+        return self.read()
+
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    20.10.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -53,6 +53,26 @@ class EmbagReader(object):
         self.filename = filename
 
         self._populate_meta()
+
+
+    def __iter__(self):
+        """Iterates over all messages in the bag."""
+        return self.read_messages()
+
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes bag."""
+        self.close()
+
+
+    def __len__(self):
+        """Returns the number of messages in the bag."""
+        return self.get_message_count()
 
 
     def get_message_count(self):

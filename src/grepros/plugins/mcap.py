@@ -68,6 +68,26 @@ class McapReader(object):
         self._populate_meta()
 
 
+    def __iter__(self):
+        """Iterates over all messages in the bag."""
+        return self.read_messages()
+
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes bag."""
+        self.close()
+
+
+    def __len__(self):
+        """Returns the number of messages in the bag."""
+        return self.get_message_count()
+
+
     def get_message_count(self):
         """Returns the number of messages in the bag."""
         return sum(self._topics.values())

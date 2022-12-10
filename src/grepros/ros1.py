@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.10.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -87,6 +87,26 @@ class Bag(rosbag.Bag):
         self.__topics = {}  # {(topic, typename, typehash): message count}
 
         self.__populate_meta()
+
+
+    def __iter__(self):
+        """Iterates over all messages in the bag."""
+        return self.read_messages()
+
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes bag."""
+        self.close()
+
+
+    def __len__(self):
+        """Returns the number of messages in the bag."""
+        return self.get_message_count()
 
 
     def get_message_definition(self, msg_or_type):
