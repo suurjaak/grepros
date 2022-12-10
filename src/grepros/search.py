@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -17,6 +17,7 @@ import collections
 import re
 
 from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
+from . import inputs
 from . import rosapi
 
 
@@ -61,6 +62,8 @@ class Searcher(object):
         self._statuses = collections.defaultdict(collections.OrderedDict)
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
+        self._idcounter       = 0      # Counter for unique message IDs
+        self._highlight       = False  # Highlight matched values in message fields
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
         self._source = None  # SourceBase instance
         self._sink   = None  # SinkBase instance
@@ -69,7 +72,59 @@ class Searcher(object):
         self._parse_patterns()
 
 
-    def search(self, source, sink):
+    def find(self, source, highlight=False):
+        """
+        Yields matched and context messages from source.
+
+        @param   source     inputs.SourceBase or rosapi.Bag instance
+        @param   highlight  whether to highlight matched values in message fields
+        @return             tuples of (topic, msg, stamp, matched optionally highlighted msg)
+        """
+        if not isinstance(source, inputs.SourceBase):
+            source = inputs.BagSource(self.args, bag=source)
+        self._prepare(source, highlight=highlight)
+        for topic, msg, stamp, matched, _ in self._generate():
+            yield topic, msg, stamp, matched
+        source.close()
+
+
+    def match(self, topic, msg, stamp, highlight=False):
+        """
+        Returns matched message if message matches search filters.
+
+        @param   topic      topic name
+        @param   msg        ROS message
+        @param   stamp      message ROS time
+        @param   highlight  whether to highlight matched values in message fields
+        @return             original or highlighted message on match else `None`
+        """
+        result = None
+        if not isinstance(self._source, inputs.AppSource):
+            self._prepare(inputs.AppSource(), highlight=highlight)
+        if self._highlight != bool(highlight): self._set_passthrough()
+
+        self._source.push(topic, msg, stamp)
+        item = self._source.read_queue()
+        if item is not None:
+            msgid = self._idcounter = self._idcounter + 1
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            self._register_message(topickey, msgid, msg, stamp)
+            matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
+
+            self._source.notify(matched)
+            if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
+                self._statuses[topickey][msgid] = True
+                self._counts[topickey][True] += 1
+                result = matched
+            elif matched:  # Not NTH_MATCH, skip emitting
+                self._statuses[topickey][msgid] = True
+                self._counts[topickey][True] += 1
+            self._prune_data(topickey)
+            self._source.mark_queue(topic, msg, stamp)
+        return result
+
+
+    def work(self, source, sink):
         """
         Greps messages yielded from source and emits matched content to sink.
 
@@ -78,41 +133,50 @@ class Searcher(object):
         @return          count matched
         """
         self._prepare(source, sink)
-        counter, total_matched, batch_matched, batch = 0, 0, False, None
+        total_matched = 0
+        for topic, msg, stamp, matched, index in self._generate():
+            if matched: sink.emit_meta()
+            sink.emit(topic, msg, stamp, matched, index)
+            total_matched += bool(matched)
+        source.close(), sink.close()
+        return total_matched
 
-        for topic, msg, stamp in source.read():
-            if batch != source.get_batch():
-                total_matched += sum(x[True] for x in self._counts.values())
-                counter, batch, batch_matched = 0, source.get_batch(), False
+
+    def _generate(self):
+        """
+        Yields matched and context messages from source.
+        
+        @return  tuples of (topic, msg, stamp, matched optionally highlighted msg, index in topic)
+        """
+        batch_matched, batch = False, None
+        for topic, msg, stamp in self._source.read():
+            if batch != self._source.get_batch():
+                batch, batch_matched = self._source.get_batch(), False
                 if self._counts: self._clear_data()
 
-            msgid = counter = counter + 1
+            msgid = self._idcounter = self._idcounter + 1
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
-            source.notify(matched)
+            self._source.notify(matched)
             if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
-                sink.emit_meta()
-                self._emit_context(topickey, before=True)
-                sink.emit(topic, self._counts[topickey][None], stamp, msg, matched)
+                for x in self._generate_context(topickey, before=True): yield x
+                yield (topic, msg, stamp, matched, self._counts[topickey][None])
             elif matched:  # Not NTH_MATCH, skip emitting
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
             elif self.args.AFTER \
             and self._has_in_window(topickey, self.args.AFTER + 1, status=True):
-                self._emit_context(topickey, before=False)
+                for x in self._generate_context(topickey, before=False): yield x
             batch_matched = batch_matched or bool(matched)
 
             self._prune_data(topickey)
             if batch_matched and self._is_max_done():
-                sink.flush()
-                source.close_batch()
-
-        source.close(), sink.close()
-        return total_matched + sum(x[True] for x in self._counts.values())
+                self._sink and self._sink.flush()
+                self._source.close_batch()
 
 
     def _is_processable(self, topic, stamp, msg):
@@ -132,13 +196,14 @@ class Searcher(object):
             topics_matched = [k for k, vv in self._counts.items() if vv[True]]
             if topickey not in topics_matched and len(topics_matched) >= self.args.MAX_TOPICS:
                 return False
-        if not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
+        if self._source \
+        and not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
         return True
 
 
-    def _emit_context(self, topickey, before=False):
-        """Emits before/after context to sink for latest match."""
+    def _generate_context(self, topickey, before=False):
+        """Yields before/after context for latest match."""
         count = self.args.BEFORE + 1 if before else self.args.AFTER
         candidates = list(self._statuses[topickey])[-count:]
         current_index = self._counts[topickey][None]
@@ -147,7 +212,7 @@ class Searcher(object):
                 idx = current_index + i - (len(candidates) - 1 if before else 1)
                 stamp, msg = self._stamps[topickey][msgid], self._messages[topickey][msgid]
                 self._counts[topickey][False] += 1
-                self._sink.emit(topickey[0], idx, stamp, msg, None)
+                yield topickey[0], msg, stamp, None, idx
                 self._statuses[topickey][msgid] = False
 
 
@@ -158,14 +223,13 @@ class Searcher(object):
         rosapi.TypeMeta.clear()
 
 
-    def _prepare(self, source, sink):
-        """Clears local structures, binds and registers source and sink."""
+    def _prepare(self, source, sink=None, highlight=False):
+        """Clears local structures, binds and registers source and sink, if any."""
         self._clear_data()
         self._source, self._sink = source, sink
-        source.bind(sink), sink.bind(source)
-        self._passthrough = not sink.is_highlighting() and not self._patterns["select"] \
-                            and not self._patterns["noselect"] and not self.args.INVERT \
-                            and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
+        source.bind(sink), sink and sink.bind(source)
+        self._highlight = sink.is_highlighting() if sink else bool(highlight)
+        self._set_passthrough()
 
 
     def _prune_data(self, topickey):
@@ -210,6 +274,13 @@ class Searcher(object):
         self._messages[topickey][msgid] = msg
         self._stamps  [topickey][msgid] = stamp
         self._statuses[topickey][msgid] = None
+
+
+    def _set_passthrough(self):
+        """Sets passthrough flag from current settings."""
+        self._passthrough = not self._highlight and not self._patterns["select"] \
+                            and not self._patterns["noselect"] and not self.args.INVERT \
+                            and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
 
 
     def _is_max_done(self):
@@ -301,4 +372,4 @@ class Searcher(object):
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         process_message(result)
         yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
-        return result if yes else None
+        return (result if self._highlight else msg) if yes else None
