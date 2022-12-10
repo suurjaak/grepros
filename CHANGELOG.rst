@@ -5,6 +5,7 @@ Changelog for package grepros
 0.5.1 (2022-12-10)
 -------------------
 * add inputs.AppSource
+* add MCAP bag interface
 * support "postgres://" as auto-detected Postgres target in addition to "postgresql://"
 
 0.5.0 (2022-10-18)

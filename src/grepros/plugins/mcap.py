@@ -15,6 +15,7 @@ Released under the BSD License.
 from __future__ import absolute_import
 import atexit
 import copy
+import io
 import os
 
 try: import mcap, mcap.reader
@@ -36,18 +37,28 @@ if "2" == os.getenv("ROS_VERSION"):
     from .. import ros2
 
 
-class McapReader(object):
-    """MCAP reader interface, partially mimicking rosbag.Bag."""
+class McapBag(object):
+    """
+    MCAP bag interface, partially mimicking rosbag.Bag.
+
+    Bag cannot be appended to, and cannot be read and written at the same time
+    (MCAP API limitation).
+    """
 
     ## MCAP file header magic start bytes
     MCAP_MAGIC = b"\x89MCAP\x30\r\n"
 
-    def __init__(self, filename, **__):
+    def __init__(self, filename, mode="r", **__):
         """Opens file and populates metadata."""
+        if mode not in ("r", "w"): raise ValueError("invalid mode %r" % mode)
+
+        if "w" == mode: makedirs(os.path.dirname(filename))
+        self._mode           = mode
         self._topics         = {}    # {(topic, typename, typehash): message count}
         self._types          = {}    # {(typename, typehash): message type class}
         self._typedefs       = {}    # {(typename, typehash): type definition text}
-        self._schemas        = {}    # {mcap.records.Schema.id: (typename, typehash)}
+        self._schemas        = {}    # {(typename, typehash): mcap.records.Schema}
+        self._schematypes    = {}    # {mcap.records.Schema.id: (typename, typehash)}
         self._qoses          = {}    # {(topic, typename): [{qos profile dict}]}
         self._typefields     = {}    # {(typename, typehash): {field name: type name}}
         self._type_subtypes  = {}    # {(typename, typehash): {typename: typehash}}
@@ -55,17 +66,18 @@ class McapReader(object):
         self._temporal_ctors = {}    # {typename: time/duration constructor}
         self._start_time     = None  # Bag start time, as UNIX timestamp
         self._end_time       = None  # Bag end time, as UNIX timestamp
-        self._file           = open(filename, "rb")
-        self._reader         = mcap.reader.make_reader(self._file)
-        self._decoder        = mcap_ros.decoder.Decoder()
+        self._file           = open(filename, "%sb" % mode)
+        self._reader         = mcap.reader.make_reader(self._file) if "r" == mode else None
+        self._decoder        = mcap_ros.decoder.Decoder()          if "r" == mode else None
+        self._writer         = mcap_ros.writer.Writer(self._file)  if "w" == mode else None
 
         ## Bagfile path
         self.filename = filename
 
-        if ros2: self._temporal_ctors.update(
+        if ros2 and "r" == mode: self._temporal_ctors.update(
             (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
         )
-        self._populate_meta()
+        if "r" == mode: self._populate_meta()
 
 
     def __iter__(self):
@@ -147,6 +159,8 @@ class McapReader(object):
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
         @return              (topic, msg, rclpy.time.Time)
         """
+        if "w" == self._mode: raise io.UnsupportedOperation("read")
+
         topics = topics if isinstance(topics, list) else [topics] if topics else []
         start_ns, end_ns = (x and x * 10**9 for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
@@ -154,11 +168,37 @@ class McapReader(object):
             yield channel.topic, msg, rosapi.make_time(nsecs=message.publish_time)
 
 
+    def write(self, topic, msg, stamp, *_, **__):
+        """Writes out message to MCAP file."""
+        if "r" == self._mode: raise io.UnsupportedOperation("write")
+
+        meta = rosapi.TypeMeta.make(msg, topic)
+        kwargs = dict(publish_time=rosapi.to_nsec(stamp))
+        if ros2:
+            if meta.typekey not in self._schemas:
+                fullname = ros2.make_full_typename(meta.typename)
+                schema = self._writer.register_msgdef(fullname, meta.definition)
+                self._schemas[meta.typekey] = schema
+            schema, data = self._schemas[meta.typekey], rosapi.message_to_dict(msg)
+            self._writer.write_message(topic, schema, data, **kwargs)
+        else:
+            self._writer.write_message(topic, msg, **kwargs)
+
+        sec = rosapi.to_sec(stamp)
+        self._start_time = sec if self._start_time is None else min(sec, self._start_time)
+        self._end_time   = sec if self._end_time   is None else min(sec, self._end_time)
+        self._topics[meta.topickey] = self._topics.get(meta.topickey, 0) + 1
+        self._types.setdefault(meta.typekey, type(msg))
+        if meta.typekey not in self._typedefs:
+            self._typedefs[meta.typekey] = meta.definition
+
+
     def close(self):
         """Closes the bag file."""
         if self._file:
             self._file.close()
-            self._file, self._reader = None, None
+            if self._writer: self._writer.finish()
+            self._file, self._reader, self._writer = None, None, None
 
 
     @property
@@ -175,7 +215,7 @@ class McapReader(object):
         @param   channel  mcap.records.Channel instance for message
         @param   shcema   mcap.records.Schema instance for message type
         """
-        typekey = (typename, typehash) = self._schemas[schema.id]
+        typekey = (typename, typehash) = self._schematypes[schema.id]
         if ros2 and typekey not in self._types:
             try:  # Try loading class from disk for full compatibility
                 cls = rosapi.get_message_class(typename)
@@ -187,7 +227,7 @@ class McapReader(object):
         else:
             msg = self._decoder.decode(schema=schema, message=message)
             if ros2:  # MCAP ROS2 message classes need monkey-patching with expected API
-                msg = self._patch_message(msg, *self._schemas[schema.id])
+                msg = self._patch_message(msg, *self._schematypes[schema.id])
                 # Register serialized binary, as MCAP does not support serializing its own creations
                 rosapi.TypeMeta.make(msg, channel.topic, data=message.data)
         if typekey not in self._types: self._types[typekey] = type(msg)
@@ -288,7 +328,8 @@ class McapReader(object):
                     self._type_subtypes.setdefault((t, h), {})[t2] = h2
 
             if qoses: self._qoses[topickey] = qoses
-            self._schemas[schema.id] = typekey
+            self._schemas[typekey] = schema
+            self._schematypes[schema.id] = typekey
 
 
     @classmethod
@@ -433,4 +474,5 @@ def init(*_, **__):
                                   "instead of appending unique counter (default false)"),
     ])
     rosapi.BAG_EXTENSIONS += McapSink.FILE_EXTENSIONS
-    rosapi.Bag.READER_CLASSES.add(McapReader)
+    rosapi.Bag.READER_CLASSES.add(McapBag)
+    rosapi.Bag.WRITER_CLASSES.add(McapBag)

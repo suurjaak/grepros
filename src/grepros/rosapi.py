@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.10.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -203,7 +203,7 @@ class TypeMeta(object):
 
 
 class Bag(object):
-    """ROS bag creation wrapper."""
+    """ROS bag factory."""
 
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
@@ -297,7 +297,7 @@ def validate(live=False):
         ROS_COMMON_TYPES = ROS_BUILTIN_TYPES + realapi.ROS_TIME_TYPES
         ROS_TIME_TYPES   = realapi.ROS_TIME_TYPES
         ROS_TIME_CLASSES = realapi.ROS_TIME_CLASSES
-        ROS_ALIAS_TYPES = realapi.ROS_ALIAS_TYPES
+        ROS_ALIAS_TYPES  = realapi.ROS_ALIAS_TYPES
         Bag.READER_CLASSES.add(realapi.Bag)
         Bag.WRITER_CLASSES.add(realapi.Bag)
     return success
