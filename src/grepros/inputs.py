@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -848,3 +848,106 @@ class TopicSource(SourceBase, ConditionMixin):
         stamp = rosapi.get_rostime() if self.args.ROS_TIME_IN else \
                 rosapi.make_time(time.time())
         self._queue and self._queue.put((topic, msg, stamp))
+
+
+
+
+class AppSource(SourceBase, ConditionMixin):
+    """Produces messages from iterable or pushed data."""
+
+    def __init__(self, args=None, iterable=None, **kwargs):
+        """
+        @param   args                   arguments as namespace or dictionary, case-insensitive
+        @param   args.TOPICS            ROS topics to scan if not all
+        @param   args.TYPES             ROS message types to scan if not all
+        @param   args.SKIP_TOPICS       ROS topics to skip
+        @param   args.SKIP_TYPES        ROS message types to skip
+        @param   args.START_TIME        earliest timestamp of messages to scan
+        @param   args.END_TIME          latest timestamp of messages to scan
+        @param   args.START_INDEX       message index within topic to start from
+        @param   args.END_INDEX         message index within topic to stop at
+        @param   args.UNIQUE            emit messages that are unique in topic
+        @param   args.SELECT_FIELDS     message fields to use for uniqueness if not all
+        @param   args.NOSELECT_FIELDS   message fields to skip for uniqueness
+        @param   args.NTH_MESSAGE       scan every Nth message in topic
+        @param   args.NTH_INTERVAL      minimum time interval between messages in topic
+        @param   args.CONDITIONS        Python expressions that must evaluate as true
+                                        for message to be processable
+        @param   iterable               iterable yielding (topic, msg, stamp), if any
+        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
+        """
+        args = ensure_namespace(args, **kwargs)
+        super(AppSource, self).__init__(args)
+        ConditionMixin.__init__(self, args)
+        self._iterable = iterable
+        self._queue    = queue.Queue()  # [(topic, msg, ROS time)]
+
+        self._configure()
+
+    def read(self):
+        """Yields messages from iterable or pushed data, as (topic, msg, ROS time)."""
+        def generate(iterable):
+            for x in iterable: yield x
+        feeder = generate(self._iterable) if self._iterable else None
+        while True:
+            item = self._queue.get() if not feeder or self._queue.qsize() else next(feeder, None)
+            if item is None: break  # while
+
+            topic, msg, stamp = item
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            self._counts[topickey] += 1
+            self.conditions_register_message(topic, msg)
+            if self.is_conditions_topic(topic, pure=True): continue  # while
+
+            yield topic, msg, stamp
+            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+                self._processables[topickey] = (self._counts[topickey], stamp)
+
+    def read_queue(self):
+        """
+        Returns (topic, msg, stamp) from push queue, or `None` if no queue
+        or message in queue is condition topic only.
+        """
+        item = self._queue.get(block=False)
+        if item is None: return None
+
+        topic, msg, stamp = item
+        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        self._counts[topickey] += 1
+        self.conditions_register_message(topic, msg)
+        return None if self.is_conditions_topic(topic, pure=True) else (topic, msg, stamp)
+
+    def mark_queue(self, topic, msg, stamp):
+        """Registers message produced from read_queue()."""
+        if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            self._processables[topickey] = (self._counts[topickey], stamp)
+
+    def push(self, topic, msg=None, stamp=None):
+        """
+        Pushes a message to be yielded from read().
+
+        @param   topic  topic name, or `None` to signal end of content
+        @param   msg    ROS message
+        @param   stamp  message ROS time
+        """
+        self._queue.put(None) if topic is None else (topic, msg, stamp)
+
+    def is_processable(self, topic, index, stamp, msg):
+        """Returns whether specified message in topic is in acceptable range."""
+        if self.args.START_INDEX:
+            if max(0, self.args.START_INDEX) >= index:
+                return False
+        if self.args.END_INDEX:
+            if 0 < self.args.END_INDEX < index:
+                return False
+        if not super(AppSource, self).is_processable(topic, index, stamp, msg):
+            return False
+        return ConditionMixin.is_processable(self, topic, index, stamp, msg)
+
+    def _configure(self):
+        """Adjusts start/end time filter values to current time."""
+        if self.args.START_TIME is not None:
+            self.args.START_TIME = rosapi.make_live_time(self.args.START_TIME)
+        if self.args.END_TIME is not None:
+            self.args.END_TIME = rosapi.make_live_time(self.args.END_TIME)
