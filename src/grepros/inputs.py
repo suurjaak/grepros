@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -76,6 +76,14 @@ class SourceBase(object):
     def __iter__(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
         return self.read()
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes source."""
+        self.close()
 
     def read(self):
         """Yields messages from source, as (topic, msg, ROS time)."""

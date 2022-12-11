@@ -49,6 +49,14 @@ class SinkBase(object):
         ## inputs.SourceBase instance bound to this sink
         self.source = None
 
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes sink."""
+        self.close()
+
     def emit_meta(self):
         """Prints source metainfo like bag header as debug stream, if not already printed."""
         batch = self.args.META and self.source.get_batch()
