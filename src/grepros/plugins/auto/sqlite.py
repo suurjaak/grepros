@@ -120,9 +120,9 @@ class SqliteSink(BaseDataSink):
     def _load_schema(self):
         """Populates instance attributes with schema metainfo."""
         super(SqliteSink, self)._load_schema()
-        for row in self._db.execute("SELECT name FROM sqlite_master "
+        for row in self.db.execute("SELECT name FROM sqlite_master "
                                     "WHERE type = 'table' AND name LIKE '%/%'"):
-            cols = self._db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
+            cols = self.db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
             typerow = next((x for x in self._types.values()
                             if x["table_name"] == row["name"]), None)
             if not typerow: continue  # for row
@@ -171,7 +171,7 @@ class SqliteSink(BaseDataSink):
         """Returns next ID value for table, using simple auto-increment."""
         if not self._id_counters.get(table):
             sql = "SELECT COALESCE(MAX(_id), 0) AS id FROM %s" % quote(table)
-            self._id_counters[table] = self._db.execute(sql).fetchone()["id"]
+            self._id_counters[table] = self.db.execute(sql).fetchone()["id"]
         self._id_counters[table] += 1
         return self._id_counters[table]
 

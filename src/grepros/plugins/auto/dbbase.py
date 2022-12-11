@@ -79,7 +79,9 @@ class BaseDataSink(BaseSink, SqlMixin):
         super(BaseDataSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 
-        self._db            = None   # Database connection
+        ## Database connection
+        self.db = None
+
         self._cursor        = None   # Database cursor or connection
         self._dialect       = self.ENGINE.lower()  # Override SqlMixin._dialect
         self._close_printed = False
@@ -120,7 +122,7 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def emit(self, topic, msg, stamp, match, index):
         """Writes message to database."""
-        if not self._db:
+        if not self.db:
             self._init_db()
         self._process_type(msg)
         self._process_topic(topic, msg)
@@ -130,14 +132,14 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def close(self):
         """Closes database connection, if any."""
-        if self._db:
+        if self.db:
             for sql in list(self._sql_queue):
                 self._executemany(sql, self._sql_queue.pop(sql))
-            self._db.commit()
+            self.db.commit()
             self._cursor.close()
             self._cursor = None
-            self._db.close()
-            self._db = None
+            self.db.close()
+            self.db = None
         if not self._close_printed and self._counts:
             self._close_printed = True
             target = self._make_db_label()
@@ -165,10 +167,10 @@ class BaseDataSink(BaseSink, SqlMixin):
 
         if "commit-interval" in self.args.WRITE_OPTIONS:
             self.COMMIT_INTERVAL = int(self.args.WRITE_OPTIONS["commit-interval"])
-        self._db = self._connect()
+        self.db = self._connect()
         self._cursor = self._make_cursor()
         self._executescript(self._get_dialect_option("base_schema"))
-        self._db.commit()
+        self.db.commit()
         self._load_schema()
         TYPECOLS = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
         if self._nesting: TYPECOLS += self.MESSAGE_TYPE_NESTCOLS
@@ -211,7 +213,7 @@ class BaseDataSink(BaseSink, SqlMixin):
                 ConsolePrinter.debug("Adding topic %s in %s output.", topic, self.ENGINE)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
-            if self.COMMIT_INTERVAL: self._db.commit()
+            if self.COMMIT_INTERVAL: self.db.commit()
         self._checkeds[topickey] = True
 
 
@@ -274,7 +276,7 @@ class BaseDataSink(BaseSink, SqlMixin):
             do_commit = sum(len(v) for v in self._sql_queue.values()) >= self.COMMIT_INTERVAL
             for sql in list(self._sql_queue) if do_commit else ():
                 self._executemany(sql, self._sql_queue.pop(sql))
-            do_commit and self._db.commit()
+            do_commit and self.db.commit()
 
 
     def _populate_type(self, topic, msg, stamp,
@@ -333,7 +335,7 @@ class BaseDataSink(BaseSink, SqlMixin):
                 typecols[c] = t
         if sqls:
             self._executescript("\n".join(sqls))
-            self._db.commit()
+            self.db.commit()
 
 
     def _ensure_execute(self, sql, args):
@@ -372,7 +374,7 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def _make_cursor(self):
         """Returns new database cursor."""
-        return self._db.cursor()
+        return self.db.cursor()
 
 
     def _make_db_label(self):
