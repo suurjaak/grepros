@@ -559,22 +559,24 @@ class MultiSink(SinkBase):
     ## Autobinding between `--write .. format=FORMAT` and sink classes
     FORMAT_CLASSES = {"bag": BagSink}
 
-    def __init__(self, args):
+    def __init__(self, args=None, sinks=(), **kwargs):
         """
         @param   args           arguments as namespace or dictionary, case-insensitive
         @param   args.CONSOLE   print matches to console
         @param   args.WRITE     [[target, format=FORMAT, key=value, ], ]
         @param   args.PUBLISH   publish matches to live topics
+        @param   sinks          pre-created sinks, arguments will be ignored
+        @param   kwargs         any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args)
+        args = ensure_namespace(args, **kwargs)
         super(MultiSink, self).__init__(args)
         self._valid = True
 
         ## List of all combined sinks
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
-                      if getattr(args, flag, None)]
+                      if getattr(args, flag, None)] if not sinks else list(sinks)
 
-        for dumpopts in args.WRITE:
+        for dumpopts in args.WRITE if not sinks else ():
             target, kwargs = dumpopts[0], dict(x.split("=", 1) for x in dumpopts[1:])
             cls = self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:
