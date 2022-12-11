@@ -30,7 +30,7 @@ else: mcap_ros = None
 import yaml
 
 from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
-from .. outputs import SinkBase
+from .. outputs import BaseSink
 from .. import rosapi
 ros2 = None
 if "2" == os.getenv("ROS_VERSION"):
@@ -365,7 +365,7 @@ def message_get_fields_and_field_types(self):
 
 
 
-class McapSink(SinkBase):
+class McapSink(BaseSink):
     """Writes messages to MCAP files."""
 
     ## Auto-detection file extensions

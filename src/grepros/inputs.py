@@ -31,7 +31,7 @@ from . common import ConsolePrinter, Decompressor, ProgressBar, ensure_namespace
 from . import rosapi
 
 
-class SourceBase(object):
+class BaseSource(object):
     """Message producer base class."""
 
     ## Template for message metainfo line
@@ -62,8 +62,8 @@ class SourceBase(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
-        self.args = copy.deepcopy(ensure_namespace(args, SourceBase.DEFAULT_ARGS, **kwargs))
-        ## outputs.SinkBase instance bound to this source
+        self.args = copy.deepcopy(ensure_namespace(args, BaseSource.DEFAULT_ARGS, **kwargs))
+        ## outputs.BaseSink instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
         self.topics = {}
@@ -382,7 +382,7 @@ class ConditionMixin(object):
 
 
 
-class BagSource(SourceBase, ConditionMixin):
+class BagSource(BaseSource, ConditionMixin):
     """Produces messages from ROS bagfiles."""
 
     ## Template for message metainfo line
@@ -680,7 +680,7 @@ class BagSource(SourceBase, ConditionMixin):
         return True
 
 
-class TopicSource(SourceBase, ConditionMixin):
+class TopicSource(BaseSource, ConditionMixin):
     """Produces messages from live ROS topics."""
 
     ## Seconds between refreshing available topics from ROS master.
@@ -748,7 +748,7 @@ class TopicSource(SourceBase, ConditionMixin):
 
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
-        SourceBase.bind(self, sink)
+        BaseSource.bind(self, sink)
         rosapi.init_node()
 
     def validate(self):
@@ -888,7 +888,7 @@ class TopicSource(SourceBase, ConditionMixin):
 
 
 
-class AppSource(SourceBase, ConditionMixin):
+class AppSource(BaseSource, ConditionMixin):
     """Produces messages from iterable or pushed data."""
 
     ## Constructor argument defaults

@@ -24,11 +24,11 @@ import threading
 from ... common import ConsolePrinter, MatchMarkers, \
                        ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
-from ... outputs import SinkBase, TextSinkMixin
+from ... outputs import BaseSink, TextSinkMixin
 from ... vendor import step
 
 
-class HtmlSink(SinkBase, TextSinkMixin):
+class HtmlSink(BaseSink, TextSinkMixin):
     """Writes messages to an HTML file."""
 
     ## Auto-detection file extensions

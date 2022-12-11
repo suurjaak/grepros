@@ -17,11 +17,11 @@ import collections
 
 from ... import rosapi
 from ... common import ConsolePrinter, ensure_namespace, plural
-from ... outputs import SinkBase
+from ... outputs import BaseSink
 from . sqlbase import SqlMixin, quote
 
 
-class DataSinkBase(SinkBase, SqlMixin):
+class BaseDataSink(BaseSink, SqlMixin):
     """
     Base class for writing messages to a database.
 
@@ -75,8 +75,8 @@ class DataSinkBase(SinkBase, SqlMixin):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, DataSinkBase.DEFAULT_ARGS, **kwargs)
-        super(DataSinkBase, self).__init__(args)
+        args = ensure_namespace(args, BaseDataSink.DEFAULT_ARGS, **kwargs)
+        super(BaseDataSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 
         self._db            = None   # Database connection
@@ -125,7 +125,7 @@ class DataSinkBase(SinkBase, SqlMixin):
         self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)
-        super(DataSinkBase, self).emit(topic, msg, stamp, match, index)
+        super(BaseDataSink, self).emit(topic, msg, stamp, match, index)
 
 
     def close(self):
@@ -152,12 +152,12 @@ class DataSinkBase(SinkBase, SqlMixin):
         self._checkeds.clear()
         self._nested_counts.clear()
         SqlMixin.close(self)
-        super(DataSinkBase, self).close()
+        super(BaseDataSink, self).close()
 
 
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
-        baseattrs = dir(SinkBase(None))
+        baseattrs = dir(BaseSink())
         for attr in (getattr(self, k, None) for k in dir(self)
                      if not k.isupper() and k not in baseattrs):
             isinstance(attr, dict) and attr.clear()

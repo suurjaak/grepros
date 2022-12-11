@@ -24,11 +24,11 @@ try: import pyarrow.parquet
 except ImportError: pass
 
 from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
-from .. outputs import SinkBase
+from .. outputs import BaseSink
 from .. import rosapi
 
 
-class ParquetSink(SinkBase):
+class ParquetSink(BaseSink):
     """Writes messages to Apache Parquet files."""
 
     ## Auto-detection file extensions

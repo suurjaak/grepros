@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -65,8 +65,8 @@ class Searcher(object):
         self._idcounter       = 0      # Counter for unique message IDs
         self._highlight       = False  # Highlight matched values in message fields
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
-        self._source = None  # SourceBase instance
-        self._sink   = None  # SinkBase instance
+        self._source = None  # BaseSource instance
+        self._sink   = None  # BaseSink instance
 
         self.args = copy.deepcopy(ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs))
         self._parse_patterns()
@@ -76,11 +76,11 @@ class Searcher(object):
         """
         Yields matched and context messages from source.
 
-        @param   source     inputs.SourceBase or rosapi.Bag instance
+        @param   source     inputs.BaseSource or rosapi.Bag instance
         @param   highlight  whether to highlight matched values in message fields
         @return             tuples of (topic, msg, stamp, matched optionally highlighted msg)
         """
-        if not isinstance(source, inputs.SourceBase):
+        if not isinstance(source, inputs.BaseSource):
             source = inputs.BagSource(self.args, bag=source)
         self._prepare(source, highlight=highlight)
         for topic, msg, stamp, matched, _ in self._generate():
@@ -128,8 +128,8 @@ class Searcher(object):
         """
         Greps messages yielded from source and emits matched content to sink.
 
-        @param   source  inputs.SourceBase instance
-        @param   sink    outputs.SinkBase instance
+        @param   source  inputs.BaseSource instance
+        @param   sink    outputs.BaseSink instance
         @return          count matched
         """
         self._prepare(source, sink)
@@ -145,7 +145,7 @@ class Searcher(object):
     def _generate(self):
         """
         Yields matched and context messages from source.
-        
+
         @return  tuples of (topic, msg, stamp, matched optionally highlighted msg, index in topic)
         """
         batch_matched, batch = False, None

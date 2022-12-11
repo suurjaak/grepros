@@ -2,7 +2,7 @@
 """
 HTML export template.
 
-@param   source     inputs.SourceBase instance
+@param   source     inputs.BaseSource instance
 @param   sink       inputs.HtmlSink instance
 @param   args       list of command-line arguments
 @param   timeline   whether to create timeline

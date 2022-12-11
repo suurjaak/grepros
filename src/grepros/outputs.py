@@ -27,7 +27,7 @@ from . common import ConsolePrinter, MatchMarkers, TextWrapper, ensure_namespace
 from . import rosapi
 
 
-class SinkBase(object):
+class BaseSink(object):
     """Output base class."""
 
     ## Auto-detection file extensions for subclasses, as (".ext", )
@@ -45,8 +45,8 @@ class SinkBase(object):
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {(topic, typename, typehash): count}
 
-        self.args = copy.deepcopy(ensure_namespace(args, SinkBase.DEFAULT_ARGS, **kwargs))
-        ## inputs.SourceBase instance bound to this sink
+        self.args = copy.deepcopy(ensure_namespace(args, BaseSink.DEFAULT_ARGS, **kwargs))
+        ## inputs.BaseSource instance bound to this sink
         self.source = None
 
     def __enter__(self):
@@ -302,7 +302,7 @@ class TextSinkMixin(object):
 
 
 
-class ConsoleSink(SinkBase, TextSinkMixin):
+class ConsoleSink(BaseSink, TextSinkMixin):
     """Prints messages to console."""
 
     META_LINE_TEMPLATE   = "{ll0}{sep} {line}{ll1}"
@@ -380,7 +380,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
 
 
 
-class BagSink(SinkBase):
+class BagSink(BaseSink):
     """Writes messages to bagfile."""
 
     ## Constructor argument defaults
@@ -451,7 +451,7 @@ class BagSink(SinkBase):
         return ext in rosapi.BAG_EXTENSIONS
 
 
-class TopicSink(SinkBase):
+class TopicSink(BaseSink):
     """Publishes messages to ROS topics."""
 
     ## Constructor argument defaults
@@ -497,7 +497,7 @@ class TopicSink(SinkBase):
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
-        SinkBase.bind(self, source)
+        BaseSink.bind(self, source)
         rosapi.init_node()
 
     def validate(self):
@@ -527,7 +527,7 @@ class TopicSink(SinkBase):
         rosapi.shutdown_node()
 
 
-class AppSink(SinkBase):
+class AppSink(BaseSink):
     """Provides messages to callback function."""
 
     def __init__(self, emit=None, metaemit=None, highlight=False, **__):
@@ -558,7 +558,7 @@ class AppSink(SinkBase):
         return self._highlight
 
 
-class MultiSink(SinkBase):
+class MultiSink(BaseSink):
     """Combines any number of sinks."""
 
     ## Autobinding between argument flags and sink classes
@@ -613,7 +613,7 @@ class MultiSink(SinkBase):
 
     def bind(self, source):
         """Attaches source to all sinks, sets thread_excepthook on all sinks."""
-        SinkBase.bind(self, source)
+        BaseSink.bind(self, source)
         for sink in self.sinks:
             sink.bind(source)
             sink.thread_excepthook = self.thread_excepthook

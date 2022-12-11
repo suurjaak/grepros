@@ -22,10 +22,10 @@ import sys
 
 from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
-from ... outputs import SinkBase
+from ... outputs import BaseSink
 
 
-class CsvSink(SinkBase):
+class CsvSink(BaseSink):
     """Writes messages to CSV files, each topic to a separate file."""
 
     ## Auto-detection file extensions

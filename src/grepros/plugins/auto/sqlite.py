@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -20,10 +20,10 @@ import sys
 
 from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs
 from ... import rosapi
-from . dbbase import DataSinkBase, quote
+from . dbbase import BaseDataSink, quote
 
 
-class SqliteSink(DataSinkBase):
+class SqliteSink(BaseDataSink):
     """
     Writes messages to an SQLite database.
 

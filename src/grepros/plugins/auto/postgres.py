@@ -25,10 +25,10 @@ except ImportError:
 
 from ... import rosapi
 from ... common import ConsolePrinter
-from . dbbase import DataSinkBase, quote
+from . dbbase import BaseDataSink, quote
 
 
-class PostgresSink(DataSinkBase):
+class PostgresSink(BaseDataSink):
     """
     Writes messages to a Postgres database.
 

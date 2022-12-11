@@ -27,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -128,7 +128,7 @@ def add_write_format(name, cls, label=None, options=()):
     Adds plugin to `--write` in main.ARGUMENTS and MultiSink formats.
 
     @param   name     format name like "csv", added to `--write .. format=FORMAT`
-    @param   cls      class providing SinkBase interface
+    @param   cls      class providing BaseSink interface
     @param   label    plugin label; if multiple plugins add the same option,
                       "label output" in help text is replaced with "label1/label2/.. output"
     @param   options  a sequence of (name, help) to add to --write help, like
