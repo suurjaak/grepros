@@ -12,6 +12,7 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
+import abc
 import collections
 import datetime
 import decimal
@@ -202,8 +203,10 @@ class TypeMeta(object):
         cls._TIMINGS.clear()
 
 
-class Bag(object):
+class Bag(getattr(abc, "ABC", object)):
     """ROS bag factory."""
+
+    if not hasattr(abc, "ABC"): __metaclass__ = abc.ABCMeta
 
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
@@ -252,6 +255,12 @@ class Bag(object):
                                     filename, "reading" if "r" == mode else "writing", mycls, e)
             discard and classes.discard(mycls)
         raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        """Returns True if C is a registered Bag class else NotImplemented."""
+        clses = tuple(cls.READER_CLASSES | cls.WRITER_CLASSES)
+        return True if issubclass(C, clses) else NotImplemented
 
 
 def init_node(name=None):
