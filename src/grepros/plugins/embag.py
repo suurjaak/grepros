@@ -14,7 +14,6 @@ Released under the BSD License.
 ## @namespace grepros.plugins.embag
 from __future__ import absolute_import
 import os
-import re
 
 try: import embag
 except ImportError: embag = None
@@ -22,8 +21,6 @@ try: import genpy
 except ImportError: genpy = None
 
 from .. common import ConsolePrinter, Decompressor
-try: from .. import ros1
-except Exception: ros1 = None
 from .. import rosapi
 
 
@@ -100,7 +97,7 @@ class EmbagReader(object):
 
         @param   typehash  message type definition hash, if any
         """
-        typekey = (typename, typehash or next((h for n, h in self.__types if n == typename), None))
+        typekey = (typename, typehash or next((h for n, h in self._types if n == typename), None))
         if typekey not in self._types and typekey in self._typedefs:
             for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
                 self._types[(n, c._md5sum)] = c

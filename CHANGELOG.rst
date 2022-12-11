@@ -2,10 +2,11 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.1 (2022-12-10)
+0.5.1 (2022-12-11)
 -------------------
 * add inputs.AppSource and outputs.AppSink
 * add MCAP bag interface
+* fix embag reader
 * support "postgres://" as auto-detected Postgres target in addition to "postgresql://"
 
 0.5.0 (2022-10-18)
