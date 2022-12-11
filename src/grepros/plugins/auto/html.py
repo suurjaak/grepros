@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -83,9 +83,9 @@ class HtmlSink(SinkBase, TextSinkMixin):
         self._format_repls.clear()
         atexit.register(self.close)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes message to output file."""
-        self._queue.put((topic, index, stamp, msg, match))
+        self._queue.put((topic, msg, stamp, match, index))
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)
             self._writer.start()
@@ -160,18 +160,18 @@ class HtmlSink(SinkBase, TextSinkMixin):
             self._writer = None
 
     def _produce(self):
-        """Yields messages from emit queue, as (topic, index, stamp, msg, match)."""
+        """Yields messages from emit queue, as (topic, msg, stamp, match, index)."""
         while True:
             entry = self._queue.get()
             if entry is None:
                 self._queue.task_done()
                 break  # while
-            (topic, index, stamp, msg, match) = entry
+            (topic, msg, stamp, match, index) = entry
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             if self.args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s in HTML output.", topic)
             yield entry
-            super(HtmlSink, self).emit(topic, index, stamp, msg, match)
+            super(HtmlSink, self).emit(topic, msg, stamp, match, index)
             self._queue.task_done()
         try:
             while self._queue.get_nowait() or True: self._queue.task_done()

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -125,11 +125,11 @@ class ParquetSink(SinkBase):
         return ok and pandas_ok and pyarrow_ok
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes message to a Parquet file."""
         self._process_type(topic, msg)
         self._process_message(topic, stamp, msg)
-        super(ParquetSink, self).emit(topic, index, stamp, msg, match)
+        super(ParquetSink, self).emit(topic, msg, stamp, match, index)
 
 
     def close(self):

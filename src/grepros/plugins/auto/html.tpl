@@ -6,7 +6,7 @@ HTML export template.
 @param   sink       inputs.HtmlSink instance
 @param   args       list of command-line arguments
 @param   timeline   whether to create timeline
-@param   messages   iterable yielding (topic, index, stamp, msg, match)
+@param   messages   iterable yielding (topic, msg, stamp, match, index)
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    18.12.2021
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -1040,7 +1040,7 @@ Command: {{ " ".join(args) }}
 topic_idx = {}  # {(topic, typename, typehash), ]
 selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %>
-%for i, (topic, index, stamp, msg, match) in enumerate(messages, 1):
+%for i, (topic, msg, stamp, match, index) in enumerate(messages, 1):
     <%
 secs, nsecs = divmod(rosapi.to_nsec(stamp), 10**9)
 meta = source.get_message_meta(topic, index, stamp, msg)

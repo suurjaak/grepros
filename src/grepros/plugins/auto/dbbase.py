@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -118,14 +118,14 @@ class DataSinkBase(SinkBase, SqlMixin):
         return ok and sqlconfig_ok
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes message to database."""
         if not self._db:
             self._init_db()
         self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)
-        super(DataSinkBase, self).emit(topic, index, stamp, msg, match)
+        super(DataSinkBase, self).emit(topic, msg, stamp, match, index)
 
 
     def close(self):

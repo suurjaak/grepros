@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -417,7 +417,7 @@ class McapSink(SinkBase):
         return ok and mcap_ok and mcap_ros_ok
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes out message to MCAP file."""
         self._ensure_open()
         kwargs = dict(publish_time=rosapi.to_nsec(stamp), sequence=index)
@@ -431,7 +431,7 @@ class McapSink(SinkBase):
             self._writer.write_message(topic, schema, data, **kwargs)
         else:
             self._writer.write_message(topic, msg, **kwargs)
-        super(McapSink, self).emit(topic, index, stamp, msg, match)
+        super(McapSink, self).emit(topic, msg, stamp, match, index)
 
 
     def close(self):

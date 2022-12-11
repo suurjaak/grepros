@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -56,12 +56,12 @@ class CsvSink(SinkBase):
 
         atexit.register(self.close)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes message to output file."""
         data = (v for _, v in self._iter_fields(msg))
         metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))
-        super(CsvSink, self).emit(topic, index, stamp, msg, match)
+        super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
         """Returns whether overwrite option is valid."""

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -97,7 +97,7 @@ class SqlSink(SinkBase, SqlMixin):
         return sqlconfig_ok and ok
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes out message type CREATE TABLE statements to SQL schema file."""
         batch = self.source.get_batch()
         if not self._batch_metas or batch != self._batch:

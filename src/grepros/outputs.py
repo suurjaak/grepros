@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -56,7 +56,7 @@ class SinkBase(object):
             meta = self._batch_meta[batch] = self.source.format_meta()
             meta and ConsolePrinter.debug(meta)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """
         Outputs ROS message.
 
@@ -346,7 +346,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
             meta and ConsolePrinter.print(meta)
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Prints separator line and message text."""
         self._prefix = ""
         if self.args.LINE_PREFIX and self.source.get_batch():
@@ -363,7 +363,7 @@ class ConsoleSink(SinkBase, TextSinkMixin):
             sep = self.MESSAGE_SEP_TEMPLATE.format(**kws)
             sep and ConsolePrinter.print(sep)
         ConsolePrinter.print(self.format_message(match or msg, highlight=bool(match)))
-        super(ConsoleSink, self).emit(topic, index, stamp, msg, match)
+        super(ConsoleSink, self).emit(topic, msg, stamp, match, index)
 
 
     def is_highlighting(self):
@@ -396,7 +396,7 @@ class BagSink(SinkBase):
 
         atexit.register(self.close)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Writes message to output bagfile."""
         if not self._bag:
             if self.args.VERBOSE:
@@ -413,7 +413,7 @@ class BagSink(SinkBase):
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
         self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
-        super(BagSink, self).emit(topic, index, stamp, msg, match)
+        super(BagSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
@@ -468,7 +468,7 @@ class TopicSink(SinkBase):
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Publishes message to output topic."""
         with rosapi.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
@@ -485,7 +485,7 @@ class TopicSink(SinkBase):
             self._pubs[topickey] = pub
 
         self._pubs[topickey].publish(msg)
-        super(TopicSink, self).emit(topic, index, stamp, msg, match)
+        super(TopicSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
@@ -540,10 +540,10 @@ class AppSink(SinkBase):
             meta = self._batch_meta[batch] = self.source.get_meta()
             self._metaemit(meta)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Registers message and invokes registered emit callback, if any."""
-        super(AppSink, self).emit(topic, index, stamp, msg, match)
-        if self._emit: self._emit(topic, index, stamp, msg, match)
+        super(AppSink, self).emit(topic, msg, stamp, match, index)
+        if self._emit: self._emit(topic, msg, stamp, match, index)
 
     def is_highlighting(self):
         """Returns whether emitted matches are highlighted."""
@@ -596,10 +596,10 @@ class MultiSink(SinkBase):
         sink = sink or self.sinks[0] if self.sinks else None
         sink and sink.emit_meta()
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp, match, index):
         """Outputs ROS message to all sinks."""
         for sink in self.sinks:
-            sink.emit(topic, index, stamp, msg, match)
+            sink.emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
         """Attaches source to all sinks, sets thread_excepthook on all sinks."""
