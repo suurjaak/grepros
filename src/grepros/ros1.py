@@ -327,7 +327,7 @@ def init_node(name):
             try: master.getSystemState()
             except Exception:
                 if available is None:
-                    ConsolePrinter.error("Unable to register with master. Will keep trying.")
+                    ConsolePrinter.warn("Unable to register with master. Will keep trying.")
                 available = False
                 time.sleep(SLEEP_INTERVAL)
             else: available = True

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.12.2022
+@modified    11.12.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -20,6 +20,7 @@ import functools
 import glob
 import importlib
 import itertools
+import logging
 import math
 import os
 import random
@@ -48,44 +49,67 @@ class MatchMarkers(object):
 class ConsolePrinter(object):
     """Prints to console, supports color output."""
 
-    STYLE_RESET     = "\x1b(B\x1b[m"            ## Default color+weight
-    STYLE_HIGHLIGHT = "\x1b[31m"                ## Red
-    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  ## Dim gray
-    STYLE_SPECIAL   = "\x1b[35m"                ## Purple
-    STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
-    STYLE_WARN      = "\x1b[33m"                ## Yellow
-    STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
+    STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight
+    STYLE_HIGHLIGHT = "\x1b[31m"                # Red
+    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  # Dim gray
+    STYLE_SPECIAL   = "\x1b[35m"                # Purple
+    STYLE_SPECIAL2  = "\x1b[36m"                # Cyan
+    STYLE_WARN      = "\x1b[33m"                # Yellow
+    STYLE_ERROR     = "\x1b[31m\x1b[2m"         # Dim red
 
-    DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
-    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  ## Warning message wrappers
-    ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
+    DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  # Metainfo wrappers
+    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  # Warning message wrappers
+    ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  # Error message wrappers
 
-    COLOR = None       ## Whether using colors in output
+    ## Whether using colors in output
+    COLOR = None
 
-    WIDTH = 80         ## Console width in characters, updated from shutil and curses
+    ## Console width in characters, updated from shutil and curses
+    WIDTH = 80
 
-    PRINTS = {}        ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    PRINTS = {}
+
+    ## Whether logging debugs and warnings and raising errors, instead of printing
+    APIMODE = False
+
+    _COLORFLAG = None  ## Color flag set in configure()
 
     _LINEOPEN = False  ## Whether last print was without linefeed
 
     _UNIQUES = set()   ## Unique texts printed with `__once=True`
 
     @classmethod
-    def configure(cls, color):
+    def configure(cls, color=True, apimode=False):
         """
-        Initializes terminal for color output, or disables color output if unsupported.
+        Initializes printer, for terminal output or library mode.
 
-        @param   color  True / False / None for auto-detect from TTY support
+        For terminal output, initializes terminal colors, or disables colors if unsupported.
+
+        @param   color    True / False / None for auto-detect from TTY support;
+                          will be disabled if terminal does not support colors
+        @param   apimode  whether to log debugs and warnings to logger and raise errors,
+                          instead of printing
         """
+        cls.APIMODE    = bool(apimode)
+        cls._COLORFLAG = color
+        if not apimode: cls.init_terminal()
+
+
+    @classmethod
+    def init_terminal(cls):
+        """Initializes terminal for color output, or disables color output if unsupported."""
+        if cls.COLOR is not None: return
+
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
-        cls.COLOR = (color is not False)
+        cls.COLOR = (cls._COLORFLAG is not False)
         try:
             curses.setupterm()
             if cls.COLOR and not sys.stdout.isatty():
                 raise Exception()
         except Exception:
-            cls.COLOR = bool(color)
+            cls.COLOR = bool(cls._COLORFLAG)
         try:
             if sys.stdout.isatty() or cls.COLOR:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
@@ -112,29 +136,31 @@ class ConsolePrinter(object):
         @param   __once   whether text should be printed only once
                           and discarded on any further calls (applies to unformatted text)
         """
-        text, fmted = str(text), False
+        text = str(text)
         if kwargs.pop("__once", False):
             if text in cls._UNIQUES: return
             cls._UNIQUES.add(text)
         fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
-        try: text, fmted = (text % args if args else text), bool(args)
-        except Exception: pass
-        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
-        except Exception: pass
-        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
-        except Exception: pass
         if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
+        text = cls._format(text, *args, **kwargs)
 
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
         cls._LINEOPEN = "\n" not in end
+        cls.init_terminal()
         print(pref + text + suff, end=end, file=fileobj)
         not fileobj.isatty() and fileobj.flush()
 
 
     @classmethod
     def error(cls, text="", *args, **kwargs):
-        """Prints error to stderr, formatted with args and kwargs, in error colors if supported."""
+        """
+        Prints error to stderr, formatted with args and kwargs, in error colors if supported.
+
+        Raises exception instead if APIMODE.
+        """
+        if cls.APIMODE:
+            raise Exception(cls._format(text, *args, __once=False, **kwargs))
         KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
@@ -142,10 +168,14 @@ class ConsolePrinter(object):
     @classmethod
     def warn(cls, text="", *args, **kwargs):
         """
-        Prints warning to stderr.
+        Prints warning to stderr, or logs to logger if APIMODE.
 
-        Formatted with args and kwargs, in warning colors if supported.
+        Text is formatted with args and kwargs, in warning colors if supported.
         """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).warning(text)
+            return
         KWS = dict(__file=sys.stderr, __prefix=cls.WARN_START, __suffix=cls.WARN_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
@@ -153,10 +183,14 @@ class ConsolePrinter(object):
     @classmethod
     def debug(cls, text="", *args, **kwargs):
         """
-        Prints debug text to stderr.
+        Prints debug text to stderr, or logs to logger if APIMODE.
 
-        Formatted with args and kwargs, in lowlight colors if supported.
+        Text is formatted with args and kwargs, in warning colors if supported.
         """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).debug(text)
+            return
         KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
@@ -166,6 +200,23 @@ class ConsolePrinter(object):
         """Ends current open line, if any."""
         if cls._LINEOPEN: print()
         cls._LINEOPEN = False
+
+
+    @classmethod
+    def _format(cls, text="", *args, **kwargs):
+        """Returns text formatted with printf-style or format() arguments, or "" if not unique."""
+        text, fmted = str(text), False
+        if kwargs.get("__once"):
+            if text in cls._UNIQUES: return ""
+            cls._UNIQUES.add(text)
+        for k in ("__file", "__end", "__once", "__prefix", "__suffix"): kwargs.pop(k, None)
+        try: text, fmted = (text % args if args else text), bool(args)
+        except Exception: pass
+        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
+        except Exception: pass
+        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
+        except Exception: pass
+        return text
 
 
 class Decompressor(object):
