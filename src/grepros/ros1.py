@@ -8,11 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    10.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
 import collections
+import inspect
 import io
 import os
 import shutil
@@ -24,6 +25,7 @@ import rosbag
 import roslib
 import rospy
 
+from . import rosapi
 from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
 from . rosapi import TypeMeta, calculate_definition_hash, parse_definition_subtypes
 
@@ -53,8 +55,26 @@ SLEEP_INTERVAL = 0.5
 master = None
 
 
-class Bag(rosbag.Bag):
-    """Add message type getters and grepros-specific write() to rosbag.Bag."""
+class ROS1Bag(rosbag.Bag, rosapi.Bag):
+    """
+    ROS1 bag reader and writer.
+
+    Extends `rosbag.Bag` with more conveniences, and smooths over the rosbag bug
+    of yielding messages of wrong type, if message types in different topics
+    have different packages but identical fields and hashes.
+
+    Does **not** smooth over the rosbag bug of writing different types to one topic.
+
+    rosbag does allow writing messages of different types to one topic,
+    just like live ROS topics can have multiple message types published
+    to one topic. And their serialized bytes will actually be in the bag,
+    but rosbag will only register the first type for this topic (unless it is
+    explicitly given another connection header with metadata on the other type).
+
+    All messages yielded will be deserialized by rosbag as that first type,
+    and whether reading will raise an exception or not depends on whether 
+    the other type has enough bytes to be deserialized as that first type.
+    """
 
     # {(typename, typehash): message type class}
     __TYPES    = {}
@@ -77,6 +97,7 @@ class Bag(rosbag.Bag):
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
         filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
         mode,     args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
+        for n in set(kwargs) - set(inspect.getargspec(rosbag.Bag).args): kwargs.pop(n)
         try:
             super(Bag, self).__init__(filename, mode, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
@@ -307,6 +328,7 @@ class Bag(rosbag.Bag):
         for (topic, msg, t, header) in indexbag.read_messages(return_connection_header=True):
             writebag.write(topic, msg, t, connection_header=header)
             progress(indexbag._file.tell())
+Bag = ROS1Bag
 
 
 

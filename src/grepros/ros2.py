@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    10.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -78,8 +78,8 @@ executor = None
 
 
 
-class Bag(object):
-    """ROS2 bag interface, partially mimicking rosbag.Bag."""
+class ROS2Bag(rosapi.Bag):
+    """ROS2 bag reader and writer (SQLite format), partially mimicking rosbag.Bag."""
 
     ## ROS2 bag SQLite schema
     CREATE_SQL = """
@@ -353,6 +353,7 @@ PRAGMA synchronous=NORMAL;
         """Returns whether specified table exists in database."""
         sql = "SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?"
         return bool(self._db.execute(sql, ("table", name)).fetchone())
+Bag = ROS2Bag
 
 
 

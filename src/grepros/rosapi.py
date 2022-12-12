@@ -8,11 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    11.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
-import abc
 import collections
 import datetime
 import decimal
@@ -203,10 +202,8 @@ class TypeMeta(object):
         cls._TIMINGS.clear()
 
 
-class Bag(getattr(abc, "ABC", object)):
+class Bag(object):
     """ROS bag factory."""
-
-    if not hasattr(abc, "ABC"): __metaclass__ = abc.ABCMeta
 
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
@@ -247,20 +244,14 @@ class Bag(getattr(abc, "ABC", object)):
                 if detect and callable(getattr(mycls, "autodetect", None)):
                     use, discard = mycls.autodetect(filename), True
                 if use:
-                    result = mycls(filename, mode=mode, reindex=reindex, progress=progress)
-                    if result: return result
+                    result = super(cls, mycls).__new__(mycls)  # __init__() called on return
+                    if result is not None: return result
             except Exception as e:
                 discard = True
                 ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
                                     filename, "reading" if "r" == mode else "writing", mycls, e)
             discard and classes.discard(mycls)
         raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
-
-    @classmethod
-    def __subclasshook__(cls, C):
-        """Returns True if C is a registered Bag class else NotImplemented."""
-        clses = tuple(cls.READER_CLASSES | cls.WRITER_CLASSES)
-        return True if issubclass(C, clses) else NotImplemented
 
 
 def init_node(name=None):

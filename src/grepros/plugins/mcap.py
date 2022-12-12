@@ -37,7 +37,7 @@ if "2" == os.getenv("ROS_VERSION"):
     from .. import ros2
 
 
-class McapBag(object):
+class McapBag(rosapi.Bag):
     """
     MCAP bag interface, partially mimicking rosbag.Bag.
 

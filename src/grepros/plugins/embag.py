@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    10.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -25,7 +25,7 @@ from .. import rosapi
 
 
 
-class EmbagReader(object):
+class EmbagReader(rosapi.Bag):
     """embag reader interface, partially mimicking rosbag.Bag."""
 
     ## ROS1 bag file header magic start bytes
