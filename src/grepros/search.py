@@ -68,8 +68,11 @@ class Searcher(object):
         self._idcounter       = 0      # Counter for unique message IDs
         self._highlight       = False  # Highlight matched values in message fields
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
-        self._source = None  # BaseSource instance
-        self._sink   = None  # BaseSink instance
+
+        ## BaseSource instance
+        self.source = None
+        ## BaseSink instance
+        self.sink   = None
 
         self.args = copy.deepcopy(ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs))
         self._parse_patterns()
@@ -102,19 +105,19 @@ class Searcher(object):
         @return             original or highlighted message on match else `None`
         """
         result = None
-        if not isinstance(self._source, inputs.AppSource):
+        if not isinstance(self.source, inputs.AppSource):
             self._prepare(inputs.AppSource(), highlight=highlight)
         if self._highlight != bool(highlight): self._set_passthrough()
 
-        self._source.push(topic, msg, stamp)
-        item = self._source.read_queue()
+        self.source.push(topic, msg, stamp)
+        item = self.source.read_queue()
         if item is not None:
             msgid = self._idcounter = self._idcounter + 1
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
-            self._source.notify(matched)
+            self.source.notify(matched)
             if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
@@ -123,7 +126,7 @@ class Searcher(object):
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
             self._prune_data(topickey)
-            self._source.mark_queue(topic, msg, stamp)
+            self.source.mark_queue(topic, msg, stamp)
         return result
 
 
@@ -147,8 +150,8 @@ class Searcher(object):
 
     def close(self):
         """Closes source and sink, if any."""
-        self._source and self._source.close()
-        self._sink   and self._sink  .close()
+        self.source and self.source.close()
+        self.sink   and self.sink .close()
 
 
     def __enter__(self):
@@ -168,9 +171,9 @@ class Searcher(object):
         @return  tuples of (topic, msg, stamp, matched optionally highlighted msg, index in topic)
         """
         batch_matched, batch = False, None
-        for topic, msg, stamp in self._source.read():
-            if batch != self._source.get_batch():
-                batch, batch_matched = self._source.get_batch(), False
+        for topic, msg, stamp in self.source.read():
+            if batch != self.source.get_batch():
+                batch, batch_matched = self.source.get_batch(), False
                 if self._counts: self._clear_data()
 
             msgid = self._idcounter = self._idcounter + 1
@@ -178,7 +181,7 @@ class Searcher(object):
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
 
-            self._source.notify(matched)
+            self.source.notify(matched)
             if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
                 self._statuses[topickey][msgid] = True
                 self._counts[topickey][True] += 1
@@ -194,8 +197,8 @@ class Searcher(object):
 
             self._prune_data(topickey)
             if batch_matched and self._is_max_done():
-                self._sink and self._sink.flush()
-                self._source.close_batch()
+                self.sink and self.sink.flush()
+                self.source.close_batch()
 
 
     def _is_processable(self, topic, stamp, msg):
@@ -215,8 +218,8 @@ class Searcher(object):
             topics_matched = [k for k, vv in self._counts.items() if vv[True]]
             if topickey not in topics_matched and len(topics_matched) >= self.args.MAX_TOPICS:
                 return False
-        if self._source \
-        and not self._source.is_processable(topic, self._counts[topickey][None], stamp, msg):
+        if self.source \
+        and not self.source.is_processable(topic, self._counts[topickey][None], stamp, msg):
             return False
         return True
 
@@ -245,7 +248,7 @@ class Searcher(object):
     def _prepare(self, source, sink=None, highlight=False):
         """Clears local structures, binds and registers source and sink, if any."""
         self._clear_data()
-        self._source, self._sink = source, sink
+        self.source, self.sink = source, sink
         source.bind(sink), sink and sink.bind(source)
         self._highlight = sink.is_highlighting() if sink else bool(highlight)
         self._set_passthrough()
@@ -308,9 +311,9 @@ class Searcher(object):
         if self.args.MAX_MATCHES:
             is_maxed = sum(vv[True] for vv in self._counts.values()) >= self.args.MAX_MATCHES
         if not is_maxed and self.args.MAX_TOPIC_MATCHES:
-            count_required = self.args.MAX_TOPICS or len(self._source.topics)
+            count_required = self.args.MAX_TOPICS or len(self.source.topics)
             count_maxed = sum(vv[True] >= self.args.MAX_TOPIC_MATCHES
-                              or vv[None] >= (self._source.topics.get(k) or 0)
+                              or vv[None] >= (self.source.topics.get(k) or 0)
                               for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)
         if is_maxed:
@@ -389,7 +392,7 @@ class Searcher(object):
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 
-        do_highlight = self._highlight and not self._sink
+        do_highlight = self._highlight and not self.sink
         WRAPS = self.args.MATCH_WRAPPER if do_highlight else \
                 (MatchMarkers.START, MatchMarkers.END)
         WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
