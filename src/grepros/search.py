@@ -30,7 +30,7 @@ class Searcher(object):
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, NTH_MATCH=1,
                         BEFORE=0, AFTER=0, MAX_MATCHES=0, MAX_TOPIC_MATCHES=0, MAX_TOPICS=0,
-                        SELECT_FIELD=(), NOSELECT_FIELD=())
+                        SELECT_FIELD=(), NOSELECT_FIELD=(), MATCH_WRAPPER="**")
 
 
     def __init__(self, args=None, **kwargs):
@@ -48,6 +48,9 @@ class Searcher(object):
         @param   args.NTH_MATCH           emit every Nth match in topic
         @param   args.SELECT_FIELD        message fields to use in matching if not all
         @param   args.NOSELECT_FIELD      message fields to skip in matching
+        @param   args.MATCH_WRAPPER       string to wrap around matched values in find() and match(),
+                                          both sides if one value, start and end if more than one,
+                                          or no wrapping if zero values (default "**")
         @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
@@ -345,10 +348,11 @@ class Searcher(object):
                         spans.append(match.span())
                         if self.args.INVERT:
                             break  # for match
-            spans = merge_spans(spans) if not self.args.INVERT else \
-                    [] if spans else [(0, len(v1))] if v1 or not is_collection else []
-            for a, b in reversed(spans):  # Work from last to first, indices stay the same
-                v2 = v2[:a] + MatchMarkers.START + v2[a:b] + MatchMarkers.END + v2[b:]
+            if any(WRAPS):
+                spans = merge_spans(spans) if not self.args.INVERT else \
+                        [] if spans else [(0, len(v1))] if v1 or not is_collection else []
+                for a, b in reversed(spans):  # Work from last to first, indices stay the same
+                    v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
             return "[%s]" % v2 if is_collection and v != "[]" else v2
 
         def process_message(obj, top=()):
@@ -385,7 +389,13 @@ class Searcher(object):
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 
+        do_highlight = self._highlight and not self._sink
+        WRAPS = self.args.MATCH_WRAPPER if do_highlight else \
+                (MatchMarkers.START, MatchMarkers.END)
+        WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
+        WRAPS = ((WRAPS or [""]) * 2)[:2]
+
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         process_message(result)
         yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
-        return (result if self._highlight else msg) if yes else None
+        return (result if do_highlight else msg) if yes else None
