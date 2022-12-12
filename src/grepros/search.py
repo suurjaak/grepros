@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    11.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -140,6 +140,22 @@ class Searcher(object):
             total_matched += bool(matched)
         source.close(), sink.close()
         return total_matched
+
+
+    def close(self):
+        """Closes source and sink, if any."""
+        self._source and self._source.close()
+        self._sink   and self._sink  .close()
+
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes source and sink, if any."""
+        self.close()
 
 
     def _generate(self):
