@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -332,13 +332,15 @@ def init_node(name):
         master = rospy.client.get_master()
         available = None
         while not available:
-            try: master.getSystemState()
+            try: uri = master.getUri()
             except Exception:
                 if available is None:
                     ConsolePrinter.warn("Unable to register with master. Will keep trying.")
                 available = False
                 time.sleep(SLEEP_INTERVAL)
-            else: available = True
+            else:
+                ConsolePrinter.debug("Connected to ROS master at %s.", uri)
+                available = True
     try: rospy.get_rostime()
     except Exception:  # Init node only if not already inited
         rospy.init_node(name, anonymous=True, disable_signals=True)
