@@ -45,12 +45,15 @@ class McapBag(rosapi.Bag):
     (MCAP API limitation).
     """
 
+    ## Supported opening modes
+    MODES = ("r", "w")
+
     ## MCAP file header magic start bytes
     MCAP_MAGIC = b"\x89MCAP\x30\r\n"
 
     def __init__(self, filename, mode="r", **__):
         """Opens file and populates metadata."""
-        if mode not in ("r", "w"): raise ValueError("invalid mode %r" % mode)
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
         if "w" == mode: makedirs(os.path.dirname(filename))
         self._mode           = mode
@@ -78,26 +81,6 @@ class McapBag(rosapi.Bag):
             (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
         )
         if "r" == mode: self._populate_meta()
-
-
-    def __iter__(self):
-        """Iterates over all messages in the bag."""
-        return self.read_messages()
-
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit, closes bag."""
-        self.close()
-
-
-    def __len__(self):
-        """Returns the number of messages in the bag."""
-        return self.get_message_count()
 
 
     def get_message_count(self):
@@ -336,9 +319,12 @@ class McapBag(rosapi.Bag):
     def autodetect(cls, filename):
         """Returns whether file is readable as MCAP format."""
         result = os.path.isfile(filename)
-        if result:
+        if result and os.path.getsize(filename):
             with open(filename, "rb") as f:
                 result = (f.read(len(cls.MCAP_MAGIC)) == cls.MCAP_MAGIC)
+        else:
+            ext = os.path.splitext(filename or "")[-1].lower()
+            result = ext in McapSink.FILE_EXTENSIONS
         return result
 
 

@@ -110,6 +110,8 @@ PRAGMA synchronous=NORMAL;
         @param   filename  bag file path to open
         @param   mode      file will be overwritten if "w"
         """
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
+
         self._db     = None  # sqlite3.Connection instance
         self._mode   = mode
         self._topics = {}    # {(topic, typename): {id, name, type}}
@@ -118,27 +120,6 @@ PRAGMA synchronous=NORMAL;
 
         ## Bagfile path
         self.filename = filename
-
-
-    def __iter__(self):
-        """Iterates over all messages in the bag."""
-        return self.read_messages()
-
-
-    def __enter__(self):
-        """Context manager entry, opens bag if not already open."""
-        self._ensure_open()
-        return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit, closes bag."""
-        self.close()
-
-
-    def __len__(self):
-        """Returns the number of messages in the bag."""
-        return self.get_message_count()
 
 
     def get_message_count(self):

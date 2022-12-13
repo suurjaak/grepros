@@ -20,7 +20,7 @@ except ImportError: embag = None
 try: import genpy
 except ImportError: genpy = None
 
-from .. common import ConsolePrinter, Decompressor
+from .. common import ConsolePrinter
 from .. import rosapi
 
 
@@ -28,17 +28,14 @@ from .. import rosapi
 class EmbagReader(rosapi.Bag):
     """embag reader interface, partially mimicking rosbag.Bag."""
 
+    ## Supported opening modes
+    MODES = ("r", )
+
     ## ROS1 bag file header magic start bytes
     ROSBAG_MAGIC = b"#ROSBAG"
 
-    def __init__(self, filename, decompress=False, progress=False, **__):
-        """
-        @param   decompress  decompress archived bag to file directory
-        @param   progress    show progress bar during decompression
-        """
-        if Decompressor.is_compressed(filename):
-            if decompress: filename = Decompressor.decompress(filename, progress)
-            else: raise Exception("decompression not enabled")
+    def __init__(self, filename, mode="r", **__):
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
         self._topics   = {}  # {(topic, typename, typehash): message count}
         self._types    = {}  # {(typename, typehash): message type class}
@@ -50,26 +47,6 @@ class EmbagReader(rosapi.Bag):
         self.filename = filename
 
         self._populate_meta()
-
-
-    def __iter__(self):
-        """Iterates over all messages in the bag."""
-        return self.read_messages()
-
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit, closes bag."""
-        self.close()
-
-
-    def __len__(self):
-        """Returns the number of messages in the bag."""
-        return self.get_message_count()
 
 
     def get_message_count(self):

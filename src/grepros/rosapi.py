@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, Decompressor, filter_fields, memoize
+from . common import ConsolePrinter, filter_fields, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -203,7 +203,10 @@ class TypeMeta(object):
 
 
 class Bag(object):
-    """ROS bag factory."""
+    """ROS bag facade."""
+
+    ## Supported opening modes, overridden in subclasses
+    MODES = ("r", "w", "a")
 
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
@@ -211,47 +214,69 @@ class Bag(object):
     ## Bag writer classes, as {Cls, }
     WRITER_CLASSES = set()
 
-    def __new__(cls, filename, mode="r", decompress=False, reindex=False, progress=False):
+    def __new__(cls, filename, mode="r", reindex=False, progress=False):
         """
         Returns an object for reading or writing ROS bags.
 
         Result is rosbag.Bag in ROS1, or an object with a partially conforming API
         if using embag in ROS1, or if using ROS2.
+        Or a plugin class like McapBag if plugin loaded and file reconized as MCAP format.
 
         Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
         Classes can have a static/class method `autodetect(filename)`
-        returning whether given file is readable for the plugin class.
+        returning whether given file is in recognizable format for the plugin class.
 
         Extra methods compared with rosbag.Bag: get_message_class(),
         get_message_definition(), get_message_type_hash(), and get_topic_info().
 
         @param   mode         return reader if "r" else writer
-        @param   decompress   decompress archived bag to file directory
         @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
-        @param   progress     show progress bar with decompression or reindexing status
+        @param   progress     show progress bar with reindexing status
         """
-        if Decompressor.is_compressed(filename):
-            if decompress: filename = Decompressor.decompress(filename, progress)
-            else: raise Exception("decompression not enabled")
-
-        if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
-            mode = "w"  # rosbag raises error on append if no file or empty file
-            os.path.exists(filename) and os.remove(filename)
         classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
         for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
-            use, discard = not detect, False
-            try:  # Try auto-detecting suitable class first
-                if detect and callable(getattr(mycls, "autodetect", None)):
+            use, discard = not detect, False  # Try auto-detecting suitable class first
+            try:
+                if detect and callable(vars(mycls).get("autodetect")):
                     use, discard = mycls.autodetect(filename), True
                 if use:
-                    result = super(cls, mycls).__new__(mycls)  # __init__() called on return
-                    if result is not None: return result
+                    result = super(cls, mycls).__new__(mycls)
+                    if result is not None: return result  # __init__() called by Python on return
             except Exception as e:
                 discard = True
                 ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
                                     filename, "reading" if "r" == mode else "writing", mycls, e)
             discard and classes.discard(mycls)
         raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
+
+
+    def __iter__(self):
+        """Iterates over all messages in the bag."""
+        return self.read_messages()
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Context manager exit, closes bag."""
+        self.close()
+
+    def __len__(self):
+        """Returns the number of messages in the bag."""
+        return self.get_message_count()
+
+    def __nonzero__(self): return True
+
+    def __bool__   (self): return True
+
+    @classmethod
+    def autodetect(cls, filename):
+        """Returns registered bag class auto-detected from filename, or None."""
+        for mycls in cls.READER_CLASSES | cls.WRITER_CLASSES:
+            if callable(vars(mycls).get("autodetect")) and mycls.autodetect(filename):
+                return mycls
+        return None
 
 
 def init_node(name=None):

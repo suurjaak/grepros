@@ -23,7 +23,7 @@ import sys
 import yaml
 
 from . common import ConsolePrinter, MatchMarkers, TextWrapper, ensure_namespace, filter_fields, \
-                     format_bytes, makedirs, merge_spans, plural, wildcard_to_regex
+                     format_bytes, makedirs, merge_spans, plural, unique_path, wildcard_to_regex
 from . import rosapi
 
 
@@ -118,7 +118,7 @@ class TextSinkMixin(object):
                         START_LINE=None, END_LINE=None, MAX_MESSAGE_LINES=None,
                         LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None,
                         MATCH_WRAPPER=None)
-    
+
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
@@ -406,16 +406,7 @@ class BagSink(BaseSink):
 
     def emit(self, topic, msg, stamp, match, index):
         """Writes message to output bagfile."""
-        if not self._bag:
-            if self.args.VERBOSE:
-                sz = os.path.isfile(self.args.WRITE) and os.path.getsize(self.args.WRITE)
-                ConsolePrinter.debug("%s %s%s.",
-                                     "Overwriting" if sz and self._overwrite else
-                                     "Appending to" if sz else "Creating",
-                                     self.args.WRITE, (" (%s)" % format_bytes(sz)) if sz else "")
-            makedirs(os.path.dirname(self.args.WRITE))
-            self._bag = rosapi.Bag(self.args.WRITE, mode="w" if self._overwrite else "a")
-
+        self._ensure_open()
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
@@ -436,13 +427,33 @@ class BagSink(BaseSink):
     def close(self):
         """Closes output bagfile, if any."""
         self._bag and self._bag.close()
-        if not self._close_printed and self._counts:
+        if not self._close_printed and self._counts and self._bag:
             self._close_printed = True
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self.args.WRITE,
-                                 format_bytes(os.path.getsize(self.args.WRITE)))
+                                 plural("topic", self._counts), self._bag.filename,
+                                 format_bytes(os.path.getsize(self._bag.filename)))
         super(BagSink, self).close()
+
+    def _ensure_open(self):
+        """Opens output file if not already open."""
+        if self._bag is not None: return
+        filename = self.args.WRITE
+        if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
+            cls = rosapi.Bag.autodetect(filename)
+            if cls and "a" not in getattr(cls, "MODES", ("a", )):
+                filename = unique_path(filename)
+                if self.args.VERBOSE:
+                    ConsolePrinter.debug("Making unique filename %r, as %s does not support "
+                                         "appending.", filename, cls.__name___)
+        if self.args.VERBOSE:
+            sz = os.path.isfile(filename) and os.path.getsize(filename)
+            ConsolePrinter.debug("%s %s%s.",
+                                 "Overwriting" if sz and self._overwrite else
+                                 "Appending to" if sz else "Creating",
+                                 filename, (" (%s)" % format_bytes(sz)) if sz else "")
+        makedirs(os.path.dirname(filename))
+        self._bag = rosapi.Bag(filename, mode="w" if self._overwrite else "a")
 
     @classmethod
     def autodetect(cls, target):

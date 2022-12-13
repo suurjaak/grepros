@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    11.12.2022
+@modified    12.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -206,8 +206,8 @@ class ConditionMixin(object):
     different types in one topic), evaluation is done for each set of
     topics separately, condition passing if any set passes.
 
-    Example condition: `<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0`
-                       `and <topic */cmd_vel>.angular.z < 0.02`.
+    Example condition: `<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0
+                        and <topic */cmd_vel>.angular.z < 0.02`.
     """
 
     TOPIC_RGX = re.compile(r"<topic\s+([^\s><]+)\s*>")  # "<topic /some/thing>"
@@ -454,6 +454,7 @@ class BagSource(BaseSource, ConditionMixin):
             if skip or not self._configure(filename):
                 continue  # for filename
 
+            encountereds.add(self._bag.filename)
             topicsets = [self._topics]
             if "topic" == self.args.ORDERBY:  # Group output by sorted topic names
                 topicsets = [{n: tt} for n, tt in sorted(self._topics.items())]
@@ -623,7 +624,7 @@ class BagSource(BaseSource, ConditionMixin):
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
-        if not self._totals_ok:  # Must be ros2.Bag
+        if not self._totals_ok:  # Must be ROS2 bag
             for (t, n, h), c in self._bag.get_topic_info(counts=True).items():
                 self.topics[(t, n, h)] = c
             self._totals_ok = True
@@ -644,8 +645,12 @@ class BagSource(BaseSource, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            bag = rosapi.Bag(filename, mode="r", decompress=self.args.DECOMPRESS,
-                             reindex=self.args.REINDEX, progress=self.args.PROGRESS)
+            if Decompressor.is_compressed(filename):
+                if self.args.DECOMPRESS:
+                    filename = Decompressor.decompress(filename, self.args.PROGRESS)
+                else: raise Exception("decompression not enabled")
+            bag = rosapi.Bag(filename, mode="r", reindex=self.args.REINDEX,
+                             progress=self.args.PROGRESS)
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename, e)
             return False

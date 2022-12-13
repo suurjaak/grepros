@@ -98,6 +98,12 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
         mode,     args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
         for n in set(kwargs) - set(inspect.getargspec(rosbag.Bag).args): kwargs.pop(n)
+
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
+        if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
+            mode = "w"  # rosbag raises error on append if no file or empty file
+            os.path.exists(filename) and os.remove(filename)
+
         try:
             super(Bag, self).__init__(filename, mode, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
@@ -108,26 +114,6 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         self.__topics = {}  # {(topic, typename, typehash): message count}
 
         self.__populate_meta()
-
-
-    def __iter__(self):
-        """Iterates over all messages in the bag."""
-        return self.read_messages()
-
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit, closes bag."""
-        self.close()
-
-
-    def __len__(self):
-        """Returns the number of messages in the bag."""
-        return self.get_message_count()
 
 
     def get_message_definition(self, msg_or_type):
