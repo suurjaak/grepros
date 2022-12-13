@@ -11,5 +11,5 @@ Released under the BSD License.
 """
 ## @namespace grepros
 __title__        = "grepros"
-__version__      = "0.5.1.dev23"
-__version_info__ = (0, 5, 1, "dev23")
+__version__      = "0.5.1.dev24"
+__version_info__ = (0, 5, 1, "dev24")

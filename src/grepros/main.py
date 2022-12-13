@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -74,7 +74,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     """,
 
     "arguments": [
-        dict(args=["PATTERN"], nargs="*",
+        dict(args=["PATTERN"], nargs="*", default=[],
              help="pattern(s) to find in message field values,\n"
                   "all messages match if not given,\n"
                   "can specify message field as NAME=PATTERN\n"
@@ -396,10 +396,17 @@ def make_parser():
 
 def process_args(args):
     """
-    Converts or combines arguments where necessary, returns args.
+    Converts or combines arguments where necessary, returns full args.
 
     @param   args  arguments object like argparse.Namespace
     """
+    for arg in sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"]):
+        name = arg.get("dest") or arg["args"][0]
+        if "version" != arg.get("action") and argparse.SUPPRESS != arg.get("default") \
+        and "HELP" != name and not hasattr(args, name):
+            value = False if arg.get("store_true") else True if arg.get("store_false") else None
+            setattr(args, name, arg.get("default", value))
+
     if args.CONTEXT:
         args.BEFORE = args.AFTER = args.CONTEXT
 
