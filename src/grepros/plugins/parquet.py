@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -316,7 +316,10 @@ class ParquetSink(BaseSink):
 
 
 def init(*_, **__):
-    """Adds Parquet output format support."""
+    """Adds Parquet output format support. Raises ImportWarning if libraries not available."""
+    if not pandas or not pyarrow:
+        ConsolePrinter.error("pandas or PyArrow not available: cannot write Parquet files.")
+        raise ImportWarning()
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
         ("column-name=rostype:value",  "additional column to add in Parquet output,\n"
