@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -112,7 +112,7 @@ class BaseDataSink(BaseSink, SqlMixin):
             if not ok:
                 ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
                                      self.ENGINE, self.args.WRITE_OPTIONS["commit-interval"])
-        if self.args.WRITE_OPTIONS.get("nesting") not in (None, "", "array", "all"):
+        if self.args.WRITE_OPTIONS.get("nesting") not in (None, False, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["nesting"])

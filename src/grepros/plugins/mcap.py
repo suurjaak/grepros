@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -378,7 +378,7 @@ class McapSink(BaseSink):
         self._file          = None  # Open file() object
         self._writer        = None  # mcap_ros.writer.Writer object
         self._schemas       = {}    # {(typename, typehash): mcap.records.Schema}
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._close_printed = False
 
         atexit.register(self.close)
@@ -390,7 +390,7 @@ class McapSink(BaseSink):
         and overwrite is valid.
         """
         ok, mcap_ok, mcap_ros_ok = True, bool(mcap), bool(mcap_ros)
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for MCAP: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])

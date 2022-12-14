@@ -85,7 +85,13 @@ class ParquetSink(BaseSink):
         @param   args                 arguments as namespace or dictionary, case-insensitive
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of Parquet files to write
-        @param   args.WRITE_OPTIONS   {"writer-*": arguments passed to ParquetWriter,
+        @param   args.WRITE_OPTIONS   {"column": additional columns as {name: (rostype, value)},
+                                       "type": {rostype: PyArrow type or typename like "uint8"},
+                                       "writer": dictionary of arguments passed to ParquetWriter,
+                                       "column-k=rostype:v": one "column"-argument
+                                                             in flat string form,
+                                       "type-k=v: one "type"-argument in flat string form,
+                                       "writer-k=v": one "writer"-argument in flat string form,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
         @param   args.VERBOSE         whether to print debug information
@@ -95,7 +101,7 @@ class ParquetSink(BaseSink):
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE
-        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._filenames      = {}  # {(typename, typehash): Parquet file path}
         self._caches         = {}  # {(typename, typehash): [{data}, ]}
         self._schemas        = {}  # {(typename, typehash): pyarrow.Schema}
@@ -113,7 +119,7 @@ class ParquetSink(BaseSink):
         Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid.
         """
         ok, pandas_ok, pyarrow_ok = self._configure_ok, bool(pandas), bool(pyarrow)
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
@@ -265,6 +271,25 @@ class ParquetSink(BaseSink):
         """Parses args.WRITE_OPTIONS."""
         ok = True
 
+        def process_column(name, rostype, value):  # Parse "column-name=rostype:value"
+            v, myok = value, True
+            if "string" not in rostype:
+                v = json.loads(v)
+            if not name:
+                myok = False
+                ConsolePrinter.error("Invalid name option in %s=%s:%s", name, rostype, v)
+            if rostype not in rosapi.ROS_BUILTIN_TYPES:
+                myok = False
+                ConsolePrinter.error("Invalid type option in %s=%s:%s", name, rostype, v)
+            if myok:
+                self.MESSAGE_TYPE_BASECOLS.append((name, rostype))
+                self._extra_basecols.append((name, value))
+
+        def process_type(rostype, arrowtype):  # Eval pyarrow datatype from value like "float64()"
+            if arrowtype not in self.ARROW_TYPES.values():
+                arrowtype = eval(compile(arrowtype, "", "eval"), {"__builtins__": self.ARROW_TYPES})
+            self.COMMON_TYPES[rostype] = arrowtype
+
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):
             alias = rosapi.get_type_alias(rostype)
@@ -274,44 +299,32 @@ class ParquetSink(BaseSink):
                 self.COMMON_TYPES[alias + "[]"] = self.COMMON_TYPES[rostype + "[]"]
 
         for k, v in self.args.WRITE_OPTIONS.items():
-            if k.startswith("column-"):
-                # Parse "column-name=rostype:value"
-                try:
-                    name, (rostype, value), myok = k[len("column-"):], v.split(":", 1), True
-                    if "string" not in rostype:
-                        value = json.loads(value)
-                    if not name:
-                        ok = myok = False
-                        ConsolePrinter.error("Invalid name option in %s=%s", k, v)
-                    if rostype not in rosapi.ROS_BUILTIN_TYPES:
-                        ok = myok = False
-                        ConsolePrinter.error("Invalid type option in %s=%s", k, v)
-                    if myok:
-                        self.MESSAGE_TYPE_BASECOLS.append((name, rostype))
-                        self._extra_basecols.append((name, value))
-                except Exception as e:
-                    ok = False
-                    ConsolePrinter.error("Invalid column option in %s=%s: %s", k, v, e)
-            elif k.startswith("type-"):
-                # Eval pyarrow datatype from value like "float64()" or "list(uint8())"
-                if not k[len("type-"):]:
-                    ok = False
-                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v)
+            if "column" == k and v and isinstance(v, dict):
+                for name, (rostype, value) in v.items():
+                    if not process_column(name, rostype, value): ok = False
+            elif "type" == k and v and isinstance(v, dict):
+                for name, value in v.items():
+                    if not process_type(name, value): ok = False
+            elif "writer" == k and v and isinstance(v, dict):
+                self.WRITER_ARGS.update(v)
+            elif isinstance(k, str) and "-" in k:
+                category, name = k.split("-", 1)
+                if category not in ("column", "type", "writer"):
+                    ConsolePrinter.warn("Unknown %r option in %s=%s", category, k, v)
                     continue  # for k, v
                 try:
-                    arrowtype = eval(compile(v, "", "eval"), {"__builtins__": self.ARROW_TYPES})
-                    self.COMMON_TYPES[k[len("type-"):]] = arrowtype
+                    if not name: raise Exception("empty name")
+                    if "column" == category:    # column-name=rostype:value
+                        if not process_column(name, *v.split(":", 1)): ok = False
+                    elif "type" == category:    # type-rostype=arrowtype
+                        process_type(name, v)
+                    elif "writer" == category:  # writer-argname=argvalue
+                        try: v = json.loads(v) 
+                        except Exception: pass
+                        self.WRITER_ARGS[name] = v
                 except Exception as e:
                     ok = False
-                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v, e)
-            elif k.startswith("writer-"):
-                if not k[len("writer-"):]:
-                    ok = False
-                    ConsolePrinter.error("Invalid name in %s=%s: %s", k, v)
-                    continue  # for k, v
-                try: v = json.loads(v)
-                except Exception: pass
-                self.WRITER_ARGS[k[len("writer-"):]] = v
+                    ConsolePrinter.error("Invalid %s option in %s=%s: %s", category, k, v, e)
         self._configure_ok = ok
 
 

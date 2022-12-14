@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -68,7 +68,7 @@ class SqlSink(BaseSink, SqlMixin):
         self._batch         = None   # Current source batch
         self._nested_types  = {}     # {(typename, typehash): "CREATE TABLE .."}
         self._batch_metas   = []     # [source batch metainfo string, ]
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._close_printed = False
 
         # Whether to create tables for nested message types,
@@ -89,7 +89,7 @@ class SqlSink(BaseSink, SqlMixin):
                                  "Choose one of {array,all}.",
                                  self.args.WRITE_OPTIONS["nesting"])
             ok = False
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for SQL: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])

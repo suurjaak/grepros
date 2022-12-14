@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -68,7 +68,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         self._queue     = queue.Queue()
         self._writer    = None        # threading.Thread running _stream()
         self._filename  = args.WRITE  # Filename base, will be made unique
-        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
         self._close_printed = False
 
@@ -99,7 +99,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for HTML: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -78,7 +78,7 @@ class SqliteSink(BaseDataSink):
 
         self._filename    = args.WRITE
         self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
-        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._id_counters = {}  # {table next: max ID}
 
 
@@ -88,12 +88,12 @@ class SqliteSink(BaseDataSink):
         parses "message-yaml" from args.WRITE_OPTIONS.
         """
         config_ok = super(SqliteSink, self).validate()
-        if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
             config_ok = False
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])

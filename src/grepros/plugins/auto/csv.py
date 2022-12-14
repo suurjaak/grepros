@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -51,7 +51,7 @@ class CsvSink(BaseSink):
         self._files         = {}          # {(topic, typename, typehash): file()}
         self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._close_printed = False
 
         atexit.register(self.close)
@@ -66,7 +66,7 @@ class CsvSink(BaseSink):
     def validate(self):
         """Returns whether overwrite option is valid."""
         result = True
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])

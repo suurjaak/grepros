@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    11.12.2022
+@modified    13.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -399,7 +399,7 @@ class BagSink(BaseSink):
         args = ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
         self._bag = None
-        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in ("true", True))
         self._close_printed = False
 
         atexit.register(self.close)
@@ -417,7 +417,7 @@ class BagSink(BaseSink):
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
         result = True
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for bag: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
@@ -596,14 +596,15 @@ class MultiSink(BaseSink):
                       if getattr(args, flag, None)] if not sinks else list(sinks)
 
         for dumpopts in args.WRITE if not sinks else ():
-            target, kwargs = dumpopts[0], dict(x.split("=", 1) for x in dumpopts[1:])
-            cls = self.FORMAT_CLASSES.get(kwargs.pop("format", None))
+            kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, str))
+            kwargs.update(kv for x in dumpopts[1:] if isinstance(x, dict) for kv in x.items())
+            target, cls = dumpopts[0], self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:
                 cls = next((c for c in self.FORMAT_CLASSES.values()
                             if callable(getattr(c, "autodetect", None))
                             and c.autodetect(target)), None)
             if not cls:
-                ConsolePrinter.error('Unknown output format in "%s"' % " ".join(dumpopts))
+                ConsolePrinter.error('Unknown output format in "%s"' % " ".join(map(str, dumpopts)))
                 self._valid = False
                 continue  # for dumpopts
             clsargs = copy.deepcopy(args)
