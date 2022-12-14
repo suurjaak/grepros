@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    13.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -198,3 +198,6 @@ def init(*_, **__):
         ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
                                      "instead of appending to file (default false)")
     ])
+
+
+__all__ = ["SqliteSink", "init"]

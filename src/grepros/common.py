@@ -880,3 +880,11 @@ def wildcard_to_regex(text, end=False):
     """
     suff = "$" if end else ""
     return re.compile(".*".join(map(re.escape, text.split("*"))) + suff, re.I)
+
+
+__all__ = [
+    "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
+    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
+    "format_bytes", "format_stamp", "format_timedelta", "import_item", "makedirs", "memoize",
+    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "wildcard_to_regex",
+]

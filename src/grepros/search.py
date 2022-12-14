@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    12.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -402,3 +402,6 @@ class Searcher(object):
         process_message(result)
         yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
         return (result if do_highlight else msg) if yes else None
+
+
+__all__ = ["Searcher"]

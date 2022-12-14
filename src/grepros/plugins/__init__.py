@@ -27,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    11.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -222,3 +222,11 @@ def populate_write_formats():
     text = "\n".join(sorted("".join((LEADING, n, inters[n], fmt(n, h)))
                             for n, h in texts.items()))
     writearg["help"] += "\n" + text
+
+
+
+
+__all__ = [
+    "PLUGINS", "init", "configure", "load", "add_write_format", "get_argument",
+    "populate_known_plugins", "populate_write_formats",
+]

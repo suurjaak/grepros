@@ -648,3 +648,8 @@ class MultiSink(BaseSink):
     def is_highlighting(self):
         """Returns whether any sink requires highlighted matches."""
         return any(s.is_highlighting() for s in self.sinks)
+
+
+__all__ = [
+    "AppSink", "BagSink", "BaseSink", "ConsoleSink", "MultiSink", "TextSinkMixin", "TopicSink"
+]

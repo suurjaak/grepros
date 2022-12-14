@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    12.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -798,3 +798,16 @@ def to_sec_nsec(val):
     if hasattr(val, "nanoseconds"):  # rclpy.Duration
         return divmod(val.nanoseconds, 10**9)
     return (val.sec, val.nanosec)  # builtin_interfaces.msg.Time/Duration
+
+
+__all__ = [
+    "BAG_EXTENSIONS", "DDS_TYPES", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES",
+    "SKIP_EXTENSIONS", "Bag", "ROS2Bag", "context", "executor", "node",
+    "canonical", "create_publisher", "create_subscriber", "deserialize_message",
+    "format_message_value", "get_message_class", "get_message_data", "get_message_definition",
+    "get_message_definition_idl", "get_message_fields", "get_message_type",
+    "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
+    "is_ros_message", "is_ros_time", "make_duration", "make_full_typename", "make_subscriber_qos",
+    "make_time", "qos_to_dict", "scalar", "set_message_value", "shutdown_node", "to_nsec",
+    "to_sec", "to_sec_nsec", "validate"
+]

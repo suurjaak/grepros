@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    13.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -247,3 +247,6 @@ def init(*_, **__):
         ("overwrite=true|false",  "overwrite existing file in SQL output\n"
                                   "instead of appending unique counter (default false)")
     ])
+
+
+__all__ = ["SqlSink", "init"]

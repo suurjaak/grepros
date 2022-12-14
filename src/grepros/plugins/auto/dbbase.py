@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    13.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -380,3 +380,6 @@ class BaseDataSink(BaseSink, SqlMixin):
     def _make_db_label(self):
         """Returns formatted label for database."""
         return self.args.WRITE
+
+
+__all__ = ["BaseDataSink"]

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    09.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -219,3 +219,6 @@ def init(*_, **__):
                                  "(array fields in parent will be populated \n"
                                  " with foreign keys instead of messages as JSON)"),
     ])
+
+
+__all__ = ["PostgresSink", "init"]

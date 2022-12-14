@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    10.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -641,3 +641,6 @@ def quote(name, force=False):
     or re.search(r"(^[\W\d])|(?=\W)", result, re.U):
         result = '"%s"' % result.replace('"', '""')
     return result
+
+
+__all__ = ["SqlMixin", "quote"]

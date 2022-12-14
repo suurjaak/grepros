@@ -560,5 +560,12 @@ def run():
         rosapi.shutdown_node()
 
 
+__all__ = [
+    "ARGUMENTS", "HelpFormatter",
+    "make_parser", "process_args", "validate_args", "flush_stdout", "preload_plugins", "run",
+]
+
+
+
 if "__main__" == __name__:
     run()

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    13.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -462,3 +462,6 @@ def init(*_, **__):
     rosapi.BAG_EXTENSIONS += McapSink.FILE_EXTENSIONS
     rosapi.Bag.READER_CLASSES.add(McapBag)
     rosapi.Bag.WRITER_CLASSES.add(McapBag)
+
+
+__all__ = ["McapBag", "McapSink", "init"]

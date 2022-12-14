@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    13.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -345,3 +345,6 @@ def init(*_, **__):
         ("writer-argname=argvalue",    "additional arguments for Parquet output\n"
                                        "given to pyarrow.parquet.ParquetWriter"),
     ])
+
+
+__all__ = ["ParquetSink", "init"]

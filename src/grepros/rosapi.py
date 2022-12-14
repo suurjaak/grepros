@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -731,3 +731,18 @@ def to_sec(val):
 def to_sec_nsec(val):
     """Returns value as (seconds, nanoseconds) if value is ROS time/duration, else value."""
     return realapi.to_sec_nsec(val)
+
+
+__all___ = [
+    "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_TYPES", "ROS_COMMON_TYPES",
+    "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES",
+    "SKIP_EXTENSIONS", "Bag", "TypeMeta",
+    "calculate_definition_hash", "create_publisher", "create_subscriber", "format_message_value",
+    "get_alias_type", "get_message_class", "get_message_data", "get_message_definition",
+    "get_message_fields", "get_message_type", "get_message_type_hash", "get_message_value",
+    "get_ros_time_category", "get_rostime", "get_topic_types", "get_type_alias", "init_node",
+    "is_ros_message", "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration",
+    "make_live_time", "make_message_hash", "make_time", "message_to_dict",
+    "parse_definition_fields", "parse_definition_subtypes", "scalar", "set_message_value",
+    "shutdown_node", "to_datetime", "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "validate",
+]
