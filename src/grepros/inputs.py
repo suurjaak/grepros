@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.12.2022
+@modified    14.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -769,7 +769,6 @@ class TopicSource(BaseSource, ConditionMixin):
         self._queue = None
         ConditionMixin.close_batch(self)
         super(TopicSource, self).close()
-        rosapi.shutdown_node()
 
     def get_meta(self):
         """Returns source metainfo data dict."""
