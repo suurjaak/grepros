@@ -16,7 +16,7 @@ import atexit
 import collections
 
 from ... import rosapi
-from ... common import ConsolePrinter, ensure_namespace, plural
+from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, plural
 from ... outputs import BaseSink
 from . sqlbase import SqlMixin, quote
 
@@ -66,7 +66,8 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single item as the database connection string
         @param   args.WRITE           database connection string
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
@@ -75,6 +76,7 @@ class BaseDataSink(BaseSink, SqlMixin):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, BaseDataSink.DEFAULT_ARGS, **kwargs)
         super(BaseDataSink, self).__init__(args)
         SqlMixin.__init__(self, args)
@@ -227,7 +229,7 @@ class BaseDataSink(BaseSink, SqlMixin):
         with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typekey = (m.typename, m.typekey)
         if typekey in self._checkeds:
-            return
+            return None
 
         if typekey not in self._types:
             if self.args.VERBOSE:

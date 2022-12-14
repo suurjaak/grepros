@@ -25,9 +25,9 @@ import re
 import threading
 import time
 
-from . common import ConsolePrinter, Decompressor, ProgressBar, ensure_namespace, drop_zeros, \
-                     filter_dict, find_files, format_bytes, format_stamp, format_timedelta, \
-                     plural, wildcard_to_regex
+from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
+                     ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
+                     format_stamp, format_timedelta, plural, wildcard_to_regex
 from . import rosapi
 
 
@@ -400,7 +400,8 @@ class BagSource(BaseSource, ConditionMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args               arguments as namespace or dictionary, case-insensitive
+        @param   args               arguments as namespace or dictionary, case-insensitive;
+                                    or a single path as the ROS bagfile to read
         @param   args.FILE          names of ROS bagfiles to scan if not all in directory
         @param   args.PATH          paths to scan if not current directory
         @param   args.RECURSE       recurse into subdirectories when looking for bagfiles
@@ -422,6 +423,7 @@ class BagSource(BaseSource, ConditionMixin):
         @param   args.PROGRESS      whether to print progress bar
         @param   kwargs             any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)

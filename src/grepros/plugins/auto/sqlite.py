@@ -18,7 +18,7 @@ import os
 import sqlite3
 import sys
 
-from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs
+from ... common import ConsolePrinter, format_bytes, makedirs
 from ... import rosapi
 from . dbbase import BaseDataSink, quote
 
@@ -61,7 +61,8 @@ class SqliteSink(BaseDataSink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the name of SQLitefile to write
         @param   args.META            whether to print metainfo
         @param   args.WRITE           name of SQLite file to write, will be appended to if exists
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
@@ -73,12 +74,11 @@ class SqliteSink(BaseDataSink):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, SqliteSink.DEFAULT_ARGS, **kwargs)
-        super(SqliteSink, self).__init__(args)
+        super(SqliteSink, self).__init__(args, **kwargs)
 
-        self._filename    = args.WRITE
-        self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
-        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._filename    = self.args.WRITE
+        self._do_yaml     = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
+        self._overwrite   = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._id_counters = {}  # {table next: max ID}
 
 

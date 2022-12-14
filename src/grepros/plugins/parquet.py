@@ -23,7 +23,8 @@ except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
 
-from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
+from .. common import PATH_TYPES, ConsolePrinter, \
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
 from .. import rosapi
 
@@ -82,7 +83,8 @@ class ParquetSink(BaseSink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the base name of Parquet files to write
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of Parquet files to write
         @param   args.WRITE_OPTIONS   {"column": additional columns as {name: (rostype, value)},
@@ -97,6 +99,7 @@ class ParquetSink(BaseSink):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, ParquetSink.DEFAULT_ARGS, **kwargs)
         super(ParquetSink, self).__init__(args)
 

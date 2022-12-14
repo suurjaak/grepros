@@ -19,7 +19,8 @@ import os
 import sys
 
 from .. import rosapi
-from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
+from .. common import PATH_TYPES, ConsolePrinter, \
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
 from . auto.sqlbase import SqlMixin
 
@@ -53,12 +54,16 @@ class SqlSink(BaseSink, SqlMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the file to write
+        @param   args.WRITE           output file path
         @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, SqlSink.DEFAULT_ARGS, **kwargs)
         super(SqlSink, self).__init__(args)
         SqlMixin.__init__(self, args)

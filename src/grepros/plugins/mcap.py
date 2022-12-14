@@ -29,7 +29,8 @@ elif "2" == os.getenv("ROS_VERSION"):
 else: mcap_ros = None
 import yaml
 
-from .. common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
+from .. common import PATH_TYPES, ConsolePrinter, \
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
 from .. import rosapi
 ros2 = None
@@ -363,7 +364,8 @@ class McapSink(BaseSink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the file to write
         @param   args.META            whether to print metainfo
         @param   args.WRITE           base name of MCAP files to write
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
@@ -371,6 +373,7 @@ class McapSink(BaseSink):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, McapSink.DEFAULT_ARGS, **kwargs)
         super(McapSink, self).__init__(args)
 

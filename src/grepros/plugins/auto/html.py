@@ -21,7 +21,7 @@ import re
 import sys
 import threading
 
-from ... common import ConsolePrinter, MatchMarkers, \
+from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, \
                        ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import BaseSink, TextSinkMixin
@@ -45,7 +45,8 @@ class HtmlSink(BaseSink, TextSinkMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                  arguments as namespace or dictionary, case-insensitive
+        @param   args                  arguments as namespace or dictionary, case-insensitive;
+                                       or a single path as the name of HTML file to write
         @param   args.META             whether to print metainfo
         @param   args.WRITE            name of HTML file to write,
                                        will add counter like .2 to filename if exists
@@ -59,6 +60,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         @param   args.ORDERBY          "topic" or "type" if any to group results by
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = copy.deepcopy(ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = "always"

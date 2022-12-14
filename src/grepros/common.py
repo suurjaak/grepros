@@ -36,6 +36,12 @@ try: import zstandard
 except ImportError: zstandard = None
 
 
+## Python types for filesystem paths
+PATH_TYPES = (str, )
+if sys.version_info < (3, ): PATH_TYPES += (unicode, )
+else: PATH_TYPES += (importlib.import_module("pathlib").Path, )
+
+
 class MatchMarkers(object):
     """Highlight markers for matches in message values."""
 
@@ -883,7 +889,7 @@ def wildcard_to_regex(text, end=False):
 
 
 __all__ = [
-    "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
+    "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "import_item", "makedirs", "memoize",
     "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "wildcard_to_regex",

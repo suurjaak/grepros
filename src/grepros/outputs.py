@@ -22,8 +22,9 @@ import sys
 
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, TextWrapper, ensure_namespace, filter_fields, \
-                     format_bytes, makedirs, merge_spans, plural, unique_path, wildcard_to_regex
+from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
+                     ensure_namespace, filter_fields, format_bytes, makedirs, merge_spans, \
+                     plural, unique_path, wildcard_to_regex
 from . import rosapi
 
 
@@ -388,7 +389,8 @@ class BagSink(BaseSink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the ROS bagfile to write
         @param   args.META            whether to print metainfo
         @param   args.WRITE           name of ROS bagfile to create or append to
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
@@ -396,6 +398,7 @@ class BagSink(BaseSink):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
         self._bag = None

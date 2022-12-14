@@ -20,7 +20,8 @@ import itertools
 import os
 import sys
 
-from ... common import ConsolePrinter, ensure_namespace, format_bytes, makedirs, plural, unique_path
+from ... common import PATH_TYPES, ConsolePrinter, \
+                       ensure_namespace, format_bytes, makedirs, plural, unique_path
 from ... import rosapi
 from ... outputs import BaseSink
 
@@ -36,8 +37,9 @@ class CsvSink(BaseSink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.WRITE           base name of CSV file to write,
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the base name of CSV files to write
+        @param   args.WRITE           base name of CSV files to write,
                                       will add topic name like "name.__my__topic.csv" for "/my/topic",
                                       will add counter like "name.__my__topic.2.csv" if exists
         @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing files
@@ -45,6 +47,7 @@ class CsvSink(BaseSink):
         @param   args.VERBOSE         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, CsvSink.DEFAULT_ARGS, **kwargs)
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique

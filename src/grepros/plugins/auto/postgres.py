@@ -77,17 +77,19 @@ class PostgresSink(BaseDataSink):
                               ("_parent_id",   "BIGINT"), ]
 
 
-    def __init__(self, args):
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single item as the database connection string
         @param   args.WRITE           Postgres connection string like "postgresql://user@host/db"
         @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
         @param   args.META            whether to print metainfo
         @param   args.VERBOSE         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        super(PostgresSink, self).__init__(args)
+        super(PostgresSink, self).__init__(args, **kwargs)
         self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
 
 
