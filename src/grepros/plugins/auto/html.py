@@ -41,7 +41,8 @@ class HtmlSink(BaseSink, TextSinkMixin):
     WRAP_WIDTH = 120
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, MATCH_WRAPPER=None, VERBOSE=False)
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, HIGHLIGHT=True, MATCH_WRAPPER=None,
+                        VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -54,6 +55,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
                                         "overwrite": whether to overwrite existing file
                                                      (default false)}
         @param   args.VERBOSE          whether to print debug information
+        @param   args.HIGHLIGHT        highlight matched values (default true)
         @param   args.MATCH_WRAPPER    string to wrap around matched values,
                                        both sides if one value, start and end if more than one,
                                        or no wrapping if zero values
@@ -63,7 +65,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = copy.deepcopy(ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
         args.WRAP_WIDTH = self.WRAP_WIDTH
-        args.COLOR = "always"
+        args.COLOR = "always" if args.HIGHLIGHT else "never"
 
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
@@ -75,9 +77,10 @@ class HtmlSink(BaseSink, TextSinkMixin):
         self._close_printed = False
 
         WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
-        self._tag_repls = {MatchMarkers.START:            '<span class="match">' +
-                                                          step.escape_html(WRAPS[0]),
-                           MatchMarkers.END:              step.escape_html(WRAPS[1]) + '</span>',
+        START = ('<span class="match">' + step.escape_html(WRAPS[0])) if args.HIGHLIGHT else ""
+        END = (step.escape_html(WRAPS[1]) + '</span>') if args.HIGHLIGHT else ""
+        self._tag_repls = {MatchMarkers.START: START,
+                           MatchMarkers.END:   END,
                            ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
                            ConsolePrinter.STYLE_RESET:    '</span>'}
         self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
@@ -127,15 +130,15 @@ class HtmlSink(BaseSink, TextSinkMixin):
         self._queue.join()
 
     def format_message(self, msg, highlight=False):
-        """Returns message as formatted string, optionally highlighted for matches."""
-        text = TextSinkMixin.format_message(self, msg, highlight)
+        """Returns message as formatted string, optionally highlighted for matches if configured."""
+        text = TextSinkMixin.format_message(self, msg, self.args.HIGHLIGHT and highlight)
         text = "".join(self._tag_repls.get(x) or step.escape_html(x)
                        for x in self._tag_rgx.split(text))
         return text
 
     def is_highlighting(self):
-        """Returns True (requires highlighted matches)."""
-        return True
+        """Returns True if sink is configured to highlight matched values."""
+        return bool(self.args.HIGHLIGHT)
 
     def _stream(self):
         """Writer-loop, streams HTML template to file."""

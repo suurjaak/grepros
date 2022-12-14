@@ -95,10 +95,10 @@ print only header stamp and values:
     grepros --type diagnostic_msgs/* --select-field name message \
             --print-field header.stamp status.values -- navigation
 
-Print first message from each lidar topic on host 1.2.3.4:
+Print first message from each lidar topic on host 1.2.3.4, without highlight:
 
     ROS_MASTER_URI=http://1.2.3.4::11311 \
-    grepros --live --topic *lidar* --max-per-topic 1
+    grepros --live --topic *lidar* --max-per-topic 1 --no-highlight
 
 Export all bag messages to SQLite and Postgres, print only export progress:
 
@@ -1130,6 +1130,7 @@ Output control:
                         use color output in console (default "always")
   --no-meta             do not print source and message metainfo to console
   --no-filename         do not print bag filename prefix on each console message line
+  --no-highlight        do not highlight matched values
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output

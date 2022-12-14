@@ -115,15 +115,16 @@ class TextSinkMixin(object):
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR="always", PRINT_FIELD=(), NOPRINT_FIELD=(), MAX_FIELD_LINES=None,
-                        START_LINE=None, END_LINE=None, MAX_MESSAGE_LINES=None,
-                        LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None,
-                        MATCH_WRAPPER=None)
+    DEFAULT_ARGS = dict(COLOR="always", HIGHLIGHT=True, PRINT_FIELD=(), NOPRINT_FIELD=(),
+                        MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
+                        MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
+                        WRAP_WIDTH=None, MATCH_WRAPPER=None)
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.COLOR                 "never" for not using colors in replacements
+        @param   args.HIGHLIGHT             highlight matched values (default true)
         @param   args.PRINT_FIELD           message fields to use in output if not all
         @param   args.NOPRINT_FIELD         message fields to skip in output
         @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
@@ -148,9 +149,10 @@ class TextSinkMixin(object):
 
 
     def format_message(self, msg, highlight=False):
-        """Returns message as formatted string, optionally highlighted for matches."""
+        """Returns message as formatted string, optionally highlighted for matches if configured."""
         text = self.message_to_yaml(msg).rstrip("\n")
 
+        highlight = highlight and self.args.HIGHLIGHT
         if self._prefix or self.args.START_LINE or self.args.END_LINE \
         or self.args.MAX_MESSAGE_LINES or (self.args.LINES_AROUND_MATCH and highlight):
             lines = text.splitlines()
@@ -278,13 +280,14 @@ class TextSinkMixin(object):
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
         if "never" != args.COLOR:
-            self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT,
+            self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT if self.args.HIGHLIGHT
+                                         else "",
                                  "ll0":  ConsolePrinter.STYLE_LOWLIGHT,
                                  "pfx0": ConsolePrinter.STYLE_SPECIAL,  # Content line prefix start
                                  "sep0": ConsolePrinter.STYLE_SPECIAL2})
             self._styles.default_factory = lambda: ConsolePrinter.STYLE_RESET
 
-        WRAPS = args.MATCH_WRAPPER
+        WRAPS = args.MATCH_WRAPPER if self.args.HIGHLIGHT else ""
         if WRAPS is None and "never" == args.COLOR: WRAPS = self.NOCOLOR_HIGHLIGHT_WRAPPERS
         WRAPS = ((WRAPS or [""]) * 2)[:2]
         self._styles["hl0"] = self._styles["hl0"] + WRAPS[0]
@@ -314,14 +317,17 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, PRINT_FIELD=(), NOPRINT_FIELD=(), LINE_PREFIX=True,
-                        MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
-                        MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
-                        WRAP_WIDTH=None)
+    DEFAULT_ARGS = dict(COLOR="always", HIGHLIGHT=True, META=False, PRINT_FIELD=(), 
+                        NOPRINT_FIELD=(), LINE_PREFIX=True, MAX_FIELD_LINES=None, START_LINE=None,
+                        END_LINE=None, MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None,
+                        MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None, MATCH_WRAPPER=None)
+
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
+        @param   args.COLOR                 "never" for not using colors in replacements
+        @param   args.HIGHLIGHT             highlight matched values (default true)
         @param   args.META                  whether to print metainfo
         @param   args.PRINT_FIELD           message fields to print in output if not all
         @param   args.NOPRINT_FIELD         message fields to skip in output
@@ -333,6 +339,9 @@ class ConsoleSink(BaseSink, TextSinkMixin):
         @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
         @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
         @param   args.WRAP_WIDTH            character width to wrap message YAML output at
+        @param   args.MATCH_WRAPPER         string to wrap around matched values,
+                                            both sides if one value, start and end if more than one,
+                                            or no wrapping if zero values
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
@@ -376,8 +385,8 @@ class ConsoleSink(BaseSink, TextSinkMixin):
 
 
     def is_highlighting(self):
-        """Returns True (requires highlighted matches)."""
-        return True
+        """Returns True if sink is configured to highlight matched values."""
+        return bool(self.args.HIGHLIGHT)
 
 
 

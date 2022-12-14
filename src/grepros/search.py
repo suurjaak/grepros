@@ -28,7 +28,7 @@ class Searcher(object):
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, NTH_MATCH=1,
+    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, HIGHLIGHT=False, NTH_MATCH=1,
                         BEFORE=0, AFTER=0, MAX_MATCHES=0, MAX_TOPIC_MATCHES=0, MAX_TOPICS=0,
                         SELECT_FIELD=(), NOSELECT_FIELD=(), MATCH_WRAPPER="**")
 
@@ -40,6 +40,7 @@ class Searcher(object):
         @param   args.RAW                 PATTERN contains ordinary strings, not regular expressions
         @param   args.CASE                use case-sensitive matching in PATTERN
         @param   args.INVERT              select non-matching messages
+        @param   args.HIGHLIGHT           highlight matched values
         @param   args.BEFORE              number of messages of leading context to emit before match
         @param   args.AFTER               number of messages of trailing context to emit after match
         @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
@@ -66,7 +67,7 @@ class Searcher(object):
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []
         self._idcounter       = 0      # Counter for unique message IDs
-        self._highlight       = False  # Highlight matched values in message fields
+        self._highlight       = None   # Highlight matched values in message fields
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
 
         ## BaseSource instance
@@ -78,12 +79,13 @@ class Searcher(object):
         self._parse_patterns()
 
 
-    def find(self, source, highlight=False):
+    def find(self, source, highlight=None):
         """
         Yields matched and context messages from source.
 
         @param   source     inputs.BaseSource or rosapi.Bag instance
-        @param   highlight  whether to highlight matched values in message fields
+        @param   highlight  whether to highlight matched values in message fields,
+                            defaults to flag from constructor
         @return             tuples of (topic, msg, stamp, matched optionally highlighted msg)
         """
         if not isinstance(source, inputs.BaseSource):
@@ -94,20 +96,21 @@ class Searcher(object):
         source.close()
 
 
-    def match(self, topic, msg, stamp, highlight=False):
+    def match(self, topic, msg, stamp, highlight=None):
         """
         Returns matched message if message matches search filters.
 
         @param   topic      topic name
         @param   msg        ROS message
         @param   stamp      message ROS time
-        @param   highlight  whether to highlight matched values in message fields
+        @param   highlight  whether to highlight matched values in message fields,
+                            defaults to flag from constructor
         @return             original or highlighted message on match else `None`
         """
         result = None
         if not isinstance(self.source, inputs.AppSource):
             self._prepare(inputs.AppSource(), highlight=highlight)
-        if self._highlight != bool(highlight): self._set_passthrough()
+        if self._highlight != bool(highlight): self._configure_flags(highlight=highlight)
 
         self.source.push(topic, msg, stamp)
         item = self.source.read_queue()
@@ -138,7 +141,7 @@ class Searcher(object):
         @param   sink    outputs.BaseSink instance
         @return          count matched
         """
-        self._prepare(source, sink)
+        self._prepare(source, sink, highlight=self.args.HIGHLIGHT)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
             if matched: sink.emit_meta()
@@ -197,7 +200,7 @@ class Searcher(object):
 
             self._prune_data(topickey)
             if batch_matched and self._is_max_done():
-                self.sink and self.sink.flush()
+                if self.sink: self.sink.flush()
                 self.source.close_batch()
 
 
@@ -245,13 +248,12 @@ class Searcher(object):
         rosapi.TypeMeta.clear()
 
 
-    def _prepare(self, source, sink=None, highlight=False):
+    def _prepare(self, source, sink=None, highlight=None):
         """Clears local structures, binds and registers source and sink, if any."""
         self._clear_data()
         self.source, self.sink = source, sink
         source.bind(sink), sink and sink.bind(source)
-        self._highlight = sink.is_highlighting() if sink else bool(highlight)
-        self._set_passthrough()
+        self._configure_flags(highlight=highlight)
 
 
     def _prune_data(self, topickey):
@@ -298,8 +300,11 @@ class Searcher(object):
         self._statuses[topickey][msgid] = None
 
 
-    def _set_passthrough(self):
-        """Sets passthrough flag from current settings."""
+    def _configure_flags(self, highlight=None):
+        """Sets highlight and passthrough flags from current settings."""
+        self._highlight = bool(highlight if highlight is not None else
+                               False if self.sink and not self.sink.is_highlighting() else
+                               self.args.HIGHLIGHT)
         self._passthrough = not self._highlight and not self._patterns["select"] \
                             and not self._patterns["noselect"] and not self.args.INVERT \
                             and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
