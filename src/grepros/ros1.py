@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    14.12.2022
+@modified    15.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -203,6 +203,12 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
     def write(self, topic, msg, stamp, *_, **__):
         """Writes a message to the bag."""
         return super(Bag, self).write(topic, msg, stamp)
+
+
+    def open(self):
+        """Opens the bag file if not already open."""
+        if not self._file:
+            self._open(self.filename, self.mode, allow_unindexed=True)
 
 
     def __convert_message(self, msg, typename2, typehash2=None):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    14.12.2022
+@modified    15.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -121,6 +121,11 @@ class EmbagReader(rosapi.Bag):
             typename = self._hashdefs[(m.topic, m.md5)]
             msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
             yield m.topic, msg, rosapi.make_time(m.timestamp.secs, m.timestamp.nsecs)
+
+
+    def open(self):
+        """Opens the bag file if not already open."""
+        if not self._view: self._view = embag.View(self.filename)
 
 
     def close(self):

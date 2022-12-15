@@ -299,6 +299,11 @@ PRAGMA synchronous=NORMAL;
         cursor.execute(sql, args)
 
 
+    def open(self):
+        """Opens the bag file if not already open."""
+        self._ensure_open()
+
+
     def close(self):
         """Closes the bag file."""
         if self._db:

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    14.12.2022
+@modified    15.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -70,18 +70,18 @@ class McapBag(rosapi.Bag):
         self._temporal_ctors = {}    # {typename: time/duration constructor}
         self._start_time     = None  # Bag start time, as UNIX timestamp
         self._end_time       = None  # Bag end time, as UNIX timestamp
-        self._file           = open(filename, "%sb" % mode)
-        self._reader         = mcap.reader.make_reader(self._file) if "r" == mode else None
-        self._decoder        = mcap_ros.decoder.Decoder()          if "r" == mode else None
-        self._writer         = mcap_ros.writer.Writer(self._file)  if "w" == mode else None
-
-        ## Bagfile path
-        self.filename = filename
+        self._file           = None  # File handle
+        self._reader         = None  # mcap.McapReader
+        self._decoder        = None  # mcap_ros.Decoder
+        self._writer         = None  # mcap_ros.Writer
 
         if ros2 and "r" == mode: self._temporal_ctors.update(
             (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
         )
-        if "r" == mode: self._populate_meta()
+
+        ## Bagfile path
+        self.filename = filename
+        self.open()
 
 
     def get_message_count(self):
@@ -145,6 +145,7 @@ class McapBag(rosapi.Bag):
         """
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
+        self.open()
         topics = topics if isinstance(topics, list) else [topics] if topics else []
         start_ns, end_ns = (x and x * 10**9 for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
@@ -156,6 +157,7 @@ class McapBag(rosapi.Bag):
         """Writes out message to MCAP file."""
         if "r" == self._mode: raise io.UnsupportedOperation("write")
 
+        self.open()
         meta = rosapi.TypeMeta.make(msg, topic)
         kwargs = dict(publish_time=rosapi.to_nsec(stamp))
         if ros2:
@@ -175,6 +177,17 @@ class McapBag(rosapi.Bag):
         self._types.setdefault(meta.typekey, type(msg))
         if meta.typekey not in self._typedefs:
             self._typedefs[meta.typekey] = meta.definition
+
+
+    def open(self):
+        """Opens the bag file if not already open."""
+        if self._file: return
+
+        self._file    = open(filename, "%sb" % self._mode)
+        self._reader  = mcap.reader.make_reader(self._file) if "r" == self._mode else None
+        self._decoder = mcap_ros.decoder.Decoder()          if "r" == self._mode else None
+        self._writer  = mcap_ros.writer.Writer(self._file)  if "w" == self._mode else None
+        if "r" == self._mode: self._populate_meta()
 
 
     def close(self):
