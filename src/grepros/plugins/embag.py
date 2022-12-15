@@ -136,6 +136,12 @@ class EmbagReader(rosapi.Bag):
 
 
     @property
+    def closed(self):
+        """Returns whether file is closed."""
+        return not self._view
+
+
+    @property
     def size(self):
         """Returns current file size."""
         return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None

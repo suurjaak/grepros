@@ -313,6 +313,12 @@ PRAGMA synchronous=NORMAL;
 
 
     @property
+    def closed(self):
+        """Returns whether file is closed."""
+        return not self._db
+
+
+    @property
     def size(self):
         """Returns current file size in bytes (including journaling files)."""
         result = os.path.getsize(self.filename) if os.path.isfile(self.filename) else None

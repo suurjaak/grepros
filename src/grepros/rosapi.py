@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    14.12.2022
+@modified    15.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -269,6 +269,11 @@ class Bag(object):
     def __nonzero__(self): return True
 
     def __bool__   (self): return True
+
+    @property
+    def closed(self):
+        """Returns whether file is closed."""
+        raise NotImplementedError
 
     @classmethod
     def autodetect(cls, filename):

@@ -211,6 +211,12 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
             self._open(self.filename, self.mode, allow_unindexed=True)
 
 
+    @property
+    def closed(self):
+        """Returns whether file is closed."""
+        return not self._file
+
+
     def __convert_message(self, msg, typename2, typehash2=None):
         """Returns message converted to given type; fields must match."""
         msg2 = self.get_message_class(typename2, typehash2)()
