@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    14.12.2022
+@modified    15.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -318,14 +318,13 @@ PRAGMA synchronous=NORMAL;
 
 
     def _ensure_open(self, populate=False):
-        """Opens bag database if not open, can populate schema if not present."""
-        if self._db:
-            return
-        if "w" == self._mode and os.path.exists(self.filename):
-            os.remove(self.filename)
-        self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
-                                   isolation_level=None, check_same_thread=False)
-        self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+        """Opens bag database if not open, populates schema if specified."""
+        if not self._db:
+            if "w" == self._mode and os.path.exists(self.filename):
+                os.remove(self.filename)
+            self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
+                                       isolation_level=None, check_same_thread=False)
+            self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         if populate:
             self._db.executescript(self.CREATE_SQL)
 
