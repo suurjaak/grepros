@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -62,7 +62,7 @@ class BaseSource(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
-        self.args = copy.deepcopy(ensure_namespace(args, BaseSource.DEFAULT_ARGS, **kwargs))
+        self.args = ensure_namespace(args, BaseSource.DEFAULT_ARGS, **kwargs)
         ## outputs.BaseSink instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    11.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -588,7 +588,7 @@ def ellipsize(text, limit, ellipsis=".."):
 
 def ensure_namespace(val, defaults=None, **kwargs):
     """
-    Returns value as `argparse.Namespace`, with all keys uppercase.
+    Returns a copy of value as `argparse.Namespace`, with all keys uppercase.
 
     Arguments with list/tuple values in defaults are ensured to have list/tuple values.
 
@@ -597,6 +597,7 @@ def ensure_namespace(val, defaults=None, **kwargs):
     @param  kwargs    any and all argument overrides as keyword overrides
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
+    else: val = copy.deepcopy(val)
     for k, v in vars(val).items():
         if not k.isupper():
             delattr(val, k)

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    14.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -63,7 +63,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
-        args = copy.deepcopy(ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
+        args = ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = "always" if args.HIGHLIGHT else "never"
 

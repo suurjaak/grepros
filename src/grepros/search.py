@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    14.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -75,7 +75,7 @@ class Searcher(object):
         ## BaseSink instance
         self.sink   = None
 
-        self.args = copy.deepcopy(ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs))
+        self.args = ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs)
         self._parse_patterns()
 
 

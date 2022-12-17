@@ -8,11 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    14.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
-import copy
 import json
 import re
 
@@ -45,7 +44,7 @@ class SqlMixin(object):
                                        "nesting": true|false to created nested type tables}
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        self._args      = copy.deepcopy(ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs))
+        self._args      = ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs)
         self._topics    = {}  # {(topic, typename, typehash): {name, table_name, view_name, sql, ..}}
         self._types     = {}  # {(typename, typehash): {type, table_name, sql, ..}}
         self._schema    = {}  # {(typename, typehash): {cols}}
