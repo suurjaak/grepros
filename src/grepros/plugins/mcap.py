@@ -304,6 +304,11 @@ class McapBag(rosapi.Bag):
         return self._mode
 
 
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        return any(key == t for t, _, _ in self._topics)
+
+
     def _decode_message(self, message, channel, schema):
         """
         Returns ROS message deserialized from binary data.

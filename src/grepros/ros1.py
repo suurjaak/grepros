@@ -236,6 +236,11 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
             self._open(self.filename, self.mode, allow_unindexed=True)
 
 
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        return any(key == t for t, _, _ in self.__topics)
+
+
     @property
     def closed(self):
         """Returns whether file is closed."""

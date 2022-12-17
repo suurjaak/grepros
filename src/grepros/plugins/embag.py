@@ -208,6 +208,11 @@ class EmbagReader(rosapi.Bag):
         return "r"
 
 
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        return any(key == t for t, _, _ in self._topics)
+
+
     def _populate_meta(self):
         """Populates bag metainfo."""
         connections = self._view.connectionsByTopic()

@@ -206,7 +206,8 @@ class Bag(object):
     """
     ROS bag interface.
 
-    Bag can be used a context manager, and is an iterable providing (topic, messge, stamp) tuples.
+    Bag can be used a context manager, is an iterable providing (topic, messge, stamp) tuples,
+    and supports topic-based membership (`if mytopic in bag`, `for t, m, s in bag[mytopic]`).
 
     Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
     if using embag in ROS1, or if using ROS2.
@@ -288,6 +289,15 @@ class Bag(object):
     def __nonzero__(self): return True
 
     def __bool__   (self): return True
+
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        raise NotImplementedError
+
+    def __getitem__(self, key):
+        """Returns an iterator yielding messages from the bag in given topic."""
+        if key not in self: raise KeyError("no such topic: %r" % key)
+        return self.read_messages(key)
 
     def __str__(self):
         """Returns informative text for bag, with a full overview of topics and types."""

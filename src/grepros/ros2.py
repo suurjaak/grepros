@@ -408,6 +408,11 @@ PRAGMA synchronous=NORMAL;
         return self._mode
 
 
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        return any(key == t for t, _, _ in self._topics)
+
+
     def _ensure_open(self, populate=False):
         """Opens bag database if not open, populates schema if specified."""
         if not self._db:
