@@ -474,7 +474,8 @@ def format_message_value(msg, name, value):
 @memoize
 def get_message_class(typename):
     """Returns ROS1 message class."""
-    return roslib.message.get_message_class(typename)
+    try: return roslib.message.get_message_class(typename)
+    except Exception: return None
 
 
 def get_message_definition(msg_or_type):

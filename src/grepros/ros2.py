@@ -573,7 +573,8 @@ def format_message_value(msg, name, value):
 @memoize
 def get_message_class(typename):
     """Returns ROS2 message class."""
-    return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
+    try: return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
+    except Exception: return None
 
 
 def get_message_definition(msg_or_type):
