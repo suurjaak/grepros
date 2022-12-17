@@ -65,7 +65,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
         args.WRAP_WIDTH = self.WRAP_WIDTH
-        args.COLOR = "always" if args.HIGHLIGHT else "never"
+        args.COLOR = bool(args.HIGHLIGHT)
 
         super(HtmlSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)

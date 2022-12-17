@@ -115,7 +115,7 @@ class TextSinkMixin(object):
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR="always", HIGHLIGHT=True, PRINT_FIELD=(), NOPRINT_FIELD=(),
+    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, PRINT_FIELD=(), NOPRINT_FIELD=(),
                         MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
                         MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
                         WRAP_WIDTH=None, MATCH_WRAPPER=None)
@@ -123,7 +123,7 @@ class TextSinkMixin(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
-        @param   args.COLOR                 "never" for not using colors in replacements
+        @param   args.COLOR                 False or "never" for not using colors in replacements
         @param   args.HIGHLIGHT             highlight matched values (default true)
         @param   args.PRINT_FIELD           message fields to use in output if not all
         @param   args.NOPRINT_FIELD         message fields to skip in output
@@ -279,7 +279,7 @@ class TextSinkMixin(object):
         for key, vals in [("print", prints), ("noprint", noprints)]:
             self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
 
-        if "never" != args.COLOR:
+        if args.COLOR not in ("never", False):
             self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT if self.args.HIGHLIGHT
                                          else "",
                                  "ll0":  ConsolePrinter.STYLE_LOWLIGHT,
@@ -288,7 +288,7 @@ class TextSinkMixin(object):
             self._styles.default_factory = lambda: ConsolePrinter.STYLE_RESET
 
         WRAPS = args.MATCH_WRAPPER if self.args.HIGHLIGHT else ""
-        if WRAPS is None and "never" == args.COLOR: WRAPS = self.NOCOLOR_HIGHLIGHT_WRAPPERS
+        if WRAPS is None and args.COLOR in ("never", False): WRAPS = self.NOCOLOR_HIGHLIGHT_WRAPPERS
         WRAPS = ((WRAPS or [""]) * 2)[:2]
         self._styles["hl0"] = self._styles["hl0"] + WRAPS[0]
         self._styles["hl1"] = WRAPS[1] + self._styles["hl1"]
@@ -317,7 +317,7 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR="always", HIGHLIGHT=True, META=False, PRINT_FIELD=(), 
+    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, META=False, PRINT_FIELD=(), 
                         NOPRINT_FIELD=(), LINE_PREFIX=True, MAX_FIELD_LINES=None, START_LINE=None,
                         END_LINE=None, MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None,
                         MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None, MATCH_WRAPPER=None)
@@ -326,7 +326,7 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
-        @param   args.COLOR                 "never" for not using colors in replacements
+        @param   args.COLOR                 False or "never" for not using colors in replacements
         @param   args.HIGHLIGHT             highlight matched values (default true)
         @param   args.META                  whether to print metainfo
         @param   args.PRINT_FIELD           message fields to print in output if not all
