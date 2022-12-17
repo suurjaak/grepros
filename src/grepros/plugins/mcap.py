@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    15.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -17,10 +17,13 @@ import atexit
 import copy
 import io
 import os
+import time
+import types
 
 try: import mcap, mcap.reader
 except ImportError: mcap = None
 if "1" == os.getenv("ROS_VERSION"):
+    import genpy.dynamic
     try: import mcap_ros1 as mcap_ros, mcap_ros1.decoder, mcap_ros1.writer
     except ImportError: mcap_ros = None
 elif "2" == os.getenv("ROS_VERSION"):
@@ -58,22 +61,24 @@ class McapBag(rosapi.Bag):
 
         if "w" == mode: makedirs(os.path.dirname(filename))
         self._mode           = mode
-        self._topics         = {}    # {(topic, typename, typehash): message count}
-        self._types          = {}    # {(typename, typehash): message type class}
-        self._typedefs       = {}    # {(typename, typehash): type definition text}
-        self._schemas        = {}    # {(typename, typehash): mcap.records.Schema}
-        self._schematypes    = {}    # {mcap.records.Schema.id: (typename, typehash)}
-        self._qoses          = {}    # {(topic, typename): [{qos profile dict}]}
-        self._typefields     = {}    # {(typename, typehash): {field name: type name}}
-        self._type_subtypes  = {}    # {(typename, typehash): {typename: typehash}}
-        self._field_subtypes = {}    # {(typename, typehash): {field name: (typename, typehash)}}
-        self._temporal_ctors = {}    # {typename: time/duration constructor}
-        self._start_time     = None  # Bag start time, as UNIX timestamp
-        self._end_time       = None  # Bag end time, as UNIX timestamp
-        self._file           = None  # File handle
-        self._reader         = None  # mcap.McapReader
-        self._decoder        = None  # mcap_ros.Decoder
-        self._writer         = None  # mcap_ros.Writer
+        self._topics         = {}     # {(topic, typename, typehash): message count}
+        self._types          = {}     # {(typename, typehash): message type class}
+        self._typedefs       = {}     # {(typename, typehash): type definition text}
+        self._schemas        = {}     # {(typename, typehash): mcap.records.Schema}
+        self._schematypes    = {}     # {mcap.records.Schema.id: (typename, typehash)}
+        self._qoses          = {}     # {(topic, typename): [{qos profile dict}]}
+        self._typefields     = {}     # {(typename, typehash): {field name: type name}}
+        self._type_subtypes  = {}     # {(typename, typehash): {typename: typehash}}
+        self._field_subtypes = {}     # {(typename, typehash): {field name: (typename, typehash)}}
+        self._temporal_ctors = {}     # {typename: time/duration constructor}
+        self._start_time     = None   # Bag start time, as UNIX timestamp
+        self._end_time       = None   # Bag end time, as UNIX timestamp
+        self._file           = None   # File handle
+        self._reader         = None   # mcap.McapReader
+        self._decoder        = None   # mcap_ros.Decoder
+        self._writer         = None   # mcap_ros.Writer
+        self._ttinfo         = None   # Cached result for get_type_and_topic_info()
+        self._opened         = False  # Whether file has been opened at least once
 
         if ros2 and "r" == mode: self._temporal_ctors.update(
             (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
@@ -84,8 +89,16 @@ class McapBag(rosapi.Bag):
         self.open()
 
 
-    def get_message_count(self):
-        """Returns the number of messages in the bag."""
+    def get_message_count(self, topic_filters=None):
+        """
+        Returns the number of messages in the bag.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if any
+        """
+        if topic_filters:
+            topics = topic_filters
+            topics = topics if isinstance(topics, (dict, list, set, tuple)) else [topics]
+            return sum(c for (t, _, _), c in self._topics.items() if t in topics)
         return sum(self._topics.values())
 
 
@@ -105,7 +118,20 @@ class McapBag(rosapi.Bag):
 
         @param   typehash  message type definition hash, if any
         """
-        typekey = (typename, typehash or next((t for n, t in self._types if n == typename), None))
+        typehash = typehash or next((t for n, t in self._types if n == typename), None)
+        typekey = (typename, typehash)
+        if typekey not in self._types and typekey in self._typedefs:
+            if ros2:
+                name = typename.split("/")[-1]
+                fields = rosapi.parse_definition_fields(typename, self._typedefs[typekey])
+                self._types[typekey] = type(name, (types.SimpleNamespace, ), {
+                    "__name__": name, "__slots__": list(fields),
+                    "__repr__": message_repr, "__str__": message_repr
+                })
+            else:
+                typeclses = genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey])
+                self._types[typekey] = typeclses[typename]
+
         return self._types.get(typekey)
 
 
@@ -129,65 +155,127 @@ class McapBag(rosapi.Bag):
         return self._qoses.get((topic, typename))
 
 
-    def get_topic_info(self):
+    def get_topic_info(self, *_, **__):
         """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
         return dict(self._topics)
 
 
-    def read_messages(self, topics=None, start_time=None, end_time=None):
+    def get_type_and_topic_info(self, topic_filters=None):
+        """
+        Returns thorough metainfo on topic and message types.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if at all
+        @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
+                                msg_types as dict of {typename: typehash},
+                                topics as a dict of {topic: TopicTuple() namedtuple}.
+        """
+        if self._ttinfo: return self._ttinfo
+        if self.closed: raise ValueError("I/O operation on closed file.")
+
+        topics = topic_filters
+        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
+        msgtypes = {n: h for t, n, h in self._topics if not topics or t in topics}
+        topicdict = {}
+
+        def median(vals):
+            """Returns median value from given sorted numbers."""
+            vlen = len(vals)
+            return None if not vlen else vals[vlen // 2] if vlen % 2 else \
+                   float(vals[vlen // 2 - 1] + vals[vlen // 2]) / 2
+
+        for (t, n, _), c in sorted(self._topics.items()):
+            if topics and t not in topics: continue  # for
+            mymedian = None
+            if c > 1 and self._reader:
+                stamps = sorted(m.publish_time / 1E9 for _, _, m in self._reader.iter_messages([t]))
+                mymedian = median(sorted(s1 - s0 for s1, s0 in zip(stamps[1:], stamps[:-1])))
+            freq = 1.0 / mymedian if mymedian else None
+            topicdict[t] = self.TopicTuple(n, c, len(self._qoses.get((t, n)) or []), freq)
+        self._ttinfo = self.TypesAndTopicsTuple(msgtypes, topicdict)
+        return self._ttinfo
+
+
+    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False):
         """
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
         @param   start_time  earliest timestamp of message to return, as UNIX timestamp
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @param   raw         if true, then returned messages are tuples of
+                             (typename, bytes, typehash, typeclass)
         @return              (topic, msg, rclpy.time.Time)
         """
+        if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
-        self.open()
         topics = topics if isinstance(topics, list) else [topics] if topics else []
         start_ns, end_ns = (x and x * 10**9 for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
-            msg = self._decode_message(message, channel, schema)
+            if raw:
+                typekey = (typename, typehash) = self._schematypes[schema.id]
+                if typekey not in self._types:
+                    self._types[typekey] = self._make_message_class(schema, message)
+                msg = (typename, message.data, typehash, self._types[typekey])
+            else: msg = self._decode_message(message, channel, schema)
             yield channel.topic, msg, rosapi.make_time(nsecs=message.publish_time)
 
 
-    def write(self, topic, msg, stamp, *_, **__):
-        """Writes out message to MCAP file."""
+    def write(self, topic, msg, t=None, raw=False, **__):
+        """
+        Writes out message to MCAP file.
+
+        @param   topic   name of topic
+        @param   msg     ROS1 message
+        @param   t       message timestamp as ROS1 time, if not using current wall time
+        @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
+        """
+        if self.closed: raise ValueError("I/O operation on closed file.")
         if "r" == self._mode: raise io.UnsupportedOperation("write")
 
-        self.open()
-        meta = rosapi.TypeMeta.make(msg, topic)
-        kwargs = dict(publish_time=rosapi.to_nsec(stamp))
-        if ros2:
-            if meta.typekey not in self._schemas:
-                fullname = ros2.make_full_typename(meta.typename)
-                schema = self._writer.register_msgdef(fullname, meta.definition)
-                self._schemas[meta.typekey] = schema
-            schema, data = self._schemas[meta.typekey], rosapi.message_to_dict(msg)
-            self._writer.write_message(topic, schema, data, **kwargs)
+        if raw:
+            typename, binary, typehash = msg[:3]
+            cls = msg[-1]
+            typedef = self._typedefs.get((typename, typehash)) or rosapi.get_message_definition(cls)
+            msg = rosapi.deserialize_message(binary, cls)
         else:
-            self._writer.write_message(topic, msg, **kwargs)
+            with rosapi.TypeMeta.make(msg, topic) as meta:
+                typename, typehash, typedef = meta.typename, meta.typehash, meta.definition
+        topickey, typekey = (topic, typename, typehash), (typename, typehash)
 
-        sec = rosapi.to_sec(stamp)
+        nanosec = (time.time_ns() if hasattr(time, "time_ns") else int(time.time() * 10**9)) \
+                  if t is None else rosapi.to_nsec(t)
+        if ros2:
+            if typekey not in self._schemas:
+                fullname = ros2.make_full_typename(typename)
+                schema = self._writer.register_msgdef(fullname, typedef)
+                self._schemas[typekey] = schema
+            schema, data = self._schemas[typekey], rosapi.message_to_dict(msg)
+            self._writer.write_message(topic, schema, data, publish_time=nanosec)
+        else:
+            self._writer.write_message(topic, msg, publish_time=nanosec)
+
+        sec = nanosec / 1E9
         self._start_time = sec if self._start_time is None else min(sec, self._start_time)
         self._end_time   = sec if self._end_time   is None else min(sec, self._end_time)
-        self._topics[meta.topickey] = self._topics.get(meta.topickey, 0) + 1
-        self._types.setdefault(meta.typekey, type(msg))
-        if meta.typekey not in self._typedefs:
-            self._typedefs[meta.typekey] = meta.definition
+        self._topics[topickey] = self._topics.get(topickey, 0) + 1
+        self._types.setdefault(typekey, type(msg))
+        self._typedefs.setdefault(typekey, typedef)
+        self._ttinfo = None
 
 
     def open(self):
         """Opens the bag file if not already open."""
         if self._file: return
+        if self._opened and "w" == self._mode:
+            raise io.UnsupportedOperation("Cannot reopen bag for writing.")
 
-        self._file    = open(filename, "%sb" % self._mode)
+        self._file    = open(self.filename, "%sb" % self._mode)
         self._reader  = mcap.reader.make_reader(self._file) if "r" == self._mode else None
         self._decoder = mcap_ros.decoder.Decoder()          if "r" == self._mode else None
         self._writer  = mcap_ros.writer.Writer(self._file)  if "w" == self._mode else None
         if "r" == self._mode: self._populate_meta()
+        self._opened = True
 
 
     def close(self):
@@ -210,6 +298,12 @@ class McapBag(rosapi.Bag):
         return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
 
 
+    @property
+    def mode(self):
+        """Returns file open mode."""
+        return self._mode
+
+
     def _decode_message(self, message, channel, schema):
         """
         Returns ROS message deserialized from binary data.
@@ -218,6 +312,28 @@ class McapBag(rosapi.Bag):
         @param   channel  mcap.records.Channel instance for message
         @param   shcema   mcap.records.Schema instance for message type
         """
+        cls = self._make_message_class(schema, message, generate=False)
+        if ros2 and not isinstance(cls, types.SimpleNamespace):
+            msg = ros2.deserialize_message(message.data, cls)
+        else:
+            msg = self._decoder.decode(schema=schema, message=message)
+            if ros2:  # MCAP ROS2 message classes need monkey-patching with expected API
+                msg = self._patch_message(msg, *self._schematypes[schema.id])
+                # Register serialized binary, as MCAP does not support serializing its own creations
+                rosapi.TypeMeta.make(msg, channel.topic, data=message.data)
+        typekey = self._schematypes[schema.id]
+        if typekey not in self._types: self._types[typekey] = type(msg)
+        return msg
+
+
+    def _make_message_class(self, schema, message, generate=True):
+        """
+        Returns message type class, generating if not already available.
+
+        @param   shcema    mcap.records.Schema instance for message type
+        @param   message   mcap.records.Message instance
+        @param   generate  generate message class dynamically if not available
+        """
         typekey = (typename, typehash) = self._schematypes[schema.id]
         if ros2 and typekey not in self._types:
             try:  # Try loading class from disk for full compatibility
@@ -225,16 +341,44 @@ class McapBag(rosapi.Bag):
                 clshash = rosapi.get_message_type_hash(cls)
                 if typehash == clshash: self._types[typekey] = cls
             except Exception: pass  # ModuleNotFoundError, AttributeError etc
-        if ros2 and typekey in self._types:
-            msg = ros2.deserialize_message(message.data, self._types[typekey])
-        else:
-            msg = self._decoder.decode(schema=schema, message=message)
+        if typekey not in self._types and generate:
             if ros2:  # MCAP ROS2 message classes need monkey-patching with expected API
-                msg = self._patch_message(msg, *self._schematypes[schema.id])
-                # Register serialized binary, as MCAP does not support serializing its own creations
-                rosapi.TypeMeta.make(msg, channel.topic, data=message.data)
-        if typekey not in self._types: self._types[typekey] = type(msg)
-        return msg
+                msg = self._decoder.decode(schema=schema, message=message)
+                self._types[typekey] = self._patch_message_class(type(msg), typename, typehash)
+            else:
+                typeclses = genpy.dynamic.generate_dynamic(typename, schema.data.decode())
+                self._types[typekey] = typeclses[typename]
+        return self._types.get(typekey)
+
+
+    def _patch_message_class(self, cls, typename, typehash):
+        """
+        Patches MCAP ROS2 message class with expected attributes and methods, recursively.
+
+        @param   cös       ROS message class as returned from mcap_ros2.decoder
+        @param   typename  ROS message type name, like "std_msgs/Bool"
+        @param   typehash  ROS message type hash
+        @return            patched class
+        """
+        typekey = (typename, typehash)
+        if typekey not in self._typefields:
+            fields = rosapi.parse_definition_fields(typename, self._typedefs[typekey])
+            self._typefields[typekey] = fields
+            self._field_subtypes[typekey] = {n: (s, h) for n, t in fields.items()
+                                             for s in [rosapi.scalar(t)]
+                                             if s not in rosapi.ROS_BUILTIN_TYPES
+                                             for h in [self._type_subtypes[typekey][s]]}
+
+        # mcap_ros2 creates a dynamic class for each message, having __slots__
+        # but no other ROS2 API hooks; even the class module is "mcap_ros2.dynamic".
+        cls.__module__ = typename.split("/", maxsplit=1)[0]
+        cls.SLOT_TYPES = ()  # rosidl_runtime_py.utilities.is_message() checks for presence
+        cls._fields_and_field_types = dict(self._typefields[typekey])
+        cls.get_fields_and_field_types = message_get_fields_and_field_types
+        cls.__copy__     = copy_with_slots  # MCAP message classes lack support for copy
+        cls.__deepcopy__ = deepcopy_with_slots
+
+        return cls
 
 
     def _patch_message(self, message, typename, typehash):
@@ -261,22 +405,7 @@ class McapBag(rosapi.Bag):
                 else: getattr(parent, path[0])[path[1]] = msg2       # Set array field element
                 continue  # while stack
 
-            if typekey not in self._typefields:
-                fields = rosapi.parse_definition_fields(typename, self._typedefs[typekey])
-                self._typefields[typekey] = fields
-                self._field_subtypes[typekey] = {n: (s, h) for n, t in fields.items()
-                                                 for s in [rosapi.scalar(t)]
-                                                 if s not in rosapi.ROS_BUILTIN_TYPES
-                                                 for h in [self._type_subtypes[typekey][s]]}
-
-            # mcap_ros2 creates a dynamic class for each message, having __slots__
-            # but no other ROS2 API hooks; even the class module is "mcap_ros2.dynamic".
-            mycls.__module__ = typename.split("/", maxsplit=1)[0]
-            mycls.SLOT_TYPES = ()  # rosidl_runtime_py.utilities.is_message() checks for presence
-            mycls._fields_and_field_types = dict(self._typefields[typekey])
-            mycls.get_fields_and_field_types = message_get_fields_and_field_types
-            mycls.__copy__     = copy_with_slots  # MCAP message classes lack support for copy
-            mycls.__deepcopy__ = deepcopy_with_slots
+            self._patch_message_class(mycls, *typekey)
 
             for name, subtypekey in self._field_subtypes[typekey].items():
                 v = getattr(msg, name)
@@ -368,6 +497,12 @@ def deepcopy_with_slots(self, memo):
 def message_get_fields_and_field_types(self):
     """Returns a map of message field names and types (patch method for MCAP message classes)."""
     return self._fields_and_field_types.copy()
+
+
+def message_repr(self):
+    """Returns a string representation of ROS message."""
+    fields = ", ".join("%s=%r" % (n, getattr(self, n)) for n in self.__slots__)
+    return "%s(%s)" % (self.__name__, fields)
 
 
 

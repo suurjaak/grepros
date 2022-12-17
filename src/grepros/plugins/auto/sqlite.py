@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    14.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -136,7 +136,7 @@ class SqliteSink(BaseDataSink):
             topic_id, typename = self._topics[m.topickey]["id"], m.typename
         margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
+                     yaml=str(msg) if self._do_yaml else "", data=rosapi.serialize_message(msg))
         self._ensure_execute(self._get_dialect_option("insert_message"), margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    15.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -97,7 +97,8 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
         filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
         mode,     args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
-        for n in set(kwargs) - set(inspect.getargspec(rosbag.Bag).args): kwargs.pop(n)
+        getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
+        for n in set(kwargs) - set(getargspec(rosbag.Bag).args): kwargs.pop(n)
 
         if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
         if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
@@ -105,11 +106,11 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
             os.path.exists(filename) and os.remove(filename)
 
         try:
-            super(Bag, self).__init__(filename, mode, *args, **kwargs)
+            super(ROS1Bag, self).__init__(filename, mode, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
             Bag.reindex_file(filename, progress, *args, **kwargs)
-            super(Bag, self).__init__(filename, mode, *args, **kwargs)
+            super(ROS1Bag, self).__init__(filename, mode, *args, **kwargs)
 
         self.__topics = {}  # {(topic, typename, typehash): message count}
 
@@ -138,31 +139,39 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         if typekey not in self.__TYPES and typekey in self.__TYPEDEFS:
             for n, c in genpy.dynamic.generate_dynamic(typename, self.__TYPEDEFS[typekey]).items():
                 self.__TYPES[(n, c._md5sum)] = c
-        return self.__TYPES.get(typekey) or get_message_class(typename)
+        return self.__TYPES.get(typekey)
 
 
     def get_message_type_hash(self, msg_or_type):
-        """Returns ROS1 message type MD5 hash."""
+        """Returns ROS1 message type MD5 hash, or None if unknown type."""
         if is_ros_message(msg_or_type): return msg_or_type._md5sum
         typename = msg_or_type
         typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
         if not typehash:
             self.__ensure_typedef(typename)
             typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
-        return typehash or get_message_type_hash(typename)
+        return typehash
 
 
-    def get_qoses(self, topic, typename):
-        """Returns None."""
-        return None
+    def get_start_time(self):
+        """Returns the start time of the bag, as UNIX timestamp, or None if bag empty."""
+        try: return super(ROS1Bag, self).get_start_time()
+        except Exception: return None
 
 
-    def get_topic_info(self):
+    def get_end_time(self):
+        """Returns the end time of the bag, as UNIX timestamp, or None if bag empty."""
+        try: return super(ROS1Bag, self).get_end_time()
+        except Exception: return None
+
+
+    def get_topic_info(self, *_, **__):
         """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
         return dict(self.__topics)
 
 
-    def read_messages(self, topics=None, start_time=None, end_time=None, connection_filter=None, raw=False):
+    def read_messages(self, topics=None, start_time=None, end_time=None,
+                      raw=False, connection_filter=None, **__):
         """
         Yields messages from the bag, optionally filtered by topic, timestamp and connection details.
 
@@ -171,24 +180,30 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         @param   start_time         earliest timestamp of messages to return
         @param   end_time           latest timestamp of messages to return
         @param   connection_filter  function to filter connections to include
-        @param   raw                if True, then generate tuples of
-                                    (datatype, (data, md5sum, position), pytype)
+        @param   raw                if true, then returned messages are tuples of
+                                    (typename, bytes, typehash, typeclass)
+                                    or (typename, bytes, typehash, position, typeclass),
+                                    depending on file format
         @return                     generator of (topic, message, timestamp) tuples
         """
         hashtypes = {}
         for n, h in self.__TYPEDEFS: hashtypes.setdefault(h, []).append(n)
-        read_topics = topics if isinstance(topics, list) else [topics] if topics else None
+        read_topics = topics if isinstance(topics, (dict, list, set, tuple)) else \
+                      [topics] if topics else None
         dupes = {t: (n, h) for t, n, h in self.__topics
                  if (read_topics is None or t in read_topics) and len(hashtypes.get(h, [])) > 1}
 
         kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
                       connection_filter=connection_filter, raw=raw)
         if not dupes:
-            for topic, msg, stamp in super(Bag, self).read_messages(**kwargs):
-                yield topic, msg, stamp
+            for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
+                yield self.BagMessage(topic, msg, stamp)
             return
 
-        for topic, msg, stamp in super(Bag, self).read_messages(**kwargs):
+        for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
+            # Workaround for rosbag.Bag ignoring topic filters in format v1.2
+            if read_topics and topic not in read_topics:
+                continue  # for
             # Workaround for rosbag bug of using wrong type for identical type hashes
             if topic in dupes:
                 typename, typehash = (msg[0], msg[2]) if raw else (msg._type, msg._md5sum)
@@ -197,12 +212,22 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
                         msg = msg[:-1] + (self.get_message_class(typename, typehash), )
                     else:
                         msg = self.__convert_message(msg, *dupes[topic])
-            yield topic, msg, stamp
+            yield self.BagMessage(topic, msg, stamp)
 
 
-    def write(self, topic, msg, stamp, *_, **__):
-        """Writes a message to the bag."""
-        return super(Bag, self).write(topic, msg, stamp)
+    def write(self, topic, msg, t=None, raw=False, connection_header=None, **__):
+        """
+        Writes a message to the bag.
+
+        @param   topic              name of topic
+        @param   msg                ROS1 message
+        @param   t                  message timestamp as ROS1 time, if not using current wall time
+        @param   raw                if true, `msg` is in raw format,
+                                    (typename, bytes, typehash, typeclass)
+        @param   connection_header  custom connection record for topic,
+                                    as {"topic", "type", "md5sum", "message_definition"}
+        """
+        return super(ROS1Bag, self).write(topic, msg, t, raw, connection_header)
 
 
     def open(self):
@@ -452,15 +477,6 @@ def get_message_class(typename):
     return roslib.message.get_message_class(typename)
 
 
-def get_message_data(msg):
-    """Returns ROS1 message as a serialized binary."""
-    with TypeMeta.make(msg) as m:
-        if m.data is not None: return m.data
-    buf = io.BytesIO()
-    msg.serialize(buf)
-    return buf.getvalue()
-
-
 def get_message_definition(msg_or_type):
     """Returns ROS1 message type definition full text, including subtype definitions."""
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
@@ -536,6 +552,22 @@ def make_time(secs=0, nsecs=0):
     return rospy.Time(secs=secs, nsecs=nsecs)
 
 
+def serialize_message(msg):
+    """Returns ROS1 message as a serialized binary."""
+    with TypeMeta.make(msg) as m:
+        if m.data is not None: return m.data
+    buf = io.BytesIO()
+    msg.serialize(buf)
+    return buf.getvalue()
+
+
+def deserialize_message(raw, cls_or_typename):
+    """Returns ROS1 message or service request/response instantiated from serialized binary."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
+    return cls().deserialize(raw)
+
+
 @memoize
 def scalar(typename):
     """
@@ -569,9 +601,9 @@ def to_sec_nsec(val):
 __all__ = [
     "BAG_EXTENSIONS", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES", "SKIP_EXTENSIONS",
     "SLEEP_INTERVAL", "TYPECLASSES", "Bag", "ROS1Bag", "master",
-    "create_publisher", "create_subscriber", "format_message_value", "get_message_class",
-    "get_message_data", "get_message_definition", "get_message_fields", "get_message_type",
+    "create_publisher", "create_subscriber", "deserialize_message", "format_message_value",
+    "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
     "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
-    "is_ros_message", "is_ros_time", "make_duration", "make_time", "scalar", "set_message_value",
-    "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "validate",
+    "is_ros_message", "is_ros_time", "make_duration", "make_time", "scalar", "serialize_message",
+    "set_message_value", "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "validate",
 ]

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    15.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields, memoize
+from . common import ConsolePrinter, filter_fields, format_bytes, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -203,7 +203,33 @@ class TypeMeta(object):
 
 
 class Bag(object):
-    """ROS bag facade."""
+    """
+    ROS bag interface.
+
+    Bag can be used a context manager, and is an iterable providing (topic, messge, stamp) tuples.
+
+    Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
+    if using embag in ROS1, or if using ROS2.
+    Or a plugin class like McapBag if plugin loaded and file reconized as MCAP format.
+
+    Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
+    Classes can have a static/class method `autodetect(filename)`
+    returning whether given file is in recognizable format for the plugin class.
+
+    Extra methods compared with rosbag.Bag: Bag.get_message_class(),
+    Bag.get_message_definition(), Bag.get_message_type_hash(), and Bag.get_topic_info().
+    """
+
+    ## Returned from read_messages() as (topic name, ROS message, rclpy.Time).
+    BagMessage = collections.namedtuple("BagMessage", "topic message timestamp")
+
+    ## Returned from get_type_and_topic_info() as
+    ## (typename, message count, connection count, median frequency).
+    TopicTuple = collections.namedtuple("TopicTuple", ["msg_type", "message_count",
+                                                       "connections", "frequency"])
+
+    ## Returned from get_type_and_topic_info() as ({typename: typehash}, {topic name: TopicTuple}).
+    TypesAndTopicsTuple = collections.namedtuple("TypesAndTopicsTuple", ["msg_types", "topics"])
 
     ## Supported opening modes, overridden in subclasses
     MODES = ("r", "w", "a")
@@ -214,24 +240,16 @@ class Bag(object):
     ## Bag writer classes, as {Cls, }
     WRITER_CLASSES = set()
 
-    def __new__(cls, filename, mode="r", reindex=False, progress=False):
+    def __new__(cls, filename, mode="r", reindex=False, progress=False, **kwargs):
         """
         Returns an object for reading or writing ROS bags.
 
-        Result is rosbag.Bag in ROS1, or an object with a partially conforming API
-        if using embag in ROS1, or if using ROS2.
-        Or a plugin class like McapBag if plugin loaded and file reconized as MCAP format.
-
-        Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
-        Classes can have a static/class method `autodetect(filename)`
-        returning whether given file is in recognizable format for the plugin class.
-
-        Extra methods compared with rosbag.Bag: get_message_class(),
-        get_message_definition(), get_message_type_hash(), and get_topic_info().
-
+        @param   filename     bag filename, used for auto-detecting suitable Bag class
+                              by file extension or content
         @param   mode         return reader if "r" else writer
         @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
         @param   progress     show progress bar with reindexing status
+        @param   kwargs       additiional keyword arguments for format-specific Bag constructor
         """
         classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
         for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
@@ -255,7 +273,8 @@ class Bag(object):
         return self.read_messages()
 
     def __enter__(self):
-        """Context manager entry."""
+        """Context manager entry, opens bag if not open."""
+        self.open()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -269,6 +288,169 @@ class Bag(object):
     def __nonzero__(self): return True
 
     def __bool__   (self): return True
+
+    def __str__(self):
+        """Returns informative text for bag, with a full overview of topics and types."""
+
+        indent  = lambda s, n: ("\n%s" % (" " * n)).join(s.splitlines())
+        # Returns UNIX timestamp as "Dec 22 2021 23:13:44.44"
+        fmttime = lambda x: datetime.datetime.fromtimestamp(x).strftime("%b %d %Y %H:%M:%S.%f")[:-4]
+        def fmtdur(secs):
+            """Returns duration seconds as text like "1hr 1:12s (3672s)" or "51.8s"."""
+            result = ""
+            hh, rem = divmod(secs, 3600)
+            mm, ss  = divmod(rem, 60)
+            if hh: result += "%dhr " % hh
+            if mm: result += "%d:"   % mm
+            result += "%ds" % ss
+            if hh or mm: result += " (%ds)" % secs
+            return result
+
+        entries = {}
+        counts = self.get_topic_info(counts=True)
+        start, end = self.get_start_time(), self.get_end_time()
+
+        entries["path"] = self.filename
+        if None not in (start, end):
+            entries["duration"] = fmtdur(end - start)
+            entries["start"] = "%s (%.2f)" % (fmttime(start), start)
+            entries["end"]   = "%s (%.2f)" % (fmttime(end),   end)
+        entries["size"] = format_bytes(self.size)
+        if any(counts.values()):
+            entries["messages"] = str(sum(counts.values()))
+        if counts:
+            nhs = sorted(set((n, h) for _, n, h in counts))
+            namew = max(len(n) for n, _ in nhs)
+            # "pkg/Msg <PAD>[typehash]"
+            entries["types"] = "\n".join("%s%s [%s]" % (n, " " * (namew - len(n)), h) for n, h in nhs)
+        if counts:
+            topicw = max(len(t) for t, _, _ in counts)
+            typew  = max(len(n) for _, n, _ in counts)
+            countw = max(len(str(c)) for c in counts.values())
+            lines = []
+            for (t, n, _), c in sorted(counts.items()):
+                qq = self.get_qoses(t, n) or []
+                # "/my/topic<PAD>"
+                line  = "%s%s" % (t, " " * (topicw - len(t)))
+                # "   <PAD>13 msgs" or "   <PAD>1 msg "
+                line += "   %s%s msg%s" % (" " * (countw - len(str(c))), c, " " if 1 == c else "s")
+                # "    : pkg/Msg"
+                line += "    : %s" % n
+                # "<PAD> (2 connections)" if >1 connections
+                line += "%s (%s connections)" % (" " * (typew - len(n)), len(qq)) if len(qq) > 1 else ""
+                lines.append(line)
+            entries["topics"] = "\n".join(lines)
+
+        labelw = max(map(len, entries))
+        return "\n".join("%s:%s %s" % (k, " " * (labelw - len(k)), indent(v, labelw + 2))
+                         for k, v in entries.items())
+
+    def get_message_count(self, topic_filters=None):
+        """
+        Returns the number of messages in the bag.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if any
+        """
+        raise NotImplementedError
+
+    def get_start_time(self):
+        """Returns the start time of the bag, as UNIX timestamp, or None if bag empty."""
+        raise NotImplementedError
+
+    def get_end_time(self):
+        """Returns the end time of the bag, as UNIX timestamp, or None if bag empty."""
+        raise NotImplementedError
+
+    def get_topic_info(self, counts=False):
+        """
+        Returns topic and message type metainfo as {(topic, typename, typehash): count}.
+
+        @param   counts  if false, may counts may be returned as None (lookup can be costly)
+        """
+        raise NotImplementedError
+
+    def get_type_and_topic_info(self, topic_filters=None):
+        """
+        Returns thorough metainfo on topic and message types.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if any
+        @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
+                                msg_types as dict of {typename: typehash},
+                                topics as a dict of {topic: TopicTuple() namedtuple}.
+        """
+        raise NotImplementedError
+
+    def get_qoses(self, topic, typename):
+        """
+        Returns topic Quality-of-Service profiles as a list of dicts, or None if not available.
+
+        Functional only in ROS2.
+        """
+        return None
+
+    def get_message_class(self, typename, typehash=None):
+        """Returns ROS message type class, or None if unknown message type for bag."""
+        return None
+
+    def get_message_definition(self, msg_or_type):
+        """
+        Returns ROS message type definition full text, including subtype definitions.
+
+        Returns None if unknown message type for bag.
+        """
+        return None
+
+    def get_message_type_hash(self, msg_or_type):
+        """Returns ROS message type MD5 hash, or None if unknown message type for bag."""
+        return None
+
+    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False, **__):
+        """
+        Yields messages from the bag, optionally filtered by topic and timestamp.
+
+        @param   topics      list of topics or a single topic to filter by, if any
+        @param   start_time  earliest timestamp of message to return, as ROS time
+        @param   end_time    latest timestamp of message to return, as ROS time
+        @param   raw         if true, then returned messages are tuples of
+                             (typename, bytes, typehash, typeclass)
+                             or (typename, bytes, typehash, position, typeclass),
+                             depending on file format
+        @return              generator of (topic, message, ROS timestamp) tuples
+        """
+        raise NotImplementedError
+
+    def write(self, topic, msg, t=None, raw=False, **kwargs):
+        """
+        Writes a message to the bag.
+
+        @param   topic   name of topic
+        @param   msg     ROS message
+        @param   t       message timestamp as ROS time, if not using current wall time
+        @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
+        @param   kwargs  ROS version-specific arguments like `qoses` for ROS2
+        """
+        raise NotImplementedError
+
+    def open(self):
+        """Opens the bag file if not already open."""
+        raise NotImplementedError
+
+    def close(self):
+        """Closes the bag file."""
+        raise NotImplementedError
+
+    def flush(self):
+        """Ensures all changes are written to bag file."""
+
+    @property
+    def size(self):
+        """Returns current file size in bytes."""
+        raise NotImplementedError
+
+    @property
+    def mode(self):
+        """Returns file open mode."""
+        raise NotImplementedError
 
     @property
     def closed(self):
@@ -403,11 +585,6 @@ def format_message_value(msg, name, value):
 def get_message_class(typename):
     """Returns ROS message class."""
     return realapi.get_message_class(typename)
-
-
-def get_message_data(msg):
-    """Returns ROS message as a serialized binary."""
-    return realapi.get_message_data(msg)
 
 
 def get_message_definition(msg_or_type):
@@ -616,7 +793,7 @@ def parse_definition_fields(typename, typedef):
     """
     Returns field names and type names from a message definition text.
 
-    Dpes not recurse into subtypes.
+    Does not recurse into subtypes.
 
     @param   typename  ROS message type name, like "my_pkg/MyCls"
     @param   typedef   ROS message definition, like "Header header\nbool a\nMyCls2 b"
@@ -695,6 +872,16 @@ def parse_definition_subtypes(typedef, nesting=False):
     return (result, nesteds) if nesting else result
 
 
+def serialize_message(msg):
+    """Returns ROS message as a serialized binary."""
+    return realapi.serialize_message(msg)
+
+
+def deserialize_message(msg, cls_or_typename):
+    """Returns ROS message or service request/response instantiated from serialized binary."""
+    return realapi.deserialize_message(msg, cls_or_typename)
+
+
 def scalar(typename):
     """
     Returns scalar type from ROS message data type, like "uint8" from uint8-array.
@@ -742,12 +929,13 @@ __all___ = [
     "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_TYPES", "ROS_COMMON_TYPES",
     "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES",
     "SKIP_EXTENSIONS", "Bag", "TypeMeta",
-    "calculate_definition_hash", "create_publisher", "create_subscriber", "format_message_value",
-    "get_alias_type", "get_message_class", "get_message_data", "get_message_definition",
+    "calculate_definition_hash", "create_publisher", "create_subscriber", "deserialize_message",
+    "format_message_value", "get_alias_type", "get_message_class", "get_message_definition",
     "get_message_fields", "get_message_type", "get_message_type_hash", "get_message_value",
     "get_ros_time_category", "get_rostime", "get_topic_types", "get_type_alias", "init_node",
     "is_ros_message", "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration",
     "make_live_time", "make_message_hash", "make_time", "message_to_dict",
-    "parse_definition_fields", "parse_definition_subtypes", "scalar", "set_message_value",
-    "shutdown_node", "to_datetime", "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "validate",
+    "parse_definition_fields", "parse_definition_subtypes", "scalar", "deserialize_message",
+    "set_message_value", "shutdown_node", "to_datetime", "to_decimal", "to_nsec", "to_sec",
+    "to_sec_nsec", "validate",
 ]

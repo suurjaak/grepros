@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    15.12.2022
+@modified    17.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -37,10 +37,11 @@ class EmbagReader(rosapi.Bag):
     def __init__(self, filename, mode="r", **__):
         if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
-        self._topics   = {}  # {(topic, typename, typehash): message count}
-        self._types    = {}  # {(typename, typehash): message type class}
-        self._hashdefs = {}  # {(topic, typehash): typename}
-        self._typedefs = {}  # {(typename, typehash): type definition text}
+        self._topics   = {}    # {(topic, typename, typehash): message count}
+        self._types    = {}    # {(typename, typehash): message type class}
+        self._hashdefs = {}    # {(topic, typehash): typename}
+        self._typedefs = {}    # {(typename, typehash): type definition text}
+        self._ttinfo   = None  # Cached result for get_type_and_topic_info()
         self._view = embag.View(filename)
 
         ## Bagfile path
@@ -49,26 +50,34 @@ class EmbagReader(rosapi.Bag):
         self._populate_meta()
 
 
-    def get_message_count(self):
-        """Returns the number of messages in the bag."""
+    def get_message_count(self, topic_filters=None):
+        """
+        Returns the number of messages in the bag.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if any
+        """
+        if topic_filters:
+            topics = topic_filters
+            topics = topics if isinstance(topics, (dict, list, set, tuple)) else [topics]
+            return sum(c for (t, _, _), c in self._topics.items() if t in topics)
         return sum(self._topics.values())
 
 
     def get_start_time(self):
-        """Returns the start time of the bag, as UNIX timestamp."""
-        if not self._topics: return None
+        """Returns the start time of the bag, as UNIX timestamp, or None if bag empty."""
+        if self.closed or not self._topics: return None
         return self._view.getStartTime().to_sec()
 
 
     def get_end_time(self):
-        """Returns the end time of the bag, as UNIX timestamp."""
-        if not self._topics: return None
+        """Returns the end time of the bag, as UNIX timestamp, or None if bag empty."""
+        if self.closed or not self._topics: return None
         return self._view.getEndTime().to_sec()
 
 
     def get_message_class(self, typename, typehash=None):
         """
-        Returns rospy message class for typename, or None if unknown type.
+        Returns rospy message class for typename, or None if unknown message type for bag.
 
         Generates class dynamically if not already generated.
 
@@ -78,11 +87,15 @@ class EmbagReader(rosapi.Bag):
         if typekey not in self._types and typekey in self._typedefs:
             for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
                 self._types[(n, c._md5sum)] = c
-        return self._types.get(typekey) or rosapi.get_message_class(typename)
+        return self._types.get(typekey)
 
 
     def get_message_definition(self, msg_or_type):
-        """Returns ROS1 message type definition full text from bag, including subtype definitions."""
+        """
+        Returns ROS1 message type definition full text from bag, including subtype definitions.
+
+        Returns None if unknown message type for bag.
+        """
         if rosapi.is_ros_message(msg_or_type):
             return self._typedefs.get((msg_or_type._type, msg_or_type._md5sum))
         typename = msg_or_type
@@ -90,27 +103,67 @@ class EmbagReader(rosapi.Bag):
 
 
     def get_message_type_hash(self, msg_or_type):
-        """Returns ROS1 message type MD5 hash."""
+        """Returns ROS1 message type MD5 hash, or None if unknown message type for bag."""
         if rosapi.is_ros_message(msg_or_type): return msg_or_type._md5sum
         typename = msg_or_type
-        return next((h for n, h in self._typedefs if n == typename), None) \
-               or rosapi.get_message_type_hash(typename)
+        return next((h for n, h in self._typedefs if n == typename), None)
 
 
-    def get_topic_info(self):
+    def get_topic_info(self, *_, **__):
         """Returns topic and message type metainfo as {(topic, typename, typehash): count}."""
         return dict(self._topics)
 
 
-    def read_messages(self, topics=None, start_time=None, end_time=None):
+    def get_type_and_topic_info(self, topic_filters=None):
+        """
+        Returns thorough metainfo on topic and message types.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if at all
+        @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
+                                msg_types as dict of {typename: typehash},
+                                topics as a dict of {topic: TopicTuple() namedtuple}.
+        """
+        if self._ttinfo: return self._ttinfo
+        if self.closed: raise ValueError("I/O operation on closed file.")
+
+        topics = topic_filters
+        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
+        msgtypes = {n: h for t, n, h in self._topics if not topics or t in topics}
+        topicdict = {}
+
+        def median(vals):
+            """Returns median value from given sorted numbers."""
+            vlen = len(vals)
+            return None if not vlen else vals[vlen // 2] if vlen % 2 else \
+                   float(vals[vlen // 2 - 1] + vals[vlen // 2]) / 2
+
+        conns = self._view.connectionsByTopic()  # {topic: [embag.Connection, ]}
+        for (t, n, _), c in sorted(self._topics.items()):
+            if topics and t not in topics: continue  # for
+            mymedian = None
+            if c > 1:
+                stamps = sorted(m.timestamp.secs + m.timestamp.nsecs / 1E9
+                                for m in self._view.getMessages([t]))
+                mymedian = median(sorted(s1 - s0 for s1, s0 in zip(stamps[1:], stamps[:-1])))
+            freq = 1.0 / mymedian if mymedian else None
+            topicdict[t] = self.TopicTuple(n, c, len(conns.get(t, [])), freq)
+        self._ttinfo = self.TypesAndTopicsTuple(msgtypes, topicdict)
+        return self._ttinfo
+
+
+    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False):
         """
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
         @param   start_time  earliest timestamp of message to return, as UNIX timestamp
         @param   end_time    latest timestamp of message to return, as UNIX timestamp
-        @return              (topic, msg, rclpy.time.Time)
+        @param   raw         if true, then returned messages are tuples of
+                             (typename, bytes, typehash, typeclass)
+        @return              generator of (topic, msg, ROS timestamp) tuples
         """
+        if self.closed: raise ValueError("I/O operation on closed file.")
+
         topics = topics if isinstance(topics, list) else [topics] if topics else []
         for m in self._view.getMessages(topics) if topics else self._view.getMessages():
             if start_time is not None and start_time > m.timestamp.to_sec():
@@ -119,7 +172,9 @@ class EmbagReader(rosapi.Bag):
                 continue  # for m
 
             typename = self._hashdefs[(m.topic, m.md5)]
-            msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
+            if raw:
+                msg = (typename, m.data(), m.md5, self.get_message_class(typename, m.md5))
+            else: msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
             yield m.topic, msg, rosapi.make_time(m.timestamp.secs, m.timestamp.nsecs)
 
 
@@ -145,6 +200,12 @@ class EmbagReader(rosapi.Bag):
     def size(self):
         """Returns current file size."""
         return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+
+
+    @property
+    def mode(self):
+        """Returns file open mode."""
+        return "r"
 
 
     def _populate_meta(self):
