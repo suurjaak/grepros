@@ -42,10 +42,8 @@ class EmbagReader(rosapi.Bag):
         self._hashdefs = {}    # {(topic, typehash): typename}
         self._typedefs = {}    # {(typename, typehash): type definition text}
         self._ttinfo   = None  # Cached result for get_type_and_topic_info()
-        self._view = embag.View(filename)
-
-        ## Bagfile path
-        self.filename = filename
+        self._view     = embag.View(filename)
+        self._filename = filename
 
         self._populate_meta()
 
@@ -183,7 +181,7 @@ class EmbagReader(rosapi.Bag):
 
     def open(self):
         """Opens the bag file if not already open."""
-        if not self._view: self._view = embag.View(self.filename)
+        if not self._view: self._view = embag.View(self._filename)
 
 
     def close(self):
@@ -200,9 +198,15 @@ class EmbagReader(rosapi.Bag):
 
 
     @property
+    def filename(self):
+        """Returns bag file path."""
+        return self._filename
+
+
+    @property
     def size(self):
         """Returns current file size."""
-        return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        return os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
 
 
     @property

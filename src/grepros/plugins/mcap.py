@@ -79,13 +79,12 @@ class McapBag(rosapi.Bag):
         self._writer         = None   # mcap_ros.Writer
         self._ttinfo         = None   # Cached result for get_type_and_topic_info()
         self._opened         = False  # Whether file has been opened at least once
+        self._filename       = filename
 
         if ros2 and "r" == mode: self._temporal_ctors.update(
             (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
         )
 
-        ## Bagfile path
-        self.filename = filename
         self.open()
 
 
@@ -273,7 +272,7 @@ class McapBag(rosapi.Bag):
         if self._opened and "w" == self._mode:
             raise io.UnsupportedOperation("Cannot reopen bag for writing.")
 
-        self._file    = open(self.filename, "%sb" % self._mode)
+        self._file    = open(self._filename, "%sb" % self._mode)
         self._reader  = mcap.reader.make_reader(self._file) if "r" == self._mode else None
         self._decoder = mcap_ros.decoder.Decoder()          if "r" == self._mode else None
         self._writer  = mcap_ros.writer.Writer(self._file)  if "w" == self._mode else None
@@ -296,9 +295,15 @@ class McapBag(rosapi.Bag):
 
 
     @property
+    def filename(self):
+        """Returns bag file path."""
+        return self._filename
+
+
+    @property
     def size(self):
         """Returns current file size."""
-        return os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        return os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
 
 
     @property

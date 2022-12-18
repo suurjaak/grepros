@@ -456,6 +456,11 @@ class Bag(object):
         """Ensures all changes are written to bag file."""
 
     @property
+    def filename(self):
+        """Returns bag file path."""
+        raise NotImplementedError
+
+    @property
     def size(self):
         """Returns current file size in bytes."""
         raise NotImplementedError

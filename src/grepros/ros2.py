@@ -125,9 +125,8 @@ PRAGMA synchronous=NORMAL;
         self._counts = {}    # {(topic, typename, typehash): message count}
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
         self._ttinfo = None  # Cached result for get_type_and_topic_info()
+        self._filename = filename
 
-        ## Bagfile path
-        self.filename = filename
         self._ensure_open(populate=("r" != mode))
 
 
@@ -402,11 +401,17 @@ PRAGMA synchronous=NORMAL;
 
 
     @property
+    def filename(self):
+        """Returns bag file path."""
+        return self._filename
+
+
+    @property
     def size(self):
         """Returns current file size in bytes (including journaling files)."""
-        result = os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        result = os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
         for suffix in ("-journal", "-wal") if result else ():
-            path = self.filename + suffix
+            path = self._filename + suffix
             result += os.path.getsize(path) if os.path.isfile(path) else 0
         return result
 
@@ -425,9 +430,9 @@ PRAGMA synchronous=NORMAL;
     def _ensure_open(self, populate=False):
         """Opens bag database if not open, populates schema if specified."""
         if not self._db:
-            if "w" == self._mode and os.path.exists(self.filename):
-                os.remove(self.filename)
-            self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
+            if "w" == self._mode and os.path.exists(self._filename):
+                os.remove(self._filename)
+            self._db = sqlite3.connect(self._filename, detect_types=sqlite3.PARSE_DECLTYPES,
                                        isolation_level=None, check_same_thread=False)
             self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         if populate:
