@@ -61,7 +61,8 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
     """
     ROS1 bag reader and writer.
 
-    Extends `rosbag.Bag` with more conveniences, and smooths over the rosbag bug
+    Extends `rosbag.Bag` with more conveniences, smooths over the rosbag bug of ignoring
+    topic and time filters in format v1.2, and smooths over the rosbag bug
     of yielding messages of wrong type, if message types in different topics
     have different packages but identical fields and hashes.
 
@@ -197,17 +198,25 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         dupes = {t: (n, h) for t, n, h in self.__topics
                  if (read_topics is None or t in read_topics) and len(hashtypes.get(h, [])) > 1}
 
-        kwargs = dict(topics=topics, start_time=to_time(start_time), end_time=to_time(end_time),
+        # Workaround for rosbag.Bag ignoring topic and time filters in format v1.2
+        if self.version != 102 or (not topics and start_time is None and end_time is None):
+            in_range = lambda *_: True
+        else: in_range = lambda t, s: ((not read_topics or t in read_topics) and
+                                       (start_time is None or s >= start_time) and
+                                       (end_time is None or s <= end_time))
+
+        start_time, end_time = map(to_time, (start_time, end_time))
+        kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
                       connection_filter=connection_filter, raw=raw)
         if not dupes:
             for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
-                yield self.BagMessage(topic, msg, stamp)
+                if in_range(topic, stamp):
+                    yield self.BagMessage(topic, msg, stamp)
             return
 
         for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
-            # Workaround for rosbag.Bag ignoring topic filters in format v1.2
-            if read_topics and topic not in read_topics:
-                continue  # for
+            if not in_range(topic, stamp): continue  # for
+
             # Workaround for rosbag bug of using wrong type for identical type hashes
             if topic in dupes:
                 typename, typehash = (msg[0], msg[2]) if raw else (msg._type, msg._md5sum)
