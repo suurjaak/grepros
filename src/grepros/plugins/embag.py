@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    17.12.2022
+@modified    18.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -156,8 +156,10 @@ class EmbagReader(rosapi.Bag):
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
-        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
-        @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @param   start_time  earliest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
+        @param   end_time    latest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
         @return              generator of (topic, msg, ROS timestamp) tuples
@@ -165,6 +167,7 @@ class EmbagReader(rosapi.Bag):
         if self.closed: raise ValueError("I/O operation on closed file.")
 
         topics = topics if isinstance(topics, list) else [topics] if topics else []
+        start_time, end_time = (rosapi.to_sec(rosapi.to_time(x)) for x in (start_time, end_time))
         for m in self._view.getMessages(topics) if topics else self._view.getMessages():
             if start_time is not None and start_time > m.timestamp.to_sec():
                 continue  # for m

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    17.12.2022
+@modified    18.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -200,8 +200,10 @@ class McapBag(rosapi.Bag):
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if at all
-        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
-        @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @param   start_time  earliest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
+        @param   end_time    latest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
         @return              (topic, msg, rclpy.time.Time)
@@ -210,7 +212,7 @@ class McapBag(rosapi.Bag):
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
         topics = topics if isinstance(topics, list) else [topics] if topics else []
-        start_ns, end_ns = (x and x * 10**9 for x in (start_time, end_time))
+        start_ns, end_ns = (rosapi.to_nsec(rosapi.to_time(x)) for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
             if raw:
                 typekey = (typename, typehash) = self._schematypes[schema.id]
@@ -227,7 +229,8 @@ class McapBag(rosapi.Bag):
 
         @param   topic   name of topic
         @param   msg     ROS1 message
-        @param   t       message timestamp as ROS1 time, if not using current wall time
+        @param   t       message timestamp if not using current wall time,
+                         as ROS time or convertible (int/float/duration/datetime/decimal)
         @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
@@ -244,7 +247,7 @@ class McapBag(rosapi.Bag):
         topickey, typekey = (topic, typename, typehash), (typename, typehash)
 
         nanosec = (time.time_ns() if hasattr(time, "time_ns") else int(time.time() * 10**9)) \
-                  if t is None else rosapi.to_nsec(t)
+                  if t is None else rosapi.to_nsec(rosapi.to_time(t))
         if ros2:
             if typekey not in self._schemas:
                 fullname = ros2.make_full_typename(typename)

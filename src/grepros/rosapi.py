@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.12.2022
+@modified    18.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -419,8 +419,10 @@ class Bag(object):
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
         @param   topics      list of topics or a single topic to filter by, if any
-        @param   start_time  earliest timestamp of message to return, as ROS time
+        @param   start_time  earliest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
         @param   end_time    latest timestamp of message to return, as ROS time
+                             (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
                              or (typename, bytes, typehash, position, typeclass),
@@ -435,7 +437,8 @@ class Bag(object):
 
         @param   topic   name of topic
         @param   msg     ROS message
-        @param   t       message timestamp as ROS time, if not using current wall time
+        @param   t       message timestamp if not using current wall time, as ROS time
+                         or convertible (int/float/duration/datetime/decimal)
         @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
         @param   kwargs  ROS version-specific arguments like `qoses` for ROS2
         """
@@ -935,6 +938,11 @@ def to_sec_nsec(val):
     return realapi.to_sec_nsec(val)
 
 
+def to_time(val):
+    """Returns value as ROS time if convertible (int/float/duration/datetime/decimal), else value."""
+    return realapi.to_time(val)
+
+
 __all___ = [
     "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_TYPES", "ROS_COMMON_TYPES",
     "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES",
@@ -947,5 +955,5 @@ __all___ = [
     "make_live_time", "make_message_hash", "make_time", "message_to_dict",
     "parse_definition_fields", "parse_definition_subtypes", "scalar", "deserialize_message",
     "set_message_value", "shutdown_node", "to_datetime", "to_decimal", "to_nsec", "to_sec",
-    "to_sec_nsec", "validate",
+    "to_sec_nsec", "to_time", "validate",
 ]

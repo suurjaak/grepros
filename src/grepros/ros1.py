@@ -8,11 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.12.2022
+@modified    18.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
 import collections
+import datetime
+import decimal
 import inspect
 import io
 import os
@@ -177,8 +179,10 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
 
         @param   topics             list of topics or a single topic.
                                     If an empty list is given, all topics will be read.
-        @param   start_time         earliest timestamp of messages to return
-        @param   end_time           latest timestamp of messages to return
+        @param   start_time         earliest timestamp of messages to return,
+                                    as ROS time or convertible (int/float/duration/datetime/decimal)
+        @param   end_time           latest timestamp of messages to return,
+                                    as ROS time or convertible (int/float/duration/datetime/decimal)
         @param   connection_filter  function to filter connections to include
         @param   raw                if true, then returned messages are tuples of
                                     (typename, bytes, typehash, typeclass)
@@ -193,7 +197,7 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         dupes = {t: (n, h) for t, n, h in self.__topics
                  if (read_topics is None or t in read_topics) and len(hashtypes.get(h, [])) > 1}
 
-        kwargs = dict(topics=topics, start_time=start_time, end_time=end_time,
+        kwargs = dict(topics=topics, start_time=to_time(start_time), end_time=to_time(end_time),
                       connection_filter=connection_filter, raw=raw)
         if not dupes:
             for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
@@ -221,13 +225,14 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
 
         @param   topic              name of topic
         @param   msg                ROS1 message
-        @param   t                  message timestamp as ROS1 time, if not using current wall time
+        @param   t                  message timestamp if not using current wall time,
+                                    as ROS time or convertible (int/float/duration/datetime/decimal)
         @param   raw                if true, `msg` is in raw format,
                                     (typename, bytes, typehash, typeclass)
         @param   connection_header  custom connection record for topic,
                                     as {"topic", "type", "md5sum", "message_definition"}
         """
-        return super(ROS1Bag, self).write(topic, msg, t, raw, connection_header)
+        return super(ROS1Bag, self).write(topic, msg, to_time(t), raw, connection_header)
 
 
     def open(self):
@@ -604,6 +609,20 @@ def to_sec_nsec(val):
     return (val.secs, val.nsecs) if isinstance(val, genpy.TVal) else val
 
 
+def to_time(val):
+    """Returns value as ROS1 time if convertible (int/float/duration/datetime/decimal), else value."""
+    result = val
+    if isinstance(val, decimal.Decimal):
+        result = rospy.Time(int(val), float(val % 1) * 10**9)
+    elif isinstance(val, datetime.datetime):
+        result = rospy.Time(int(val.timestamp()), 1000 * val.microsecond)
+    elif isinstance(val, (float, int)):
+        result = rospy.Time(val)
+    elif isinstance(val, rospy.Duration):
+        result = rospy.Time(val.secs, val.nsecs)
+    return result
+
+
 __all__ = [
     "BAG_EXTENSIONS", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES", "SKIP_EXTENSIONS",
     "SLEEP_INTERVAL", "TYPECLASSES", "Bag", "ROS1Bag", "master",
@@ -611,5 +630,5 @@ __all__ = [
     "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
     "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
     "is_ros_message", "is_ros_time", "make_duration", "make_time", "scalar", "serialize_message",
-    "set_message_value", "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "validate",
+    "set_message_value", "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
