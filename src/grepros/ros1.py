@@ -191,6 +191,8 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
                                     depending on file format
         @return                     generator of (topic, message, timestamp) tuples
         """
+        if self.closed: raise ValueError("I/O operation on closed file.")
+
         hashtypes = {}
         for n, h in self.__TYPEDEFS: hashtypes.setdefault(h, []).append(n)
         read_topics = topics if isinstance(topics, (dict, list, set, tuple)) else \
@@ -241,6 +243,7 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         @param   connection_header  custom connection record for topic,
                                     as {"topic", "type", "md5sum", "message_definition"}
         """
+        if self.closed: raise ValueError("I/O operation on closed file.")
         return super(ROS1Bag, self).write(topic, msg, to_time(t), raw, connection_header)
 
 

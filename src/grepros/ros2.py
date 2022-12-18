@@ -203,6 +203,7 @@ PRAGMA synchronous=NORMAL;
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
         """
         if self._ttinfo: return self._ttinfo
+        if self.closed: raise ValueError("I/O operation on closed file.")
 
         counts = self.get_topic_info(counts=True)
         topics = topic_filters
