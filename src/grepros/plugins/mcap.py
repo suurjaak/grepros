@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    18.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -32,10 +32,10 @@ elif "2" == os.getenv("ROS_VERSION"):
 else: mcap_ros = None
 import yaml
 
+from .. import api as rosapi
 from .. common import PATH_TYPES, ConsolePrinter, \
                       ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
-from .. import rosapi
 ros2 = None
 if "2" == os.getenv("ROS_VERSION"):
     from .. import ros2

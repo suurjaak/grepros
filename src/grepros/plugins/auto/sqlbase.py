@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    17.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -17,7 +17,7 @@ import re
 
 import yaml
 
-from ... import rosapi
+from ... import api as rosapi
 from ... common import ConsolePrinter, ellipsize, ensure_namespace, import_item, merge_dicts
 
 
@@ -508,7 +508,7 @@ CREATE TABLE IF NOT EXISTS types (
     }
 
 
-    ## Words that need quoting if in name context, e.g. table name.
+    ## Words that need quoting if in name context, like table name.
     ## Combined from reserved words for Postgres, SQLite, MSSQL, Oracle et al.
     KEYWORDS = [
         "A", "ABORT", "ABS", "ABSOLUTE", "ACCESS", "ACTION", "ADA", "ADD", "ADMIN", "AFTER",

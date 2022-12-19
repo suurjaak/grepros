@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -25,10 +25,10 @@ import re
 import threading
 import time
 
+from . import api as rosapi
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
                      format_stamp, format_timedelta, plural, wildcard_to_regex
-from . import rosapi
 
 
 class BaseSource(object):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    18.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -36,8 +36,8 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
+from . import api as rosapi
 from . common import ConsolePrinter, MatchMarkers, memoize
-from . import rosapi
 
 
 ## Bagfile extensions to seek

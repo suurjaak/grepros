@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -22,10 +22,10 @@ import sys
 
 import yaml
 
+from . import api as rosapi
 from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, makedirs, merge_spans, \
                      plural, unique_path, wildcard_to_regex
-from . import rosapi
 
 
 class BaseSink(object):

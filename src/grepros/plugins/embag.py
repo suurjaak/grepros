@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    18.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -20,8 +20,8 @@ except ImportError: embag = None
 try: import genpy
 except ImportError: genpy = None
 
+from .. import api as rosapi
 from .. common import ConsolePrinter
-from .. import rosapi
 
 
 

@@ -16,13 +16,13 @@ Supports loading custom plugins, mainly for additional output formats.
 
 | Module Index                                                                            ||
 | ----------------------------- | ----------------------------------------------------------
+| grepros.api                   | ROS interface, shared facade for ROS1 and ROS2
 | grepros.common                | Common utilities
 | grepros.inputs                | Input sources for search content
 | grepros.main                  | Program main interface
 | grepros.outputs               | Main outputs for search results
 | grepros.ros1                  | ROS1 interface
 | grepros.ros2                  | ROS2 interface
-| grepros.rosapi                | ROS interface, shared facade for ROS1 and ROS2
 | grepros.search                | Search core 
 
 

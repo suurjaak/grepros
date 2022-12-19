@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    17.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -18,8 +18,8 @@ import os
 import sqlite3
 import sys
 
+from ... import api as rosapi
 from ... common import ConsolePrinter, format_bytes, makedirs
-from ... import rosapi
 from . dbbase import BaseDataSink, quote
 
 

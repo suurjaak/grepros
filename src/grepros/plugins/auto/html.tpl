@@ -14,11 +14,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    11.12.2022
+@modified    10.12.2022
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
-from grepros import __version__, rosapi
+from grepros import __version__, api as rosapi
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 sourcemeta = source.get_meta()

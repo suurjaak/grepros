@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    14.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -23,10 +23,10 @@ except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
 
+from .. import api as rosapi
 from .. common import PATH_TYPES, ConsolePrinter, \
                       ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
-from .. import rosapi
 
 
 class ParquetSink(BaseSink):

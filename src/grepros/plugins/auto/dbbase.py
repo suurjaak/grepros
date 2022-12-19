@@ -8,14 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    14.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
 import atexit
 import collections
 
-from ... import rosapi
+from ... import api as rosapi
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, plural
 from ... outputs import BaseSink
 from . sqlbase import SqlMixin, quote

@@ -16,9 +16,9 @@ import copy
 import collections
 import re
 
-from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
+from . import api as rosapi
 from . import inputs
-from . import rosapi
+from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
 
 
 class Searcher(object):

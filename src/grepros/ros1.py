@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -27,9 +27,9 @@ import rosbag
 import roslib
 import rospy
 
-from . import rosapi
+from . import api as rosapi
+from . api import TypeMeta, calculate_definition_hash, parse_definition_subtypes
 from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
-from . rosapi import TypeMeta, calculate_definition_hash, parse_definition_subtypes
 
 
 ## Bagfile extensions to seek
