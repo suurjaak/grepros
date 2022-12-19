@@ -8,10 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.12.2022
+@modified    19.12.2022
 ------------------------------------------------------------------------------
 """
-## @namespace grepros.rosapi
+## @namespace grepros.api
 import collections
 import datetime
 import decimal
