@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -764,10 +764,10 @@ def import_item(name):
 
 def makedirs(path):
     """Creates directory structure for path if not already existing."""
-    parts, accum = list(filter(bool, path.split(os.sep))), []
+    parts, accum = list(filter(bool, os.path.realpath(path).split(os.sep))), []
     while parts:
         accum.append(parts.pop(0))
-        curpath = (os.sep if path.startswith(os.sep) else "") + os.path.join(*accum)
+        curpath = os.path.join(os.sep, accum[0] + os.sep, *accum[1:])  # Windows drive letter thing
         if not os.path.exists(curpath):
             os.mkdir(curpath)
 
@@ -879,6 +879,37 @@ def unique_path(pathname, empty_ok=False):
     return result
 
 
+def verify_writable(filepath):
+    """
+    Returns whether file path can be written to, prints or raises error if not.
+
+    Tries to open the path in append mode, auto-creating missing directories if any,
+    will delete any file or directory created.
+    """
+    present, paths_created = os.path.exists(filepath), []
+    try:
+        if not present:
+            path = os.path.realpath(os.path.dirname(filepath))
+            parts, accum = [x for x in path.split(os.sep) if x], []
+            while parts:
+                accum.append(parts.pop(0))
+                curpath = os.path.join(os.sep, accum[0] + os.sep, *accum[1:])  # Windows drive letter thing
+                if not os.path.exists(curpath):
+                    os.mkdir(curpath)
+                    paths_created.append(curpath)
+        with open(filepath, "ab"): return True
+    except Exception as e:
+        ConsolePrinter.error("%s: %s", filepath, e)
+        return False
+    finally:
+        if not present:
+            try: os.remove(filepath)
+            except Exception: pass
+            for path in paths_created[::-1]:
+                try: os.rmdir(path)
+                except Exception: pass
+
+
 def wildcard_to_regex(text, end=False):
     """
     Returns plain wildcard like "foo*bar" as re.Pattern("foo.*bar", re.I).
@@ -893,5 +924,6 @@ __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "import_item", "makedirs", "memoize",
-    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "wildcard_to_regex",
+    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_writable",
+    "wildcard_to_regex",
 ]

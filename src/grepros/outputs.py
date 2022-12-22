@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -25,7 +25,7 @@ import yaml
 from . import api as rosapi
 from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, makedirs, merge_spans, \
-                     plural, unique_path, wildcard_to_regex
+                     plural, unique_path, verify_writable, wildcard_to_regex
 
 
 class BaseSink(object):
@@ -427,12 +427,14 @@ class BagSink(BaseSink):
         super(BagSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
+        """Returns whether write options are valid and ROS environment set, prints error if not."""
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for bag: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
+            result = False
+        if not verify_writable(self.args.WRITE):
             result = False
         return rosapi.validate() and result
 

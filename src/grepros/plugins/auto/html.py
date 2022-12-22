@@ -8,12 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
 import atexit
-import copy
 import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
@@ -22,8 +21,8 @@ import sys
 import threading
 
 from ... import api as rosapi
-from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, \
-                       ensure_namespace, format_bytes, makedirs, plural, unique_path
+from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, ensure_namespace, \
+                       format_bytes, makedirs, plural, unique_path, verify_writable
 from ... outputs import BaseSink, TextSinkMixin
 from ... vendor import step
 
@@ -98,7 +97,8 @@ class HtmlSink(BaseSink, TextSinkMixin):
 
     def validate(self):
         """
-        Returns whether write options are valid and ROS environment is set, prints error if not.
+        Returns whether write options are valid and ROS environment is set and file is writable,
+        prints error if not.
         """
         result = True
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
@@ -108,6 +108,8 @@ class HtmlSink(BaseSink, TextSinkMixin):
             ConsolePrinter.error("Invalid overwrite option for HTML: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
+            result = False
+        if not verify_writable(self.args.WRITE):
             result = False
         return rosapi.validate() and result
 

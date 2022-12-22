@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -25,7 +25,7 @@ except ImportError: pass
 
 from .. import api as rosapi
 from .. common import PATH_TYPES, ConsolePrinter, \
-                      ensure_namespace, format_bytes, makedirs, plural, unique_path
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
 from .. outputs import BaseSink
 
 
@@ -119,7 +119,8 @@ class ParquetSink(BaseSink):
 
     def validate(self):
         """
-        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid.
+        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid
+        and file base is writable.
         """
         ok, pandas_ok, pyarrow_ok = self._configure_ok, bool(pandas), bool(pyarrow)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
@@ -131,6 +132,8 @@ class ParquetSink(BaseSink):
             ConsolePrinter.error("pandas not available: cannot write Parquet files.")
         if not pyarrow_ok:
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
+        if not verify_writable(self.args.WRITE):
+            ok = False
         return ok and pandas_ok and pyarrow_ok
 
 

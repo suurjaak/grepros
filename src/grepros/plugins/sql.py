@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -19,8 +19,8 @@ import os
 import sys
 
 from .. import api as rosapi
-from .. common import PATH_TYPES, ConsolePrinter, \
-                      ensure_namespace, format_bytes, makedirs, plural, unique_path
+from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
+                      makedirs, plural, unique_path, verify_writable
 from .. outputs import BaseSink
 from . auto.sqlbase import SqlMixin
 
@@ -86,7 +86,8 @@ class SqlSink(BaseSink, SqlMixin):
 
     def validate(self):
         """
-        Returns whether "dialect" and "nesting" and "overwrite" parameters contain supported values.
+        Returns whether "dialect" and "nesting" and "overwrite" parameters contain supported values
+        and file is writable.
         """
         ok, sqlconfig_ok = True, SqlMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
@@ -98,6 +99,8 @@ class SqlSink(BaseSink, SqlMixin):
             ConsolePrinter.error("Invalid overwrite option for SQL: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
+            ok = False
+        if not verify_writable(self.args.WRITE):
             ok = False
         return sqlconfig_ok and ok
 

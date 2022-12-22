@@ -35,7 +35,7 @@ else: mcap_ros = None
 import yaml
 
 from .. common import PATH_TYPES, ConsolePrinter, \
-                      ensure_namespace, format_bytes, makedirs, plural, unique_path
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
 from .. outputs import BaseSink
 
 
@@ -554,7 +554,7 @@ class McapSink(BaseSink):
     def validate(self):
         """
         Returns whether required libraries are available (mcap, mcap_ros1/mcap_ros2)
-        and overwrite is valid.
+        and overwrite is valid and file is writable.
         """
         ok, mcap_ok, mcap_ros_ok = True, bool(mcap), bool(mcap_ros)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
@@ -567,6 +567,8 @@ class McapSink(BaseSink):
         if not mcap_ros_ok:
             ConsolePrinter.error("mcap_ros%s not available: cannot work with MCAP files.",
                                  rosapi.ROS_VERSION or "")
+        if not verify_writable(self.args.WRITE):
+            ok = False
         return ok and mcap_ok and mcap_ros_ok
 
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -19,7 +19,7 @@ import sqlite3
 import sys
 
 from ... import api as rosapi
-from ... common import ConsolePrinter, format_bytes, makedirs
+from ... common import ConsolePrinter, format_bytes, makedirs, verify_writable
 from . dbbase import BaseDataSink, quote
 
 
@@ -84,21 +84,23 @@ class SqliteSink(BaseDataSink):
 
     def validate(self):
         """
-        Returns "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any;
-        parses "message-yaml" from args.WRITE_OPTIONS.
+        Returns whether "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any,
+        and file is writable; parses "message-yaml" and "overwrite" from args.WRITE_OPTIONS.
         """
-        config_ok = super(SqliteSink, self).validate()
+        ok = super(SqliteSink, self).validate()
         if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
-            config_ok = False
+            ok = False
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])
-            config_ok = False
-        return config_ok
+            ok = False
+        if not verify_writable(self.args.WRITE):
+            ok = False
+        return ok
 
 
     def _init_db(self):

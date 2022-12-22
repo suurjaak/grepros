@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -19,7 +19,6 @@ try:
     import psycopg2
     import psycopg2.extensions
     import psycopg2.extras
-    import psycopg2.pool
 except ImportError:
     psycopg2 = None
 
@@ -96,12 +95,18 @@ class PostgresSink(BaseDataSink):
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any.
+        and "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any,
+        and database is connectable.
         """
-        driver_ok, config_ok = bool(psycopg2), super(PostgresSink, self).validate()
+        db_ok, driver_ok, config_ok = False, bool(psycopg2), super(PostgresSink, self).validate()
         if not driver_ok:
             ConsolePrinter.error("psycopg2 not available: cannot write to Postgres.")
-        return driver_ok and config_ok
+        else:
+            try:
+                with self._connect(): db_ok = True
+            except Exception as e:
+                ConsolePrinter.error("Error connecting Postgres: %s", e)
+        return db_ok and driver_ok and config_ok
 
 
     def _init_db(self):

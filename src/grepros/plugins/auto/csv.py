@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -21,8 +21,8 @@ import os
 import sys
 
 from ... import api as rosapi
-from ... common import PATH_TYPES, ConsolePrinter, \
-                       ensure_namespace, format_bytes, makedirs, plural, unique_path
+from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
+                       makedirs, plural, unique_path, verify_writable
 from ... outputs import BaseSink
 
 
@@ -67,12 +67,14 @@ class CsvSink(BaseSink):
         super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
-        """Returns whether overwrite option is valid."""
+        """Returns whether overwrite option is valid and file base is writable."""
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
+            result = False
+        if not verify_writable(self.args.WRITE):
             result = False
         return result
 
