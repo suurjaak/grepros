@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -430,6 +430,14 @@ def validate(live=False):
     return not missing
 
 
+@memoize
+def canonical(typename):
+    """Returns "pkg/Type" for "pkg/subdir/Type"."""
+    if typename.count("/") > 1:
+        typename = "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+    return typename
+
+
 def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a rospy.Publisher."""
     def pub_unregister():
@@ -638,9 +646,10 @@ def to_time(val):
 __all__ = [
     "BAG_EXTENSIONS", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES", "SKIP_EXTENSIONS",
     "SLEEP_INTERVAL", "TYPECLASSES", "Bag", "ROS1Bag", "master",
-    "create_publisher", "create_subscriber", "deserialize_message", "format_message_value",
-    "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
-    "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
-    "is_ros_message", "is_ros_time", "make_duration", "make_time", "scalar", "serialize_message",
-    "set_message_value", "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "canonical", "create_publisher", "create_subscriber", "deserialize_message",
+    "format_message_value", "get_message_class", "get_message_definition", "get_message_fields",
+    "get_message_type", "get_message_type_hash", "get_message_value", "get_rostime",
+    "get_topic_types", "init_node", "is_ros_message", "is_ros_time", "make_duration", "make_time",
+    "scalar", "serialize_message", "set_message_value", "shutdown_node", "to_nsec", "to_sec",
+    "to_sec_nsec", "to_time", "validate",
 ]

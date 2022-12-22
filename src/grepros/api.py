@@ -592,6 +592,11 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
 
 
+def canonical(typename):
+    """Returns "pkg/Type" for "pkg/subdir/Type"."""
+    return realapi.canonical(typename)
+
+
 def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a ROS publisher instance, with .get_num_connections() and .unregister()."""
     return realapi.create_publisher(topic, cls_or_typename, queue_size)
@@ -1009,13 +1014,13 @@ __all___ = [
     "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_CTORS", "ROS_BUILTIN_TYPES",
     "ROS_COMMON_TYPES", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
     "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "TypeMeta",
-    "calculate_definition_hash", "create_publisher", "create_subscriber", "deserialize_message",
-    "dict_to_message", "format_message_value", "get_alias_type", "get_message_class",
-    "get_message_definition", "get_message_fields", "get_message_type", "get_message_type_hash",
-    "get_message_value",    "get_ros_time_category", "get_rostime", "get_topic_types",
-    "get_type_alias", "init_node", "is_ros_message", "is_ros_time", "iter_message_fields",
-    "make_bag_time", "make_duration", "make_live_time", "make_message_hash", "make_time",
-    "message_to_dict", "parse_definition_fields", "parse_definition_subtypes", "scalar",
-    "deserialize_message", "set_message_value", "shutdown_node", "to_datetime", "to_decimal",
-    "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "calculate_definition_hash", "canonical", "create_publisher", "create_subscriber",
+    "deserialize_message", "dict_to_message", "format_message_value", "get_alias_type",
+    "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
+    "get_message_type_hash", "get_message_value",    "get_ros_time_category", "get_rostime",
+    "get_topic_types", "get_type_alias", "init_node", "is_ros_message", "is_ros_time",
+    "iter_message_fields", "make_bag_time", "make_duration", "make_live_time", "make_message_hash",
+    "make_time", "message_to_dict", "parse_definition_fields", "parse_definition_subtypes",
+    "scalar", "deserialize_message", "set_message_value", "shutdown_node", "to_datetime",
+    "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
