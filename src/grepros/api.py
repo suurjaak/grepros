@@ -506,7 +506,7 @@ def shutdown_node():
 
 def validate(live=False):
     """
-    Returns whether ROS environment is set, prints error if not.
+    Initializes ROS bindings, returns whether ROS environment set, prints or raises error if not.
 
     @param   live  whether environment must support launching a ROS node
     """
@@ -718,6 +718,18 @@ def iter_message_fields(msg, messages_only=False, scalars=(), top=()):
                     yield p2, v2, t2
             else:
                 yield top + (k, ), v, t
+
+
+def make_full_typename(typename, category="msg"):
+    """
+    Returns "pkg/msg/Type" for "pkg/Type".
+
+    @param   category  type category like "msg" or "srv"
+    """
+    INTER, FAMILY = "/%s/" % category, "rospy" if "1" == os.getenv("ROS_VERSION") else "rclpy"
+    if INTER in typename or "/" not in typename or typename.startswith("%s/" % FAMILY):
+        return typename
+    return INTER.join(next((x[0], x[-1]) for x in [typename.split("/")]))
 
 
 def make_bag_time(stamp, bag):
