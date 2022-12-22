@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -807,7 +807,7 @@ class TopicSource(BaseSource, ConditionMixin):
     def format_meta(self):
         """Returns source metainfo string."""
         metadata = self.get_meta()
-        result = "\nROS%s live" % os.getenv("ROS_VERSION")
+        result = "\nROS%s live" % rosapi.ROS_VERSION
         if "ROS_MASTER_URI" in metadata:
             result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
         if "ROS_DOMAIN_ID" in metadata:
@@ -856,14 +856,14 @@ class TopicSource(BaseSource, ConditionMixin):
     def _init_progress(self):
         """Initializes progress bar, if any."""
         if self.args.PROGRESS and not self.bar:
-            self.bar = ProgressBar(afterword="ROS%s live" % os.getenv("ROS_VERSION"),
+            self.bar = ProgressBar(afterword="ROS%s live" % rosapi.ROS_VERSION,
                                    aftertemplate=" {afterword}", pulse=True)
             self.bar.start()
 
     def _update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS%s live, %s" % (os.getenv("ROS_VERSION"), plural("message", count))
+            afterword = "ROS%s live, %s" % (rosapi.ROS_VERSION, plural("message", count))
             self.bar.afterword, self.bar.max = afterword, count
             if not running:
                 self.bar.pause, self.bar.pulse_pos = True, None

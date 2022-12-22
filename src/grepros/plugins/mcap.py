@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -20,24 +20,25 @@ import os
 import time
 import types
 
+from .. import api as rosapi
+
 try: import mcap, mcap.reader
 except ImportError: mcap = None
-if "1" == os.getenv("ROS_VERSION"):
+if rosapi.ROS1:
     import genpy.dynamic
     try: import mcap_ros1 as mcap_ros, mcap_ros1.decoder, mcap_ros1.writer
     except ImportError: mcap_ros = None
-elif "2" == os.getenv("ROS_VERSION"):
+elif rosapi.ROS2:
     try: import mcap_ros2 as mcap_ros, mcap_ros2.decoder, mcap_ros2.writer
     except ImportError: mcap_ros = None
 else: mcap_ros = None
 import yaml
 
-from .. import api as rosapi
 from .. common import PATH_TYPES, ConsolePrinter, \
                       ensure_namespace, format_bytes, makedirs, plural, unique_path
 from .. outputs import BaseSink
 ros2 = None
-if "2" == os.getenv("ROS_VERSION"):
+if rosapi.ROS2:
     from .. import ros2
 
 
@@ -249,7 +250,7 @@ class McapBag(rosapi.Bag):
                   if t is None else rosapi.to_nsec(rosapi.to_time(t))
         if ros2:
             if typekey not in self._schemas:
-                fullname = ros2.make_full_typename(typename)
+                fullname = rosapi.make_full_typename(typename)
                 schema = self._writer.register_msgdef(fullname, typedef)
                 self._schemas[typekey] = schema
             schema, data = self._schemas[typekey], rosapi.message_to_dict(msg)
@@ -327,7 +328,7 @@ class McapBag(rosapi.Bag):
         """
         cls = self._make_message_class(schema, message, generate=False)
         if ros2 and not isinstance(cls, types.SimpleNamespace):
-            msg = ros2.deserialize_message(message.data, cls)
+            msg = rosapi.deserialize_message(message.data, cls)
         else:
             msg = self._decoder.decode(schema=schema, message=message)
             if ros2:  # MCAP ROS2 message classes need monkey-patching with expected API
@@ -581,7 +582,7 @@ class McapSink(BaseSink):
             with rosapi.TypeMeta.make(msg, topic) as m:
                 typekey = m.typekey
                 if typekey not in self._schemas:
-                    fullname = ros2.make_full_typename(m.typename)
+                    fullname = rosapi.make_full_typename(m.typename)
                     self._schemas[typekey] = self._writer.register_msgdef(fullname, m.definition)
             schema, data = self._schemas[typekey], rosapi.message_to_dict(msg)
             self._writer.write_message(topic, schema, data, **kwargs)

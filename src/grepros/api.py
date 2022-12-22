@@ -33,6 +33,15 @@ BAG_EXTENSIONS  = ()
 ## Bagfile extensions to skip, including leading dot, populated after init
 SKIP_EXTENSIONS = ()
 
+## Flag denoting ROS1 environment, populated on validate()
+ROS1 = None
+
+## Flag denoting ROS2 environment, populated on validate()
+ROS2 = None
+
+## ROS version from environment, populated on validate() as integer
+ROS_VERSION = None
+
 ## All built-in numeric types in ROS
 ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
                      "uint16", "uint32", "uint64", "float32", "float64", "bool"]
@@ -510,7 +519,7 @@ def validate(live=False):
 
     @param   live  whether environment must support launching a ROS node
     """
-    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, \
+    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS1, ROS2, ROS_VERSION, \
            ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES, ROS_ALIAS_TYPES
     if realapi:
         return True
@@ -520,10 +529,12 @@ def validate(live=False):
         from . import ros1
         realapi = ros1
         success = realapi.validate()
+        ROS1, ROS2, ROS_VERSION = True, False, 1
     elif "2" == version:
         from . import ros2
         realapi = ros2
         success = realapi.validate(live)
+        ROS1, ROS2, ROS_VERSION = False, True, 2
     elif not version:
         ConsolePrinter.error("ROS environment not set: missing ROS_VERSION.")
     else:
@@ -726,7 +737,7 @@ def make_full_typename(typename, category="msg"):
 
     @param   category  type category like "msg" or "srv"
     """
-    INTER, FAMILY = "/%s/" % category, "rospy" if "1" == os.getenv("ROS_VERSION") else "rclpy"
+    INTER, FAMILY = "/%s/" % category, "rospy" if ROS1 else "rclpy"
     if INTER in typename or "/" not in typename or typename.startswith("%s/" % FAMILY):
         return typename
     return INTER.join(next((x[0], x[-1]) for x in [typename.split("/")]))
