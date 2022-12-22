@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.12.2022
+@modified    22.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -42,6 +42,12 @@ ROS_STRING_TYPES = ["string", "wstring"]
 
 ## All built-in basic types in ROS
 ROS_BUILTIN_TYPES = ROS_NUMERIC_TYPES + ROS_STRING_TYPES
+
+## Python constructors for ROS built-in types, as {ROS name: type class}
+ROS_BUILTIN_CTORS = {"byte":   int,  "char":   int, "int8":    int,   "int16":   int,
+                     "int32":  int,  "int64":  int, "uint8":   int,   "uint16":  int,
+                     "uint32": int,  "uint64": int, "float32": float, "float64": float,
+                     "bool":   bool, "string": str, "wstring": str}
 
 ## ROS time/duration types, populated after init
 ROS_TIME_TYPES = []
@@ -806,6 +812,34 @@ def message_to_dict(msg, replace=None):
     return result
 
 
+def dict_to_message(dct, msg):
+    """
+    Returns given ROS message populated from Python dictionary.
+
+    Raises TypeError on attribute value type mismatch.
+    """
+    for name, typename in realapi.get_message_fields(msg).items():
+        if name not in dct:
+            continue  # for
+        v, msgv = dct[name], realapi.get_message_value(msg, name, typename)
+
+        if realapi.is_ros_message(msgv):
+            v = dict_to_message(v, msgv)
+        elif isinstance(msgv, (list, tuple)):
+            scalarname = realapi.scalar(typename)
+            if scalarname in ROS_BUILTIN_TYPES:
+                cls = ROS_BUILTIN_CTORS[scalarname]
+                v = [x if isinstance(x, cls) else cls(x) for x in v]
+            else:
+                cls = realapi.get_message_class(scalarname)
+                v = [dict_to_message(x, cls()) for x in v]
+        else:
+            v = type(msgv)(v)
+
+        setattr(msg, name, v)
+    return msg
+
+
 @memoize
 def parse_definition_fields(typename, typedef):
     """
@@ -949,16 +983,16 @@ def to_time(val):
 
 
 __all___ = [
-    "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_TYPES", "ROS_COMMON_TYPES",
-    "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES",
-    "SKIP_EXTENSIONS", "Bag", "TypeMeta",
+    "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_CTORS", "ROS_BUILTIN_TYPES",
+    "ROS_COMMON_TYPES", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
+    "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "TypeMeta",
     "calculate_definition_hash", "create_publisher", "create_subscriber", "deserialize_message",
-    "format_message_value", "get_alias_type", "get_message_class", "get_message_definition",
-    "get_message_fields", "get_message_type", "get_message_type_hash", "get_message_value",
-    "get_ros_time_category", "get_rostime", "get_topic_types", "get_type_alias", "init_node",
-    "is_ros_message", "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration",
-    "make_live_time", "make_message_hash", "make_time", "message_to_dict",
-    "parse_definition_fields", "parse_definition_subtypes", "scalar", "deserialize_message",
-    "set_message_value", "shutdown_node", "to_datetime", "to_decimal", "to_nsec", "to_sec",
-    "to_sec_nsec", "to_time", "validate",
+    "dict_to_message", "format_message_value", "get_alias_type", "get_message_class",
+    "get_message_definition", "get_message_fields", "get_message_type", "get_message_type_hash",
+    "get_message_value",    "get_ros_time_category", "get_rostime", "get_topic_types",
+    "get_type_alias", "init_node", "is_ros_message", "is_ros_time", "iter_message_fields",
+    "make_bag_time", "make_duration", "make_live_time", "make_message_hash", "make_time",
+    "message_to_dict", "parse_definition_fields", "parse_definition_subtypes", "scalar",
+    "deserialize_message", "set_message_value", "shutdown_node", "to_datetime", "to_decimal",
+    "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
