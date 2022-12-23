@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -407,6 +407,25 @@ class ProgressBar(threading.Thread):
 
     def stop(self):
         self.is_running = False
+
+
+
+class LenIterable(object):
+    """Wrapper for iterable value with specified fixed length."""
+
+    def __init__(self, iterable, count):
+        """
+        @param   iterable  any iterable value
+        @param   count     value to return for len(self)
+        """
+        self._iterer = iter(iterable)
+        self._count  = count
+
+    def __iter__(self): return self
+
+    def __next__(self): return next(self._iterer)
+
+    def __len__(self):  return self._count   
 
 
 

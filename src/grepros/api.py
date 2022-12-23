@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -20,7 +20,7 @@ import os
 import re
 import time
 
-from . common import ConsolePrinter, filter_fields, format_bytes, memoize
+from . common import ConsolePrinter, LenIterable, filter_fields, format_bytes, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -310,9 +310,10 @@ class Bag(object):
         raise NotImplementedError
 
     def __getitem__(self, key):
-        """Returns an iterator yielding messages from the bag in given topic."""
+        """Returns an iterator yielding messages from the bag in given topic, supporting len()."""
         if key not in self: raise KeyError("no such topic: %r" % key)
-        return self.read_messages(key)
+        count = sum(c for (t, _, _), c in self.get_topic_info(counts=True).items() if t == key)
+        return LenIterable(self.read_messages(key), count)
 
     def __invert__(self,):
         """Returns the list of topics in bag, in alphabetic order."""
