@@ -314,6 +314,10 @@ class Bag(object):
         if key not in self: raise KeyError("no such topic: %r" % key)
         return self.read_messages(key)
 
+    def __invert__(self,):
+        """Returns the list of topics in bag, in alphabetic order."""
+        raise NotImplementedError
+
     def __str__(self):
         """Returns informative text for bag, with a full overview of topics and types."""
 

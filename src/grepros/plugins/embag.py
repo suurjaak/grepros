@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    19.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -218,6 +218,11 @@ class EmbagReader(rosapi.Bag):
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
+
+
+    def __invert__(self):
+        """Returns the list of topics in bag, in alphabetic order."""
+        return sorted(t for t, _, _ in self._topics)
 
 
     def _populate_meta(self):
