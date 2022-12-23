@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -87,8 +87,9 @@ class HtmlSink(BaseSink, TextSinkMixin):
         self._format_repls.clear()
         atexit.register(self.close)
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         self._queue.put((topic, msg, stamp, match, index))
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)

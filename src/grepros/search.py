@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    17.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -45,7 +45,7 @@ class Searcher(object):
         @param   args.AFTER               number of messages of trailing context to emit after match
         @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
         @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
-        @param   args.MAX_TOPICS          number of topics to print matches from
+        @param   args.MAX_TOPICS          number of topics to emit matches from
         @param   args.NTH_MATCH           emit every Nth match in topic
         @param   args.SELECT_FIELD        message fields to use in matching if not all
         @param   args.NOSELECT_FIELD      message fields to skip in matching
@@ -102,7 +102,7 @@ class Searcher(object):
 
         @param   topic      topic name
         @param   msg        ROS message
-        @param   stamp      message ROS time
+        @param   stamp      message ROS timestamp
         @param   highlight  whether to highlight matched values in message fields,
                             defaults to flag from constructor
         @return             original or highlighted message on match else `None`
@@ -118,7 +118,7 @@ class Searcher(object):
             msgid = self._idcounter = self._idcounter + 1
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
-            matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
+            matched = self._is_processable(topic, msg, stamp) and self.get_match(msg)
 
             self.source.notify(matched)
             if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
@@ -182,7 +182,7 @@ class Searcher(object):
             msgid = self._idcounter = self._idcounter + 1
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
-            matched = self._is_processable(topic, stamp, msg) and self.get_match(msg)
+            matched = self._is_processable(topic, msg, stamp) and self.get_match(msg)
 
             self.source.notify(matched)
             if matched and not self._counts[topickey][True] % (self.args.NTH_MATCH or 1):
@@ -204,7 +204,7 @@ class Searcher(object):
                 self.source.close_batch()
 
 
-    def _is_processable(self, topic, stamp, msg):
+    def _is_processable(self, topic, msg, stamp):
         """
         Returns whether processing current message in topic is acceptable:
         that topic or total maximum count has not been reached,
@@ -222,7 +222,7 @@ class Searcher(object):
             if topickey not in topics_matched and len(topics_matched) >= self.args.MAX_TOPICS:
                 return False
         if self.source \
-        and not self.source.is_processable(topic, self._counts[topickey][None], stamp, msg):
+        and not self.source.is_processable(topic, msg, stamp, self._counts[topickey][None]):
             return False
         return True
 
@@ -235,7 +235,7 @@ class Searcher(object):
         for i, msgid in enumerate(candidates) if count else ():
             if self._statuses[topickey][msgid] is None:
                 idx = current_index + i - (len(candidates) - 1 if before else 1)
-                stamp, msg = self._stamps[topickey][msgid], self._messages[topickey][msgid]
+                msg, stamp = self._messages[topickey][msgid], self._stamps[topickey][msgid]
                 self._counts[topickey][False] += 1
                 yield topickey[0], msg, stamp, None, idx
                 self._statuses[topickey][msgid] = False

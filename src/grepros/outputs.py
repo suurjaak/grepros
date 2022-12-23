@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -65,14 +65,15 @@ class BaseSink(object):
             meta = self._batch_meta[batch] = self.source.format_meta()
             meta and ConsolePrinter.debug(meta)
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """
         Outputs ROS message.
 
         @param   topic  full name of ROS topic the message is from
-        @param   index  message index in topic
         @param   msg    ROS message
+        @param   stamp  message ROS timestamp, if not current ROS time
         @param   match  ROS message with values tagged with match markers if matched, else None
+        @param   index  message index in topic, if any
         """
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
@@ -106,6 +107,12 @@ class BaseSink(object):
         """Returns true if target is recognizable as output for this sink class."""
         ext = os.path.splitext(target or "")[-1].lower()
         return ext in cls.FILE_EXTENSIONS
+
+    def _ensure_stamp_index(self, topic, msg, stamp=None, index=None):
+        """Returns (stamp, index) populated with current ROS time and topic index if `None`."""
+        if stamp is None: stamp = rosapi.get_rostime()
+        if index is None: index = self._counts.get(rosapi.TypeMeta.make(msg, topic).topickey, 0) + 1
+        return stamp, index
 
 
 class TextSinkMixin(object):
@@ -364,16 +371,17 @@ class ConsoleSink(BaseSink, TextSinkMixin):
             meta and ConsolePrinter.print(meta)
 
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Prints separator line and message text."""
         self._prefix = ""
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         if self.args.LINE_PREFIX and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
             kws = dict(self._styles, sep=sep, batch=self.source.get_batch())
             self._prefix = self.PREFIX_TEMPLATE.format(**kws)
         kws = dict(self._styles, sep=self.SEP)
         if self.args.META:
-            meta = self.source.format_message_meta(topic, index, stamp, msg)
+            meta = self.source.format_message_meta(topic, msg, stamp, index)
             meta = "\n".join(x and self.META_LINE_TEMPLATE.format(**dict(kws, line=x))
                              for x in meta.splitlines())
             meta and ConsolePrinter.print(meta)
@@ -416,14 +424,15 @@ class BagSink(BaseSink):
 
         atexit.register(self.close)
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output bagfile."""
         self._ensure_open()
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
-        self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, index, stamp, msg))
+        self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, msg, stamp, index))
         super(BagSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
@@ -501,7 +510,7 @@ class TopicSink(BaseSink):
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Publishes message to output topic."""
         with rosapi.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
@@ -567,13 +576,14 @@ class AppSink(BaseSink):
 
     def emit_meta(self):
         """Invokes registered metaemit callback, if any, and not already invoked."""
-        batch = self._metaemit and self.source.get_batch()
+        batch = self.source.get_batch() if self._metaemit else None
         if self._metaemit and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.get_meta()
             self._metaemit(meta)
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Registers message and invokes registered emit callback, if any."""
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         super(AppSink, self).emit(topic, msg, stamp, match, index)
         if self._emit: self._emit(topic, msg, stamp, match, index)
 
@@ -631,10 +641,12 @@ class MultiSink(BaseSink):
         sink = sink or self.sinks[0] if self.sinks else None
         sink and sink.emit_meta()
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Outputs ROS message to all sinks."""
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         for sink in self.sinks:
             sink.emit(topic, msg, stamp, match, index)
+        super(MultiSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
         """Attaches source to all sinks, sets thread_excepthook on all sinks."""

@@ -105,7 +105,7 @@ class SqlSink(BaseSink, SqlMixin):
         return sqlconfig_ok and ok
 
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message type CREATE TABLE statements to SQL schema file."""
         batch = self.source.get_batch()
         if not self._batch_metas or batch != self._batch:

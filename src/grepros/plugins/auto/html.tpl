@@ -1043,7 +1043,7 @@ selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %for i, (topic, msg, stamp, match, index) in enumerate(messages, 1):
     <%
 secs, nsecs = divmod(rosapi.to_nsec(stamp), 10**9)
-meta = source.get_message_meta(topic, index, stamp, msg)
+meta = source.get_message_meta(topic, msg, stamp, index)
 topickey = (topic, meta["type"], meta["hash"])
     %>
     <tr class="meta {{ selector(topic) }} {{ selector(meta["type"]) }} {{ selector(meta["hash"]) }}" id="{{ i }}" onclick="return Messages.onClickHeader({{ i }}, event)">

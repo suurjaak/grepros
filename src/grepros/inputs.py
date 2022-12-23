@@ -116,9 +116,11 @@ class BaseSource(object):
         """Returns source metainfo string."""
         return ""
 
-    def format_message_meta(self, topic, index, stamp, msg):
+    def format_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo string."""
-        return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
+        meta = self.get_message_meta(topic, msg, stamp, index)
+        meta = {k: "" if v is None else v for k, v in meta.items()}
+        return self.MESSAGE_META_TEMPLATE.format(**meta)
 
     def get_batch(self):
         """Returns source batch identifier if any (like bagfile name if BagSource)."""
@@ -127,12 +129,12 @@ class BaseSource(object):
         """Returns source metainfo data dict."""
         return {}
 
-    def get_message_meta(self, topic, index, stamp, msg):
+    def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
         with rosapi.TypeMeta.make(msg, topic) as m:
-            return dict(topic=topic, type=m.typename, index=index, hash=m.typehash,
-                        dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
-                        stamp=drop_zeros(rosapi.to_sec(stamp)), schema=m.definition)
+            return dict(topic=topic, type=m.typename, stamp=drop_zeros(rosapi.to_sec(stamp)),
+                        index=index, dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
+                        hash=m.typehash, schema=m.definition)
 
     def get_message_class(self, typename, typehash=None):
         """Returns message type class."""
@@ -146,7 +148,7 @@ class BaseSource(object):
         """Returns ROS message type MD5 hash."""
         return rosapi.get_message_type_hash(msg_or_type)
 
-    def is_processable(self, topic, index, stamp, msg):
+    def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether specified message in topic is in acceptable time range."""
         if self.args.START_TIME and stamp < self.args.START_TIME:
             return False
@@ -155,10 +157,10 @@ class BaseSource(object):
         if self.args.UNIQUE or self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             last_accepted = self._processables.get(topickey)
-        if self.args.NTH_MESSAGE > 1 and last_accepted:
+        if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
             if (index - 1) % self.args.NTH_MESSAGE:
                 return False
-        if self.args.NTH_INTERVAL > 0 and last_accepted:
+        if self.args.NTH_INTERVAL > 0 and last_accepted and stamp is not None:
             if rosapi.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
                 return False
         if self.args.UNIQUE:
@@ -276,7 +278,7 @@ class ConditionMixin(object):
         self._conditions = collections.OrderedDict()
         self._configure_conditions(ensure_namespace(args, ConditionMixin.DEFAULT_ARGS, **kwargs))
 
-    def is_processable(self, topic, index, stamp, msg):
+    def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether current state passes conditions, if any."""
         result = True
         if not self._conditions:
@@ -506,9 +508,11 @@ class BagSource(BaseSource, ConditionMixin):
         """Returns bagfile metainfo string."""
         return self.META_TEMPLATE.format(**self.get_meta())
 
-    def format_message_meta(self, topic, index, stamp, msg):
+    def format_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo string."""
-        return self.MESSAGE_META_TEMPLATE.format(**self.get_message_meta(topic, index, stamp, msg))
+        meta = self.get_message_meta(topic, msg, stamp, index)
+        meta = {k: "" if v is None else v for k, v in meta.items()}
+        return self.MESSAGE_META_TEMPLATE.format(**meta)
 
     def get_batch(self):
         """Returns name of current bagfile."""
@@ -528,10 +532,10 @@ class BagSource(BaseSource, ConditionMixin):
                           enddt=drop_zeros(format_stamp(end)) if end != "" else "", delta=delta)
         return self._meta
 
-    def get_message_meta(self, topic, index, stamp, msg):
+    def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
         self._ensure_totals()
-        result = super(BagSource, self).get_message_meta(topic, index, stamp, msg)
+        result = super(BagSource, self).get_message_meta(topic, msg, stamp, index)
         result.update(total=self.topics[(topic, result["type"], result["hash"])])
         if callable(getattr(self._bag, "get_qoses", None)):
             result.update(qoses=self._bag.get_qoses(topic, result["type"]))
@@ -558,27 +562,27 @@ class BagSource(BaseSource, ConditionMixin):
         if status and not self._totals_ok:
             self._ensure_totals()
 
-    def is_processable(self, topic, index, stamp, msg):
+    def is_processable(self, topic, msg, stamp, index=None):
         """
         Returns whether specified message in topic is in acceptable range,
         and all conditions, if any, evaluate as true.
         """
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
-        if self.args.START_INDEX:
+        if self.args.START_INDEX and index is not None:
             self._ensure_totals()
             START = self.args.START_INDEX
             MIN = max(0, START + (self.topics[topickey] if START < 0 else 0))
             if MIN >= index:
                 return False
-        if self.args.END_INDEX:
+        if self.args.END_INDEX and index is not None:
             self._ensure_totals()
             END = self.args.END_INDEX
             MAX = END + (self.topics[topickey] if END < 0 else 0)
             if MAX < index:
                 return False
-        if not super(BagSource, self).is_processable(topic, index, stamp, msg):
+        if not super(BagSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, index, stamp, msg)
+        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
 
     def _produce(self, topics, start_time=None):
         """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
@@ -776,9 +780,9 @@ class TopicSource(BaseSource, ConditionMixin):
         ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
         return dict(ENV, tcount=len(self.topics))
 
-    def get_message_meta(self, topic, index, stamp, msg):
+    def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
-        result = super(TopicSource, self).get_message_meta(topic, index, stamp, msg)
+        result = super(TopicSource, self).get_message_meta(topic, msg, stamp, index)
         topickey = (topic, result["type"], result["hash"])
         if topickey in self._subs:
             result.update(qoses=self._subs[topickey].get_qoses())
@@ -815,17 +819,17 @@ class TopicSource(BaseSource, ConditionMixin):
         result += ", %s initially" % plural("topic", metadata["tcount"])
         return result
 
-    def is_processable(self, topic, index, stamp, msg):
+    def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether specified message in topic is in acceptable range."""
-        if self.args.START_INDEX:
+        if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
                 return False
-        if self.args.END_INDEX:
+        if self.args.END_INDEX and index is not None:
             if 0 < self.args.END_INDEX < index:
                 return False
-        if not super(TopicSource, self).is_processable(topic, index, stamp, msg):
+        if not super(TopicSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, index, stamp, msg)
+        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
 
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
@@ -976,22 +980,22 @@ class AppSource(BaseSource, ConditionMixin):
 
         @param   topic  topic name, or `None` to signal end of content
         @param   msg    ROS message
-        @param   stamp  message ROS time, defaults to current wall time if `None`
+        @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
         if stamp is None: stamp = rosapi.get_rostime()
         self._queue.put(None) if topic is None else (topic, msg, stamp)
 
-    def is_processable(self, topic, index, stamp, msg):
+    def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether specified message in topic is in acceptable range."""
-        if self.args.START_INDEX:
+        if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
                 return False
-        if self.args.END_INDEX:
+        if self.args.END_INDEX and index is not None:
             if 0 < self.args.END_INDEX < index:
                 return False
-        if not super(AppSource, self).is_processable(topic, index, stamp, msg):
+        if not super(AppSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, index, stamp, msg)
+        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""

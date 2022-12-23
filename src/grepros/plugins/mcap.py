@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -226,8 +226,8 @@ class McapBag(rosapi.Bag):
 
         @param   topic   name of topic
         @param   msg     ROS1 message
-        @param   t       message timestamp if not using current wall time,
-                         as ROS time or convertible (int/float/duration/datetime/decimal)
+        @param   t       message timestamp if not using current ROS time,
+                         as ROS time type or convertible (int/float/duration/datetime/decimal)
         @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
@@ -572,9 +572,10 @@ class McapSink(BaseSink):
         return ok and mcap_ok and mcap_ros_ok
 
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message to MCAP file."""
         self._ensure_open()
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         kwargs = dict(publish_time=rosapi.to_nsec(stamp), sequence=index)
         if rosapi.ROS2:
             with rosapi.TypeMeta.make(msg, topic) as m:

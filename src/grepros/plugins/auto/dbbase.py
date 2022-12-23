@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    19.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -122,10 +122,11 @@ class BaseDataSink(BaseSink, SqlMixin):
         return ok and sqlconfig_ok
 
 
-    def emit(self, topic, msg, stamp, match, index):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to database."""
         if not self.db:
             self._init_db()
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
         self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)
