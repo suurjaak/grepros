@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.12.2022
+@modified    23.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -918,7 +918,8 @@ class AppSource(BaseSource, ConditionMixin):
         @param   args.NTH_INTERVAL     minimum time interval between messages in topic
         @param   args.CONDITION        Python expressions that must evaluate as true
                                        for message to be processable
-        @param   iterable              iterable yielding (topic, msg, stamp), if any
+        @param   iterable              iterable yielding (topic, msg, stamp) or (topic, msg);
+                                       yielding `None` signals end of content
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
@@ -930,7 +931,7 @@ class AppSource(BaseSource, ConditionMixin):
         self._configure()
 
     def read(self):
-        """Yields messages from iterable or pushed data, as (topic, msg, ROS time)."""
+        """Yields messages from iterable or pushed data, as (topic, msg, ROS timestamp)."""
         def generate(iterable):
             for x in iterable: yield x
         feeder = generate(self._iterable) if self._iterable else None
@@ -938,7 +939,8 @@ class AppSource(BaseSource, ConditionMixin):
             item = self._queue.get() if not feeder or self._queue.qsize() else next(feeder, None)
             if item is None: break  # while
 
-            topic, msg, stamp = item
+            if len(item) > 2: topic, msg, stamp = item[:3]
+            else: (topic, msg), stamp = item[:2], rosapi.get_rostime()
             topickey = rosapi.TypeMeta.make(msg, topic).topickey
             self._counts[topickey] += 1
             self.conditions_register_message(topic, msg)
@@ -974,8 +976,9 @@ class AppSource(BaseSource, ConditionMixin):
 
         @param   topic  topic name, or `None` to signal end of content
         @param   msg    ROS message
-        @param   stamp  message ROS time
+        @param   stamp  message ROS time, defaults to current wall time if `None`
         """
+        if stamp is None: stamp = rosapi.get_rostime()
         self._queue.put(None) if topic is None else (topic, msg, stamp)
 
     def is_processable(self, topic, index, stamp, msg):
