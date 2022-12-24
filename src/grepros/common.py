@@ -425,7 +425,7 @@ class LenIterable(object):
 
     def __next__(self): return next(self._iterer)
 
-    def __len__(self):  return self._count   
+    def __len__(self):  return self._count
 
 
 

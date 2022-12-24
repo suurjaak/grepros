@@ -126,7 +126,7 @@ class BaseDataSink(BaseSink, SqlMixin):
         """Writes message to database."""
         if not self.db:
             self._init_db()
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)

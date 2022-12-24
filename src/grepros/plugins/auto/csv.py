@@ -61,7 +61,7 @@ class CsvSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         data = (v for _, v in self._iter_fields(msg))
         metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))

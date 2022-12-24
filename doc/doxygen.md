@@ -23,7 +23,7 @@ Supports loading custom plugins, mainly for additional output formats.
 | grepros.outputs               | Main outputs for search results
 | grepros.ros1                  | ROS1 interface
 | grepros.ros2                  | ROS2 interface
-| grepros.search                | Search core 
+| grepros.search                | Search core
 
 
 #### Command-line Scripts

@@ -301,9 +301,9 @@ class Bag(object):
         """Returns the number of messages in the bag."""
         return self.get_message_count()
 
-    def __nonzero__(self): return True
+    def __nonzero__(self): return True  # Iterables by default use len() for bool() [Py2]
 
-    def __bool__   (self): return True
+    def __bool__   (self): return True  # Iterables by default use len() for bool() [Py3]
 
     def __contains__(self, key):
         """Returns whether bag contains given topic."""

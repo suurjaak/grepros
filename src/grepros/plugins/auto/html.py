@@ -89,7 +89,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._queue.put((topic, msg, stamp, match, index))
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)

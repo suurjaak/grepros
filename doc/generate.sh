@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generates API documentation via doxygen, replacing local files temporarily 
+# Generates API documentation via doxygen, replacing local files temporarily
 
 BASEDIR=$(realpath $(dirname "${BASH_SOURCE[0]:-$0}")/..)  # Absolute path to package directory
 DOXYFILE="$BASEDIR/Doxyfile"             # Temporarily modified with package version

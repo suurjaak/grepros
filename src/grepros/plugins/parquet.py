@@ -139,7 +139,7 @@ class ParquetSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to a Parquet file."""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(topic, msg)
         self._process_message(topic, msg, stamp)
         super(ParquetSink, self).emit(topic, msg, stamp, match, index)
@@ -326,7 +326,7 @@ class ParquetSink(BaseSink):
                     elif "type" == category:    # type-rostype=arrowtype
                         process_type(name, v)
                     elif "writer" == category:  # writer-argname=argvalue
-                        try: v = json.loads(v) 
+                        try: v = json.loads(v)
                         except Exception: pass
                         self.WRITER_ARGS[name] = v
                 except Exception as e:

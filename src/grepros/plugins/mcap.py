@@ -580,7 +580,7 @@ class McapSink(BaseSink):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message to MCAP file."""
         self._ensure_open()
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         kwargs = dict(publish_time=rosapi.to_nsec(stamp), sequence=index)
         if rosapi.ROS2:
             with rosapi.TypeMeta.make(msg, topic) as m:

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2022
+@modified    24.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -324,7 +324,7 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, META=False, PRINT_FIELD=(), 
+    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, META=False, PRINT_FIELD=(),
                         NOPRINT_FIELD=(), LINE_PREFIX=True, MAX_FIELD_LINES=None, START_LINE=None,
                         END_LINE=None, MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None,
                         MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None, MATCH_WRAPPER=None)
@@ -374,7 +374,7 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Prints separator line and message text."""
         self._prefix = ""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         if self.args.LINE_PREFIX and self.source.get_batch():
             sep = self.MATCH_PREFIX_SEP if match else self.CONTEXT_PREFIX_SEP
             kws = dict(self._styles, sep=sep, batch=self.source.get_batch())
@@ -427,12 +427,13 @@ class BagSink(BaseSink):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output bagfile."""
         self._ensure_open()
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
-        self._bag.write(topic, msg, stamp, self.source.get_message_meta(topic, msg, stamp, index))
+        qoses = self.source.get_message_meta(topic, msg, stamp).get("qoses")
+        self._bag.write(topic, msg, stamp, qoses=qoses)
         super(BagSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
@@ -583,7 +584,7 @@ class AppSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Registers message and invokes registered emit callback, if any."""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         super(AppSink, self).emit(topic, msg, stamp, match, index)
         if self._emit: self._emit(topic, msg, stamp, match, index)
 
@@ -643,7 +644,7 @@ class MultiSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Outputs ROS message to all sinks."""
-        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)        
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         for sink in self.sinks:
             sink.emit(topic, msg, stamp, match, index)
         super(MultiSink, self).emit(topic, msg, stamp, match, index)

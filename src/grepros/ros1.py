@@ -75,7 +75,7 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
     explicitly given another connection header with metadata on the other type).
 
     All messages yielded will be deserialized by rosbag as that first type,
-    and whether reading will raise an exception or not depends on whether 
+    and whether reading will raise an exception or not depends on whether
     the other type has enough bytes to be deserialized as that first type.
     """
 
