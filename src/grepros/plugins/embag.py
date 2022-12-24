@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    23.12.2022
+@modified    24.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -26,7 +26,7 @@ from .. common import ConsolePrinter
 
 
 class EmbagReader(rosapi.Bag):
-    """embag reader interface, partially mimicking rosbag.Bag."""
+    """embag reader interface, providing most of rosbag.Bag interface."""
 
     ## Supported opening modes
     MODES = ("r", )
@@ -160,7 +160,7 @@ class EmbagReader(rosapi.Bag):
                              (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
-        @return              generator of (topic, msg, ROS timestamp) tuples
+        @return              generator of (topic, message, rospy.Time) tuples
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
 
@@ -173,10 +173,10 @@ class EmbagReader(rosapi.Bag):
                 continue  # for m
 
             typename = self._hashdefs[(m.topic, m.md5)]
-            if raw:
-                msg = (typename, m.data(), m.md5, self.get_message_class(typename, m.md5))
+            stamp = rosapi.make_time(m.timestamp.secs, m.timestamp.nsecs)
+            if raw: msg = (typename, m.data(), m.md5, self.get_message_class(typename, m.md5))
             else: msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
-            yield m.topic, msg, rosapi.make_time(m.timestamp.secs, m.timestamp.nsecs)
+            yield self.BagMessage(m.topic, msg, stamp)
 
 
     def open(self):

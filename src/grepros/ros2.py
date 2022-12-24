@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    23.12.2022
+@modified    24.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -86,7 +86,7 @@ executor = None
 
 
 class ROS2Bag(rosapi.Bag):
-    """ROS2 bag reader and writer (SQLite format), partially mimicking rosbag.Bag."""
+    """ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface."""
 
     ## ROS2 bag SQLite schema
     CREATE_SQL = """

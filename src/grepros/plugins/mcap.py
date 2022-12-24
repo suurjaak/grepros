@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    23.12.2022
+@modified    24.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -41,7 +41,7 @@ from .. outputs import BaseSink
 
 class McapBag(rosapi.Bag):
     """
-    MCAP bag interface, partially mimicking rosbag.Bag.
+    MCAP bag interface, providing most of rosbag.Bag interface.
 
     Bag cannot be appended to, and cannot be read and written at the same time
     (MCAP API limitation).
@@ -203,7 +203,7 @@ class McapBag(rosapi.Bag):
                              (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
-        @return              (topic, msg, rclpy.time.Time)
+        @return              generator of (topic, message, ROS timestamp) tuples
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")
@@ -217,7 +217,7 @@ class McapBag(rosapi.Bag):
                     self._types[typekey] = self._make_message_class(schema, message)
                 msg = (typename, message.data, typehash, self._types[typekey])
             else: msg = self._decode_message(message, channel, schema)
-            yield channel.topic, msg, rosapi.make_time(nsecs=message.publish_time)
+            yield self.BagMessage(channel.topic, msg, rosapi.make_time(nsecs=message.publish_time))
 
 
     def write(self, topic, msg, t=None, raw=False, **__):
@@ -522,7 +522,7 @@ def message_repr(self):
 
 
 class McapSink(BaseSink):
-    """Writes messages to MCAP files."""
+    """Writes messages to MCAP file."""
 
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".mcap", )

@@ -189,7 +189,7 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
                                     (typename, bytes, typehash, typeclass)
                                     or (typename, bytes, typehash, position, typeclass),
                                     depending on file format
-        @return                     generator of (topic, message, timestamp) tuples
+        @return                     generator of (topic, message, rospy.Time) tuples
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
 

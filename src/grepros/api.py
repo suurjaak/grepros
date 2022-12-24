@@ -221,8 +221,9 @@ class Bag(object):
     """
     ROS bag interface.
 
-    Bag can be used a context manager, is an iterable providing (topic, messge, stamp) tuples,
-    and supports topic-based membership (`if mytopic in bag`, `for t, m, s in bag[mytopic]`).
+    Bag can be used a context manager, is an iterable providing (topic, message, timestamp) tuples
+    and supporting `len(bag)`; and supports topic-based membership
+    (`if mytopic in bag`, `for t, m, s in bag[mytopic]`, `len(bag[mytopic])`).
 
     Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
     if using embag in ROS1, or if using ROS2.
@@ -236,7 +237,7 @@ class Bag(object):
     Bag.get_message_definition(), Bag.get_message_type_hash(), and Bag.get_topic_info().
     """
 
-    ## Returned from read_messages() as (topic name, ROS message, rclpy.Time).
+    ## Returned from read_messages() as (topic name, ROS message, ROS timestamp object).
     BagMessage = collections.namedtuple("BagMessage", "topic message timestamp")
 
     ## Returned from get_type_and_topic_info() as
