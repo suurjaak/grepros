@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    23.12.2022
+@modified    24.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -258,9 +258,10 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
         return any(key == t for t, _, _ in self.__topics)
 
 
-    def __invert__(self):
+    @property
+    def topics(self):
         """Returns the list of topics in bag, in alphabetic order."""
-        return sorted(t for t, _, _ in self.__topics)
+        return sorted((t for t, _, _ in self.__topics), key=str.lower)
 
 
     @property

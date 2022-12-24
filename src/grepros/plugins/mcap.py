@@ -293,6 +293,12 @@ class McapBag(rosapi.Bag):
 
 
     @property
+    def topics(self):
+        """Returns the list of topics in bag, in alphabetic order."""
+        return sorted((t for t, _, _ in self._topics), key=str.lower)
+
+
+    @property
     def filename(self):
         """Returns bag file path."""
         return self._filename
@@ -313,11 +319,6 @@ class McapBag(rosapi.Bag):
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
-
-
-    def __invert__(self):
-        """Returns the list of topics in bag, in alphabetic order."""
-        return sorted(t for t, _, _ in self._topics)
 
 
     def _decode_message(self, message, channel, schema):

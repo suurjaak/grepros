@@ -402,6 +402,12 @@ PRAGMA synchronous=NORMAL;
 
 
     @property
+    def topics(self):
+        """Returns the list of topics in bag, in alphabetic order."""
+        return sorted((t for t, _, _ in self._topics), key=str.lower)
+
+
+    @property
     def filename(self):
         """Returns bag file path."""
         return self._filename
@@ -426,11 +432,6 @@ PRAGMA synchronous=NORMAL;
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
-
-
-    def __invert__(self):
-        """Returns the list of topics in bag, in alphabetic order."""
-        return sorted(t for t, _, _ in self._topics)
 
 
     def _ensure_open(self, populate=False):

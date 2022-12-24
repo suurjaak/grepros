@@ -233,8 +233,9 @@ class Bag(object):
     Classes can have a static/class method `autodetect(filename)`
     returning whether given file is in recognizable format for the plugin class.
 
-    Extra methods compared with rosbag.Bag: Bag.get_message_class(),
-    Bag.get_message_definition(), Bag.get_message_type_hash(), and Bag.get_topic_info().
+    Extra methods and properties compared with rosbag.Bag: Bag.get_message_class(),
+    Bag.get_message_definition(), Bag.get_message_type_hash(), Bag.get_topic_info();
+    Bag.closed and and Bag.topics.
     """
 
     ## Returned from read_messages() as (topic name, ROS message, ROS timestamp object).
@@ -315,10 +316,6 @@ class Bag(object):
         if key not in self: return LenIterable([], 0)
         count = sum(c for (t, _, _), c in self.get_topic_info(counts=True).items() if t == key)
         return LenIterable(self.read_messages(key), count)
-
-    def __invert__(self,):
-        """Returns the list of topics in bag, in alphabetic order."""
-        raise NotImplementedError
 
     def __str__(self):
         """Returns informative text for bag, with a full overview of topics and types."""
@@ -475,6 +472,11 @@ class Bag(object):
 
     def flush(self):
         """Ensures all changes are written to bag file."""
+
+    @property
+    def topics(self):
+        """Returns the list of topics in bag, in alphabetic order."""
+        raise NotImplementedError
 
     @property
     def filename(self):
