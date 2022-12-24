@@ -34,6 +34,9 @@ from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
 class BaseSource(object):
     """Message producer base class."""
 
+    ## Returned from read() as (topic name, ROS message, ROS timestamp object).
+    class SourceMessage(rosapi.Bag.BagMessage): pass
+
     ## Template for message metainfo line
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
@@ -472,7 +475,7 @@ class BagSource(BaseSource, ConditionMixin):
                 for topic, msg, stamp in self._produce(topics) if topics else ():
                     self.conditions_register_message(topic, msg)
                     if not self.is_conditions_topic(topic, pure=True):
-                        yield topic, msg, stamp
+                        yield self.SourceMessage(topic, msg, stamp)
                 if not self._running:
                     break  # for topics
             self._counts and self.sink.flush()
@@ -750,7 +753,7 @@ class TopicSource(BaseSource, ConditionMixin):
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while
 
-                yield topic, msg, stamp
+                yield self.SourceMessage(topic, msg, stamp)
                 if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                     self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
@@ -950,7 +953,7 @@ class AppSource(BaseSource, ConditionMixin):
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
 
-            yield topic, msg, stamp
+            yield self.SourceMessage(topic, msg, stamp)
             if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                 self._processables[topickey] = (self._counts[topickey], stamp)
 

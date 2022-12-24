@@ -24,6 +24,9 @@ from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans,
 class Searcher(object):
     """ROS message grepper."""
 
+    ## Returned from find() as (topic name, ROS message, ROS timestamp object, message if matched).
+    GrepMessage = collections.namedtuple("BagMessage", "topic message timestamp match")
+
     ## Match patterns for global any-match
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
@@ -86,13 +89,13 @@ class Searcher(object):
         @param   source     inputs.BaseSource or rosapi.Bag instance
         @param   highlight  whether to highlight matched values in message fields,
                             defaults to flag from constructor
-        @return             tuples of (topic, msg, stamp, matched optionally highlighted msg)
+        @return             tuples of (topic, message, stamp, matched optionally highlighted msg)
         """
         if not isinstance(source, inputs.BaseSource):
             source = inputs.BagSource(self.args, bag=source)
         self._prepare(source, highlight=highlight)
         for topic, msg, stamp, matched, _ in self._generate():
-            yield topic, msg, stamp, matched
+            yield self.GrepMessage(topic, msg, stamp, matched)
         source.close()
 
 
