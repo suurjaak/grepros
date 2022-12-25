@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    24.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -189,7 +189,8 @@ class ROS1Bag(rosbag.Bag, rosapi.Bag):
                                     (typename, bytes, typehash, typeclass)
                                     or (typename, bytes, typehash, position, typeclass),
                                     depending on file format
-        @return                     generator of (topic, message, rospy.Time) tuples
+        @return                     BagMessage namedtuples of
+                                    (topic, message, timestamp as rospy.Time)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
 

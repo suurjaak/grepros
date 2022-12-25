@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    24.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -445,7 +445,7 @@ class Bag(object):
                              (typename, bytes, typehash, typeclass)
                              or (typename, bytes, typehash, position, typeclass),
                              depending on file format
-        @return              generator of (topic, message, ROS timestamp) tuples
+        @return              BagMessage namedtuples of (topic, message, timestamp as ROS time)
         """
         raise NotImplementedError
 

@@ -89,7 +89,10 @@ class Searcher(object):
         @param   source     inputs.BaseSource or rosapi.Bag instance
         @param   highlight  whether to highlight matched values in message fields,
                             defaults to flag from constructor
-        @return             tuples of (topic, message, stamp, matched optionally highlighted msg)
+        @return             GrepMessage namedtuples of
+                            (topic, message, timestamp, match, index in topic),
+                            where match is matched optionally highlighted message
+                            or `None` if yielding a context message
         """
         if not isinstance(source, inputs.BaseSource):
             source = inputs.BagSource(self.args, bag=source)

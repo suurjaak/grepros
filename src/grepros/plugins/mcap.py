@@ -203,7 +203,8 @@ class McapBag(rosapi.Bag):
                              (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
-        @return              generator of (topic, message, ROS timestamp) tuples
+        @return              BagMessage namedtuples of 
+                             (topic, message, timestamp as rospy/rclpy.Time)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")

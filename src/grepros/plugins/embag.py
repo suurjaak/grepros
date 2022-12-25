@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    24.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -160,7 +160,7 @@ class EmbagReader(rosapi.Bag):
                              (int/float/duration/datetime/decimal)
         @param   raw         if true, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
-        @return              generator of (topic, message, rospy.Time) tuples
+        @return              BagMessage namedtuples of (topic, message, timestamp as rospy.Time)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
 

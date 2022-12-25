@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    24.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -285,7 +285,8 @@ PRAGMA synchronous=NORMAL;
                              (int/float/duration/datetime/decimal)
         @param   raw         if True, then returned messages are tuples of
                              (typename, bytes, typehash, typeclass)
-        @return              generator of (topic, message, rclpy.time.Time) tuples
+        @return              BagMessage namedtuples of
+                             (topic, message, timestamp as rclpy.time.Time)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")
