@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    23.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -94,8 +94,8 @@ class Searcher(object):
         if not isinstance(source, inputs.BaseSource):
             source = inputs.BagSource(self.args, bag=source)
         self._prepare(source, highlight=highlight)
-        for topic, msg, stamp, matched, _ in self._generate():
-            yield self.GrepMessage(topic, msg, stamp, matched)
+        for topic, msg, stamp, matched, index in self._generate():
+            yield self.GrepMessage(topic, msg, stamp, matched, index)
         source.close()
 
 
