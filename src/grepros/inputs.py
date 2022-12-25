@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2022
+@modified    25.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -403,7 +403,7 @@ class BagSource(BaseSource, ConditionMixin):
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False)
 
-    def __init__(self, args=None, **kwargs):
+    def __init__(self, args=None, bag=None, **kwargs):
         """
         @param   args               arguments as namespace or dictionary, case-insensitive;
                                     or a single path as the ROS bagfile to read
@@ -426,6 +426,7 @@ class BagSource(BaseSource, ConditionMixin):
         @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.WRITE         outputs, to skip in input files
         @param   args.PROGRESS      whether to print progress bar
+        @param   bag                Bag instance to use instead
         @param   kwargs             any and all arguments as keyword overrides, case-insensitive
         """
         args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else args
@@ -438,29 +439,18 @@ class BagSource(BaseSource, ConditionMixin):
         self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
         self._bag       = None   # Current bag object instance
+        self._bag0      = bag    # Given Bag instance to use instead
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
         self._running = True
-        names, paths = self.args.FILE, self.args.PATH
-        exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
-        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
 
-        encountereds = set()
-        for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
+        for _ in self._produce_bags():
             if not self._running:
                 continue  # for filename
 
-            fullname = os.path.realpath(os.path.abspath(filename))
-            skip = Decompressor.make_decompressed_name(fullname) in encountereds
-            encountereds.add(fullname)
-
-            if skip or not self._configure(filename):
-                continue  # for filename
-
-            encountereds.add(self._bag.filename)
             topicsets = [self._topics]
             if "topic" == self.args.ORDERBY:  # Group output by sorted topic names
                 topicsets = [{n: tt} for n, tt in sorted(self._topics.items())]
@@ -619,6 +609,32 @@ class BagSource(BaseSource, ConditionMixin):
                     yield entry
                 self._sticky = False
 
+    def _produce_bags(self):
+        """Yields Bag instances from arguments."""
+        if self._bag0 is not None:
+            if self._configure(bag=self._bag0):
+                yield self._bag
+            return
+
+        names, paths = self.args.FILE, self.args.PATH
+        exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
+        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
+
+        encountereds = set()
+        for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
+            if not self._running:
+                continue  # for filename
+
+            fullname = os.path.realpath(os.path.abspath(filename))
+            skip = Decompressor.make_decompressed_name(fullname) in encountereds
+            encountereds.add(fullname)
+
+            if skip or not self._configure(filename):
+                continue  # for filename
+
+            encountereds.add(self._bag.filename)
+            yield self._bag
+
     def _init_progress(self):
         """Initializes progress bar, if any, for current bag."""
         if self.args.PROGRESS and not self.bar:
@@ -637,7 +653,7 @@ class BagSource(BaseSource, ConditionMixin):
                 self.topics[(t, n, h)] = c
             self._totals_ok = True
 
-    def _configure(self, filename):
+    def _configure(self, filename=None, bag=None):
         """Opens bag and populates bag-specific argument state, returns success."""
         self._meta      = None
         self._bag       = None
@@ -648,19 +664,21 @@ class BagSource(BaseSource, ConditionMixin):
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
-        if self.args.WRITE \
+
+        if filename and self.args.WRITE \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)
                 for x in self.args.WRITE):
             return False
         try:
-            if Decompressor.is_compressed(filename):
+            if filename and Decompressor.is_compressed(filename):
                 if self.args.DECOMPRESS:
                     filename = Decompressor.decompress(filename, self.args.PROGRESS)
                 else: raise Exception("decompression not enabled")
             bag = rosapi.Bag(filename, mode="r", reindex=self.args.REINDEX,
-                             progress=self.args.PROGRESS)
+                             progress=self.args.PROGRESS) if bag is None else bag
+            bag.open()
         except Exception as e:
-            ConsolePrinter.error("\nError opening %r: %s", filename, e)
+            ConsolePrinter.error("\nError opening %r: %s", filename or bag, e)
             return False
 
         self._bag      = bag
