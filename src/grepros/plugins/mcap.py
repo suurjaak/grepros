@@ -20,15 +20,15 @@ import os
 import time
 import types
 
-from .. import api as rosapi
+from .. import api
 
 try: import mcap, mcap.reader
 except ImportError: mcap = None
-if rosapi.ROS1:
+if api.ROS1:
     import genpy.dynamic
     try: import mcap_ros1 as mcap_ros, mcap_ros1.decoder, mcap_ros1.writer
     except ImportError: mcap_ros = None
-elif rosapi.ROS2:
+elif api.ROS2:
     try: import mcap_ros2 as mcap_ros, mcap_ros2.decoder, mcap_ros2.writer
     except ImportError: mcap_ros = None
 else: mcap_ros = None
@@ -39,7 +39,7 @@ from .. common import PATH_TYPES, ConsolePrinter, \
 from .. outputs import BaseSink
 
 
-class McapBag(rosapi.Bag):
+class McapBag(api.Bag):
     """
     MCAP bag interface, providing most of rosbag.Bag interface.
 
@@ -79,8 +79,8 @@ class McapBag(rosapi.Bag):
         self._opened         = False  # Whether file has been opened at least once
         self._filename       = filename
 
-        if rosapi.ROS2 and "r" == mode: self._temporal_ctors.update(
-            (t, c) for c, t in rosapi.ROS_TIME_CLASSES.items() if rosapi.get_message_type(c) == t
+        if api.ROS2 and "r" == mode: self._temporal_ctors.update(
+            (t, c) for c, t in api.ROS_TIME_CLASSES.items() if api.get_message_type(c) == t
         )
 
         self.open()
@@ -118,9 +118,9 @@ class McapBag(rosapi.Bag):
         typehash = typehash or next((t for n, t in self._types if n == typename), None)
         typekey = (typename, typehash)
         if typekey not in self._types and typekey in self._typedefs:
-            if rosapi.ROS2:
+            if api.ROS2:
                 name = typename.split("/")[-1]
-                fields = rosapi.parse_definition_fields(typename, self._typedefs[typekey])
+                fields = api.parse_definition_fields(typename, self._typedefs[typekey])
                 self._types[typekey] = type(name, (types.SimpleNamespace, ), {
                     "__name__": name, "__slots__": list(fields),
                     "__repr__": message_repr, "__str__": message_repr
@@ -134,16 +134,16 @@ class McapBag(rosapi.Bag):
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text from bag, including subtype definitions."""
-        if rosapi.is_ros_message(msg_or_type):
-            return self._typedefs.get((rosapi.get_message_type(msg_or_type),
-                                       rosapi.get_message_type_hash(msg_or_type)))
+        if api.is_ros_message(msg_or_type):
+            return self._typedefs.get((api.get_message_type(msg_or_type),
+                                       api.get_message_type_hash(msg_or_type)))
         typename = msg_or_type
         return next((d for (n, h), d in self._typedefs.items() if n == typename), None)
 
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS message type MD5 hash."""
-        typename = rosapi.get_message_type(msg_or_type)
+        typename = api.get_message_type(msg_or_type)
         return next((h for n, h in self._typedefs if n == typename), None)
 
 
@@ -210,7 +210,7 @@ class McapBag(rosapi.Bag):
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
         topics = topics if isinstance(topics, list) else [topics] if topics else []
-        start_ns, end_ns = (rosapi.to_nsec(rosapi.to_time(x)) for x in (start_time, end_time))
+        start_ns, end_ns = (api.to_nsec(api.to_time(x)) for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
             if raw:
                 typekey = (typename, typehash) = self._schematypes[schema.id]
@@ -218,7 +218,7 @@ class McapBag(rosapi.Bag):
                     self._types[typekey] = self._make_message_class(schema, message)
                 msg = (typename, message.data, typehash, self._types[typekey])
             else: msg = self._decode_message(message, channel, schema)
-            yield self.BagMessage(channel.topic, msg, rosapi.make_time(nsecs=message.publish_time))
+            yield self.BagMessage(channel.topic, msg, api.make_time(nsecs=message.publish_time))
 
 
     def write(self, topic, msg, t=None, raw=False, **__):
@@ -237,21 +237,21 @@ class McapBag(rosapi.Bag):
         if raw:
             typename, binary, typehash = msg[:3]
             cls = msg[-1]
-            typedef = self._typedefs.get((typename, typehash)) or rosapi.get_message_definition(cls)
-            msg = rosapi.deserialize_message(binary, cls)
+            typedef = self._typedefs.get((typename, typehash)) or api.get_message_definition(cls)
+            msg = api.deserialize_message(binary, cls)
         else:
-            with rosapi.TypeMeta.make(msg, topic) as meta:
+            with api.TypeMeta.make(msg, topic) as meta:
                 typename, typehash, typedef = meta.typename, meta.typehash, meta.definition
         topickey, typekey = (topic, typename, typehash), (typename, typehash)
 
         nanosec = (time.time_ns() if hasattr(time, "time_ns") else int(time.time() * 10**9)) \
-                  if t is None else rosapi.to_nsec(rosapi.to_time(t))
-        if rosapi.ROS2:
+                  if t is None else api.to_nsec(api.to_time(t))
+        if api.ROS2:
             if typekey not in self._schemas:
-                fullname = rosapi.make_full_typename(typename)
+                fullname = api.make_full_typename(typename)
                 schema = self._writer.register_msgdef(fullname, typedef)
                 self._schemas[typekey] = schema
-            schema, data = self._schemas[typekey], rosapi.message_to_dict(msg)
+            schema, data = self._schemas[typekey], api.message_to_dict(msg)
             self._writer.write_message(topic, schema, data, publish_time=nanosec)
         else:
             self._writer.write_message(topic, msg, publish_time=nanosec)
@@ -331,14 +331,14 @@ class McapBag(rosapi.Bag):
         @param   shcema   mcap.records.Schema instance for message type
         """
         cls = self._make_message_class(schema, message, generate=False)
-        if rosapi.ROS2 and not isinstance(cls, types.SimpleNamespace):
-            msg = rosapi.deserialize_message(message.data, cls)
+        if api.ROS2 and not isinstance(cls, types.SimpleNamespace):
+            msg = api.deserialize_message(message.data, cls)
         else:
             msg = self._decoder.decode(schema=schema, message=message)
-            if rosapi.ROS2:  # MCAP ROS2 message classes need monkey-patching with expected API
+            if api.ROS2:  # MCAP ROS2 message classes need monkey-patching with expected API
                 msg = self._patch_message(msg, *self._schematypes[schema.id])
                 # Register serialized binary, as MCAP does not support serializing its own creations
-                rosapi.TypeMeta.make(msg, channel.topic, data=message.data)
+                api.TypeMeta.make(msg, channel.topic, data=message.data)
         typekey = self._schematypes[schema.id]
         if typekey not in self._types: self._types[typekey] = type(msg)
         return msg
@@ -353,14 +353,14 @@ class McapBag(rosapi.Bag):
         @param   generate  generate message class dynamically if not available
         """
         typekey = (typename, typehash) = self._schematypes[schema.id]
-        if rosapi.ROS2 and typekey not in self._types:
+        if api.ROS2 and typekey not in self._types:
             try:  # Try loading class from disk for full compatibility
-                cls = rosapi.get_message_class(typename)
-                clshash = rosapi.get_message_type_hash(cls)
+                cls = api.get_message_class(typename)
+                clshash = api.get_message_type_hash(cls)
                 if typehash == clshash: self._types[typekey] = cls
             except Exception: pass  # ModuleNotFoundError, AttributeError etc
         if typekey not in self._types and generate:
-            if rosapi.ROS2:  # MCAP ROS2 message classes need monkey-patching with expected API
+            if api.ROS2:  # MCAP ROS2 message classes need monkey-patching with expected API
                 msg = self._decoder.decode(schema=schema, message=message)
                 self._types[typekey] = self._patch_message_class(type(msg), typename, typehash)
             else:
@@ -380,11 +380,11 @@ class McapBag(rosapi.Bag):
         """
         typekey = (typename, typehash)
         if typekey not in self._typefields:
-            fields = rosapi.parse_definition_fields(typename, self._typedefs[typekey])
+            fields = api.parse_definition_fields(typename, self._typedefs[typekey])
             self._typefields[typekey] = fields
             self._field_subtypes[typekey] = {n: (s, h) for n, t in fields.items()
-                                             for s in [rosapi.scalar(t)]
-                                             if s not in rosapi.ROS_BUILTIN_TYPES
+                                             for s in [api.scalar(t)]
+                                             if s not in api.ROS_BUILTIN_TYPES
                                              for h in [self._type_subtypes[typekey][s]]}
 
         # mcap_ros2 creates a dynamic class for each message, having __slots__
@@ -444,12 +444,12 @@ class McapBag(rosapi.Bag):
         defhashes = {}  # Cached {type definition full text: type hash}
         for cid, channel in summary.channels.items():
             schema = summary.schemas[channel.schema_id]
-            topic, typename = channel.topic, rosapi.canonical(schema.name)
+            topic, typename = channel.topic, api.canonical(schema.name)
 
             typedef = schema.data.decode("utf-8")  # Full definition including subtype definitions
-            subtypedefs, nesting = rosapi.parse_definition_subtypes(typedef, nesting=True)
+            subtypedefs, nesting = api.parse_definition_subtypes(typedef, nesting=True)
             typehash = channel.metadata.get("md5sum") or \
-                       rosapi.calculate_definition_hash(typename, typedef,
+                       api.calculate_definition_hash(typename, typedef,
                                                         tuple(subtypedefs.items()))
             topickey, typekey = (topic, typename, typehash), (typename, typehash)
 
@@ -466,7 +466,7 @@ class McapBag(rosapi.Bag):
             defhashes[typedef] = typehash
             for t, d in subtypedefs.items():  # Populate subtype definitions and hashes
                 if d in defhashes: h = defhashes[d]
-                else: h = rosapi.calculate_definition_hash(t, d, tuple(subtypedefs.items()))
+                else: h = api.calculate_definition_hash(t, d, tuple(subtypedefs.items()))
                 self._typedefs.setdefault((t, h), d)
                 self._type_subtypes.setdefault(typekey, {})[t] = h
                 defhashes[d] = h
@@ -574,7 +574,7 @@ class McapSink(BaseSink):
             ConsolePrinter.error("mcap not available: cannot work with MCAP files.")
         if not mcap_ros_ok:
             ConsolePrinter.error("mcap_ros%s not available: cannot work with MCAP files.",
-                                 rosapi.ROS_VERSION or "")
+                                 api.ROS_VERSION or "")
         if not verify_writable(self.args.WRITE):
             ok = False
         self.valid = ok and mcap_ok and mcap_ros_ok
@@ -586,14 +586,14 @@ class McapSink(BaseSink):
         if not self.validate(): raise Exception("invalid")
         self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
-        kwargs = dict(publish_time=rosapi.to_nsec(stamp), sequence=index)
-        if rosapi.ROS2:
-            with rosapi.TypeMeta.make(msg, topic) as m:
+        kwargs = dict(publish_time=api.to_nsec(stamp), sequence=index)
+        if api.ROS2:
+            with api.TypeMeta.make(msg, topic) as m:
                 typekey = m.typekey
                 if typekey not in self._schemas:
-                    fullname = rosapi.make_full_typename(m.typename)
+                    fullname = api.make_full_typename(m.typename)
                     self._schemas[typekey] = self._writer.register_msgdef(fullname, m.definition)
-            schema, data = self._schemas[typekey], rosapi.message_to_dict(msg)
+            schema, data = self._schemas[typekey], api.message_to_dict(msg)
             self._writer.write_message(topic, schema, data, **kwargs)
         else:
             self._writer.write_message(topic, msg, **kwargs)
@@ -639,9 +639,9 @@ def init(*_, **__):
         ("overwrite=true|false",  "overwrite existing file in MCAP output\n"
                                   "instead of appending unique counter (default false)"),
     ])
-    rosapi.BAG_EXTENSIONS += McapSink.FILE_EXTENSIONS
-    rosapi.Bag.READER_CLASSES.add(McapBag)
-    rosapi.Bag.WRITER_CLASSES.add(McapBag)
+    api.BAG_EXTENSIONS += McapSink.FILE_EXTENSIONS
+    api.Bag.READER_CLASSES.add(McapBag)
+    api.Bag.WRITER_CLASSES.add(McapBag)
 
 
 __all__ = ["McapBag", "McapSink", "init"]

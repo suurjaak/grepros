@@ -23,7 +23,7 @@ except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
 
-from .. import api as rosapi
+from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, \
                       ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
 from .. outputs import BaseSink
@@ -172,7 +172,7 @@ class ParquetSink(BaseSink):
 
     def _process_type(self, topic, msg):
         """Prepares Parquet schema and writer if not existing."""
-        with rosapi.TypeMeta.make(msg, topic) as m:
+        with api.TypeMeta.make(msg, topic) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
         if (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
@@ -186,7 +186,7 @@ class ParquetSink(BaseSink):
 
         cols = []
         scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
-        for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
+        for path, value, subtype in api.iter_message_fields(msg, scalars=scalars):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
         cols += [(c, self._make_column_type(t, fallback="int64" if "time" == t else None))
@@ -213,8 +213,8 @@ class ParquetSink(BaseSink):
         Writes cache to disk if length reached chunk size.
         """
         data = {}
-        typekey = rosapi.TypeMeta.make(msg, topic).typekey
-        for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
+        typekey = api.TypeMeta.make(msg, topic).typekey
+        for p, v, t in api.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
         data.update(self._extra_basecols)
@@ -229,8 +229,8 @@ class ParquetSink(BaseSink):
 
         @param  fallback  fallback typename to use for lookup if typename not found
         """
-        scalartype = rosapi.scalar(typename)
-        timetype   = rosapi.get_ros_time_category(scalartype)
+        scalartype = api.scalar(typename)
+        timetype   = api.get_ros_time_category(scalartype)
         coltype    = self.COMMON_TYPES.get(typename)
 
         if not coltype and "[" not in typename and scalartype in self.COMMON_TYPES:
@@ -253,18 +253,18 @@ class ParquetSink(BaseSink):
         """Returns column value suitable for adding to Parquet file."""
         v = value
         if isinstance(v, (list, tuple)):
-            if v and rosapi.is_ros_time(v[0]):
-                v = [rosapi.to_nsec(x) for x in v]
-            elif rosapi.scalar(typename) not in rosapi.ROS_BUILTIN_TYPES:
-                v = str([rosapi.message_to_dict(m) for m in v])
+            if v and api.is_ros_time(v[0]):
+                v = [api.to_nsec(x) for x in v]
+            elif api.scalar(typename) not in api.ROS_BUILTIN_TYPES:
+                v = str([api.message_to_dict(m) for m in v])
             elif pyarrow.binary() == self.COMMON_TYPES.get(typename):
                 v = bytes(bytearray(v))  # Py2/Py3 compatible
             else:
                 v = list(v)  # Ensure lists not tuples
-        elif rosapi.is_ros_time(v):
-            v = rosapi.to_nsec(v)
-        elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
-            v = str(rosapi.message_to_dict(v))
+        elif api.is_ros_time(v):
+            v = api.to_nsec(v)
+        elif typename and typename not in api.ROS_BUILTIN_TYPES:
+            v = str(api.message_to_dict(v))
         return v
 
 
@@ -288,7 +288,7 @@ class ParquetSink(BaseSink):
             if not name:
                 myok = False
                 ConsolePrinter.error("Invalid name option in %s=%s:%s", name, rostype, v)
-            if rostype not in rosapi.ROS_BUILTIN_TYPES:
+            if rostype not in api.ROS_BUILTIN_TYPES:
                 myok = False
                 ConsolePrinter.error("Invalid type option in %s=%s:%s", name, rostype, v)
             if myok:
@@ -302,7 +302,7 @@ class ParquetSink(BaseSink):
 
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):
-            alias = rosapi.get_type_alias(rostype)
+            alias = api.get_type_alias(rostype)
             if alias:
                 self.COMMON_TYPES[alias] = self.COMMON_TYPES[rostype]
             if alias and rostype + "[]" in self.COMMON_TYPES:

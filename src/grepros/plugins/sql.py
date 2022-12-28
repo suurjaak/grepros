@@ -18,7 +18,7 @@ import datetime
 import os
 import sys
 
-from .. import api as rosapi
+from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
                       makedirs, plural, unique_path, verify_writable
 from .. outputs import BaseSink
@@ -163,7 +163,7 @@ class SqlSink(BaseSink, SqlMixin):
 
     def _process_topic(self, topic, msg):
         """Builds and writes CREATE VIEW statement for topic if not already built."""
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if topickey in self._topics:
             return
 
@@ -180,7 +180,7 @@ class SqlSink(BaseSink, SqlMixin):
         @return   built SQL, or None if already built
         """
         rootmsg = rootmsg or msg
-        typekey = rosapi.TypeMeta.make(msg, root=rootmsg).typekey
+        typekey = api.TypeMeta.make(msg, root=rootmsg).typekey
         if typekey in self._types:
             return None
 
@@ -196,9 +196,9 @@ class SqlSink(BaseSink, SqlMixin):
 
     def _process_nested(self, msg, rootmsg):
         """Builds anr writes CREATE TABLE statements for nested types."""
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting: continue  # for path
 
             subtypehash = self.source.get_message_type_hash(scalartype)

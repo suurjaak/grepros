@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -19,7 +19,7 @@ import os
 import re
 import sys
 
-from . import __version__, api as rosapi, inputs, outputs, search
+from . import __version__, api, inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
 from . import plugins
 
@@ -560,7 +560,7 @@ def run():
     finally:
         sink and sink.close()
         source and source.close()
-        rosapi.shutdown_node()
+        api.shutdown_node()
 
 
 __all__ = [

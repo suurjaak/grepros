@@ -25,7 +25,7 @@ import re
 import threading
 import time
 
-from . import api as rosapi
+from . import api
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
                      format_stamp, format_timedelta, plural, wildcard_to_regex
@@ -35,7 +35,7 @@ class BaseSource(object):
     """Message producer base class."""
 
     ## Returned from read() as (topic name, ROS message, ROS timestamp object).
-    class SourceMessage(rosapi.Bag.BagMessage): pass
+    class SourceMessage(api.Bag.BagMessage): pass
 
     ## Template for message metainfo line
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
@@ -76,7 +76,7 @@ class BaseSource(object):
         self.valid = None  
 
         self._parse_patterns()
-        rosapi.TypeMeta.SOURCE = self
+        api.TypeMeta.SOURCE = self
 
     def __iter__(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -137,22 +137,22 @@ class BaseSource(object):
 
     def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
-        with rosapi.TypeMeta.make(msg, topic) as m:
-            return dict(topic=topic, type=m.typename, stamp=drop_zeros(rosapi.to_sec(stamp)),
-                        index=index, dt=drop_zeros(format_stamp(rosapi.to_sec(stamp)), " "),
+        with api.TypeMeta.make(msg, topic) as m:
+            return dict(topic=topic, type=m.typename, stamp=drop_zeros(api.to_sec(stamp)),
+                        index=index, dt=drop_zeros(format_stamp(api.to_sec(stamp)), " "),
                         hash=m.typehash, schema=m.definition)
 
     def get_message_class(self, typename, typehash=None):
         """Returns message type class."""
-        return rosapi.get_message_class(typename)
+        return api.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text, including subtype definitions."""
-        return rosapi.get_message_definition(msg_or_type)
+        return api.get_message_definition(msg_or_type)
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS message type MD5 hash."""
-        return rosapi.get_message_type_hash(msg_or_type)
+        return api.get_message_type_hash(msg_or_type)
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether specified message in topic is in acceptable time range."""
@@ -161,17 +161,17 @@ class BaseSource(object):
         if self.args.END_TIME and stamp > self.args.END_TIME:
             return False
         if self.args.UNIQUE or self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             last_accepted = self._processables.get(topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
             if (index - 1) % self.args.NTH_MESSAGE:
                 return False
         if self.args.NTH_INTERVAL > 0 and last_accepted and stamp is not None:
-            if rosapi.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
+            if api.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
                 return False
         if self.args.UNIQUE:
             include, exclude = self._patterns["select"], self._patterns["noselect"]
-            msghash = rosapi.make_message_hash(msg, include, exclude)
+            msghash = api.make_message_hash(msg, include, exclude)
             if msghash in self._hashes[topickey]:
                 return False
             self._hashes[topickey].add(msghash)
@@ -346,7 +346,7 @@ class ConditionMixin(object):
     def conditions_register_message(self, topic, msg):
         """Retains message for condition evaluation if in condition topic."""
         if self.is_conditions_topic(topic, pure=False):
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             self._lastmsgs[topickey].append(msg)
             if len(self._lastmsgs[topickey]) > self._topic_limits[topic][-1]:
                 self._lastmsgs[topickey].popleft()
@@ -479,7 +479,7 @@ class BagSource(BaseSource, ConditionMixin):
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
         if self.valid is not None: return self.valid
-        self.valid = rosapi.validate()
+        self.valid = api.validate()
         if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
                                  self.args.ORDERBY)
@@ -542,17 +542,17 @@ class BagSource(BaseSource, ConditionMixin):
     def get_message_class(self, typename, typehash=None):
         """Returns ROS message type class."""
         return self._bag.get_message_class(typename, typehash) or \
-               rosapi.get_message_class(typename)
+               api.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text, including subtype definitions."""
         return self._bag.get_message_definition(msg_or_type) or \
-               rosapi.get_message_definition(msg_or_type)
+               api.get_message_definition(msg_or_type)
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS message type MD5 hash."""
         return self._bag.get_message_type_hash(msg_or_type) or \
-               rosapi.get_message_type_hash(msg_or_type)
+               api.get_message_type_hash(msg_or_type)
 
     def notify(self, status):
         """Reports match status of last produced message."""
@@ -565,7 +565,7 @@ class BagSource(BaseSource, ConditionMixin):
         Returns whether specified message in topic is in acceptable range,
         and all conditions, if any, evaluate as true.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if self.args.START_INDEX and index is not None:
             self._ensure_totals()
             START = self.args.START_INDEX
@@ -588,11 +588,11 @@ class BagSource(BaseSource, ConditionMixin):
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
                 break  # for topic
-            typename = rosapi.get_message_type(msg)
+            typename = api.get_message_type(msg)
             if topics and typename not in topics[topic]:
                 continue  # for topic
 
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
@@ -609,7 +609,7 @@ class BagSource(BaseSource, ConditionMixin):
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
                 self._sticky = True
-                continue_from = stamp + rosapi.make_duration(nsecs=1)
+                continue_from = stamp + api.make_duration(nsecs=1)
                 for entry in self._produce({topic: typename}, continue_from):
                     yield entry
                 self._sticky = False
@@ -622,7 +622,7 @@ class BagSource(BaseSource, ConditionMixin):
             return
 
         names, paths = self.args.FILE, self.args.PATH
-        exts, skip_exts = rosapi.BAG_EXTENSIONS, rosapi.SKIP_EXTENSIONS
+        exts, skip_exts = api.BAG_EXTENSIONS, api.SKIP_EXTENSIONS
         exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
 
         encountereds = set()
@@ -679,8 +679,8 @@ class BagSource(BaseSource, ConditionMixin):
                 if self.args.DECOMPRESS:
                     filename = Decompressor.decompress(filename, self.args.PROGRESS)
                 else: raise Exception("decompression not enabled")
-            bag = rosapi.Bag(filename, mode="r", reindex=self.args.REINDEX,
-                             progress=self.args.PROGRESS) if bag is None else bag
+            bag = api.Bag(filename, mode="r", reindex=self.args.REINDEX,
+                          progress=self.args.PROGRESS) if bag is None else bag
             bag.open()
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename or bag, e)
@@ -710,9 +710,9 @@ class BagSource(BaseSource, ConditionMixin):
 
         args = self.args = copy.deepcopy(self._args0)
         if args.START_TIME is not None:
-            args.START_TIME = rosapi.make_bag_time(args.START_TIME, bag)
+            args.START_TIME = api.make_bag_time(args.START_TIME, bag)
         if args.END_TIME is not None:
-            args.END_TIME = rosapi.make_bag_time(args.END_TIME, bag)
+            args.END_TIME = api.make_bag_time(args.END_TIME, bag)
         return True
 
 
@@ -772,7 +772,7 @@ class TopicSource(BaseSource, ConditionMixin):
             total += bool(topic)
             self._update_progress(total, running=self._running and bool(topic))
             if topic:
-                topickey = rosapi.TypeMeta.make(msg, topic).topickey
+                topickey = api.TypeMeta.make(msg, topic).topickey
                 self._counts[topickey] += 1
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while
@@ -786,11 +786,11 @@ class TopicSource(BaseSource, ConditionMixin):
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
         BaseSource.bind(self, sink)
-        rosapi.init_node()
+        api.init_node()
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        if self.valid is None: self.valid = rosapi.validate(live=True)
+        if self.valid is None: self.valid = api.validate(live=True)
         return self.valid
 
     def close(self):
@@ -820,26 +820,26 @@ class TopicSource(BaseSource, ConditionMixin):
         """Returns message type class, from active subscription if available."""
         sub = next((s for (t, n, h), s in self._subs.items()
                     if n == typename and typehash in (s.get_message_type_hash(), None)), None)
-        return sub and sub.get_message_class() or rosapi.get_message_class(typename)
+        return sub and sub.get_message_class() or api.get_message_class(typename)
 
     def get_message_definition(self, msg_or_type):
         """Returns ROS message type definition full text, including subtype definitions."""
-        if rosapi.is_ros_message(msg_or_type):
-            return rosapi.get_message_definition(msg_or_type)
+        if api.is_ros_message(msg_or_type):
+            return api.get_message_definition(msg_or_type)
         sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
-        return sub and sub.get_message_definition() or rosapi.get_message_definition(msg_or_type)
+        return sub and sub.get_message_definition() or api.get_message_definition(msg_or_type)
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS message type MD5 hash."""
-        if rosapi.is_ros_message(msg_or_type):
-            return rosapi.get_message_type_hash(msg_or_type)
+        if api.is_ros_message(msg_or_type):
+            return api.get_message_type_hash(msg_or_type)
         sub = next((s for (t, n, h), s in self._subs.items() if n == msg_or_type), None)
-        return sub and sub.get_message_type_hash() or rosapi.get_message_type_hash(msg_or_type)
+        return sub and sub.get_message_type_hash() or api.get_message_type_hash(msg_or_type)
 
     def format_meta(self):
         """Returns source metainfo string."""
         metadata = self.get_meta()
-        result = "\nROS%s live" % rosapi.ROS_VERSION
+        result = "\nROS%s live" % api.ROS_VERSION
         if "ROS_MASTER_URI" in metadata:
             result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
         if "ROS_DOMAIN_ID" in metadata:
@@ -861,11 +861,11 @@ class TopicSource(BaseSource, ConditionMixin):
 
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
-        for topic, typename in rosapi.get_topic_types():
+        for topic, typename in api.get_topic_types():
             dct = filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
             if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
-            try: rosapi.get_message_class(typename)  # Raises error in ROS2
+            try: api.get_message_class(typename)  # Raises error in ROS2
             except Exception as e:
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
                                     (typename, topic), e, __once=True)
@@ -876,7 +876,7 @@ class TopicSource(BaseSource, ConditionMixin):
 
             handler = functools.partial(self._on_message, topic)
             try:
-                sub = rosapi.create_subscriber(topic, typename, handler,
+                sub = api.create_subscriber(topic, typename, handler,
                                                queue_size=self.args.QUEUE_SIZE_IN)
             except Exception as e:
                 ConsolePrinter.warn("Error subscribing to topic %s: %%r" % topic,
@@ -888,14 +888,14 @@ class TopicSource(BaseSource, ConditionMixin):
     def _init_progress(self):
         """Initializes progress bar, if any."""
         if self.args.PROGRESS and not self.bar:
-            self.bar = ProgressBar(afterword="ROS%s live" % rosapi.ROS_VERSION,
+            self.bar = ProgressBar(afterword="ROS%s live" % api.ROS_VERSION,
                                    aftertemplate=" {afterword}", pulse=True)
             self.bar.start()
 
     def _update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS%s live, %s" % (rosapi.ROS_VERSION, plural("message", count))
+            afterword = "ROS%s live, %s" % (api.ROS_VERSION, plural("message", count))
             self.bar.afterword, self.bar.max = afterword, count
             if not running:
                 self.bar.pause, self.bar.pulse_pos = True, None
@@ -904,9 +904,9 @@ class TopicSource(BaseSource, ConditionMixin):
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
         if self.args.START_TIME is not None:
-            self.args.START_TIME = rosapi.make_live_time(self.args.START_TIME)
+            self.args.START_TIME = api.make_live_time(self.args.START_TIME)
         if self.args.END_TIME is not None:
-            self.args.END_TIME = rosapi.make_live_time(self.args.END_TIME)
+            self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS live."""
@@ -918,8 +918,8 @@ class TopicSource(BaseSource, ConditionMixin):
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""
-        stamp = rosapi.get_rostime() if self.args.ROS_TIME_IN else \
-                rosapi.make_time(time.time())
+        stamp = api.get_rostime() if self.args.ROS_TIME_IN else \
+                api.make_time(time.time())
         self._queue and self._queue.put((topic, msg, stamp))
 
 
@@ -972,8 +972,8 @@ class AppSource(BaseSource, ConditionMixin):
             if item is None: break  # while
 
             if len(item) > 2: topic, msg, stamp = item[:3]
-            else: (topic, msg), stamp = item[:2], rosapi.get_rostime()
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            else: (topic, msg), stamp = item[:2], api.get_rostime()
+            topickey = api.TypeMeta.make(msg, topic).topickey
             self._counts[topickey] += 1
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
@@ -991,7 +991,7 @@ class AppSource(BaseSource, ConditionMixin):
         if item is None: return None
 
         topic, msg, stamp = item
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         self._counts[topickey] += 1
         self.conditions_register_message(topic, msg)
         return None if self.is_conditions_topic(topic, pure=True) else (topic, msg, stamp)
@@ -999,7 +999,7 @@ class AppSource(BaseSource, ConditionMixin):
     def mark_queue(self, topic, msg, stamp):
         """Registers message produced from read_queue()."""
         if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             self._processables[topickey] = (self._counts[topickey], stamp)
 
     def push(self, topic, msg=None, stamp=None):
@@ -1010,7 +1010,7 @@ class AppSource(BaseSource, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
-        if stamp is None: stamp = rosapi.get_rostime()
+        if stamp is None: stamp = api.get_rostime()
         self._queue.put(None) if topic is None else (topic, msg, stamp)
 
     def is_processable(self, topic, msg, stamp, index=None):
@@ -1028,9 +1028,9 @@ class AppSource(BaseSource, ConditionMixin):
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
         if self.args.START_TIME is not None:
-            self.args.START_TIME = rosapi.make_live_time(self.args.START_TIME)
+            self.args.START_TIME = api.make_live_time(self.args.START_TIME)
         if self.args.END_TIME is not None:
-            self.args.END_TIME = rosapi.make_live_time(self.args.END_TIME)
+            self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
 
 __all__ = ["AppSource", "BagSource", "BaseSource", "ConditionMixin", "TopicSource"]

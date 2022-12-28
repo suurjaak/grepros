@@ -22,7 +22,7 @@ import sys
 
 import yaml
 
-from . import api as rosapi
+from . import api
 from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, makedirs, merge_spans, \
                      plural, unique_path, verify_writable, wildcard_to_regex
@@ -77,7 +77,7 @@ class BaseSink(object):
         @param   match  ROS message with values tagged with match markers if matched, else None
         @param   index  message index in topic, if any
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         self._counts[topickey] = self._counts.get(topickey, 0) + 1
 
     def bind(self, source):
@@ -113,8 +113,8 @@ class BaseSink(object):
 
     def _ensure_stamp_index(self, topic, msg, stamp=None, index=None):
         """Returns (stamp, index) populated with current ROS time and topic index if `None`."""
-        if stamp is None: stamp = rosapi.get_rostime()
-        if index is None: index = self._counts.get(rosapi.TypeMeta.make(msg, topic).topickey, 0) + 1
+        if stamp is None: stamp = api.get_rostime()
+        if index is None: index = self._counts.get(api.TypeMeta.make(msg, topic).topickey, 0) + 1
         return stamp, index
 
 
@@ -250,34 +250,34 @@ class TextSinkMixin(object):
         if isinstance(val, (list, tuple)):
             if not val:
                 return "[]"
-            if rosapi.scalar(typename) in rosapi.ROS_STRING_TYPES:
+            if api.scalar(typename) in api.ROS_STRING_TYPES:
                 yaml_str = yaml.safe_dump(truncate(val)).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
             vals = [x for v in truncate(val) for x in [self.message_to_yaml(v, top, typename)] if x]
-            if rosapi.scalar(typename) in rosapi.ROS_NUMERIC_TYPES:
+            if api.scalar(typename) in api.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
             return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
-        if rosapi.is_ros_message(val):
+        if api.is_ros_message(val):
             MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
-            vals, fieldmap = [], rosapi.get_message_fields(val)
+            vals, fieldmap = [], api.get_message_fields(val)
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
             fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
             for k, t in fieldmap.items():
-                v = self.message_to_yaml(rosapi.get_message_value(val, k, t), top + (k, ), t)
+                v = self.message_to_yaml(api.get_message_value(val, k, t), top + (k, ), t)
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:
                     continue  # for k, t
 
-                if t not in rosapi.ROS_STRING_TYPES: v = unquote(v)
-                if rosapi.scalar(t) in rosapi.ROS_BUILTIN_TYPES:
-                    is_strlist = t.endswith("]") and rosapi.scalar(t) in rosapi.ROS_STRING_TYPES
-                    is_num = rosapi.scalar(t) in rosapi.ROS_NUMERIC_TYPES
+                if t not in api.ROS_STRING_TYPES: v = unquote(v)
+                if api.scalar(t) in api.ROS_BUILTIN_TYPES:
+                    is_strlist = t.endswith("]") and api.scalar(t) in api.ROS_STRING_TYPES
+                    is_num = api.scalar(t) in api.ROS_NUMERIC_TYPES
                     extra_indent = indent if is_strlist else " " * len(indent + k + ": ")
                     self._wrapper.reserve_width(self._prefix + extra_indent)
                     self._wrapper.drop_whitespace = t.endswith("]") and not is_strlist
                     self._wrapper.break_long_words = not is_num
                     v = ("\n" + extra_indent).join(retag_match_lines(self._wrapper.wrap(v)))
                     if is_strlist and self._wrapper.strip(v) != "[]": v = "\n" + v
-                vals.append("%s%s: %s" % (indent, k, rosapi.format_message_value(val, k, v)))
+                vals.append("%s%s: %s" % (indent, k, api.format_message_value(val, k, v)))
             return ("\n" if indent and vals else "") + "\n".join(vals)
 
         return str(val)
@@ -432,7 +432,7 @@ class BagSink(BaseSink):
         if not self.validate(): raise Exception("invalid")
         self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
@@ -451,7 +451,7 @@ class BagSink(BaseSink):
             result = False
         if not verify_writable(self.args.WRITE):
             result = False
-        self.valid = rosapi.validate() and result
+        self.valid = api.validate() and result
         return self.valid
 
     def close(self):
@@ -470,7 +470,7 @@ class BagSink(BaseSink):
         if self._bag is not None: return
         filename = self.args.WRITE
         if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
-            cls = rosapi.Bag.autodetect(filename)
+            cls = api.Bag.autodetect(filename)
             if cls and "a" not in getattr(cls, "MODES", ("a", )):
                 filename = unique_path(filename)
                 if self.args.VERBOSE:
@@ -483,13 +483,13 @@ class BagSink(BaseSink):
                                  "Appending to" if sz else "Creating",
                                  filename, (" (%s)" % format_bytes(sz)) if sz else "")
         makedirs(os.path.dirname(filename))
-        self._bag = rosapi.Bag(filename, mode="w" if self._overwrite else "a")
+        self._bag = api.Bag(filename, mode="w" if self._overwrite else "a")
 
     @classmethod
     def autodetect(cls, target):
         """Returns true if target is recognizable as a ROS bag."""
         ext = os.path.splitext(target or "")[-1].lower()
-        return ext in rosapi.BAG_EXTENSIONS
+        return ext in api.BAG_EXTENSIONS
 
 
 class TopicSink(BaseSink):
@@ -520,7 +520,7 @@ class TopicSink(BaseSink):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Publishes message to output topic."""
         if not self.validate(): raise Exception("invalid")
-        with rosapi.TypeMeta.make(msg, topic) as m:
+        with api.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
         if topickey not in self._pubs:
             topic2 = self.args.PUBLISH_PREFIX + topic + self.args.PUBLISH_SUFFIX
@@ -531,7 +531,7 @@ class TopicSink(BaseSink):
             pub = None
             if self.args.PUBLISH_FIXNAME:
                 pub = next((v for (_, c), v in self._pubs.items() if c == cls), None)
-            pub = pub or rosapi.create_publisher(topic2, cls, queue_size=self.args.QUEUE_SIZE_OUT)
+            pub = pub or api.create_publisher(topic2, cls, queue_size=self.args.QUEUE_SIZE_OUT)
             self._pubs[topickey] = pub
 
         self._pubs[topickey].publish(msg)
@@ -541,7 +541,7 @@ class TopicSink(BaseSink):
         """Attaches source to sink and blocks until connected to ROS."""
         if not self.validate(): raise Exception("invalid")
         BaseSink.bind(self, source)
-        rosapi.init_node()
+        api.init_node()
 
     def validate(self):
         """
@@ -549,7 +549,7 @@ class TopicSink(BaseSink):
         and output topic configuration is valid, prints error if not.
         """
         if self.valid is not None: return self.valid
-        result = rosapi.validate(live=True)
+        result = api.validate(live=True)
         config_ok = True
         if self.args.LIVE and not any((self.args.PUBLISH_PREFIX, self.args.PUBLISH_SUFFIX,
                                         self.args.PUBLISH_FIXNAME)):

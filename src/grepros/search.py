@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    25.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -16,7 +16,7 @@ import copy
 import collections
 import re
 
-from . import api as rosapi
+from . import api
 from . import inputs
 from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
 
@@ -86,7 +86,7 @@ class Searcher(object):
         """
         Yields matched and context messages from source.
 
-        @param   source     inputs.BaseSource or rosapi.Bag instance
+        @param   source     inputs.BaseSource or api.Bag instance
         @param   highlight  whether to highlight matched values in message fields,
                             defaults to flag from constructor
         @return             GrepMessage namedtuples of
@@ -122,7 +122,7 @@ class Searcher(object):
         item = self.source.read_queue()
         if item is not None:
             msgid = self._idcounter = self._idcounter + 1
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, msg, stamp) and self.get_match(msg)
 
@@ -186,7 +186,7 @@ class Searcher(object):
                 if self._counts: self._clear_data()
 
             msgid = self._idcounter = self._idcounter + 1
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             self._register_message(topickey, msgid, msg, stamp)
             matched = self._is_processable(topic, msg, stamp) and self.get_match(msg)
 
@@ -216,7 +216,7 @@ class Searcher(object):
         that topic or total maximum count has not been reached,
         and current message in topic is in configured range, if any.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if self.args.MAX_MATCHES \
         and sum(x[True] for x in self._counts.values()) >= self.args.MAX_MATCHES:
             return False
@@ -251,7 +251,7 @@ class Searcher(object):
         """Clears local structures."""
         for d in (self._counts, self._messages, self._stamps, self._statuses):
             d.clear()
-        rosapi.TypeMeta.clear()
+        api.TypeMeta.clear()
 
 
     def _prepare(self, source, sink=None, highlight=None):
@@ -269,7 +269,7 @@ class Searcher(object):
             while len(dct[topickey]) > WINDOW:
                 msgid = next(iter(dct[topickey]))
                 value = dct[topickey].pop(msgid)
-                dct is self._messages and rosapi.TypeMeta.discard(value)
+                dct is self._messages and api.TypeMeta.discard(value)
 
 
     def _parse_patterns(self):
@@ -372,22 +372,22 @@ class Searcher(object):
         def process_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings; updates `matched`."""
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = fieldmap0 = rosapi.get_message_fields(obj)  # Returns obj if not ROS message
+            fieldmap = fieldmap0 = api.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
                 fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
-                v, path = rosapi.get_message_value(obj, k, t), top + (k, )
+                v, path = api.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))
-                if rosapi.is_ros_message(v):
+                if api.is_ros_message(v):
                     process_message(v, path)
-                elif v and is_collection and rosapi.scalar(t) not in rosapi.ROS_NUMERIC_TYPES:
-                    rosapi.set_message_value(obj, k, [process_message(x, path) for x in v])
+                elif v and is_collection and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
+                    api.set_message_value(obj, k, [process_message(x, path) for x in v])
                 else:
                     v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
                     v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
-                        rosapi.set_message_value(obj, k, v2)
-            if not rosapi.is_ros_message(obj):
+                        api.set_message_value(obj, k, v2)
+            if not api.is_ros_message(obj):
                 v1 = str(list(obj) if isinstance(obj, bytes) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
@@ -399,7 +399,7 @@ class Searcher(object):
         if self._passthrough: return msg
 
         if self._brute_prechecks:
-            text  = "\n".join("%r" % (v, ) for _, v, _ in rosapi.iter_message_fields(msg))
+            text  = "\n".join("%r" % (v, ) for _, v, _ in api.iter_message_fields(msg))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 

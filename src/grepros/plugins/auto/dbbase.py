@@ -15,7 +15,7 @@ Released under the BSD License.
 import atexit
 import collections
 
-from ... import api as rosapi
+from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, plural
 from ... outputs import BaseSink
 from . sqlbase import SqlMixin, quote
@@ -201,7 +201,7 @@ class BaseDataSink(BaseSink, SqlMixin):
         Also creates types-row and pkg/MsgType table for this message if not existing.
         If nesting enabled, creates types recursively.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if topickey in self._checkeds:
             return
 
@@ -228,7 +228,7 @@ class BaseDataSink(BaseSink, SqlMixin):
         @return   created types-row, or None if already existed
         """
         rootmsg = rootmsg or msg
-        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typekey = (m.typename, m.typekey)
         if typekey in self._checkeds:
             return None
@@ -248,9 +248,9 @@ class BaseDataSink(BaseSink, SqlMixin):
 
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
 
@@ -292,15 +292,15 @@ class BaseDataSink(BaseSink, SqlMixin):
         and returns inserted ID.
         """
         rootmsg = rootmsg or msg
-        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typekey = m.typename, m.typekey
-        with rosapi.TypeMeta.make(rootmsg) as m:
+        with api.TypeMeta.make(rootmsg) as m:
             topic_id = self._topics[m.topickey]["id"]
         table_name = self._types[typekey]["table_name"]
 
         myid = self._get_next_id(table_name) if self._nesting else None
         coldefs = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS[:-1]
-        colvals = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_nsec(stamp)]
+        colvals = [topic, topic_id, api.to_datetime(stamp), api.to_nsec(stamp)]
         if self._nesting:
             coldefs += self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS
             colvals += [myid, parent_type, parent_id]
@@ -310,9 +310,9 @@ class BaseDataSink(BaseSink, SqlMixin):
         if parent_type: self._nested_counts[typekey] = self._nested_counts.get(typekey, 0) + 1
 
         subids = {}  # {message field path: [ids]}
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for subpath, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for subpath
             if isinstance(submsgs, (list, tuple)):

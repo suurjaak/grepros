@@ -20,12 +20,12 @@ except ImportError: embag = None
 try: import genpy
 except ImportError: genpy = None
 
-from .. import api as rosapi
+from .. import api
 from .. common import ConsolePrinter
 
 
 
-class EmbagReader(rosapi.Bag):
+class EmbagReader(api.Bag):
     """embag reader interface, providing most of rosbag.Bag interface."""
 
     ## Supported opening modes
@@ -94,7 +94,7 @@ class EmbagReader(rosapi.Bag):
 
         Returns None if unknown message type for bag.
         """
-        if rosapi.is_ros_message(msg_or_type):
+        if api.is_ros_message(msg_or_type):
             return self._typedefs.get((msg_or_type._type, msg_or_type._md5sum))
         typename = msg_or_type
         return next((d for (n, h), d in self._typedefs.items() if n == typename), None)
@@ -102,7 +102,7 @@ class EmbagReader(rosapi.Bag):
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS1 message type MD5 hash, or None if unknown message type for bag."""
-        if rosapi.is_ros_message(msg_or_type): return msg_or_type._md5sum
+        if api.is_ros_message(msg_or_type): return msg_or_type._md5sum
         typename = msg_or_type
         return next((h for n, h in self._typedefs if n == typename), None)
 
@@ -165,7 +165,7 @@ class EmbagReader(rosapi.Bag):
         if self.closed: raise ValueError("I/O operation on closed file.")
 
         topics = topics if isinstance(topics, list) else [topics] if topics else []
-        start_time, end_time = (rosapi.to_sec(rosapi.to_time(x)) for x in (start_time, end_time))
+        start_time, end_time = (api.to_sec(api.to_time(x)) for x in (start_time, end_time))
         for m in self._view.getMessages(topics) if topics else self._view.getMessages():
             if start_time is not None and start_time > m.timestamp.to_sec():
                 continue  # for m
@@ -173,7 +173,7 @@ class EmbagReader(rosapi.Bag):
                 continue  # for m
 
             typename = self._hashdefs[(m.topic, m.md5)]
-            stamp = rosapi.make_time(m.timestamp.secs, m.timestamp.nsecs)
+            stamp = api.make_time(m.timestamp.secs, m.timestamp.nsecs)
             if raw: msg = (typename, m.data(), m.md5, self.get_message_class(typename, m.md5))
             else: msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
             yield self.BagMessage(m.topic, msg, stamp)
@@ -236,25 +236,25 @@ class EmbagReader(rosapi.Bag):
                 self._topics[topickey] += conn.message_count
                 self._hashdefs[(topic, conn.md5sum)] = conn.type
                 self._typedefs[typekey] = conn.message_definition
-                subtypedefs = rosapi.parse_definition_subtypes(conn.message_definition)
+                subtypedefs = api.parse_definition_subtypes(conn.message_definition)
                 for n, d in subtypedefs.items():
-                    h = rosapi.calculate_definition_hash(n, d, tuple(subtypedefs.items()))
+                    h = api.calculate_definition_hash(n, d, tuple(subtypedefs.items()))
                     self._typedefs.setdefault((n, h), d)
 
 
     def _populate_message(self, msg, embagval):
         """Returns the ROS1 message populated from a corresponding embag.RosValue."""
-        for name, typename in rosapi.get_message_fields(msg).items():
-            v, scalarname = embagval.get(name), rosapi.scalar(typename)
-            if typename in rosapi.ROS_BUILTIN_TYPES:      # Single built-in type
+        for name, typename in api.get_message_fields(msg).items():
+            v, scalarname = embagval.get(name), api.scalar(typename)
+            if typename in api.ROS_BUILTIN_TYPES:      # Single built-in type
                 msgv = getattr(embagval, name)
-            elif scalarname in rosapi.ROS_BUILTIN_TYPES:  # List of built-in types
+            elif scalarname in api.ROS_BUILTIN_TYPES:  # List of built-in types
                 msgv = list(v)
-            elif typename in rosapi.ROS_TIME_TYPES:       # Single temporal type
-                cls = next(k for k, v in rosapi.ROS_TIME_CLASSES.items() if v == typename)
+            elif typename in api.ROS_TIME_TYPES:       # Single temporal type
+                cls = next(k for k, v in api.ROS_TIME_CLASSES.items() if v == typename)
                 msgv = cls(v.secs, v.nsecs)
-            elif scalarname in rosapi.ROS_TIME_TYPES:     # List of temporal types
-                cls = next(k for k, v in rosapi.ROS_TIME_CLASSES.items() if v == scalarname)
+            elif scalarname in api.ROS_TIME_TYPES:     # List of temporal types
+                cls = next(k for k, v in api.ROS_TIME_CLASSES.items() if v == scalarname)
                 msgv = [cls(x.secs, x.nsecs) for x in v]
             elif typename == scalarname:                  # Single subtype
                 msgv = self._populate_message(self.get_message_class(typename)(), v)
@@ -280,7 +280,7 @@ def init(*_, **__):
     if not embag:
         ConsolePrinter.error("embag not available: cannot read bag files.")
         raise ImportWarning()
-    rosapi.Bag.READER_CLASSES.add(EmbagReader)
+    api.Bag.READER_CLASSES.add(EmbagReader)
 
 
 __all__ = ["EmbagReader", "init"]

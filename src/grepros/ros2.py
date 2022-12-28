@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    25.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -36,7 +36,7 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
-from . import api as rosapi
+from . import api
 from . common import ConsolePrinter, MatchMarkers, memoize
 
 
@@ -85,7 +85,7 @@ executor = None
 
 
 
-class ROS2Bag(rosapi.Bag):
+class ROS2Bag(api.Bag):
     """ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface."""
 
     ## ROS2 bag SQLite schema
@@ -631,7 +631,7 @@ def _get_message_definition(typename):
             if not line or not line[0].isalpha():
                 continue  # for line
             linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
-            if linetype in rosapi.ROS_BUILTIN_TYPES:
+            if linetype in api.ROS_BUILTIN_TYPES:
                 continue  # for line
             linetype = linetype if "/" in linetype else "std_msgs/Header" \
                        if "Header" == linetype else "%s/%s" % (pkg, linetype)
@@ -731,7 +731,7 @@ def get_message_definition_idl(typename):
 def _get_message_type_hash(typename):
     """Returns ROS2 message type MD5 hash (internal caching method)."""
     msgdef = get_message_definition(typename)
-    return rosapi.calculate_definition_hash(typename, msgdef)
+    return api.calculate_definition_hash(typename, msgdef)
 
 
 def get_message_fields(val):
@@ -855,7 +855,7 @@ def qos_to_dict(qos):
 
 def serialize_message(msg):
     """Returns ROS2 message as a serialized binary."""
-    with rosapi.TypeMeta.make(msg) as m:
+    with api.TypeMeta.make(msg) as m:
         if m.data is not None: return m.data
     return rclpy.serialization.serialize_message(msg)
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    25.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -27,7 +27,7 @@ import rosbag
 import roslib
 import rospy
 
-from . import api as rosapi
+from . import api
 from . api import TypeMeta, calculate_definition_hash, parse_definition_subtypes
 from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
 
@@ -57,7 +57,7 @@ SLEEP_INTERVAL = 0.5
 master = None
 
 
-class ROS1Bag(rosbag.Bag, rosapi.Bag):
+class ROS1Bag(rosbag.Bag, api.Bag):
     """
     ROS1 bag reader and writer.
 

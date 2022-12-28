@@ -18,7 +18,7 @@ import os
 import sqlite3
 import sys
 
-from ... import api as rosapi
+from ... import api
 from ... common import ConsolePrinter, format_bytes, makedirs, verify_writable
 from . dbbase import BaseDataSink, quote
 
@@ -136,11 +136,11 @@ class SqliteSink(BaseDataSink):
 
     def _process_message(self, topic, msg, stamp):
         """Inserts message to messages-table, and to pkg/MsgType tables."""
-        with rosapi.TypeMeta.make(msg, topic) as m:
+        with api.TypeMeta.make(msg, topic) as m:
             topic_id, typename = self._topics[m.topickey]["id"], m.typename
-        margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
+        margs = dict(dt=api.to_datetime(stamp), timestamp=api.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=str(msg) if self._do_yaml else "", data=rosapi.serialize_message(msg))
+                     yaml=str(msg) if self._do_yaml else "", data=api.serialize_message(msg))
         self._ensure_execute(self._get_dialect_option("insert_message"), margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)
 

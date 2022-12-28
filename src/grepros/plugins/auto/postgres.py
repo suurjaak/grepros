@@ -22,7 +22,7 @@ try:
 except ImportError:
     psycopg2 = None
 
-from ... import api as rosapi
+from ... import api
 from ... common import ConsolePrinter
 from . dbbase import BaseDataSink, quote
 
@@ -170,28 +170,28 @@ class PostgresSink(BaseDataSink):
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
         TYPES = self._get_dialect_option("types")
-        plaintype = typename and rosapi.scalar(typename)  # "string<=10" -> "string"
+        plaintype = typename and api.scalar(typename)  # "string<=10" -> "string"
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
         if not typename:
             v = psycopg2.extras.Json(v, json.dumps)
         elif isinstance(v, (list, tuple)):
-            scalartype = rosapi.scalar(typename)
-            if scalartype in rosapi.ROS_TIME_TYPES:
+            scalartype = api.scalar(typename)
+            if scalartype in api.ROS_TIME_TYPES:
                 v = [self._convert_time_value(x, scalartype) for x in v]
-            elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
+            elif scalartype not in api.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
-                else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
+                else: v = psycopg2.extras.Json([api.message_to_dict(m, replace)
                                                 for m in v], json.dumps)
             elif "BYTEA" == TYPES.get(typename):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
                 v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2
-        elif rosapi.is_ros_time(v):
+        elif api.is_ros_time(v):
             v = self._convert_time_value(v, typename)
-        elif plaintype not in rosapi.ROS_BUILTIN_TYPES:
-            v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
+        elif plaintype not in api.ROS_BUILTIN_TYPES:
+            v = psycopg2.extras.Json(api.message_to_dict(v, replace), json.dumps)
         else:
             v = self._convert_column_value(v, plaintype)
         return v

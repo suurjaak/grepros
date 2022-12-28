@@ -20,7 +20,7 @@ import re
 import sys
 import threading
 
-from ... import api as rosapi
+from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, ensure_namespace, \
                        format_bytes, makedirs, plural, unique_path, verify_writable
 from ... outputs import BaseSink, TextSinkMixin
@@ -114,7 +114,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
             result = False
         if not verify_writable(self.args.WRITE):
             result = False
-        self.valid = rosapi.validate() and result
+        self.valid = api.validate() and result
         return self.valid
 
     def close(self):
@@ -178,7 +178,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
                 self._queue.task_done()
                 break  # while
             (topic, msg, stamp, match, index) = entry
-            topickey = rosapi.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic).topickey
             if self.args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s in HTML output.", topic)
             yield entry

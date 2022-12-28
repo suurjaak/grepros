@@ -20,7 +20,7 @@ import itertools
 import os
 import sys
 
-from ... import api as rosapi
+from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
                        makedirs, plural, unique_path, verify_writable
 from ... outputs import BaseSink
@@ -64,7 +64,7 @@ class CsvSink(BaseSink):
         if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         data = (v for _, v in self._iter_fields(msg))
-        metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
+        metadata = [api.to_sec(stamp), api.to_datetime(stamp), api.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))
         super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
@@ -107,7 +107,7 @@ class CsvSink(BaseSink):
 
         File is populated with header if not created during this session.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if not self._lasttopickey:
             makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
@@ -141,11 +141,11 @@ class CsvSink(BaseSink):
 
         Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
         """
-        fieldmap, identity = rosapi.get_message_fields(msg), lambda x: x
+        fieldmap, identity = api.get_message_fields(msg), lambda x: x
         for k, t in fieldmap.items() if fieldmap != msg else ():
-            v, path, baset = rosapi.get_message_value(msg, k, t), top + (k, ), rosapi.scalar(t)
-            is_sublist = isinstance(v, (list, tuple)) and baset not in rosapi.ROS_BUILTIN_TYPES
-            cast = rosapi.to_sec if baset in rosapi.ROS_TIME_TYPES else identity
+            v, path, baset = api.get_message_value(msg, k, t), top + (k, ), api.scalar(t)
+            is_sublist = isinstance(v, (list, tuple)) and baset not in api.ROS_BUILTIN_TYPES
+            cast = api.to_sec if baset in api.ROS_TIME_TYPES else identity
             if isinstance(v, (list, tuple)) and not is_sublist:
                 for i, lv in enumerate(v):
                     yield path + (i, ), cast(lv)
@@ -153,7 +153,7 @@ class CsvSink(BaseSink):
                 for i, lmsg in enumerate(v):
                     for lp, lv in self._iter_fields(lmsg, path + (i, )):
                         yield lp, lv
-            elif rosapi.is_ros_message(v, ignore_time=True):
+            elif api.is_ros_message(v, ignore_time=True):
                 for mp, mv in self._iter_fields(v, path):
                     yield mp, mv
             else:

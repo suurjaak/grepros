@@ -14,11 +14,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    10.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
-from grepros import __version__, api as rosapi
+from grepros import __version__, api
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 sourcemeta = source.get_meta()
@@ -1042,7 +1042,7 @@ selector = lambda v: re.sub(r"([^\w\-])", r"\\\1", v)
 %>
 %for i, (topic, msg, stamp, match, index) in enumerate(messages, 1):
     <%
-secs, nsecs = divmod(rosapi.to_nsec(stamp), 10**9)
+secs, nsecs = divmod(api.to_nsec(stamp), 10**9)
 meta = source.get_message_meta(topic, msg, stamp, index)
 topickey = (topic, meta["type"], meta["hash"])
     %>
