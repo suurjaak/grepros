@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -47,6 +47,8 @@ class BaseSink(object):
         self._counts     = {}  # {(topic, typename, typehash): count}
 
         self.args = ensure_namespace(args, BaseSink.DEFAULT_ARGS, **kwargs)
+        ## Result of validate()
+        self.valid = None  
         ## inputs.BaseSource instance bound to this sink
         self.source = None
 
@@ -84,7 +86,8 @@ class BaseSink(object):
 
     def validate(self):
         """Returns whether sink prerequisites are met (like ROS environment set if TopicSink)."""
-        return True
+        if self.valid is None: self.valid = True
+        return self.valid
 
     def close(self):
         """Shuts down output, closing any files or connections."""
@@ -426,6 +429,7 @@ class BagSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output bagfile."""
+        if not self.validate(): raise Exception("invalid")
         self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         topickey = rosapi.TypeMeta.make(msg, topic).topickey
@@ -438,6 +442,7 @@ class BagSink(BaseSink):
 
     def validate(self):
         """Returns whether write options are valid and ROS environment set, prints error if not."""
+        if self.valid is not None: return self.valid
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for bag: %r. "
@@ -446,7 +451,8 @@ class BagSink(BaseSink):
             result = False
         if not verify_writable(self.args.WRITE):
             result = False
-        return rosapi.validate() and result
+        self.valid = rosapi.validate() and result
+        return self.valid
 
     def close(self):
         """Closes output bagfile, if any."""
@@ -513,6 +519,7 @@ class TopicSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Publishes message to output topic."""
+        if not self.validate(): raise Exception("invalid")
         with rosapi.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
         if topickey not in self._pubs:
@@ -532,6 +539,7 @@ class TopicSink(BaseSink):
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
+        if not self.validate(): raise Exception("invalid")
         BaseSink.bind(self, source)
         rosapi.init_node()
 
@@ -540,6 +548,7 @@ class TopicSink(BaseSink):
         Returns whether ROS environment is set for publishing,
         and output topic configuration is valid, prints error if not.
         """
+        if self.valid is not None: return self.valid
         result = rosapi.validate(live=True)
         config_ok = True
         if self.args.LIVE and not any((self.args.PUBLISH_PREFIX, self.args.PUBLISH_SUFFIX,
@@ -547,7 +556,8 @@ class TopicSink(BaseSink):
             ConsolePrinter.error("Need topic prefix or suffix or fixname "
                                  "when republishing messages from live ROS topics.")
             config_ok = False
-        return result and config_ok
+        self.valid = result and config_ok
+        return self.valid
 
     def close(self):
         """Shuts down publishers."""
@@ -613,7 +623,7 @@ class MultiSink(BaseSink):
         """
         args = ensure_namespace(args, **kwargs)
         super(MultiSink, self).__init__(args)
-        self._valid = True
+        self.valid = True
 
         ## List of all combined sinks
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
@@ -629,7 +639,7 @@ class MultiSink(BaseSink):
                             and c.autodetect(target)), None)
             if not cls:
                 ConsolePrinter.error('Unknown output format in "%s"' % " ".join(map(str, dumpopts)))
-                self._valid = False
+                self.valid = False
                 continue  # for dumpopts
             clsargs = copy.deepcopy(args)
             clsargs.WRITE, clsargs.WRITE_OPTIONS = target, kwargs
@@ -660,7 +670,7 @@ class MultiSink(BaseSink):
         """Returns whether prerequisites are met for all sinks."""
         if not self.sinks:
             ConsolePrinter.error("No output configured.")
-        return bool(self.sinks) and all([sink.validate() for sink in self.sinks]) and self._valid
+        return bool(self.sinks) and all([sink.validate() for sink in self.sinks]) and self.valid
 
     def close(self):
         """Closes all sinks."""

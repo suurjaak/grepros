@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    22.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -89,6 +89,7 @@ class SqlSink(BaseSink, SqlMixin):
         Returns whether "dialect" and "nesting" and "overwrite" parameters contain supported values
         and file is writable.
         """
+        if self.valid is not None: return self.valid
         ok, sqlconfig_ok = True, SqlMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("nesting") not in (None, "array", "all"):
             ConsolePrinter.error("Invalid nesting option for SQL: %r. "
@@ -102,11 +103,13 @@ class SqlSink(BaseSink, SqlMixin):
             ok = False
         if not verify_writable(self.args.WRITE):
             ok = False
-        return sqlconfig_ok and ok
+        self.valid = sqlconfig_ok and ok
+        return self.valid
 
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message type CREATE TABLE statements to SQL schema file."""
+        if not self.validate(): raise Exception("invalid")
         batch = self.source.get_batch()
         if not self._batch_metas or batch != self._batch:
             self._batch = batch

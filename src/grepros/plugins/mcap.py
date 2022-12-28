@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    24.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -563,6 +563,7 @@ class McapSink(BaseSink):
         Returns whether required libraries are available (mcap, mcap_ros1/mcap_ros2)
         and overwrite is valid and file is writable.
         """
+        if self.valid is not None: return self.valid
         ok, mcap_ok, mcap_ros_ok = True, bool(mcap), bool(mcap_ros)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for MCAP: %r. "
@@ -576,11 +577,13 @@ class McapSink(BaseSink):
                                  rosapi.ROS_VERSION or "")
         if not verify_writable(self.args.WRITE):
             ok = False
-        return ok and mcap_ok and mcap_ros_ok
+        self.valid = ok and mcap_ok and mcap_ros_ok
+        return self.valid
 
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message to MCAP file."""
+        if not self.validate(): raise Exception("invalid")
         self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         kwargs = dict(publish_time=rosapi.to_nsec(stamp), sequence=index)

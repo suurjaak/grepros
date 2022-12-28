@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    23.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -89,6 +89,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._queue.put((topic, msg, stamp, match, index))
         if not self._writer:
@@ -101,6 +102,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         Returns whether write options are valid and ROS environment is set and file is writable,
         prints error if not.
         """
+        if self.valid is not None: return self.valid
         result = True
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
@@ -112,7 +114,8 @@ class HtmlSink(BaseSink, TextSinkMixin):
             result = False
         if not verify_writable(self.args.WRITE):
             result = False
-        return rosapi.validate() and result
+        self.valid = rosapi.validate() and result
+        return self.valid
 
     def close(self):
         """Closes output file, if any."""

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    23.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -122,6 +122,7 @@ class ParquetSink(BaseSink):
         Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid
         and file base is writable.
         """
+        if self.valid is not None: return self.valid
         ok, pandas_ok, pyarrow_ok = self._configure_ok, bool(pandas), bool(pyarrow)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
@@ -134,11 +135,13 @@ class ParquetSink(BaseSink):
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
         if not verify_writable(self.args.WRITE):
             ok = False
-        return ok and pandas_ok and pyarrow_ok
+        self.valid = ok and pandas_ok and pyarrow_ok
+        return self.valid
 
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to a Parquet file."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(topic, msg)
         self._process_message(topic, msg, stamp)

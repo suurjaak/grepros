@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -72,6 +72,8 @@ class BaseSource(object):
         self.topics = {}
         ## ProgressBar instance, if any
         self.bar = None
+        ## Result of validate()
+        self.valid = None  
 
         self._parse_patterns()
         rosapi.TypeMeta.SOURCE = self
@@ -97,7 +99,8 @@ class BaseSource(object):
 
     def validate(self):
         """Returns whether source prerequisites are met (like ROS environment for TopicSource)."""
-        return True
+        if self.valid is None: self.valid = True
+        return self.valid
 
     def close(self):
         """Shuts down input, closing any files or connections."""
@@ -445,6 +448,7 @@ class BagSource(BaseSource, ConditionMixin):
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
+        if not self.validate(): raise Exception("invalid")
         self._running = True
 
         for _ in self._produce_bags():
@@ -474,12 +478,13 @@ class BagSource(BaseSource, ConditionMixin):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        result = rosapi.validate()
+        if self.valid is not None: return self.valid
+        self.valid = rosapi.validate()
         if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
                                  self.args.ORDERBY)
-            result = False
-        return result
+            self.valid = False
+        return self.valid
 
     def close(self):
         """Closes current bag, if any."""
@@ -752,6 +757,7 @@ class TopicSource(BaseSource, ConditionMixin):
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
         if not self._running:
+            if not self.validate(): raise Exception("invalid")
             self._running = True
             self._queue = queue.Queue()
             self.refresh_topics()
@@ -784,7 +790,8 @@ class TopicSource(BaseSource, ConditionMixin):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        return rosapi.validate(live=True)
+        if self.valid is None: self.valid = rosapi.validate(live=True)
+        return self.valid
 
     def close(self):
         """Shuts down subscribers and stops producing messages."""

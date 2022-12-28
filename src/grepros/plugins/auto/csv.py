@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    23.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -61,6 +61,7 @@ class CsvSink(BaseSink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         data = (v for _, v in self._iter_fields(msg))
         metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
@@ -69,6 +70,7 @@ class CsvSink(BaseSink):
 
     def validate(self):
         """Returns whether overwrite option is valid and file base is writable."""
+        if self.valid is not None: return self.valid
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
@@ -77,7 +79,8 @@ class CsvSink(BaseSink):
             result = False
         if not verify_writable(self.args.WRITE):
             result = False
-        return result
+        self.valid = result
+        return self.valid
 
     def close(self):
         """Closes output file(s), if any."""

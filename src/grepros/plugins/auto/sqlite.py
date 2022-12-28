@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    22.12.2022
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -87,6 +87,7 @@ class SqliteSink(BaseDataSink):
         Returns whether "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any,
         and file is writable; parses "message-yaml" and "overwrite" from args.WRITE_OPTIONS.
         """
+        if self.valid is not None: return self.valid
         ok = super(SqliteSink, self).validate()
         if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
@@ -100,7 +101,8 @@ class SqliteSink(BaseDataSink):
             ok = False
         if not verify_writable(self.args.WRITE):
             ok = False
-        return ok
+        self.valid = ok
+        return self.valid
 
 
     def _init_db(self):
