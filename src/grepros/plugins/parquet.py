@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -85,9 +85,9 @@ class ParquetSink(BaseSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the base name of Parquet files to write
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           base name of Parquet files to write
-        @param   args.WRITE_OPTIONS   {"column": additional columns as {name: (rostype, value)},
+        @param   args.meta            whether to print metainfo
+        @param   args.write           base name of Parquet files to write
+        @param   args.write_options   {"column": additional columns as {name: (rostype, value)},
                                        "type": {rostype: PyArrow type or typename like "uint8"},
                                        "writer": dictionary of arguments passed to ParquetWriter,
                                        "column-k=rostype:v": one "column"-argument
@@ -96,7 +96,7 @@ class ParquetSink(BaseSink):
                                        "writer-k=v": one "writer"-argument in flat string form,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args

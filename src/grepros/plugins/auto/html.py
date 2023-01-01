@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -48,18 +48,18 @@ class HtmlSink(BaseSink, TextSinkMixin):
         @param   args                  arguments as namespace or dictionary, case-insensitive;
                                        or a single path as the name of HTML file to write
         @param   args.META             whether to print metainfo
-        @param   args.WRITE            name of HTML file to write,
+        @param   args.write            name of HTML file to write,
                                        will add counter like .2 to filename if exists
-        @param   args.WRITE_OPTIONS    {"template": path to custom HTML template, if any,
+        @param   args.write_options    {"template": path to custom HTML template, if any,
                                         "overwrite": whether to overwrite existing file
                                                      (default false)}
-        @param   args.VERBOSE          whether to print debug information
-        @param   args.HIGHLIGHT        highlight matched values (default true)
-        @param   args.MATCH_WRAPPER    string to wrap around matched values,
+        @param   args.verbose          whether to print debug information
+        @param   args.highlight        highlight matched values (default true)
+        @param   args.match_wrapper    string to wrap around matched values,
                                        both sides if one value, start and end if more than one,
                                        or no wrapping if zero values
-        @param   args.ORDERBY          "topic" or "type" if any to group results by
-        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
+        @param   args.orderby          "topic" or "type" if any to group results by
+        @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)

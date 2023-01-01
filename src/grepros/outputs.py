@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -40,7 +40,7 @@ class BaseSink(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args        arguments as namespace or dictionary, case-insensitive
-        @param   args.META   whether to print metainfo
+        @param   args.meta   whether to print metainfo
         @param   kwargs      any and all arguments as keyword overrides, case-insensitive
         """
         self._batch_meta = {}  # {source batch: "source metadata"}
@@ -133,18 +133,18 @@ class TextSinkMixin(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
-        @param   args.COLOR                 False or "never" for not using colors in replacements
-        @param   args.HIGHLIGHT             highlight matched values (default true)
-        @param   args.PRINT_FIELD           message fields to use in output if not all
-        @param   args.NOPRINT_FIELD         message fields to skip in output
-        @param   args.MAX_FIELD_LINES       maximum number of lines to output per field
-        @param   args.START_LINE            message line number to start output from
-        @param   args.END_LINE              message line number to stop output at
-        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
-        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
-        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
-        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
-        @param   args.MATCH_WRAPPER         string to wrap around matched values,
+        @param   args.color                 False or "never" for not using colors in replacements
+        @param   args.highlight             highlight matched values (default true)
+        @param   args.print_field           message fields to use in output if not all
+        @param   args.noprint_field         message fields to skip in output
+        @param   args.max_field_lines       maximum number of lines to output per field
+        @param   args.start_line            message line number to start output from
+        @param   args.end_line              message line number to stop output at
+        @param   args.max_message_lines     maximum number of lines to output per message
+        @param   args.lines_around_match    number of message lines around matched fields to output
+        @param   args.matched_fields_only   output only the fields where match was found
+        @param   args.wrap_width            character width to wrap message YAML output at
+        @param   args.match_wrapper         string to wrap around matched values,
                                             both sides if one value, start and end if more than one,
                                             or no wrapping if zero values
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
@@ -336,20 +336,20 @@ class ConsoleSink(BaseSink, TextSinkMixin):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                       arguments as namespace or dictionary, case-insensitive
-        @param   args.COLOR                 False or "never" for not using colors in replacements
-        @param   args.HIGHLIGHT             highlight matched values (default true)
-        @param   args.META                  whether to print metainfo
-        @param   args.PRINT_FIELD           message fields to print in output if not all
-        @param   args.NOPRINT_FIELD         message fields to skip in output
-        @param   args.LINE_PREFIX           print source prefix like bag filename on each message line
-        @param   args.MAX_FIELD_LINES       maximum number of lines to print per field
-        @param   args.START_LINE            message line number to start output from
-        @param   args.END_LINE              message line number to stop output at
-        @param   args.MAX_MESSAGE_LINES     maximum number of lines to output per message
-        @param   args.LINES_AROUND_MATCH    number of message lines around matched fields to output
-        @param   args.MATCHED_FIELDS_ONLY   output only the fields where match was found
-        @param   args.WRAP_WIDTH            character width to wrap message YAML output at
-        @param   args.MATCH_WRAPPER         string to wrap around matched values,
+        @param   args.color                 False or "never" for not using colors in replacements
+        @param   args.highlight             highlight matched values (default true)
+        @param   args.meta                  whether to print metainfo
+        @param   args.print_field           message fields to print in output if not all
+        @param   args.noprint_field         message fields to skip in output
+        @param   args.line_prefix           print source prefix like bag filename on each message line
+        @param   args.max_field_lines       maximum number of lines to print per field
+        @param   args.start_line            message line number to start output from
+        @param   args.end_line              message line number to stop output at
+        @param   args.max_message_lines     maximum number of lines to output per message
+        @param   args.lines_around_match    number of message lines around matched fields to output
+        @param   args.matched_fields_only   output only the fields where match was found
+        @param   args.wrap_width            character width to wrap message YAML output at
+        @param   args.match_wrapper         string to wrap around matched values,
                                             both sides if one value, start and end if more than one,
                                             or no wrapping if zero values
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
@@ -411,11 +411,11 @@ class BagSink(BaseSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the ROS bagfile to write
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           name of ROS bagfile to create or append to
-        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
+        @param   args.meta            whether to print metainfo
+        @param   args.write           name of ROS bagfile to create or append to
+        @param   args.write_options   {"overwrite": whether to overwrite existing file
                                                      (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
@@ -502,14 +502,14 @@ class TopicSink(BaseSink):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
-        @param   args.LIVE              whether reading messages from live ROS topics
-        @param   args.META              whether to print metainfo
-        @param   args.QUEUE_SIZE_OUT    publisher queue size
-        @param   args.PUBLISH_PREFIX    output topic prefix, prepended to input topic
-        @param   args.PUBLISH_SUFFIX    output topic suffix, appended to output topic
-        @param   args.PUBLISH_FIXNAME   single output topic name to publish to,
+        @param   args.live              whether reading messages from live ROS topics
+        @param   args.meta              whether to print metainfo
+        @param   args.queue_size_out    publisher queue size
+        @param   args.publish_prefix    output topic prefix, prepended to input topic
+        @param   args.publish_suffix    output topic suffix, appended to output topic
+        @param   args.publish_fixname   single output topic name to publish to,
                                         overrides prefix and suffix if given
-        @param   args.VERBOSE           whether to print debug information
+        @param   args.verbose           whether to print debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
@@ -615,9 +615,9 @@ class MultiSink(BaseSink):
     def __init__(self, args=None, sinks=(), **kwargs):
         """
         @param   args           arguments as namespace or dictionary, case-insensitive
-        @param   args.CONSOLE   print matches to console
-        @param   args.WRITE     [[target, format=FORMAT, key=value, ], ]
-        @param   args.PUBLISH   publish matches to live topics
+        @param   args.console   print matches to console
+        @param   args.write     [[target, format=FORMAT, key=value, ], ]
+        @param   args.publish   publish matches to live topics
         @param   sinks          pre-created sinks, arguments will be ignored
         @param   kwargs         any and all arguments as keyword overrides, case-insensitive
         """

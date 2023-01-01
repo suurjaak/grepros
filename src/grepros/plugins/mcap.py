@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -537,11 +537,11 @@ class McapSink(BaseSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the file to write
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           base name of MCAP files to write
-        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing file
+        @param   args.meta            whether to print metainfo
+        @param   args.write           base name of MCAP files to write
+        @param   args.write_options   {"overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args

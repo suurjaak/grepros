@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -63,9 +63,9 @@ class SqliteSink(BaseDataSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the name of SQLitefile to write
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           name of SQLite file to write, will be appended to if exists
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args.meta            whether to print metainfo
+        @param   args.write           name of SQLite file to write, will be appended to if exists
+        @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
                                        "message-yaml": populate messages.yaml (default true),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting),
@@ -84,8 +84,8 @@ class SqliteSink(BaseDataSink):
 
     def validate(self):
         """
-        Returns whether "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any,
-        and file is writable; parses "message-yaml" and "overwrite" from args.WRITE_OPTIONS.
+        Returns whether "commit-interval" and "nesting" in args.write_options have valid value, if any,
+        and file is writable; parses "message-yaml" and "overwrite" from args.write_options.
         """
         if self.valid is not None: return self.valid
         ok = super(SqliteSink, self).validate()

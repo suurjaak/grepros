@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -68,12 +68,12 @@ class BaseDataSink(BaseSink, SqlMixin):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single item as the database connection string
-        @param   args.WRITE           database connection string
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args.write           database connection string
+        @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
-        @param   args.META            whether to print metainfo
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.meta            whether to print metainfo
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
@@ -103,7 +103,7 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def validate(self):
         """
-        Returns whether args.WRITE_OPTIONS has valid values, if any.
+        Returns whether args.write_options has valid values, if any.
 
         Checks parameters "commit-interval" and "nesting".
         """

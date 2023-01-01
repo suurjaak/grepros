@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -39,20 +39,20 @@ class Searcher(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                     arguments as namespace or dictionary, case-insensitive
-        @param   args.PATTERN             pattern(s) to find in message field values
-        @param   args.RAW                 PATTERN contains ordinary strings, not regular expressions
-        @param   args.CASE                use case-sensitive matching in PATTERN
-        @param   args.INVERT              select non-matching messages
-        @param   args.HIGHLIGHT           highlight matched values
-        @param   args.BEFORE              number of messages of leading context to emit before match
-        @param   args.AFTER               number of messages of trailing context to emit after match
-        @param   args.MAX_MATCHES         number of matched messages to emit (per file if bag input)
-        @param   args.MAX_TOPIC_MATCHES   number of matched messages to emit from each topic
-        @param   args.MAX_TOPICS          number of topics to emit matches from
-        @param   args.NTH_MATCH           emit every Nth match in topic
-        @param   args.SELECT_FIELD        message fields to use in matching if not all
-        @param   args.NOSELECT_FIELD      message fields to skip in matching
-        @param   args.MATCH_WRAPPER       string to wrap around matched values in find() and match(),
+        @param   args.pattern             pattern(s) to find in message field values
+        @param   args.raw                 pattern contains ordinary strings, not regular expressions
+        @param   args.case                use case-sensitive matching in pattern
+        @param   args.invert              select non-matching messages
+        @param   args.highlight           highlight matched values
+        @param   args.before              number of messages of leading context to emit before match
+        @param   args.after               number of messages of trailing context to emit after match
+        @param   args.max_matches         number of matched messages to emit (per file if bag input)
+        @param   args.max_topic_matches   number of matched messages to emit from each topic
+        @param   args.max_topics          number of topics to emit matches from
+        @param   args.nth_match           emit every Nth match in topic
+        @param   args.select_field        message fields to use in matching if not all
+        @param   args.noselect_field      message fields to skip in matching
+        @param   args.match_wrapper       string to wrap around matched values in find() and match(),
                                           both sides if one value, start and end if more than one,
                                           or no wrapping if zero values (default "**")
         @param   kwargs                   any and all arguments as keyword overrides, case-insensitive

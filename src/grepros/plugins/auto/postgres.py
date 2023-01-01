@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -80,12 +80,12 @@ class PostgresSink(BaseDataSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single item as the database connection string
-        @param   args.WRITE           Postgres connection string like "postgresql://user@host/db"
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args.write           Postgres connection string like "postgresql://user@host/db"
+        @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
-        @param   args.META            whether to print metainfo
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.meta            whether to print metainfo
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         super(PostgresSink, self).__init__(args, **kwargs)
@@ -95,7 +95,7 @@ class PostgresSink(BaseDataSink):
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any,
+        and "commit-interval" and "nesting" in args.write_options have valid value, if any,
         and database is connectable.
         """
         if self.valid is not None: return self.valid

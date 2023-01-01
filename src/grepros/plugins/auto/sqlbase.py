@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -40,7 +40,7 @@ class SqlMixin(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.WRITE_OPTIONS   {"dialect": SQL dialect if not default,
+        @param   args.write_options   {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables}
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """

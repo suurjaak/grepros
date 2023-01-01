@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -47,13 +47,13 @@ class BaseSource(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
-        @param   args.START_TIME        earliest timestamp of messages to scan
-        @param   args.END_TIME          latest timestamp of messages to scan
-        @param   args.UNIQUE            emit messages that are unique in topic
-        @param   args.SELECT_FIELD      message fields to use for uniqueness if not all
-        @param   args.NOSELECT_FIELD    message fields to skip for uniqueness
-        @param   args.NTH_MESSAGE       scan every Nth message in topic
-        @param   args.NTH_INTERVAL      minimum time interval between messages in topic
+        @param   args.start_time        earliest timestamp of messages to scan
+        @param   args.end_time          latest timestamp of messages to scan
+        @param   args.unique            emit messages that are unique in topic
+        @param   args.select_field      message fields to use for uniqueness if not all
+        @param   args.noselect_field    message fields to skip for uniqueness
+        @param   args.nth_message       scan every Nth message in topic
+        @param   args.nth_interval      minimum time interval between messages in topic
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
@@ -266,7 +266,7 @@ class ConditionMixin(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args             arguments as namespace or dictionary, case-insensitive
-        @param   args.CONDITION   Python expressions that must evaluate as true
+        @param   args.condition   Python expressions that must evaluate as true
                                   for message to be processable
         @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
@@ -410,25 +410,25 @@ class BagSource(BaseSource, ConditionMixin):
         """
         @param   args               arguments as namespace or dictionary, case-insensitive;
                                     or a single path as the ROS bagfile to read
-        @param   args.FILE          names of ROS bagfiles to scan if not all in directory
-        @param   args.PATH          paths to scan if not current directory
-        @param   args.RECURSE       recurse into subdirectories when looking for bagfiles
-        @param   args.TOPIC         ROS topics to scan if not all
-        @param   args.TYPE          ROS message types to scan if not all
-        @param   args.SKIP_TOPIC    ROS topics to skip
-        @param   args.SKIP_TYPE     ROS message types to skip
-        @param   args.START_TIME    earliest timestamp of messages to scan
-        @param   args.END_TIME      latest timestamp of messages to scan
-        @param   args.START_INDEX   message index within topic to start from
-        @param   args.END_INDEX     message index within topic to stop at
-        @param   args.CONDITION     Python expressions that must evaluate as true
+        @param   args.file          names of ROS bagfiles to scan if not all in directory
+        @param   args.path          paths to scan if not current directory
+        @param   args.recurse       recurse into subdirectories when looking for bagfiles
+        @param   args.topic         ROS topics to scan if not all
+        @param   args.type          ROS message types to scan if not all
+        @param   args.skip_topic    ROS topics to skip
+        @param   args.skip_type     ROS message types to skip
+        @param   args.start_time    earliest timestamp of messages to scan
+        @param   args.end_time      latest timestamp of messages to scan
+        @param   args.start_index   message index within topic to start from
+        @param   args.end_index     message index within topic to stop at
+        @param   args.condition     Python expressions that must evaluate as true
                                     for message to be processable
-        @param   args.AFTER         emit NUM messages of trailing context after match
-        @param   args.ORDERBY       "topic" or "type" if any to group results by
-        @param   args.DECOMPRESS    decompress archived bags to file directory
-        @param   args.REINDEX       make a copy of unindexed bags and reindex them (ROS1 only)
-        @param   args.WRITE         outputs, to skip in input files
-        @param   args.PROGRESS      whether to print progress bar
+        @param   args.after         emit NUM messages of trailing context after match
+        @param   args.orderby       "topic" or "type" if any to group results by
+        @param   args.decompress    decompress archived bags to file directory
+        @param   args.reindex       make a copy of unindexed bags and reindex them (ROS1 only)
+        @param   args.write         outputs, to skip in input files
+        @param   args.progress      whether to print progress bar
         @param   bag                Bag instance to use instead
         @param   kwargs             any and all arguments as keyword overrides, case-insensitive
         """
@@ -730,19 +730,19 @@ class TopicSource(BaseSource, ConditionMixin):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.TOPIC           ROS topics to scan if not all
-        @param   args.TYPE            ROS message types to scan if not all
-        @param   args.SKIP_TOPIC      ROS topics to skip
-        @param   args.SKIP_TYPE       ROS message types to skip
-        @param   args.START_TIME      earliest timestamp of messages to scan
-        @param   args.END_TIME        latest timestamp of messages to scan
-        @param   args.START_INDEX     message index within topic to start from
-        @param   args.END_INDEX       message index within topic to stop at
-        @param   args.CONDITION       Python expressions that must evaluate as true
+        @param   args.topic           ROS topics to scan if not all
+        @param   args.type            ROS message types to scan if not all
+        @param   args.skip_topic      ROS topics to skip
+        @param   args.skip_type       ROS message types to skip
+        @param   args.start_time      earliest timestamp of messages to scan
+        @param   args.end_time        latest timestamp of messages to scan
+        @param   args.start_index     message index within topic to start from
+        @param   args.end_index       message index within topic to stop at
+        @param   args.condition       Python expressions that must evaluate as true
                                       for message to be processable
-        @param   args.QUEUE_SIZE_IN   subscriber queue size
-        @param   args.ROS_TIME_IN     stamp messages with ROS time instead of wall time
-        @param   args.PROGRESS        whether to print progress bar
+        @param   args.queue_size_in   subscriber queue size
+        @param   args.ros_time_in     stamp messages with ROS time instead of wall time
+        @param   args.progress        whether to print progress bar
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
@@ -935,20 +935,20 @@ class AppSource(BaseSource, ConditionMixin):
     def __init__(self, args=None, iterable=None, **kwargs):
         """
         @param   args                  arguments as namespace or dictionary, case-insensitive
-        @param   args.TOPIC            ROS topics to scan if not all
-        @param   args.TYPE             ROS message types to scan if not all
-        @param   args.SKIP_TOPIC       ROS topics to skip
-        @param   args.SKIP_TYPE        ROS message types to skip
-        @param   args.START_TIME       earliest timestamp of messages to scan
-        @param   args.END_TIME         latest timestamp of messages to scan
-        @param   args.START_INDEX      message index within topic to start from
-        @param   args.END_INDEX        message index within topic to stop at
-        @param   args.UNIQUE           emit messages that are unique in topic
-        @param   args.SELECT_FIELD     message fields to use for uniqueness if not all
-        @param   args.NOSELECT_FIELD   message fields to skip for uniqueness
-        @param   args.NTH_MESSAGE      scan every Nth message in topic
-        @param   args.NTH_INTERVAL     minimum time interval between messages in topic
-        @param   args.CONDITION        Python expressions that must evaluate as true
+        @param   args.topic            ROS topics to scan if not all
+        @param   args.type             ROS message types to scan if not all
+        @param   args.skip_topic       ROS topics to skip
+        @param   args.skip_type        ROS message types to skip
+        @param   args.start_time       earliest timestamp of messages to scan
+        @param   args.end_time         latest timestamp of messages to scan
+        @param   args.start_index      message index within topic to start from
+        @param   args.end_index        message index within topic to stop at
+        @param   args.unique           emit messages that are unique in topic
+        @param   args.select_field     message fields to use for uniqueness if not all
+        @param   args.noselect_field   message fields to skip for uniqueness
+        @param   args.nth_message      scan every Nth message in topic
+        @param   args.nth_interval     minimum time interval between messages in topic
+        @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable
         @param   iterable              iterable yielding (topic, msg, stamp) or (topic, msg);
                                        yielding `None` signals end of content

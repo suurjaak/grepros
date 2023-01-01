@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -39,12 +39,12 @@ class CsvSink(BaseSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the base name of CSV files to write
-        @param   args.WRITE           base name of CSV files to write,
+        @param   args.write           base name of CSV files to write,
                                       will add topic name like "name.__my__topic.csv" for "/my/topic",
                                       will add counter like "name.__my__topic.2.csv" if exists
-        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing files
+        @param   args.write_options   {"overwrite": whether to overwrite existing files
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
