@@ -43,7 +43,7 @@ class Searcher(object):
         @param   args.pattern             pattern(s) to find in message field values
         @param   args.raw                 pattern contains ordinary strings, not regular expressions
         @param   args.case                use case-sensitive matching in pattern
-        @param   args.invert              select non-matching messages
+        @param   args.invert              select messages not matching pattern
         @param   args.highlight           highlight matched values
         @param   args.before              number of messages of leading context to emit before match
         @param   args.after               number of messages of trailing context to emit after match

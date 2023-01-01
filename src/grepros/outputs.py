@@ -504,7 +504,7 @@ class TopicSink(BaseSink):
         @param   args                   arguments as namespace or dictionary, case-insensitive
         @param   args.live              whether reading messages from live ROS topics
         @param   args.meta              whether to print metainfo
-        @param   args.queue_size_out    publisher queue size
+        @param   args.queue_size_out    publisher queue size (default 10)
         @param   args.publish_prefix    output topic prefix, prepended to input topic
         @param   args.publish_suffix    output topic suffix, appended to output topic
         @param   args.publish_fixname   single output topic name to publish to,

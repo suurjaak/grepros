@@ -126,7 +126,7 @@ grepros is written in Python, supporting both Python 2 and Python 3.
 
 Developed and tested under ROS1 noetic and ROS2 foxy,
 it should also work in later ROS2 versions;
-it _may_ work in earlier ROS1 versions. 
+it _may_ work in earlier ROS1 versions.
 
 
 ### Using pip
@@ -635,7 +635,7 @@ Stop after matching a specified number of messages (per each file if bag input):
     -m          100
     --max-count 100
 
-Scan only a specified number of topics (per each file if bag input):
+Read only a specified number of topics (per each file if bag input):
 
     --max-topics 10
 
@@ -650,7 +650,7 @@ Emit every Nth match in topic:
 
 ### Filtering
 
-Scan specific topics only (supports * wildcards):
+Read specific topics only (supports * wildcards):
 
     -t      *lidar* *ins*
     --topic /robot/sensors/*
@@ -660,22 +660,22 @@ Skip specific topics (supports * wildcards):
     -nt        *lidar* *ins*
     --no-topic /robot/sensors/*
 
-Scan specific message types only (supports * wildcards):
+Read specific message types only (supports * wildcards):
 
     -d     *Twist*
     --type sensor_msgs/*
 
-Skip specific message types from scanning (supports * wildcards):
+Skip specific message types from reading (supports * wildcards):
 
     -nd       *Twist*
     --no-type sensor_msgs/*
 
-Set specific message fields to scan (supports nested.paths and * wildcards):
+Set specific message fields to read (supports nested.paths and * wildcards):
 
     -sf            twist.linear
     --select-field *data
 
-Skip specific message fields in scan (supports nested.paths and * wildcards):
+Skip specific message fields in read (supports nested.paths and * wildcards):
 
     -ns               twist.linear
     --no-select-field *data
@@ -685,35 +685,35 @@ taking `--select-field` and `--no-select-field` into account (per each file if b
 
     --unique-only
 
-Start scanning from a specific timestamp:
+Start reading from a specific timestamp:
 
     -t0          2021-11     # (using partial ISO datetime)
     --start-time 1636900000  # (using UNIX timestamp)
     --start-time +100        # (seconds from bag start time, or from script startup time if live input)
     --start-time -100        # (seconds from bag end time, or script startup time if live input)
 
-Stop scanning at a specific timestamp:
+Stop reading at a specific timestamp:
 
     -t1        2021-11     # (using partial ISO datetime)
     --end-time 1636900000  # (using UNIX timestamp)
     --end-time +100        # (seconds from bag start time, or from script startup time if live input)
     --end-time -100        # (seconds from bag end time, or from script startup time if live input)
 
-Start scanning from a specific message index in topic:
+Start reading from a specific message index in topic:
 
     -n0           -100  # (counts back from topic total message count in bag)
     --start-index   10  # (1-based index)
 
-Stop scanning at a specific message index in topic:
+Stop reading at a specific message index in topic:
 
     -n1         -100  # (counts back from topic total message count in bag)
     --end-index   10  # (1-based index)
 
-Scan every Nth message in topic:
+Read every Nth message in topic:
 
     --every-nth-message 10  # (skips 9 messages in topic with each step)
 
-Scan messages in topic with timestamps at least N seconds apart:
+Read messages in topic with timestamps at least N seconds apart:
 
     --every-nth-interval 5  # (samples topic messages no more often than every 5 seconds)
 
@@ -983,7 +983,6 @@ grepros does provide the message type hash itself in ROS2 exports, by calculatin
 the ROS2 message type hash on its own from the locally installed type definition.
 
 
-
 All command-line arguments
 --------------------------
 
@@ -1017,9 +1016,9 @@ optional arguments:
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
                                                    in Postgres/SQLite output,
-                                                   only for arrays if "array" 
+                                                   only for arrays if "array"
                                                    else for any nested types
-                                                   (array fields in parent will be populated 
+                                                   (array fields in parent will be populated
                                                     with foreign keys instead of messages as JSON)
                           overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
                                                    instead of appending to if bag or database
@@ -1028,17 +1027,17 @@ optional arguments:
                           template=/my/path.tpl    custom template to use for HTML output
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
-                        (built-in plugins: grepros.plugins.embag, 
-                         grepros.plugins.mcap, grepros.plugins.parquet, 
+                        (built-in plugins: grepros.plugins.embag,
+                         grepros.plugins.mcap, grepros.plugins.parquet,
                          grepros.plugins.sql)
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]
-                        ROS topics to scan if not all (supports * wildcards)
+                        ROS topics to read if not all (supports * wildcards)
   -nt TOPIC [TOPIC ...], --no-topic TOPIC [TOPIC ...]
                         ROS topics to skip (supports * wildcards)
   -d TYPE [TYPE ...], --type TYPE [TYPE ...]
-                        ROS message types to scan if not all (supports * wildcards)
+                        ROS message types to read if not all (supports * wildcards)
   -nd TYPE [TYPE ...], --no-type TYPE [TYPE ...]
                         ROS message types to skip (supports * wildcards)
   --condition CONDITION [CONDITION ...]
@@ -1048,7 +1047,7 @@ Filtering:
                         E.g. --condition "{topic /robot/enabled}.data" matches
                         messages only while last message in '/robot/enabled' has data=true.
   -t0 TIME, --start-time TIME
-                        earliest timestamp of messages to scan
+                        earliest timestamp of messages to read
                         as relative seconds if signed,
                         or epoch timestamp or ISO datetime
                         (for bag input, relative to bag start time
@@ -1056,7 +1055,7 @@ Filtering:
                         for live input relative to system time,
                         datetime may be partial like 2021-10-14T12)
   -t1 TIME, --end-time TIME
-                        latest timestamp of messages to scan
+                        latest timestamp of messages to read
                         as relative seconds if signed,
                         or epoch timestamp or ISO datetime
                         (for bag input, relative to bag start time
@@ -1070,9 +1069,9 @@ Filtering:
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
   --every-nth-message NUM
-                        scan every Nth message within topic
+                        read every Nth message within topic
   --every-nth-interval SECONDS
-                        scan messages at least N seconds apart within topic
+                        read messages at least N seconds apart within topic
   --every-nth-match NUM
                         emit every Nth match in topic
   -sf FIELD [FIELD ...], --select-field FIELD [FIELD ...]
@@ -1140,7 +1139,7 @@ Output control:
 
 Bag input control:
   -n FILE [FILE ...], --filename FILE [FILE ...]
-                        names of ROS bagfiles to scan if not all in directory
+                        names of ROS bagfiles to read if not all in directory
                         (supports * wildcards)
   -p PATH [PATH ...], --path PATH [PATH ...]
                         paths to scan if not current directory

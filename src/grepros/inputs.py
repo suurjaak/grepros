@@ -47,12 +47,12 @@ class BaseSource(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
-        @param   args.start_time        earliest timestamp of messages to scan
-        @param   args.end_time          latest timestamp of messages to scan
+        @param   args.start_time        earliest timestamp of messages to read
+        @param   args.end_time          latest timestamp of messages to read
         @param   args.unique            emit messages that are unique in topic
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       scan every Nth message in topic
+        @param   args.nth_message       read every Nth message in topic
         @param   args.nth_interval      minimum time interval between messages in topic
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
@@ -410,15 +410,15 @@ class BagSource(BaseSource, ConditionMixin):
         """
         @param   args               arguments as namespace or dictionary, case-insensitive;
                                     or a single path as the ROS bagfile to read
-        @param   args.file          names of ROS bagfiles to scan if not all in directory
+        @param   args.file          names of ROS bagfiles to read if not all in directory
         @param   args.path          paths to scan if not current directory
         @param   args.recurse       recurse into subdirectories when looking for bagfiles
-        @param   args.topic         ROS topics to scan if not all
-        @param   args.type          ROS message types to scan if not all
+        @param   args.topic         ROS topics to read if not all
+        @param   args.type          ROS message types to read if not all
         @param   args.skip_topic    ROS topics to skip
         @param   args.skip_type     ROS message types to skip
-        @param   args.start_time    earliest timestamp of messages to scan
-        @param   args.end_time      latest timestamp of messages to scan
+        @param   args.start_time    earliest timestamp of messages to read
+        @param   args.end_time      latest timestamp of messages to read
         @param   args.start_index   message index within topic to start from
         @param   args.end_index     message index within topic to stop at
         @param   args.condition     Python expressions that must evaluate as true
@@ -440,7 +440,7 @@ class BagSource(BaseSource, ConditionMixin):
         ConditionMixin.__init__(self, args)
         self._args0     = copy.deepcopy(args)  # Original arguments
         self._status    = None   # Match status of last produced message
-        self._sticky    = False  # Scanning a single topic until all after-context emitted
+        self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
         self._bag       = None   # Current bag object instance
@@ -732,17 +732,17 @@ class TopicSource(BaseSource, ConditionMixin):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.topic           ROS topics to scan if not all
-        @param   args.type            ROS message types to scan if not all
+        @param   args.topic           ROS topics to read if not all
+        @param   args.type            ROS message types to read if not all
         @param   args.skip_topic      ROS topics to skip
         @param   args.skip_type       ROS message types to skip
-        @param   args.start_time      earliest timestamp of messages to scan
-        @param   args.end_time        latest timestamp of messages to scan
+        @param   args.start_time      earliest timestamp of messages to read
+        @param   args.end_time        latest timestamp of messages to read
         @param   args.start_index     message index within topic to start from
         @param   args.end_index       message index within topic to stop at
         @param   args.condition       Python expressions that must evaluate as true
                                       for message to be processable
-        @param   args.queue_size_in   subscriber queue size
+        @param   args.queue_size_in   subscriber queue size (default 10)
         @param   args.ros_time_in     stamp messages with ROS time instead of wall time
         @param   args.progress        whether to print progress bar
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
@@ -937,18 +937,18 @@ class AppSource(BaseSource, ConditionMixin):
     def __init__(self, args=None, iterable=None, **kwargs):
         """
         @param   args                  arguments as namespace or dictionary, case-insensitive
-        @param   args.topic            ROS topics to scan if not all
-        @param   args.type             ROS message types to scan if not all
+        @param   args.topic            ROS topics to read if not all
+        @param   args.type             ROS message types to read if not all
         @param   args.skip_topic       ROS topics to skip
         @param   args.skip_type        ROS message types to skip
-        @param   args.start_time       earliest timestamp of messages to scan
-        @param   args.end_time         latest timestamp of messages to scan
+        @param   args.start_time       earliest timestamp of messages to read
+        @param   args.end_time         latest timestamp of messages to read
         @param   args.start_index      message index within topic to start from
         @param   args.end_index        message index within topic to stop at
         @param   args.unique           emit messages that are unique in topic
         @param   args.select_field     message fields to use for uniqueness if not all
         @param   args.noselect_field   message fields to skip for uniqueness
-        @param   args.nth_message      scan every Nth message in topic
+        @param   args.nth_message      read every Nth message in topic
         @param   args.nth_interval     minimum time interval between messages in topic
         @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable

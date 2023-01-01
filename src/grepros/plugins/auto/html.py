@@ -47,7 +47,7 @@ class HtmlSink(BaseSink, TextSinkMixin):
         """
         @param   args                  arguments as namespace or dictionary, case-insensitive;
                                        or a single path as the name of HTML file to write
-        @param   args.META             whether to print metainfo
+        @param   args.meta             whether to print metainfo
         @param   args.write            name of HTML file to write,
                                        will add counter like .2 to filename if exists
         @param   args.write_options    {"template": path to custom HTML template, if any,

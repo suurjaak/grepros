@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -94,7 +94,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-v", "--invert-match"],
              dest="INVERT", action="store_true",
-             help="select non-matching messages"),
+             help="select messages not matching PATTERN"),
 
         dict(args=["--version"],
              dest="VERSION", action="version",
@@ -129,7 +129,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-t", "--topic"],
              dest="TOPIC", nargs="+", default=[], action="append",
-             help="ROS topics to scan if not all (supports * wildcards)"),
+             help="ROS topics to read if not all (supports * wildcards)"),
 
         dict(args=["-nt", "--no-topic"],
              dest="SKIP_TOPIC", metavar="TOPIC", nargs="+", default=[], action="append",
@@ -137,7 +137,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-d", "--type"],
              dest="TYPE", nargs="+", default=[], action="append",
-             help="ROS message types to scan if not all (supports * wildcards)"),
+             help="ROS message types to read if not all (supports * wildcards)"),
 
         dict(args=["-nd", "--no-type"],
              dest="SKIP_TYPE", metavar="TYPE", nargs="+", default=[], action="append",
@@ -153,7 +153,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-t0", "--start-time"],
              dest="START_TIME", metavar="TIME",
-             help="earliest timestamp of messages to scan\n"
+             help="earliest timestamp of messages to read\n"
                   "as relative seconds if signed,\n"
                   "or epoch timestamp or ISO datetime\n"
                   "(for bag input, relative to bag start time\n"
@@ -163,7 +163,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-t1", "--end-time"],
              dest="END_TIME", metavar="TIME",
-             help="latest timestamp of messages to scan\n"
+             help="latest timestamp of messages to read\n"
                   "as relative seconds if signed,\n"
                   "or epoch timestamp or ISO datetime\n"
                   "(for bag input, relative to bag start time\n"
@@ -183,11 +183,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--every-nth-message"],
              dest="NTH_MESSAGE", metavar="NUM", type=int, default=1,
-             help="scan every Nth message within topic"),
+             help="read every Nth message within topic"),
 
         dict(args=["--every-nth-interval"],
              dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
-             help="scan messages at least N seconds apart within topic"),
+             help="read messages at least N seconds apart within topic"),
 
         dict(args=["--every-nth-match"],
              dest="NTH_MATCH", metavar="NUM", type=int, default=1,
@@ -317,7 +317,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-n", "--filename"],
              dest="FILE", nargs="+", default=[], action="append",
-             help="names of ROS bagfiles to scan if not all in directory\n"
+             help="names of ROS bagfiles to read if not all in directory\n"
                   "(supports * wildcards)"),
 
         dict(args=["-p", "--path"],
