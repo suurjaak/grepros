@@ -424,6 +424,8 @@ class BagSource(BaseSource, ConditionMixin):
         @param   args.condition     Python expressions that must evaluate as true
                                     for message to be processable
         @param   args.after         emit NUM messages of trailing context after match
+        @param   args.context       emit NUM messages of trailing context after match,
+                                    overrides args.after
         @param   args.orderby       "topic" or "type" if any to group results by
         @param   args.decompress    decompress archived bags to file directory
         @param   args.reindex       make a copy of unindexed bags and reindex them (ROS1 only)

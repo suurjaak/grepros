@@ -31,9 +31,10 @@ class Searcher(object):
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, HIGHLIGHT=False, NTH_MATCH=1,
-                        BEFORE=0, AFTER=0, MAX_MATCHES=0, MAX_TOPIC_MATCHES=0, MAX_TOPICS=0,
-                        SELECT_FIELD=(), NOSELECT_FIELD=(), MATCH_WRAPPER="**")
+    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, HIGHLIGHT=False,
+                        NTH_MATCH=1, BEFORE=0, AFTER=0, CONTEXT=0, MAX_MATCHES=0,
+                        MAX_TOPIC_MATCHES=0, MAX_TOPICS=0, SELECT_FIELD=(), NOSELECT_FIELD=(),
+                        MATCH_WRAPPER="**")
 
 
     def __init__(self, args=None, **kwargs):
@@ -46,6 +47,8 @@ class Searcher(object):
         @param   args.highlight           highlight matched values
         @param   args.before              number of messages of leading context to emit before match
         @param   args.after               number of messages of trailing context to emit after match
+        @param   args.context             number of messages of leading and trailing context to emit
+                                          around match, overrides args.before and args.after
         @param   args.max_matches         number of matched messages to emit (per file if bag input)
         @param   args.max_topic_matches   number of matched messages to emit from each topic
         @param   args.max_topics          number of topics to emit matches from
@@ -79,6 +82,7 @@ class Searcher(object):
         self.sink   = None
 
         self.args = ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs)
+        if self.args.CONTEXT: self.args.BEFORE = self.args.AFTER = self.args.CONTEXT
         self._parse_patterns()
 
 
