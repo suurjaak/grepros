@@ -1016,7 +1016,10 @@ class AppSource(BaseSource, ConditionMixin):
         self._queue.put(None) if topic is None else (topic, msg, stamp)
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether specified message in topic is in acceptable range."""
+        """Returns whether specified message in topic passes filter."""
+        dct = filter_dict({topic: [api.get_message_type(msg)]}, self.args.TOPIC, self.args.TYPE)
+        if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
+            return False
         if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
                 return False
