@@ -76,9 +76,9 @@ class Searcher(object):
         self._highlight       = None   # Highlight matched values in message fields
         self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
 
-        ## BaseSource instance
+        ## Source instance
         self.source = None
-        ## BaseSink instance
+        ## Sink instance
         self.sink   = None
 
         self.args = ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs)
@@ -90,7 +90,7 @@ class Searcher(object):
         """
         Yields matched and context messages from source.
 
-        @param   source     inputs.BaseSource or api.Bag instance
+        @param   source     inputs.Source or api.Bag instance
         @param   highlight  whether to highlight matched values in message fields,
                             defaults to flag from constructor
         @return             GrepMessage namedtuples of
@@ -98,7 +98,7 @@ class Searcher(object):
                             where match is matched optionally highlighted message
                             or `None` if yielding a context message
         """
-        if not isinstance(source, inputs.BaseSource):
+        if not isinstance(source, inputs.Source):
             source = inputs.BagSource(self.args, bag=source)
         self._prepare(source, highlight=highlight)
         for topic, msg, stamp, matched, index in self._generate():
@@ -147,8 +147,8 @@ class Searcher(object):
         """
         Greps messages yielded from source and emits matched content to sink.
 
-        @param   source  inputs.BaseSource instance
-        @param   sink    outputs.BaseSink instance
+        @param   source  inputs.Source instance
+        @param   sink    outputs.Sink instance
         @return          count matched
         """
         self._prepare(source, sink, highlight=self.args.HIGHLIGHT)

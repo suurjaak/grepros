@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    25.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -81,7 +81,7 @@ class TypeMeta(object):
     All property values are lazy-loaded upon request.
     """
 
-    ## BaseSource instance
+    ## Source instance
     SOURCE = None
 
     ## Seconds before auto-clearing message from cache

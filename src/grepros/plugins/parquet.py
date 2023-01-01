@@ -26,10 +26,10 @@ except ImportError: pass
 from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, \
                       ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
-from .. outputs import BaseSink
+from .. outputs import Sink
 
 
-class ParquetSink(BaseSink):
+class ParquetSink(Sink):
     """Writes messages to Apache Parquet files."""
 
     ## Auto-detection file extensions

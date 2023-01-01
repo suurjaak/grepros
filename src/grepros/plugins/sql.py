@@ -21,12 +21,12 @@ import sys
 from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
                       makedirs, plural, unique_path, verify_writable
-from .. outputs import BaseSink
+from .. outputs import Sink
 from . auto.sqlbase import SqlMixin
 
 
 
-class SqlSink(BaseSink, SqlMixin):
+class SqlSink(Sink, SqlMixin):
     """
     Writes SQL schema file for message type tables and topic views.
 

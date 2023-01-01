@@ -23,11 +23,11 @@ import threading
 from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, ensure_namespace, \
                        format_bytes, makedirs, plural, unique_path, verify_writable
-from ... outputs import BaseSink, TextSinkMixin
+from ... outputs import Sink, TextSinkMixin
 from ... vendor import step
 
 
-class HtmlSink(BaseSink, TextSinkMixin):
+class HtmlSink(Sink, TextSinkMixin):
     """Writes messages to an HTML file."""
 
     ## Auto-detection file extensions

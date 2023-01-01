@@ -2,7 +2,7 @@
 """
 HTML export template.
 
-@param   source     inputs.BaseSource instance
+@param   source     inputs.Source instance
 @param   sink       inputs.HtmlSink instance
 @param   args       list of command-line arguments
 @param   timeline   whether to create timeline
@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    28.12.2022
+@modified    01.01.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re

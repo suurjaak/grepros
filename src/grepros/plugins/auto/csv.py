@@ -23,10 +23,10 @@ import sys
 from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
                        makedirs, plural, unique_path, verify_writable
-from ... outputs import BaseSink
+from ... outputs import Sink
 
 
-class CsvSink(BaseSink):
+class CsvSink(Sink):
     """Writes messages to CSV files, each topic to a separate file."""
 
     ## Auto-detection file extensions

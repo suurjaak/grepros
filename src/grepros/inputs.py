@@ -31,7 +31,7 @@ from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      format_stamp, format_timedelta, plural, wildcard_to_regex
 
 
-class BaseSource(object):
+class Source(object):
     """Message producer base class."""
 
     ## Returned from read() as (topic name, ROS message, ROS timestamp object).
@@ -65,8 +65,8 @@ class BaseSource(object):
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
 
-        self.args = ensure_namespace(args, BaseSource.DEFAULT_ARGS, **kwargs)
-        ## outputs.BaseSink instance bound to this source
+        self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
+        ## outputs.Sink instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
         self.topics = {}
@@ -267,7 +267,7 @@ class ConditionMixin(object):
         """
         @param   args             arguments as namespace or dictionary, case-insensitive
         @param   args.condition   Python expressions that must evaluate as true
-                                  for message to be processable
+                                  for message to be processable, see ConditionMixin
         @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
         self._topic_states         = {}  # {topic: whether only used for condition, not matching}
@@ -389,7 +389,7 @@ class ConditionMixin(object):
                 except Exception: continue  # for topic
 
 
-class BagSource(BaseSource, ConditionMixin):
+class BagSource(Source, ConditionMixin):
     """Produces messages from ROS bagfiles."""
 
     ## Template for message metainfo line
@@ -408,31 +408,37 @@ class BagSource(BaseSource, ConditionMixin):
 
     def __init__(self, args=None, bag=None, **kwargs):
         """
-        @param   args               arguments as namespace or dictionary, case-insensitive;
-                                    or a single path as the ROS bagfile to read
-        @param   args.file          names of ROS bagfiles to read if not all in directory
-        @param   args.path          paths to scan if not current directory
-        @param   args.recurse       recurse into subdirectories when looking for bagfiles
-        @param   args.topic         ROS topics to read if not all
-        @param   args.type          ROS message types to read if not all
-        @param   args.skip_topic    ROS topics to skip
-        @param   args.skip_type     ROS message types to skip
-        @param   args.start_time    earliest timestamp of messages to read
-        @param   args.end_time      latest timestamp of messages to read
-        @param   args.start_index   message index within topic to start from
-        @param   args.end_index     message index within topic to stop at
-        @param   args.condition     Python expressions that must evaluate as true
-                                    for message to be processable
-        @param   args.after         emit NUM messages of trailing context after match
-        @param   args.context       emit NUM messages of trailing context after match,
-                                    overrides args.after
-        @param   args.orderby       "topic" or "type" if any to group results by
-        @param   args.decompress    decompress archived bags to file directory
-        @param   args.reindex       make a copy of unindexed bags and reindex them (ROS1 only)
-        @param   args.write         outputs, to skip in input files
-        @param   args.progress      whether to print progress bar
-        @param   bag                Bag instance to use instead
-        @param   kwargs             any and all arguments as keyword overrides, case-insensitive
+        @param   args                   arguments as namespace or dictionary, case-insensitive;
+                                        or a single path as the ROS bagfile to read
+
+        Bag-specific arguments:
+        @param   args.file              names of ROS bagfiles to read if not all in directory
+        @param   args.path              paths to scan if not current directory
+        @param   args.recurse           recurse into subdirectories when looking for bagfiles
+        @param   args.orderby           "topic" or "type" if any to group results by
+        @param   args.decompress        decompress archived bags to file directory
+        @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
+        @param   args.write             outputs, to skip in input files
+        @param   bag                    Bag instance to use instead
+
+        General arguments:
+        @param   args.topic             ROS topics to read if not all
+        @param   args.type              ROS message types to read if not all
+        @param   args.skip_topic        ROS topics to skip
+        @param   args.skip_type         ROS message types to skip
+        @param   args.start_time        earliest timestamp of messages to read
+        @param   args.end_time          latest timestamp of messages to read
+        @param   args.start_index       message index within topic to start from
+        @param   args.end_index         message index within topic to stop at
+        @param   args.unique            emit messages that are unique in topic
+        @param   args.select_field      message fields to use for uniqueness if not all
+        @param   args.noselect_field    message fields to skip for uniqueness
+        @param   args.nth_message       read every Nth message in topic
+        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.condition         Python expressions that must evaluate as true
+                                        for message to be processable, see ConditionMixin
+        @param   args.progress          whether to print progress bar
+        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else args
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
@@ -718,7 +724,7 @@ class BagSource(BaseSource, ConditionMixin):
         return True
 
 
-class TopicSource(BaseSource, ConditionMixin):
+class TopicSource(Source, ConditionMixin):
     """Produces messages from live ROS topics."""
 
     ## Seconds between refreshing available topics from ROS master.
@@ -731,21 +737,26 @@ class TopicSource(BaseSource, ConditionMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments as namespace or dictionary, case-insensitive
-        @param   args.topic           ROS topics to read if not all
-        @param   args.type            ROS message types to read if not all
-        @param   args.skip_topic      ROS topics to skip
-        @param   args.skip_type       ROS message types to skip
-        @param   args.start_time      earliest timestamp of messages to read
-        @param   args.end_time        latest timestamp of messages to read
-        @param   args.start_index     message index within topic to start from
-        @param   args.end_index       message index within topic to stop at
-        @param   args.condition       Python expressions that must evaluate as true
-                                      for message to be processable
-        @param   args.queue_size_in   subscriber queue size (default 10)
-        @param   args.ros_time_in     stamp messages with ROS time instead of wall time
-        @param   args.progress        whether to print progress bar
-        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
+        @param   args                   arguments as namespace or dictionary, case-insensitive
+        @param   args.topic             ROS topics to read if not all
+        @param   args.type              ROS message types to read if not all
+        @param   args.skip_topic        ROS topics to skip
+        @param   args.skip_type         ROS message types to skip
+        @param   args.start_time        earliest timestamp of messages to read
+        @param   args.end_time          latest timestamp of messages to read
+        @param   args.start_index       message index within topic to start from
+        @param   args.end_index         message index within topic to stop at
+        @param   args.unique            emit messages that are unique in topic
+        @param   args.select_field      message fields to use for uniqueness if not all
+        @param   args.noselect_field    message fields to skip for uniqueness
+        @param   args.nth_message       read every Nth message in topic
+        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.condition         Python expressions that must evaluate as true
+                                        for message to be processable, see ConditionMixin
+        @param   args.queue_size_in     subscriber queue size (default 10)
+        @param   args.ros_time_in       stamp messages with ROS time instead of wall time
+        @param   args.progress          whether to print progress bar
+        @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
         super(TopicSource, self).__init__(args)
@@ -787,7 +798,7 @@ class TopicSource(BaseSource, ConditionMixin):
 
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
-        BaseSource.bind(self, sink)
+        Source.bind(self, sink)
         api.init_node()
 
     def validate(self):
@@ -925,7 +936,7 @@ class TopicSource(BaseSource, ConditionMixin):
         self._queue and self._queue.put((topic, msg, stamp))
 
 
-class AppSource(BaseSource, ConditionMixin):
+class AppSource(Source, ConditionMixin):
     """Produces messages from iterable or pushed data."""
 
     ## Constructor argument defaults
@@ -951,7 +962,7 @@ class AppSource(BaseSource, ConditionMixin):
         @param   args.nth_message      read every Nth message in topic
         @param   args.nth_interval     minimum time interval between messages in topic
         @param   args.condition        Python expressions that must evaluate as true
-                                       for message to be processable
+                                       for message to be processable, see ConditionMixin
         @param   iterable              iterable yielding (topic, msg, stamp) or (topic, msg);
                                        yielding `None` signals end of content
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
@@ -1038,4 +1049,4 @@ class AppSource(BaseSource, ConditionMixin):
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
 
-__all__ = ["AppSource", "BagSource", "BaseSource", "ConditionMixin", "TopicSource"]
+__all__ = ["AppSource", "BagSource", "ConditionMixin", "Source", "TopicSource"]

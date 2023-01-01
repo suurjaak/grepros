@@ -128,7 +128,7 @@ def add_write_format(name, cls, label=None, options=()):
     Adds plugin to `--write` in main.ARGUMENTS and MultiSink formats.
 
     @param   name     format name like "csv", added to `--write .. format=FORMAT`
-    @param   cls      class providing BaseSink interface
+    @param   cls      class providing Sink interface
     @param   label    plugin label; if multiple plugins add the same option,
                       "label output" in help text is replaced with "label1/label2/.. output"
     @param   options  a sequence of (name, help) to add to --write help, like

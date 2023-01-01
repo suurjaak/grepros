@@ -17,11 +17,11 @@ import collections
 
 from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, plural
-from ... outputs import BaseSink
+from ... outputs import Sink
 from . sqlbase import SqlMixin, quote
 
 
-class BaseDataSink(BaseSink, SqlMixin):
+class BaseDataSink(Sink, SqlMixin):
     """
     Base class for writing messages to a database.
 
@@ -163,7 +163,7 @@ class BaseDataSink(BaseSink, SqlMixin):
 
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
-        baseattrs = dir(BaseSink())
+        baseattrs = dir(Sink())
         for attr in (getattr(self, k, None) for k in dir(self)
                      if not k.isupper() and k not in baseattrs):
             isinstance(attr, dict) and attr.clear()
