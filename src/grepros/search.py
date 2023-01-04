@@ -21,10 +21,10 @@ from . import inputs
 from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
 
 
-class Searcher(object):
+class Scanner(object):
     """ROS message grepper."""
 
-    ## Returned from find() as (topic name, ROS message, ROS timestamp object, message if matched).
+    ## Namedtuple of (topic name, ROS message, ROS time object, message if matched).
     GrepMessage = collections.namedtuple("BagMessage", "topic message timestamp match")
 
     ## Match patterns for global any-match
@@ -81,7 +81,7 @@ class Searcher(object):
         ## Sink instance
         self.sink   = None
 
-        self.args = ensure_namespace(args, Searcher.DEFAULT_ARGS, **kwargs)
+        self.args = ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs)
         if self.args.CONTEXT: self.args.BEFORE = self.args.AFTER = self.args.CONTEXT
         self._parse_patterns()
 
@@ -154,7 +154,7 @@ class Searcher(object):
         self._prepare(source, sink, highlight=self.args.HIGHLIGHT)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
-            if matched: sink.emit_meta()
+            sink.emit_meta()
             sink.emit(topic, msg, stamp, matched, index)
             total_matched += bool(matched)
         source.close(), sink.close()
@@ -420,4 +420,4 @@ class Searcher(object):
         return (result if do_highlight else msg) if yes else None
 
 
-__all__ = ["Searcher"]
+__all__ = ["Scanner"]

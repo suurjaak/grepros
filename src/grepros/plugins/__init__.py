@@ -2,13 +2,13 @@
 """
 Plugins interface.
 
-Allows specifying custom plugins for "source", "search" or "sink".
+Allows specifying custom plugins for "source", "scan" or "sink".
 Auto-inits any plugins in grepros.plugins.auto.
 
 Supported (but not required) plugin interface methods:
 
 - `init(args)`: invoked at startup with command-line arguments
-- `load(category, args)`: invoked with category "search" or "source" or "sink",
+- `load(category, args)`: invoked with category "scan" or "source" or "sink",
                           using returned value if not None
 
 Plugins are free to modify package internals, like adding command-line arguments
@@ -27,7 +27,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    14.12.2022
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -102,7 +102,7 @@ def load(category, args, collect=False):
     """
     Returns a plugin category instance loaded from any configured plugin, or None.
 
-    @param   category  item category like "source", "sink", or "search"
+    @param   category  item category like "source", "sink", or "scan"
     @param   args      arguments as namespace or dictionary, case-insensitive
     @param   collect   if true, returns a list of instances,
                        using all plugins that return something

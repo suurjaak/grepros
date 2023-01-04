@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -546,8 +546,8 @@ def run():
 
         thread_excepthook = lambda t, e: (ConsolePrinter.error(t), sys.exit(1))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
-        searcher = plugins.load("search", args) or search.Searcher(args)
-        searcher.work(source, sink)
+        grepper = plugins.load("scan", args) or search.Scanner(args)
+        grepper.work(source, sink)
     except BREAK_EXS:
         try: source and source.close()
         except (Exception, KeyboardInterrupt): pass
