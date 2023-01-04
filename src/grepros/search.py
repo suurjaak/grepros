@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -263,6 +263,7 @@ class Searcher(object):
         self._clear_data()
         self.source, self.sink = source, sink
         source.bind(sink), sink and sink.bind(source)
+        source.preprocess = False
         self._configure_flags(highlight=highlight)
 
 

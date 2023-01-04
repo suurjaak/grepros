@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -74,6 +74,8 @@ class Source(object):
         self.bar = None
         ## Result of validate()
         self.valid = None  
+        ## Apply all filter arguments when reading, not only topic and type
+        self.preprocess = True
 
         self._parse_patterns()
         api.TypeMeta.SOURCE = self
@@ -155,7 +157,7 @@ class Source(object):
         return api.get_message_type_hash(msg_or_type)
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether specified message in topic is in acceptable time range."""
+        """Returns whether message passes source filters."""
         if self.args.START_TIME and stamp < self.args.START_TIME:
             return False
         if self.args.END_TIME and stamp > self.args.END_TIME:
@@ -285,7 +287,7 @@ class ConditionMixin(object):
         self._configure_conditions(ensure_namespace(args, ConditionMixin.DEFAULT_ARGS, **kwargs))
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether current state passes conditions, if any."""
+        """Returns whether message passes passes current state conditions, if any."""
         result = True
         if not self._conditions:
             return result
@@ -410,6 +412,7 @@ class BagSource(Source, ConditionMixin):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive;
                                         or a single path as the ROS bagfile to read
+        <!--sep-->
 
         Bag-specific arguments:
         @param   args.file              names of ROS bagfiles to read if not all in directory
@@ -420,6 +423,7 @@ class BagSource(Source, ConditionMixin):
         @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.write             outputs, to skip in input files
         @param   bag                    Bag instance to use instead
+        <!--sep-->
 
         General arguments:
         @param   args.topic             ROS topics to read if not all
@@ -474,9 +478,10 @@ class BagSource(Source, ConditionMixin):
 
             self._init_progress()
             for topics in topicsets:
-                for topic, msg, stamp in self._produce(topics) if topics else ():
+                for topic, msg, stamp, index in self._produce(topics) if topics else ():
                     self.conditions_register_message(topic, msg)
-                    if not self.is_conditions_topic(topic, pure=True):
+                    if not self.is_conditions_topic(topic, pure=True) \
+                    and (not self.preprocess or self.is_processable(topic, msg, stamp, index)):
                         yield self.SourceMessage(topic, msg, stamp)
                 if not self._running:
                     break  # for topics
@@ -569,10 +574,7 @@ class BagSource(Source, ConditionMixin):
             self._ensure_totals()
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """
-        Returns whether specified message in topic is in acceptable range,
-        and all conditions, if any, evaluate as true.
-        """
+        """Returns whether message passes source filters."""
         topickey = api.TypeMeta.make(msg, topic).topickey
         if self.args.START_INDEX and index is not None:
             self._ensure_totals()
@@ -591,7 +593,7 @@ class BagSource(Source, ConditionMixin):
         return ConditionMixin.is_processable(self, topic, msg, stamp, index)
 
     def _produce(self, topics, start_time=None):
-        """Yields messages from current ROS bagfile, as (topic, msg, ROS time)."""
+        """Yields messages from current ROS bagfile, as (topic, msg, ROS time, index in topic)."""
         counts = collections.Counter()
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
@@ -608,7 +610,7 @@ class BagSource(Source, ConditionMixin):
 
             self._status = None
             self.bar and self.bar.update(value=sum(self._counts.values()))
-            yield topic, msg, stamp
+            yield topic, msg, stamp, self._counts[topickey]
 
             if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                 self._processables[topickey] = (self._counts[topickey], stamp)
@@ -790,7 +792,9 @@ class TopicSource(Source, ConditionMixin):
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while
 
-                yield self.SourceMessage(topic, msg, stamp)
+                if not self.preprocess \
+                or self.is_processable(topic, msg, stamp, self._counts[topickey]):
+                    yield self.SourceMessage(topic, msg, stamp)
                 if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                     self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
@@ -798,7 +802,7 @@ class TopicSource(Source, ConditionMixin):
 
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
-        Source.bind(self, sink)
+        super(TopicSource, self).bind(sink)
         api.init_node()
 
     def validate(self):
@@ -861,7 +865,7 @@ class TopicSource(Source, ConditionMixin):
         return result
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether specified message in topic is in acceptable range."""
+        """Returns whether message passes source filters."""
         if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
                 return False
@@ -991,7 +995,9 @@ class AppSource(Source, ConditionMixin):
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
 
-            yield self.SourceMessage(topic, msg, stamp)
+            if not self.preprocess \
+            or self.is_processable(topic, msg, stamp, self._counts[topickey]):
+                yield self.SourceMessage(topic, msg, stamp)
             if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                 self._processables[topickey] = (self._counts[topickey], stamp)
 
@@ -1027,7 +1033,7 @@ class AppSource(Source, ConditionMixin):
         self._queue.put(None) if topic is None else (topic, msg, stamp)
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether specified message in topic passes filter."""
+        """Returns whether message passes source filters."""
         dct = filter_dict({topic: [api.get_message_type(msg)]}, self.args.TOPIC, self.args.TYPE)
         if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
             return False
