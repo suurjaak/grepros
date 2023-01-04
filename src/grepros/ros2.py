@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    28.12.2022
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -335,6 +335,7 @@ PRAGMA synchronous=NORMAL;
             errortypes.discard(typename)
             stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
 
+            api.TypeMeta.make(msg, topic, self)
             yield self.BagMessage(topic, msg, stamp)
             if not self._db:  # Bag has been closed in the meantime
                 break  # for row

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -81,13 +81,10 @@ class TypeMeta(object):
     All property values are lazy-loaded upon request.
     """
 
-    ## Source instance
-    SOURCE = None
-
     ## Seconds before auto-clearing message from cache
     LIFETIME = 2
 
-    ## {id(msg): MessageMeta()}
+    ## {id(msg): TypeMeta()}
     _CACHE = {}
 
     ## {id(msg): [id(nested msg), ]}
@@ -99,9 +96,10 @@ class TypeMeta(object):
     ## time.time() of last cleaning of stale messages
     _LASTSWEEP = time.time()
 
-    def __init__(self, msg, topic=None, data=None):
+    def __init__(self, msg, topic=None, source=None, data=None):
         self._msg      = msg
         self._topic    = topic
+        self._source   = source
         self._data     = data
         self._type     = None  # Message typename as "pkg/MsgType"
         self._def      = None  # Message type definition with full subtype definitions
@@ -127,7 +125,7 @@ class TypeMeta(object):
     def typehash(self):
         """Returns message type definition MD5 hash."""
         if not self._hash:
-            hash = self.SOURCE and self.SOURCE.get_message_type_hash(self._msg)
+            hash = self._source and self._source.get_message_type_hash(self._msg)
             self._hash = hash or realapi.get_message_type_hash(self._msg)
         return self._hash
 
@@ -135,7 +133,7 @@ class TypeMeta(object):
     def definition(self):
         """Returns message type definition text with full subtype definitions."""
         if not self._def:
-            typedef = self.SOURCE and self.SOURCE.get_message_definition(self._msg)
+            typedef = self._source and self._source.get_message_definition(self._msg)
             self._def = typedef or realapi.get_message_definition(self._msg)
         return self._def
 
@@ -148,7 +146,7 @@ class TypeMeta(object):
     def typeclass(self):
         """Returns message class object."""
         if not self._cls:
-            cls = self.SOURCE and self.SOURCE.get_message_class(self.typename, self.typehash)
+            cls = self._source and self._source.get_message_class(self.typename, self.typehash)
             self._cls = cls or realapi.get_message_class(self.typename)
         return self._cls
 
@@ -167,15 +165,17 @@ class TypeMeta(object):
         return self._typekey
 
     @classmethod
-    def make(cls, msg, topic=None, root=None, data=None):
+    def make(cls, msg, topic=None, source=None, root=None, data=None):
         """
         Returns TypeMeta instance, registering message in cache if not present.
 
         Other parameters are only required for first registration.
 
-        @param   topic  topic the message is in if root message
-        @param   root   root message that msg is a nested value of, if any
-        @param   data   message serialized binary, if any
+        @param   topic   topic the message is in if root message
+        @param   source  message source like TopicSource or Bag,
+                         for looking up message type metadata
+        @param   root    root message that msg is a nested value of, if any
+        @param   data    message serialized binary, if any
         """
         msgid = id(msg)
         if msgid not in cls._CACHE:
@@ -227,7 +227,7 @@ class Bag(object):
 
     Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
     if using embag in ROS1, or if using ROS2.
-    Or a plugin class like McapBag if plugin loaded and file reconized as MCAP format.
+    Or a plugin class like McapBag if plugin loaded and file recognized as MCAP format.
 
     Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
     Classes can have a static/class method `autodetect(filename)`

@@ -78,7 +78,6 @@ class Source(object):
         self.preprocess = True
 
         self._parse_patterns()
-        api.TypeMeta.SOURCE = self
 
     def __iter__(self):
         """Yields messages from source, as (topic, msg, ROS time)."""
@@ -602,7 +601,7 @@ class BagSource(Source, ConditionMixin):
             if topics and typename not in topics[topic]:
                 continue  # for topic
 
-            topickey = api.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic, self).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
@@ -787,7 +786,7 @@ class TopicSource(Source, ConditionMixin):
             total += bool(topic)
             self._update_progress(total, running=self._running and bool(topic))
             if topic:
-                topickey = api.TypeMeta.make(msg, topic).topickey
+                topickey = api.TypeMeta.make(msg, topic, self).topickey
                 self._counts[topickey] += 1
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while
@@ -802,6 +801,7 @@ class TopicSource(Source, ConditionMixin):
 
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
+        if not self.validate(): raise Exception("invalid")
         super(TopicSource, self).bind(sink)
         api.init_node()
 
@@ -990,7 +990,7 @@ class AppSource(Source, ConditionMixin):
 
             if len(item) > 2: topic, msg, stamp = item[:3]
             else: (topic, msg), stamp = item[:2], api.get_rostime()
-            topickey = api.TypeMeta.make(msg, topic).topickey
+            topickey = api.TypeMeta.make(msg, topic, self).topickey
             self._counts[topickey] += 1
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
@@ -1010,7 +1010,7 @@ class AppSource(Source, ConditionMixin):
         if item is None: return None
 
         topic, msg, stamp = item
-        topickey = api.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic, self).topickey
         self._counts[topickey] += 1
         self.conditions_register_message(topic, msg)
         return None if self.is_conditions_topic(topic, pure=True) else (topic, msg, stamp)

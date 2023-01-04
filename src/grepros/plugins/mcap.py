@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -218,6 +218,7 @@ class McapBag(api.Bag):
                     self._types[typekey] = self._make_message_class(schema, message)
                 msg = (typename, message.data, typehash, self._types[typekey])
             else: msg = self._decode_message(message, channel, schema)
+            api.TypeMeta.make(msg, channel.topic, self)
             yield self.BagMessage(channel.topic, msg, api.make_time(nsecs=message.publish_time))
 
 
@@ -338,7 +339,7 @@ class McapBag(api.Bag):
             if api.ROS2:  # MCAP ROS2 message classes need monkey-patching with expected API
                 msg = self._patch_message(msg, *self._schematypes[schema.id])
                 # Register serialized binary, as MCAP does not support serializing its own creations
-                api.TypeMeta.make(msg, channel.topic, data=message.data)
+                api.TypeMeta.make(msg, channel.topic, self, data=message.data)
         typekey = self._schematypes[schema.id]
         if typekey not in self._types: self._types[typekey] = type(msg)
         return msg
