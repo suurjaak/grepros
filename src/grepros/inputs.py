@@ -772,6 +772,7 @@ class TopicSource(Source, ConditionMixin):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
         if not self._running:
             if not self.validate(): raise Exception("invalid")
+            api.init_node()
             self._running = True
             self._queue = queue.Queue()
             self.refresh_topics()

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.01.2023
+@modified    04.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -520,6 +520,7 @@ class TopicSink(Sink):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Publishes message to output topic."""
         if not self.validate(): raise Exception("invalid")
+        api.init_node()
         with api.TypeMeta.make(msg, topic) as m:
             topickey, cls = (m.topickey, m.typeclass)
         if topickey not in self._pubs:
@@ -540,7 +541,7 @@ class TopicSink(Sink):
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
         if not self.validate(): raise Exception("invalid")
-        Sink.bind(self, source)
+        super(TopicSink, self).bind(source)
         api.init_node()
 
     def validate(self):
@@ -661,7 +662,7 @@ class MultiSink(Sink):
 
     def bind(self, source):
         """Attaches source to all sinks, sets thread_excepthook on all sinks."""
-        Sink.bind(self, source)
+        super(MultiSink, self).bind(source)
         for sink in self.sinks:
             sink.bind(source)
             sink.thread_excepthook = self.thread_excepthook
