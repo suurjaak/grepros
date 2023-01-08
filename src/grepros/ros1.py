@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -29,7 +29,8 @@ import rospy
 
 from . import api
 from . api import TypeMeta, calculate_definition_hash, parse_definition_subtypes
-from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, memoize
+from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, is_stream, \
+                     memoize, verify_io
 
 
 ## Bagfile extensions to seek
@@ -91,32 +92,40 @@ class ROS1Bag(rosbag.Bag, api.Bag):
 
     def __init__(self, *args, **kwargs):
         """
+        @param   f           bag file path, or a stream object
         @param   mode        mode to open bag in, defaults to "r" (read mode)
         @param   reindex     if true and bag is unindexed, make a copy
                              of the file (unless unindexed format) and reindex original
         @param   progress    show progress bar with reindexing status
         """
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
+        self.__topics = {}  # {(topic, typename, typehash): message count}
+
         kwargs.setdefault("skip_index", True)
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
-        filename, args = (args[0] if args else kwargs.pop("f")), args[1:]
-        mode,     args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
+        f,    args = (args[0] if args else kwargs.pop("f")), args[1:]
+        mode, args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
         getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
         for n in set(kwargs) - set(getargspec(rosbag.Bag).args): kwargs.pop(n)
 
-        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
-        if "a" == mode and (not os.path.exists(filename) or not os.path.getsize(filename)):
+        if is_stream(f):
+            if not verify_io(f, mode)):
+                raise io.UnsupportedOperation({"r": "read", "w": "write", "a": "append"}[mode])
+            super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
+            self.__populate_meta()
+            return
+        f = str(f)
+
+        if "a" == mode and (not os.path.exists(f) or not os.path.getsize(f)):
             mode = "w"  # rosbag raises error on append if no file or empty file
-            os.path.exists(filename) and os.remove(filename)
+            os.path.exists(f) and os.remove(f)
 
         try:
-            super(ROS1Bag, self).__init__(filename, mode, *args, **kwargs)
+            super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
         except rosbag.ROSBagUnindexedException:
             if not reindex: raise
-            Bag.reindex_file(filename, progress, *args, **kwargs)
-            super(ROS1Bag, self).__init__(filename, mode, *args, **kwargs)
-
-        self.__topics = {}  # {(topic, typename, typehash): message count}
-
+            Bag.reindex_file(f, progress, *args, **kwargs)
+            super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
         self.__populate_meta()
 
 

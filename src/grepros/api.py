@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -227,15 +227,16 @@ class Bag(object):
 
     Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
     if using embag in ROS1, or if using ROS2.
-    Or a plugin class like McapBag if plugin loaded and file recognized as MCAP format.
-
-    Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
-    Classes can have a static/class method `autodetect(filename)`
-    returning whether given file is in recognizable format for the plugin class.
+    Or a plugin class like {@link plugins.mcap.McapBag McapBag}
+    if plugin loaded and file recognized as MCAP format.
 
     Extra methods and properties compared with rosbag.Bag: Bag.get_message_class(),
     Bag.get_message_definition(), Bag.get_message_type_hash(), Bag.get_topic_info();
     Bag.closed and and Bag.topics.
+
+    Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
+    Classes can have a static/class method `autodetect(filename)`
+    returning whether given file is in recognizable format for the plugin class.
     """
 
     ## Returned from read_messages() as (topic name, ROS message, ROS timestamp object).
@@ -252,36 +253,41 @@ class Bag(object):
     ## Supported opening modes, overridden in subclasses
     MODES = ("r", "w", "a")
 
+    ## Whether bag supports reading or writing stream objects, overridden in subclasses
+    STREAMABLE = True
+
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
 
     ## Bag writer classes, as {Cls, }
     WRITER_CLASSES = set()
 
-    def __new__(cls, filename, mode="r", reindex=False, progress=False, **kwargs):
+    def __new__(cls, f, mode="r", reindex=False, progress=False, **kwargs):
         """
         Returns an object for reading or writing ROS bags.
 
-        @param   filename     bag filename, used for auto-detecting suitable Bag class
-                              by file extension or content
-        @param   mode         return reader if "r" else writer
-        @param   reindex      reindex unindexed bag (ROS1 only), making a backup if indexed format
-        @param   progress     show progress bar with reindexing status
-        @param   kwargs       additiional keyword arguments for format-specific Bag constructor
+        Suitable Bag class is auto-detected by file extension or content.
+
+        @param   f         bag file path, or a stream object
+                           (streams not supported for ROS2 .db3 SQLite bags)
+        @param   mode      return reader if "r" else writer
+        @param   reindex   reindex unindexed bag (ROS1 only), making a backup if indexed format
+        @param   progress  show progress bar with reindexing status
+        @param   kwargs    additiional keyword arguments for format-specific Bag constructor
         """
         classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
         for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
             use, discard = not detect, False  # Try auto-detecting suitable class first
             try:
                 if detect and callable(vars(mycls).get("autodetect")):
-                    use, discard = mycls.autodetect(filename), True
+                    use, discard = mycls.autodetect(f), True
                 if use:
                     result = super(cls, mycls).__new__(mycls)
                     if result is not None: return result  # __init__() called by Python on return
             except Exception as e:
                 discard = True
                 ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
-                                    filename, "reading" if "r" == mode else "writing", mycls, e)
+                                    f, "reading" if "r" == mode else "writing", mycls, e)
             discard and classes.discard(mycls)
         raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
 
@@ -338,7 +344,7 @@ class Bag(object):
         counts = self.get_topic_info(counts=True)
         start, end = self.get_start_time(), self.get_end_time()
 
-        entries["path"] = self.filename
+        entries["path"] = self.filename or "<stream>"
         if None not in (start, end):
             entries["duration"] = fmtdur(end - start)
             entries["start"] = "%s (%.2f)" % (fmttime(start), start)

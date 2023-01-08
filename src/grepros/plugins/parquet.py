@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    01.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -25,7 +25,7 @@ except ImportError: pass
 
 from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, \
-                      ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
+                      ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_io
 from .. outputs import Sink
 
 
@@ -133,7 +133,7 @@ class ParquetSink(Sink):
             ConsolePrinter.error("pandas not available: cannot write Parquet files.")
         if not pyarrow_ok:
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
-        if not verify_writable(self.args.WRITE):
+        if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and pandas_ok and pyarrow_ok
         return self.valid

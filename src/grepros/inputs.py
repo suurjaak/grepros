@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -28,7 +28,7 @@ import time
 from . import api
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, plural, wildcard_to_regex
+                     format_stamp, format_timedelta, is_stream, plural, verify_io, wildcard_to_regex
 
 
 class Source(object):
@@ -407,14 +407,17 @@ class BagSource(Source, ConditionMixin):
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False)
 
-    def __init__(self, args=None, bag=None, **kwargs):
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive;
-                                        or a single path as the ROS bagfile to read
+                                        or a single path as the ROS bagfile to read,
+                                        or a stream to read from,
+                                        or a {@link api.Bag Bag} instance
         <!--sep-->
 
         Bag-specific arguments:
-        @param   args.file              names of ROS bagfiles to read if not all in directory
+        @param   args.file              names of ROS bagfiles to read if not all in directory,
+                                        or a stream to read from
         @param   args.path              paths to scan if not current directory
         @param   args.recurse           recurse into subdirectories when looking for bagfiles
         @param   args.orderby           "topic" or "type" if any to group results by
@@ -443,7 +446,10 @@ class BagSource(Source, ConditionMixin):
         @param   args.progress          whether to print progress bar
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else args
+        args0 = args
+        args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else \
+               {"FILE": args} if is_stream(args) else \
+               {} if isinstance(args, api.Bag) else args
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
@@ -453,9 +459,9 @@ class BagSource(Source, ConditionMixin):
         self._totals_ok = False  # Whether message count totals have been retrieved
         self._running   = False
         self._bag       = None   # Current bag object instance
-        self._bag0      = bag    # Given Bag instance to use instead
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
+        self._bag0      = args0 if isinstance(args0, api.Bag) else None  # Provided bag object
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -489,9 +495,19 @@ class BagSource(Source, ConditionMixin):
         self._running = False
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
+        """Returns whether ROS environment is set and arguments valid, prints error if not."""
         if self.valid is not None: return self.valid
         self.valid = api.validate()
+        if not self._bag0 and not verify_io(self.args.FILE, "r"):
+            ConsolePrinter.error("File not readable.")
+            self.valid = False
+        if not self._bag0 and is_stream(self.args.FILE) \
+        and not any(c.STREAMABLE for c in api.Bag.READER_CLASSES):
+            ConsolePrinter.error("Bag format does not support reading streams.")
+            self.valid = False
+        if self._bag0 and self._bag0.mode not in ("r", "a"):
+            ConsolePrinter.error("Bag not in read mode.")
+            self.valid = False
         if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
                                  self.args.ORDERBY)
@@ -525,8 +541,8 @@ class BagSource(Source, ConditionMixin):
         return self.MESSAGE_META_TEMPLATE.format(**meta)
 
     def get_batch(self):
-        """Returns name of current bagfile."""
-        return self._filename
+        """Returns name of current bagfile, or self if reading stream."""
+        return self._filename if self._filename is not None else self
 
     def get_meta(self):
         """Returns bagfile metainfo data dict."""
@@ -654,7 +670,7 @@ class BagSource(Source, ConditionMixin):
         if self.args.PROGRESS and not self.bar:
             self._ensure_totals()
             self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
-            self.bar.afterword = os.path.basename(self._filename)
+            self.bar.afterword = os.path.basename(self._filename or "<stream>")
             self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items()
                                    if c and t == t_ and n in nn)
                                for t_, nn in self._topics.items())

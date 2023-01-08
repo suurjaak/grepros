@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2022
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -19,6 +19,7 @@ import datetime
 import functools
 import glob
 import importlib
+import io
 import itertools
 import logging
 import math
@@ -781,6 +782,12 @@ def import_item(name):
     return result
 
 
+def is_stream(value):
+    """Returns whether value is a file-like object."""
+    try: return isinstance(value, (file, io.IOBase))       # Py2
+    except NameError: return isinstance(value, io.IOBase)  # Py3
+
+
 def makedirs(path):
     """Creates directory structure for path if not already existing."""
     parts, accum = list(filter(bool, os.path.realpath(path).split(os.sep))), []
@@ -898,17 +905,39 @@ def unique_path(pathname, empty_ok=False):
     return result
 
 
-def verify_writable(filepath):
+def verify_io(f, mode):
     """
-    Returns whether file path can be written to, prints or raises error if not.
+    Returns whether stream or file path can be read from and/or written to as binary.
 
-    Tries to open the path in append mode, auto-creating missing directories if any,
-    will delete any file or directory created.
+    Prints or raises error if not.
+
+    Tries to open file in append mode if verifying path writability,
+    auto-creating missing directories if any, will delete any file or directory created.
+
+    @param   f     file path, or stream
+    @param   mode  "r" for readable, "w" for writable, "a" for readable and writable
     """
-    present, paths_created = os.path.exists(filepath), []
+    result, op = True, ""
+    if is_stream(f):
+        try:
+            pos = f.tell()
+            if mode in ("r", "a"):
+                op = " reading from"
+                result = isinstance(f.read(1), bytes)
+            if result and mode in ("w", "a"):
+                op = " writing to"
+                result, _ = True, f.write(b"")
+            f.seek(pos)
+            return result
+        except Exception as e:
+            ConsolePrinter.error("Error%s %s: %s", op, type(f).__name__, e)
+            return False
+
+    present, paths_created = os.path.exists(f), []
     try:
-        if not present:
-            path = os.path.realpath(os.path.dirname(filepath))
+        if not present and mode in ("w", "a"):
+            op = " writing to"
+            path = os.path.realpath(os.path.dirname(f))
             parts, accum = [x for x in path.split(os.sep) if x], []
             while parts:
                 accum.append(parts.pop(0))
@@ -916,13 +945,22 @@ def verify_writable(filepath):
                 if not os.path.exists(curpath):
                     os.mkdir(curpath)
                     paths_created.append(curpath)
-        with open(filepath, "ab"): return True
+        elif "r" == mode:  # not present
+            return False
+        with open(f, {"r": "rb", "w": "ab", "a": "ab+"}[mode]) as g:
+            if mode in ("r", "a"):
+                op = " reading from"
+                result = isinstance(g.read(1), bytes)
+            if result and mode in ("w", "a"):
+                op = " writing to"
+                result, _ = True, g.write(b"")
+            return result
     except Exception as e:
-        ConsolePrinter.error("%s: %s", filepath, e)
+        ConsolePrinter.error("Error%s %s: %s", f, e)
         return False
     finally:
         if not present:
-            try: os.remove(filepath)
+            try: os.remove(f)
             except Exception: pass
             for path in paths_created[::-1]:
                 try: os.rmdir(path)
@@ -943,6 +981,6 @@ __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "import_item", "makedirs", "memoize",
-    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_writable",
+    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_io",
     "wildcard_to_regex",
 ]

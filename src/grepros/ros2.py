@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -37,7 +37,7 @@ import rosidl_runtime_py.utilities
 import yaml
 
 from . import api
-from . common import ConsolePrinter, MatchMarkers, memoize
+from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, memoize
 
 
 ## Bagfile extensions to seek
@@ -88,6 +88,9 @@ executor = None
 class ROS2Bag(api.Bag):
     """ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface."""
 
+    ## Whether bag supports reading or writing stream objects, overridden in subclasses
+    STREAMABLE = False
+
     ## ROS2 bag SQLite schema
     CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS messages (
@@ -117,6 +120,8 @@ PRAGMA synchronous=NORMAL;
         @param   filename  bag file path to open
         @param   mode      file will be overwritten if "w"
         """
+        if not isinstance(filename, PATH_TYPES):
+            raise ValueError("invalid filename %r" % type(filename))
         if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
         self._db     = None  # sqlite3.Connection instance
@@ -125,7 +130,7 @@ PRAGMA synchronous=NORMAL;
         self._counts = {}    # {(topic, typename, typehash): message count}
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
         self._ttinfo = None  # Cached result for get_type_and_topic_info()
-        self._filename = filename
+        self._filename = str(filename)
 
         self._ensure_open(populate=("r" != mode))
 
@@ -420,7 +425,7 @@ PRAGMA synchronous=NORMAL;
         """Returns current file size in bytes (including journaling files)."""
         result = os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
         for suffix in ("-journal", "-wal") if result else ():
-            path = self._filename + suffix
+            path = "%s%s" % (self._filename, suffix)
             result += os.path.getsize(path) if os.path.isfile(path) else 0
         return result
 

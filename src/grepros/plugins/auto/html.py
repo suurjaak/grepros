@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    01.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -22,7 +22,7 @@ import threading
 
 from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, ensure_namespace, \
-                       format_bytes, makedirs, plural, unique_path, verify_writable
+                       format_bytes, makedirs, plural, unique_path, verify_io
 from ... outputs import Sink, TextSinkMixin
 from ... vendor import step
 
@@ -112,7 +112,7 @@ class HtmlSink(Sink, TextSinkMixin):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not verify_writable(self.args.WRITE):
+        if not verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = api.validate() and result
         return self.valid

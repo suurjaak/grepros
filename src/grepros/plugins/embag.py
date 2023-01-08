@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -21,7 +21,7 @@ try: import genpy
 except ImportError: genpy = None
 
 from .. import api
-from .. common import ConsolePrinter
+from .. common import PATH_TYPES, ConsolePrinter
 
 
 
@@ -31,10 +31,15 @@ class EmbagReader(api.Bag):
     ## Supported opening modes
     MODES = ("r", )
 
+    ## Whether bag supports reading or writing stream objects, overridden in subclasses
+    STREAMABLE = False
+
     ## ROS1 bag file header magic start bytes
     ROSBAG_MAGIC = b"#ROSBAG"
 
     def __init__(self, filename, mode="r", **__):
+        if not isinstance(filename, PATH_TYPES):
+            raise ValueError("invalid filename %r" % type(filename))
         if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
         self._topics   = {}    # {(topic, typename, typehash): message count}
@@ -43,7 +48,7 @@ class EmbagReader(api.Bag):
         self._typedefs = {}    # {(typename, typehash): type definition text}
         self._ttinfo   = None  # Cached result for get_type_and_topic_info()
         self._view     = embag.View(filename)
-        self._filename = filename
+        self._filename = str(filename)
 
         self._populate_meta()
 

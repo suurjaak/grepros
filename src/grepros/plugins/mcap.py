@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -34,8 +34,8 @@ elif api.ROS2:
 else: mcap_ros = None
 import yaml
 
-from .. common import PATH_TYPES, ConsolePrinter, \
-                      ensure_namespace, format_bytes, makedirs, plural, unique_path, verify_writable
+from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, is_stream, \
+                      makedirs, plural, unique_path, verify_io
 from .. outputs import Sink
 
 
@@ -53,11 +53,14 @@ class McapBag(api.Bag):
     ## MCAP file header magic start bytes
     MCAP_MAGIC = b"\x89MCAP\x30\r\n"
 
-    def __init__(self, filename, mode="r", **__):
-        """Opens file and populates metadata."""
-        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
+    def __init__(self, f, mode="r", **__):
+        """
+        Opens file and populates metadata.
 
-        if "w" == mode: makedirs(os.path.dirname(filename))
+        @param   f         bag file path, or a stream object
+        @param   mode      return reader if "r" or writer if "w"
+        """
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
         self._mode           = mode
         self._topics         = {}     # {(topic, typename, typehash): message count}
         self._types          = {}     # {(typename, typehash): message type class}
@@ -77,7 +80,18 @@ class McapBag(api.Bag):
         self._writer         = None   # mcap_ros.Writer
         self._ttinfo         = None   # Cached result for get_type_and_topic_info()
         self._opened         = False  # Whether file has been opened at least once
-        self._filename       = filename
+        self._filename       = None   # File path, or None if stream
+
+        if is_stream(f):
+            if not verify_io(f, mode):
+                raise io.UnsupportedOperation("read" if "r" == mode else "write")
+            self._file, self._filename = f, None
+            f.seek(0)
+        else:
+            if not isinstance(f, PATH_TYPES):
+                raise ValueError("invalid filename %r" % type(f))
+            if "w" == mode: makedirs(os.path.dirname(f))
+            self._filename = str(f)
 
         if api.ROS2 and "r" == mode: self._temporal_ctors.update(
             (t, c) for c, t in api.ROS_TIME_CLASSES.items() if api.get_message_type(c) == t
@@ -268,11 +282,11 @@ class McapBag(api.Bag):
 
     def open(self):
         """Opens the bag file if not already open."""
-        if self._file: return
+        if self._reader is not None or self._writer is not None: return
         if self._opened and "w" == self._mode:
             raise io.UnsupportedOperation("Cannot reopen bag for writing.")
 
-        self._file    = open(self._filename, "%sb" % self._mode)
+        if self._file is None: self._file = open(self._filename, "%sb" % self._mode)
         self._reader  = mcap.reader.make_reader(self._file) if "r" == self._mode else None
         self._decoder = mcap_ros.decoder.Decoder()          if "r" == self._mode else None
         self._writer  = mcap_ros.writer.Writer(self._file)  if "w" == self._mode else None
@@ -282,16 +296,16 @@ class McapBag(api.Bag):
 
     def close(self):
         """Closes the bag file."""
-        if self._file:
-            self._file.close()
+        if self._file is not None:
             if self._writer: self._writer.finish()
+            self._file.close()
             self._file, self._reader, self._writer = None, None, None
 
 
     @property
     def closed(self):
         """Returns whether file is closed."""
-        return not self._file
+        return self._file is None
 
 
     @property
@@ -309,6 +323,10 @@ class McapBag(api.Bag):
     @property
     def size(self):
         """Returns current file size."""
+        if self._filename is None and self._file is not None:
+            pos, _  = self._file.tell(), self._file.seek(0, os.SEEK_END)
+            size, _ = self._file.tell(), self._file.seek(pos)
+            return size
         return os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
 
 
@@ -483,14 +501,16 @@ class McapBag(api.Bag):
 
 
     @classmethod
-    def autodetect(cls, filename):
+    def autodetect(cls, f):
         """Returns whether file is readable as MCAP format."""
-        result = os.path.isfile(filename)
-        if result and os.path.getsize(filename):
-            with open(filename, "rb") as f:
+        if is_stream(f):
+            pos, _ = f.tell(), f.seek(0)
+            result, _ = (f.read(len(cls.MCAP_MAGIC)) == cls.MCAP_MAGIC), f.seek(pos)
+        elif os.path.isfile(f) and os.path.getsize(f):
+            with open(f, "rb") as f:
                 result = (f.read(len(cls.MCAP_MAGIC)) == cls.MCAP_MAGIC)
         else:
-            ext = os.path.splitext(filename or "")[-1].lower()
+            ext = os.path.splitext(f or "")[-1].lower()
             result = ext in McapSink.FILE_EXTENSIONS
         return result
 
@@ -576,7 +596,7 @@ class McapSink(Sink):
         if not mcap_ros_ok:
             ConsolePrinter.error("mcap_ros%s not available: cannot work with MCAP files.",
                                  api.ROS_VERSION or "")
-        if not verify_writable(self.args.WRITE):
+        if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and mcap_ok and mcap_ros_ok
         return self.valid

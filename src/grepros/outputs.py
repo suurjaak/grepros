@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -24,8 +24,8 @@ import yaml
 
 from . import api
 from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
-                     ensure_namespace, filter_fields, format_bytes, makedirs, merge_spans, \
-                     plural, unique_path, verify_writable, wildcard_to_regex
+                     ensure_namespace, filter_fields, format_bytes, is_stream, makedirs, \
+                     merge_spans, plural, unique_path, verify_io, wildcard_to_regex
 
 
 class Sink(object):
@@ -410,18 +410,24 @@ class BagSink(Sink):
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
-                                      or a single path as the ROS bagfile to write
+                                      or a single path as the ROS bagfile to write,
+                                      or a stream or {@link api.Bag Bag} instance to write to
         @param   args.meta            whether to print metainfo
-        @param   args.write           name of ROS bagfile to create or append to
+        @param   args.write           name of ROS bagfile to create or append to,
+                                      or a stream to write to
         @param   args.write_options   {"overwrite": whether to overwrite existing file
-                                                     (default false)}
+                                                    (default false)}
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
+
+        args0 = args
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else \
+               {"WRITE": args} if is_stream(args) else \
+               {} if isinstance(args, api.Bag) else args
         args = ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
-        self._bag = None
+        self._bag = args0 if isinstance(args0, api.Bag) else None
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in ("true", True))
         self._close_printed = False
 
@@ -449,25 +455,41 @@ class BagSink(Sink):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not verify_writable(self.args.WRITE):
+        if not self._bag and not verify_io(self.args.WRITE, "w"):
+            ConsolePrinter.error("File not writable.")
+            result = False
+        if not self._bag and is_stream(self.args.WRITE) \
+        and not any(c.STREAMABLE for c in api.Bag.WRITER_CLASSES):
+            ConsolePrinter.error("Bag format does not support writing streams.")
+            result = False
+        if self._bag and self._bag.mode not in ("a", "w"):
+            ConsolePrinter.error("Bag not in write mode.")
             result = False
         self.valid = api.validate() and result
         return self.valid
 
     def close(self):
-        """Closes output bagfile, if any."""
-        self._bag and self._bag.close()
+        """Closes output bag, if any."""
         if not self._close_printed and self._counts and self._bag:
+            size = None if self._bag.filename else self._bag.size
             self._close_printed = True
+            self._bag.close()
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self._bag.filename,
-                                 format_bytes(os.path.getsize(self._bag.filename)))
+                                 plural("topic", self._counts), self._bag.filename or "<stream>",
+                                 format_bytes(os.path.getsize(self._bag.filename))
+                                 if self._bag.filename else size)
+        self._bag  and self._bag.close()
         super(BagSink, self).close()
 
     def _ensure_open(self):
         """Opens output file if not already open."""
-        if self._bag is not None: return
+        if self._bag is not None:
+            self._bag.open()
+            return
+        if is_stream(self.args.WRITE):
+            self._bag = api.Bag(self.args.WRITE, mode=getattr(self.args.WRITE, "mode", "w"))
+            return
         filename = self.args.WRITE
         if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
             cls = api.Bag.autodetect(filename)

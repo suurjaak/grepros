@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    01.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -19,7 +19,7 @@ import sqlite3
 import sys
 
 from ... import api
-from ... common import ConsolePrinter, format_bytes, makedirs, verify_writable
+from ... common import ConsolePrinter, format_bytes, makedirs, verify_io
 from . dbbase import BaseDataSink, quote
 
 
@@ -99,7 +99,7 @@ class SqliteSink(BaseDataSink):
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])
             ok = False
-        if not verify_writable(self.args.WRITE):
+        if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok
         return self.valid

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    01.01.2023
+@modified    08.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -20,7 +20,7 @@ import sys
 
 from .. import api
 from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
-                      makedirs, plural, unique_path, verify_writable
+                      makedirs, plural, unique_path, verify_io
 from .. outputs import Sink
 from . auto.sqlbase import SqlMixin
 
@@ -101,7 +101,7 @@ class SqlSink(Sink, SqlMixin):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             ok = False
-        if not verify_writable(self.args.WRITE):
+        if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = sqlconfig_ok and ok
         return self.valid
