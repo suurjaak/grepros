@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    08.01.2023
+@modified    09.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -146,7 +146,8 @@ class TypeMeta(object):
     def typeclass(self):
         """Returns message class object."""
         if not self._cls:
-            cls = self._source and self._source.get_message_class(self.typename, self.typehash)
+            cls = type(self._msg) if realapi.is_ros_message(self._msg) else \
+                  self._source and self._source.get_message_class(self.typename, self.typehash)
             self._cls = cls or realapi.get_message_class(self.typename)
         return self._cls
 
@@ -464,7 +465,8 @@ class Bag(object):
         @param   t       message timestamp if not using current wall time, as ROS time
                          or convertible (int/float/duration/datetime/decimal)
         @param   raw     if true, `msg` is in raw format, (typename, bytes, typehash, typeclass)
-        @param   kwargs  ROS version-specific arguments like `qoses` for ROS2
+        @param   kwargs  ROS version-specific arguments,
+                         like `connection_header` for ROS1 or `qoses` for ROS2
         """
         raise NotImplementedError
 

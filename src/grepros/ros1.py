@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    08.01.2023
+@modified    09.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -98,24 +98,24 @@ class ROS1Bag(rosbag.Bag, api.Bag):
                              of the file (unless unindexed format) and reindex original
         @param   progress    show progress bar with reindexing status
         """
-        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
         self.__topics = {}  # {(topic, typename, typehash): message count}
+        f,    args = (args[0] if args else kwargs.pop("f")), args[1:]
+        mode, args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
 
         kwargs.setdefault("skip_index", True)
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
-        f,    args = (args[0] if args else kwargs.pop("f")), args[1:]
-        mode, args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
         getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
         for n in set(kwargs) - set(getargspec(rosbag.Bag).args): kwargs.pop(n)
 
         if is_stream(f):
-            if not verify_io(f, mode)):
+            if not verify_io(f, mode):
                 raise io.UnsupportedOperation({"r": "read", "w": "write", "a": "append"}[mode])
             super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
-            self.__populate_meta()
+            self._populate_meta()
             return
-        f = str(f)
 
+        f = str(f)
         if "a" == mode and (not os.path.exists(f) or not os.path.getsize(f)):
             mode = "w"  # rosbag raises error on append if no file or empty file
             os.path.exists(f) and os.remove(f)
@@ -126,7 +126,7 @@ class ROS1Bag(rosbag.Bag, api.Bag):
             if not reindex: raise
             Bag.reindex_file(f, progress, *args, **kwargs)
             super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
-        self.__populate_meta()
+        self._populate_meta()
 
 
     def get_message_definition(self, msg_or_type):
@@ -145,7 +145,7 @@ class ROS1Bag(rosbag.Bag, api.Bag):
 
         @param   typehash  message type definition hash, if any
         """
-        self.__ensure_typedef(typename, typehash)
+        if (typename, typehash) not in self.__TYPES: self._ensure_typedef(typename, typehash)
         typehash = typehash or next((h for n, h in self.__TYPEDEFS if n == typename), None)
         typekey = (typename, typehash)
         if typekey not in self.__TYPES and typekey in self.__TYPEDEFS:
@@ -160,7 +160,7 @@ class ROS1Bag(rosbag.Bag, api.Bag):
         typename = msg_or_type
         typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
         if not typehash:
-            self.__ensure_typedef(typename)
+            self._ensure_typedef(typename)
             typehash = next((h for n, h in self.__TYPEDEFS if n == typename), None)
         return typehash
 
@@ -237,7 +237,7 @@ class ROS1Bag(rosbag.Bag, api.Bag):
                     if raw:
                         msg = msg[:-1] + (self.get_message_class(typename, typehash), )
                     else:
-                        msg = self.__convert_message(msg, *dupes[topic])
+                        msg = self._convert_message(msg, *dupes[topic])
             TypeMeta.make(msg, topic, self)
             yield self.BagMessage(topic, msg, stamp)
 
@@ -245,6 +245,8 @@ class ROS1Bag(rosbag.Bag, api.Bag):
     def write(self, topic, msg, t=None, raw=False, connection_header=None, **__):
         """
         Writes a message to the bag.
+
+        Populates connection header if topic already in bag but with a different message type.
 
         @param   topic              name of topic
         @param   msg                ROS1 message
@@ -256,6 +258,7 @@ class ROS1Bag(rosbag.Bag, api.Bag):
                                     as {"topic", "type", "md5sum", "message_definition"}
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
+        self._register_write(topic, msg, raw, connection_header)
         return super(ROS1Bag, self).write(topic, msg, to_time(t), raw, connection_header)
 
 
@@ -282,19 +285,19 @@ class ROS1Bag(rosbag.Bag, api.Bag):
         return not self._file
 
 
-    def __convert_message(self, msg, typename2, typehash2=None):
+    def _convert_message(self, msg, typename2, typehash2=None):
         """Returns message converted to given type; fields must match."""
         msg2 = self.get_message_class(typename2, typehash2)()
         fields2 = get_message_fields(msg2)
         for fname, ftypename in get_message_fields(msg).items():
             v1 = v2 = getattr(msg, fname)
             if ftypename != fields2.get(fname, ftypename):
-                v2 = self.__convert_message(v1, fields2[fname])
+                v2 = self._convert_message(v1, fields2[fname])
             setattr(msg2, fname, v2)
         return msg2
 
 
-    def __populate_meta(self):
+    def _populate_meta(self):
         """Populates topics and message type definitions and hashes."""
         result = collections.Counter()  # {(topic, typename, typehash): count}
         counts = collections.Counter()  # {connection ID: count}
@@ -307,7 +310,29 @@ class ROS1Bag(rosbag.Bag, api.Bag):
         self.__topics = dict(result)
 
 
-    def __ensure_typedef(self, typename, typehash=None):
+    def _register_write(self, topic, msg, raw=False, connection_header=None):
+        """Registers message in local metadata, writes connection header if new type for topic."""
+        if raw: typename, typehash, typeclass = msg[0], msg[2], msg[3]
+        else:   typename, typehash, typeclass = msg._type, msg._md5sum, type(msg)
+        topickey, typekey = (topic, typename, typehash), (typename, typehash)
+
+        if topickey not in self.__topics \
+        and any(topic == t and typekey != (n, h) for t, n, h in self.__topics):
+            # Write connection header if topic already present but with different type
+            if not connection_header:
+                connection_header = {"topic": topic, "type": typename, "md5sum": typehash,
+                                     "message_definition": typeclass._full_text}
+            conn_id, bagself = len(self._connections), super(ROS1Bag, self)
+            connection_info = rosbag.bag._ConnectionInfo(conn_id, topic, connection_header)
+            bagself._write_connection_record(connection_info, encrypt=False)
+            bagself._connections[conn_id] = bagself._topic_connections[topic] = connection_info
+
+        self.__TYPES.setdefault(typekey, typeclass)
+        self.__TYPEDEFS.setdefault(typekey, typeclass._full_text)
+        self.__topics[topickey] = self.__topics.get(topickey, 0) + 1
+
+
+    def _ensure_typedef(self, typename, typehash=None):
         """Parses subtype definition from any full definition where available, if not loaded."""
         typehash = typehash or next((h for n, h in self.__TYPEDEFS if n == typename), None)
         typekey = (typename, typehash)
