@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.01.2023
+@modified    16.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -321,8 +321,8 @@ class Bag(object):
     def __getitem__(self, key):
         """Returns an iterator yielding messages from the bag in given topic, supporting len()."""
         if key not in self: return LenIterable([], 0)
-        count = sum(c for (t, _, _), c in self.get_topic_info().items() if t == key)
-        return LenIterable(self.read_messages(key), count)
+        get_count = lambda: sum(c for (t, _, _), c in self.get_topic_info().items() if t == key)
+        return LenIterable(self.read_messages(key), get_count)
 
     def __str__(self):
         """Returns informative text for bag, with a full overview of topics and types."""

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.01.2023
+@modified    16.01.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -418,7 +418,7 @@ class LenIterable(object):
     def __init__(self, iterable, count):
         """
         @param   iterable  any iterable value
-        @param   count     value to return for len(self)
+        @param   count     value to return for len(self), or callable to return value from
         """
         self._iterer = iter(iterable)
         self._count  = count
@@ -427,7 +427,7 @@ class LenIterable(object):
 
     def __next__(self): return next(self._iterer)
 
-    def __len__(self):  return self._count
+    def __len__(self):  return self._count() if callable(self._count) else self._count
 
 
 
