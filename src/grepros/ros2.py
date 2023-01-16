@@ -642,26 +642,30 @@ def format_message_value(msg, name, value):
 
 @memoize
 def get_message_class(typename):
-    """Returns ROS2 message class."""
+    """Returns ROS2 message class, or None if unknown type."""
     try: return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
     except Exception: return None
 
 
 def get_message_definition(msg_or_type):
-    """Returns ROS2 message type definition full text, including subtype definitions."""
+    """
+    Returns ROS2 message type definition full text, including subtype definitions.
+
+    Returns None if unknown type.
+    """
     typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
     return _get_message_definition(canonical(typename))
 
 
 def get_message_type_hash(msg_or_type):
-    """Returns ROS2 message type MD5 hash."""
+    """Returns ROS2 message type MD5 hash, or "" if unknown type."""
     typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
     return _get_message_type_hash(canonical(typename))
 
 
 @memoize
 def _get_message_definition(typename):
-    """Returns ROS2 message type definition full text, or "" on error (internal caching method)."""
+    """Returns ROS2 message type definition full text, or None on error (internal caching method)."""
     try:
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
         try:
@@ -686,7 +690,7 @@ def _get_message_definition(typename):
         return basedef + ("\n" if subdefs else "") + "\n".join(subdefs)
     except Exception as e:
         ConsolePrinter.warn("Error collecting type definition of %s: %s", typename, e)
-        return ""
+        return None
 
 
 @memoize
@@ -774,7 +778,7 @@ def get_message_definition_idl(typename):
 def _get_message_type_hash(typename):
     """Returns ROS2 message type MD5 hash (internal caching method)."""
     msgdef = get_message_definition(typename)
-    return api.calculate_definition_hash(typename, msgdef)
+    return "" if msgdef is None else api.calculate_definition_hash(typename, msgdef)
 
 
 def get_message_fields(val):
