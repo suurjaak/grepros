@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    09.01.2023
+@modified    12.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -321,7 +321,7 @@ class Bag(object):
     def __getitem__(self, key):
         """Returns an iterator yielding messages from the bag in given topic, supporting len()."""
         if key not in self: return LenIterable([], 0)
-        count = sum(c for (t, _, _), c in self.get_topic_info(counts=True).items() if t == key)
+        count = sum(c for (t, _, _), c in self.get_topic_info().items() if t == key)
         return LenIterable(self.read_messages(key), count)
 
     def __str__(self):
@@ -342,7 +342,7 @@ class Bag(object):
             return result
 
         entries = {}
-        counts = self.get_topic_info(counts=True)
+        counts = self.get_topic_info()
         start, end = self.get_start_time(), self.get_end_time()
 
         entries["path"] = self.filename or "<stream>"
@@ -396,11 +396,11 @@ class Bag(object):
         """Returns the end time of the bag, as UNIX timestamp, or None if bag empty."""
         raise NotImplementedError
 
-    def get_topic_info(self, counts=False):
+    def get_topic_info(self, counts=True):
         """
         Returns topic and message type metainfo as {(topic, typename, typehash): count}.
 
-        @param   counts  if false, may counts may be returned as None (lookup can be costly)
+        @param   counts  if false, counts may be returned as None if lookup is costly
         """
         raise NotImplementedError
 

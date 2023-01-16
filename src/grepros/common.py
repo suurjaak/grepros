@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.01.2023
+@modified    12.01.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -19,6 +19,7 @@ import datetime
 import functools
 import glob
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -275,7 +276,7 @@ class Decompressor(object):
         """Returns whether file is a recognized archive."""
         result = os.path.isfile(path)
         if result:
-            result = any(path.lower().endswith(x) for x in cls.EXTENSIONS)
+            result = any(str(path).lower().endswith(x) for x in cls.EXTENSIONS)
         if result:
             with open(path, "rb") as f:
                 result = (f.read(len(cls.ZSTD_MAGIC)) == cls.ZSTD_MAGIC)
@@ -762,6 +763,13 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
+def has_arg(func, name):
+    """Returns whether function supports taking specified argument by name."""
+    spec = getattr(inspect, "getfullargspec", inspect.getargspec)(func)  # Py3/Py2
+    return name in spec.args or name in getattr(spec, "kwonlyargs", ()) or \
+           getattr(spec, "varkw", None) or getattr(spec, "keywords", None)
+
+
 def import_item(name):
     """
     Returns imported module, or identifier from imported namespace; raises on error.
@@ -888,7 +896,8 @@ def unique_path(pathname, empty_ok=False):
     and isinstance(result, unicode) and "utf-8" != sys.getfilesystemencoding():
         result = result.encode("utf-8") # Linux has trouble if locale not UTF-8
     if os.path.isfile(result) and empty_ok and not os.path.getsize(result):
-        return result
+        string_types = (str, unicode) if sys.version_info < (3, 0) else (bytes, str)
+        return result if isinstance(result, string_types) else str(result)
     path, name = os.path.split(result)
     base, ext = os.path.splitext(name)
     if len(name) > 255: # Filesystem limitation
@@ -980,7 +989,7 @@ def wildcard_to_regex(text, end=False):
 __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
-    "format_bytes", "format_stamp", "format_timedelta", "import_item", "makedirs", "memoize",
-    "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_io",
+    "format_bytes", "format_stamp", "format_timedelta", "has_arg", "import_item", "makedirs",
+    "memoize", "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_io",
     "wildcard_to_regex",
 ]

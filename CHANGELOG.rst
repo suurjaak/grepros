@@ -2,12 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.1 (2023-01-08)
+0.5.1 (2023-01-16)
 -------------------
 * add inputs.AppSource and outputs.AppSink
 * add MCAP bag interface
 * add --no-highlight option
 * support stream objects in bag interface
+* avoid raising errors for unknown message types in ROS2 bags if not reading those topics
 * fix embag reader
 * verify sinks being writable on startup
 * support "postgres://" as auto-detected Postgres target in addition to "postgresql://"

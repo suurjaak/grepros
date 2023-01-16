@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    08.01.2023
+@modified    16.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -144,7 +144,7 @@ PRAGMA synchronous=NORMAL;
         if self._db and self._has_table("messages"):
             sql, where = "SELECT COUNT(*) AS count FROM messages", ""
             if topic_filters:
-                self.get_topic_info()
+                self._ensure_topics()
                 topics = topic_filters
                 topics = topics if isinstance(topics, (dict, list, set, tuple)) else [topics]
                 topic_ids = [x["id"] for (topic, _), x in self._topics.items() if topic in topics]
@@ -173,28 +173,19 @@ PRAGMA synchronous=NORMAL;
         return None
 
 
-    def get_topic_info(self, counts=False):
+    def get_topic_info(self, counts=True, ensure_types=True):
         """
         Returns topic and message type metainfo as {(topic, typename, typehash): count}.
 
-        @param   counts  whether to return actual message counts instead of None
+        Can skip retrieving message counts, as this requires a full table scan.
+        Can skip looking up message type classes, as those might be unavailable in ROS2 environment.
+
+        @param   counts        whether to return actual message counts instead of None
+        @param   ensure_types  whether to look up type classes instead of returning typehash as None
         """
-        DEFAULTCOUNT = 0 if counts else None
-        if self._db and not self._counts and self._has_table("topics"):
-            for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
-                topic, typename = row["name"], canonical(row["type"])
-                typehash = get_message_type_hash(typename)
-                self._topics[(topic, typename)] = row
-                self._counts[(topic, typename, typehash)] = DEFAULTCOUNT
-
-        if self._db and counts and self._has_table("messages") and not any(self._counts.values()):
-            topickeys = {v["id"]: (t, n, get_message_type_hash(n))
-                         for (t, n), v in self._topics.items()}
-            for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
-                                        "GROUP BY topic_id").fetchall():
-                if row["topic_id"] in topickeys:
-                    self._counts[topickeys[row["topic_id"]]] = row["count"]
-
+        self._ensure_topics()
+        if counts: self._ensure_counts()
+        if ensure_types: self._ensure_types()
         return dict(self._counts)
 
 
@@ -210,7 +201,7 @@ PRAGMA synchronous=NORMAL;
         if self._ttinfo: return self._ttinfo
         if self.closed: raise ValueError("I/O operation on closed file.")
 
-        counts = self.get_topic_info(counts=True)
+        counts = self.get_topic_info()
         topics = topic_filters
         topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
         msgtypes = {n: h for t, n, h in counts if not topics or t in topics}
@@ -252,9 +243,11 @@ PRAGMA synchronous=NORMAL;
 
     def get_message_class(self, typename, typehash=None):
         """Returns ROS2 message type class, or None if unknown message type for bag."""
-        self.get_topic_info()
-        if any((n, h) == (typename, typehash) or typehash is None and n == typename
-               for _, n, h in self._counts):
+        self._ensure_topics()
+        if any(n == typename for _, n, in self._topics) and typehash is not None \
+        and not any((n, h) == (typename, typehash) for _, n, h in self._counts):
+            self._ensure_types([t for t, n in self._topics if n == typename])
+        if any((typename, typehash) in [(n, h), (n, None)] for _, n, h in self._counts):
             return get_message_class(typename)
         return None
 
@@ -265,7 +258,7 @@ PRAGMA synchronous=NORMAL;
 
         Returns None if unknown message type for bag.
         """
-        self.get_topic_info()
+        self._ensure_topics()
         typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
         if any(n == typename for _, n, _ in self._counts):
             return get_message_definition(msg_or_type)
@@ -274,8 +267,8 @@ PRAGMA synchronous=NORMAL;
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS2 message type MD5 hash, or None if unknown message type for bag."""
-        self.get_topic_info()
         typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
+        self._ensure_types([t for t, n in self._topics if n == typename])
         return next((h for _, n, h in self._counts if n == typename), None)
 
 
@@ -296,7 +289,7 @@ PRAGMA synchronous=NORMAL;
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
-        self.get_topic_info()
+        self._ensure_topics()
         if not self._topics or (topics is not None and not topics):
             return
 
@@ -317,12 +310,17 @@ PRAGMA synchronous=NORMAL;
         topicmap   = {v["id"]: v for v in self._topics.values()}
         msgtypes   = {}  # {typename: cls}
         topicset   = set(topics or [t for t, _ in self._topics])
+        typehashes = {n: h for _, n, h in self._counts}
         errortypes = set()  # {typename failed to instantiate, }
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
             topic, typename = tdata["name"], canonical(tdata["type"])
             if not raw and msgtypes.get(typename, typename) is None: continue # for row
-            typehash = next(h for t, n, h in self._counts if (t, n) == (topic, typename))
+            if typename not in typehashes:
+                self._ensure_types([topic])
+                typehash = next(h for t, n, h in self._counts if (t, n) == (topic, typename))
+                typehashes[typename] = typehash
+            else: typehash = typehashes[typename]
 
             try:
                 cls = msgtypes.get(typename) or \
@@ -359,7 +357,7 @@ PRAGMA synchronous=NORMAL;
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "r" == self._mode: raise io.UnsupportedOperation("read")
 
-        self.get_topic_info()
+        self._ensure_topics()
         if raw:
             typename, binary, typehash = msg[:3]
         else:
@@ -385,7 +383,8 @@ PRAGMA synchronous=NORMAL;
         args = (self._topics[topickey]["id"], timestamp, binary)
         cursor.execute(sql, args)
         countkey = (topic, typename, typehash)
-        if isinstance(self._counts.get(countkey), int): self._counts[countkey] += 1
+        if self._counts.get(countkey, self) is not None:
+            self._counts[countkey] = self._counts.get(countkey, 0) + 1
         self._ttinfo = None
 
 
@@ -451,6 +450,44 @@ PRAGMA synchronous=NORMAL;
             self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         if populate:
             self._db.executescript(self.CREATE_SQL)
+
+
+    def _ensure_topics(self):
+        """Populates local topic struct from database, if not already available."""
+        if not self._db or self._topics or not self._has_table("topics"): return
+        for row in self._db.execute("SELECT * FROM topics ORDER BY id"):
+            topickey = (topic, typename) = row["name"], canonical(row["type"])
+            self._topics[(topic, typename)] = row
+            self._counts[(topic, typename, None)] = None
+
+
+    def _ensure_counts(self):
+        """Populates local counts values from database, if not already available."""
+        if not self._db or all(v is not None for v in self._counts.values()) \
+        or not self._has_table("messages"): return
+        self._ensure_topics()
+        topickeys = {self._topics[(t, n)]["id"]: (t, n, h) for (t, n, h) in self._counts.values()}
+        self._counts.clear()
+        for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
+                                    "GROUP BY topic_id").fetchall():
+            if row["topic_id"] in topickeys:
+                self._counts[topickeys[row["topic_id"]]] = row["count"]
+
+
+    def _ensure_types(self, topics=None):
+        """
+        Populates local type definitions and classes from database, if not already available.
+
+        @param   topics  selected topics to ensure types for, if not all
+        """
+        if not self._db or (not topics and topics is not None) or not self._has_table("topics") \
+        or not any(h is None for t, _, h in self._counts if topics is None or t in topics):
+            return
+        self._ensure_topics()
+        for (topic, typename, typehash), count in list(self._counts.items()):
+            if typehash is None and (topics is None or topic in topics):
+                typehash = get_message_type_hash(typename)
+            self._counts[(topic, typename, typehash)] = count
 
 
     def _has_table(self, name):

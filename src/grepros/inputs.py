@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.01.2023
+@modified    12.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -28,7 +28,8 @@ import time
 from . import api
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, is_stream, plural, verify_io, wildcard_to_regex
+                     format_stamp, format_timedelta, has_arg, is_stream, plural, verify_io, \
+                     wildcard_to_regex
 
 
 class Source(object):
@@ -456,7 +457,8 @@ class BagSource(Source, ConditionMixin):
         self._args0     = copy.deepcopy(args)  # Original arguments
         self._status    = None   # Match status of last produced message
         self._sticky    = False  # Reading a single topic until all after-context emitted
-        self._totals_ok = False  # Whether message count totals have been retrieved
+        self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
+        self._types_ok  = False  # Whether type definitions have been retrieved (ROS2 optimize)
         self._running   = False
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
@@ -481,6 +483,7 @@ class BagSource(Source, ConditionMixin):
                     for t in tt: typetopics.setdefault(t, []).append(n)
                 topicsets = [{n: [t] for n in nn} for t, nn in sorted(typetopics.items())]
 
+            self._types_ok = False
             self._init_progress()
             for topics in topicsets:
                 for topic, msg, stamp, index in self._produce(topics) if topics else ():
@@ -608,7 +611,11 @@ class BagSource(Source, ConditionMixin):
         return ConditionMixin.is_processable(self, topic, msg, stamp, index)
 
     def _produce(self, topics, start_time=None):
-        """Yields messages from current ROS bagfile, as (topic, msg, ROS time, index in topic)."""
+        """
+        Yields messages from current ROS bagfile, as (topic, msg, ROS time, index in topic).
+
+        @param   topics  {topic: [typename, ]}
+        """
         counts = collections.Counter()
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
@@ -616,6 +623,8 @@ class BagSource(Source, ConditionMixin):
             typename = api.get_message_type(msg)
             if topics and typename not in topics[topic]:
                 continue  # for topic
+            if api.ROS2 and not self._types_ok:
+                self.topics, self._types_ok = self._bag.get_topic_info(counts=False), True
 
             topickey = api.TypeMeta.make(msg, topic, self).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
@@ -640,7 +649,7 @@ class BagSource(Source, ConditionMixin):
                 self._sticky = False
 
     def _produce_bags(self):
-        """Yields Bag instances from arguments."""
+        """Yields Bag instances from configured arguments."""
         if self._bag0 is not None:
             if self._configure(bag=self._bag0):
                 yield self._bag
@@ -678,8 +687,10 @@ class BagSource(Source, ConditionMixin):
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
-        if not self._totals_ok:  # Must be ROS2 bag
-            for (t, n, h), c in self._bag.get_topic_info(counts=True).items():
+        if not self._totals_ok:  # ROS2 bag probably
+            has_ensure = has_arg(self._bag.get_topic_info, "ensure_types")
+            kws = dict(ensure_types=False) if has_ensure else {}
+            for (t, n, h), c in self._bag.get_topic_info(**kws).items():
                 self.topics[(t, n, h)] = c
             self._totals_ok = True
 
@@ -715,7 +726,8 @@ class BagSource(Source, ConditionMixin):
         self._filename = bag.filename
 
         dct = fulldct = {}  # {topic: [typename, ]}
-        for (t, n, h), c in bag.get_topic_info().items():
+        kws = dict(ensure_types=False) if has_arg(bag.get_topic_info, "ensure_types") else {}
+        for (t, n, h), c in bag.get_topic_info(counts=False, **kws).items():
             dct.setdefault(t, []).append(n)
             self.topics[(t, n, h)] = c
         self._totals_ok = not any(v is None for v in self.topics.values())
