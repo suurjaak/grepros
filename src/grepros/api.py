@@ -8,10 +8,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    16.01.2023
+@modified    17.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
+import abc
 import collections
 import datetime
 import decimal
@@ -218,7 +219,7 @@ class TypeMeta(object):
         cls._TIMINGS.clear()
 
 
-class Bag(object):
+class BaseBag(object):
     """
     ROS bag interface.
 
@@ -226,18 +227,9 @@ class Bag(object):
     and supporting `len(bag)`; and supports topic-based membership
     (`if mytopic in bag`, `for t, m, s in bag[mytopic]`, `len(bag[mytopic])`).
 
-    Result is an extended rosbag.Bag in ROS1, or an object with a conforming interface
-    if using embag in ROS1, or if using ROS2.
-    Or a plugin class like {@link plugins.mcap.McapBag McapBag}
-    if plugin loaded and file recognized as MCAP format.
-
     Extra methods and properties compared with rosbag.Bag: Bag.get_message_class(),
     Bag.get_message_definition(), Bag.get_message_type_hash(), Bag.get_topic_info();
     Bag.closed and and Bag.topics.
-
-    Plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
-    Classes can have a static/class method `autodetect(filename)`
-    returning whether given file is in recognizable format for the plugin class.
     """
 
     ## Returned from read_messages() as (topic name, ROS message, ROS timestamp object).
@@ -256,42 +248,6 @@ class Bag(object):
 
     ## Whether bag supports reading or writing stream objects, overridden in subclasses
     STREAMABLE = True
-
-    ## Bag reader classes, as {Cls, }
-    READER_CLASSES = set()
-
-    ## Bag writer classes, as {Cls, }
-    WRITER_CLASSES = set()
-
-    def __new__(cls, f, mode="r", reindex=False, progress=False, **kwargs):
-        """
-        Returns an object for reading or writing ROS bags.
-
-        Suitable Bag class is auto-detected by file extension or content.
-
-        @param   f         bag file path, or a stream object
-                           (streams not supported for ROS2 .db3 SQLite bags)
-        @param   mode      return reader if "r" else writer
-        @param   reindex   reindex unindexed bag (ROS1 only), making a backup if indexed format
-        @param   progress  show progress bar with reindexing status
-        @param   kwargs    additiional keyword arguments for format-specific Bag constructor
-        """
-        classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
-        for detect, mycls in ((d, c) for d in (True, False) for c in list(classes)):
-            use, discard = not detect, False  # Try auto-detecting suitable class first
-            try:
-                if detect and callable(vars(mycls).get("autodetect")):
-                    use, discard = mycls.autodetect(f), True
-                if use:
-                    result = super(cls, mycls).__new__(mycls)
-                    if result is not None: return result  # __init__() called by Python on return
-            except Exception as e:
-                discard = True
-                ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
-                                    f, "reading" if "r" == mode else "writing", mycls, e)
-            discard and classes.discard(mycls)
-        raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
-
 
     def __iter__(self):
         """Iterates over all messages in the bag."""
@@ -506,13 +462,71 @@ class Bag(object):
         """Returns whether file is closed."""
         raise NotImplementedError
 
+
+class Bag(BaseBag):
+    """
+    Bag factory. Result is a format-specific class instance, auto-detected from file extension
+    or content: an extended rosbag.Bag for ROS1 bags, otherwise an object
+    with a conforming interface.
+
+    E.g. {@link plugins.mcap.McapBag McapBag} if {@link plugins.mcap mcap} plugin loaded
+    and file recognized as MCAP format.
+
+    User plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
+    Classes can have a static/class method `autodetect(filename)`
+    returning whether given file is in recognizable format for the plugin class.
+    """
+
+    __metaclass__ = abc.ABCMeta
+
+    ## Bag reader classes, as {Cls, }
+    READER_CLASSES = set()
+
+    ## Bag writer classes, as {Cls, }
+    WRITER_CLASSES = set()
+
+    def __new__(cls, f, mode="r", reindex=False, progress=False, **kwargs):
+        """
+        Returns an object for reading or writing ROS bags.
+
+        Suitable Bag class is auto-detected by file extension or content.
+
+        @param   f         bag file path, or a stream object
+                           (streams not supported for ROS2 .db3 SQLite bags)
+        @param   mode      return reader if "r" else writer
+        @param   reindex   reindex unindexed bag (ROS1 only), making a backup if indexed format
+        @param   progress  show progress bar with reindexing status
+        @param   kwargs    additiional keyword arguments for format-specific Bag constructor
+        """
+        classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
+        for detect, bagcls in ((d, c) for d in (True, False) for c in list(classes)):
+            use, discard = not detect, False  # Try auto-detecting suitable class first
+            try:
+                if detect and callable(vars(bagcls).get("autodetect")):
+                    use, discard = bagcls.autodetect(f), True
+                if use:
+                    return bagcls(f, mode, reindex=reindex, progress=progress, **kwargs)
+            except Exception as e:
+                discard = True
+                ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
+                                    f, "reading" if "r" == mode else "writing", bagcls, e)
+            discard and classes.discard(bagcls)
+        raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
+
+
     @classmethod
-    def autodetect(cls, filename):
-        """Returns registered bag class auto-detected from filename, or None."""
-        for mycls in cls.READER_CLASSES | cls.WRITER_CLASSES:
-            if callable(vars(mycls).get("autodetect")) and mycls.autodetect(filename):
-                return mycls
+    def autodetect(cls, f):
+        """Returns registered bag class auto-detected from file, or None."""
+        for bagcls in cls.READER_CLASSES | cls.WRITER_CLASSES:
+            if callable(vars(bagcls).get("autodetect")) and bagcls.autodetect(f):
+                return bagcls
         return None
+
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        return True if issubclass(C, BaseBag) else NotImplemented
+
 
 
 def init_node(name=None):
@@ -1029,7 +1043,7 @@ def to_time(val):
 __all___ = [
     "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_CTORS", "ROS_BUILTIN_TYPES",
     "ROS_COMMON_TYPES", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
-    "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "TypeMeta",
+    "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "BaseBag", "TypeMeta",
     "calculate_definition_hash", "canonical", "create_publisher", "create_subscriber",
     "deserialize_message", "dict_to_message", "format_message_value", "get_alias_type",
     "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",

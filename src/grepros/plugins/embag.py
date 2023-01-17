@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    08.01.2023
+@modified    17.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -25,7 +25,7 @@ from .. common import PATH_TYPES, ConsolePrinter
 
 
 
-class EmbagReader(api.Bag):
+class EmbagReader(api.BaseBag):
     """embag reader interface, providing most of rosbag.Bag interface."""
 
     ## Supported opening modes

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    09.01.2023
+@modified    17.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -58,7 +58,7 @@ SLEEP_INTERVAL = 0.5
 master = None
 
 
-class ROS1Bag(rosbag.Bag, api.Bag):
+class ROS1Bag(rosbag.Bag, api.BaseBag):
     """
     ROS1 bag reader and writer.
 

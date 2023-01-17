@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    08.01.2023
+@modified    17.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -39,7 +39,7 @@ from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes
 from .. outputs import Sink
 
 
-class McapBag(api.Bag):
+class McapBag(api.BaseBag):
     """
     MCAP bag interface, providing most of rosbag.Bag interface.
 
