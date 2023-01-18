@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    17.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -282,7 +282,8 @@ PRAGMA synchronous=NORMAL;
         @param   end_time    latest timestamp of message to return, as ROS time or convertible
                              (int/float/duration/datetime/decimal)
         @param   raw         if True, then returned messages are tuples of
-                             (typename, bytes, typehash, typeclass)
+                             (typename, bytes, typehash, typeclass).
+                             If message type unavailable, returns None for hash and class.
         @return              BagMessage namedtuples of
                              (topic, message, timestamp as rclpy.time.Time)
         """
@@ -308,34 +309,31 @@ PRAGMA synchronous=NORMAL;
         sql += " ORDER BY timestamp"
 
         topicmap   = {v["id"]: v for v in self._topics.values()}
-        msgtypes   = {}  # {typename: cls}
+        msgtypes   = {}  # {typename: cls or None if unavailable}
         topicset   = set(topics or [t for t, _ in self._topics])
-        typehashes = {n: h for _, n, h in self._counts}
-        errortypes = set()  # {typename failed to instantiate, }
+        typehashes = {n: h for _, n, h in self._counts} # {typename: typehash or None or ""}
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
             topic, typename = tdata["name"], canonical(tdata["type"])
-            if not raw and msgtypes.get(typename, typename) is None: continue # for row
-            if typename not in typehashes:
+            if not raw and msgtypes.get(typename, typename) is None: continue  # for row
+            if typehashes.get(typename) is None:
                 self._ensure_types([topic])
-                typehash = next(h for t, n, h in self._counts if (t, n) == (topic, typename))
-                typehashes[typename] = typehash
+                selector = (h for t, n, h in self._counts if (t, n) == (topic, typename))
+                typehash = typehashes[typename] = next(selector, None)
             else: typehash = typehashes[typename]
 
             try:
                 cls = msgtypes.get(typename) or \
                       msgtypes.setdefault(typename, get_message_class(typename))
-                if raw: msg = (typename, row["data"], typehash, cls)
+                if raw: msg = (typename, row["data"], typehash or None, cls)
                 else:   msg = rclpy.serialization.deserialize_message(row["data"], cls)
             except Exception as e:
-                errortypes.add(typename)
                 ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
                                     (typename, topic), e, __once=True)
-                if raw: msg = (typename, row["data"], typehash, None)
+                if raw: msg = (typename, row["data"], typehash or None, msgtypes.get(typename))
                 elif set(n for n, c in msgtypes.items() if c is None) == topicset:
                     break  # for row
                 continue  # for row
-            errortypes.discard(typename)
             stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
 
             api.TypeMeta.make(msg, topic, self)
