@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
 import argparse
 import atexit
 import collections
+import logging
 import os
 import re
 import sys
@@ -483,11 +484,11 @@ def validate_args(args):
             errors["Invalid condition"].append("'%s': %s" % (v, e))
 
     for err in errors.get("", []):
-        ConsolePrinter.error(err)
+        ConsolePrinter.log(logging.ERROR, err)
     for category in filter(bool, errors):
-        ConsolePrinter.error(category)
+        ConsolePrinter.log(logging.ERROR, category)
         for err in errors[category]:
-            ConsolePrinter.error("  %s" % err)
+            ConsolePrinter.log(logging.ERROR, "  %s" % err)
     return not errors
 
 

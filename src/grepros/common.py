@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    16.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -101,7 +101,11 @@ class ConsolePrinter(object):
         """
         cls.APIMODE    = bool(apimode)
         cls._COLORFLAG = color
-        if not apimode: cls.init_terminal()
+        if apimode:
+            cls.DEBUG_START, cls.DEBUG_END = "", ""
+            cls.WARN_START,  cls.WARN_END  = "", ""
+            cls.ERROR_START, cls.ERROR_END = "", ""
+        else: cls.init_terminal()
 
 
     @classmethod
@@ -201,6 +205,24 @@ class ConsolePrinter(object):
             return
         KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+    @classmethod
+    def log(cls, level, text="", *args, **kwargs):
+        """
+        Prints text to stderr, or logs to logger if APIMODE.
+
+        Text is formatted with args and kwargs, in level colors if supported.
+
+        @param   level  logging level like `logging.ERROR` or "ERROR"
+        """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).log(level, text)
+            return
+        while not isinstance(level, str): level = logging.getLevelName(level)
+        func = {"DEBUG": cls.debug, "WARN": cls.warn, "ERROR": cls.error}.get(level, cls.print)
+        func(text, *args, **dict(kwargs, __file=sys.stderr))
 
 
     @classmethod
@@ -699,7 +721,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
     def iter_files(directory):
         """Yields matching filenames from path."""
         if os.path.isfile(directory):
-            ConsolePrinter.error("%s: Is a file", directory)
+            ConsolePrinter.log(logging.ERROR, "%s: Is a file", directory)
             return
         for path in sorted(glob.glob(directory)):  # Expand * wildcards, if any
             pathsfound.add(directory)
@@ -708,7 +730,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
                 for f in (f for f in glob.glob(p) if "*" not in n
                           or not any(map(f.endswith, skip_extensions))):
                     if os.path.isdir(f):
-                        ConsolePrinter.error("%s: Is a directory", f)
+                        ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
                         continue  # for n
                     namesfound.add(n)
                     yield f
@@ -729,9 +751,9 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
             yield f
 
     for path in (p for p in paths if p not in pathsfound):
-        ConsolePrinter.error("%s: No such directory", path)
+        ConsolePrinter.log(logging.ERROR, "%s: No such directory", path)
     for name in (n for n in names if n not in namesfound):
-        ConsolePrinter.error("%s: No such file", name)
+        ConsolePrinter.log(logging.ERROR, "%s: No such file", name)
 
 
 def format_timedelta(delta):
@@ -939,7 +961,7 @@ def verify_io(f, mode):
             f.seek(pos)
             return result
         except Exception as e:
-            ConsolePrinter.error("Error%s %s: %s", op, type(f).__name__, e)
+            ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", op, type(f).__name__, e)
             return False
 
     present, paths_created = os.path.exists(f), []
@@ -965,7 +987,7 @@ def verify_io(f, mode):
                 result, _ = True, g.write(b"")
             return result
     except Exception as e:
-        ConsolePrinter.error("Error%s %s: %s", f, e)
+        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", f, e)
         return False
     finally:
         if not present:

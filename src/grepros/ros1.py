@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -16,6 +16,7 @@ import collections
 import datetime
 import decimal
 import inspect
+import logging
 import io
 import os
 import shutil
@@ -437,7 +438,8 @@ def init_node(name):
             try: uri = master.getUri()
             except Exception:
                 if available is None:
-                    ConsolePrinter.warn("Unable to register with master. Will keep trying.")
+                    ConsolePrinter.log(logging.ERROR,
+                                       "Unable to register with master. Will keep trying.")
                 available = False
                 time.sleep(SLEEP_INTERVAL)
             else:
