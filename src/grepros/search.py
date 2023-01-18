@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    04.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -98,12 +98,11 @@ class Scanner(object):
                             where match is matched optionally highlighted message
                             or `None` if yielding a context message
         """
-        if not isinstance(source, inputs.Source):
+        if isinstance(source, api.Bag):
             source = inputs.BagSource(self.args, bag=source)
         self._prepare(source, highlight=highlight)
         for topic, msg, stamp, matched, index in self._generate():
             yield self.GrepMessage(topic, msg, stamp, matched, index)
-        source.close()
 
 
     def match(self, topic, msg, stamp, highlight=None):
@@ -157,24 +156,17 @@ class Scanner(object):
             sink.emit_meta()
             sink.emit(topic, msg, stamp, matched, index)
             total_matched += bool(matched)
-        source.close(), sink.close()
         return total_matched
 
 
-    def close(self):
-        """Closes source and sink, if any."""
-        self.source and self.source.close()
-        self.sink   and self.sink .close()
-
-
     def __enter__(self):
-        """Context manager entry."""
+        """Context manager entry, does nothing, returns self."""
         return self
 
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit, closes source and sink, if any."""
-        self.close()
+        """Context manager exit, does nothing."""
+        return self
 
 
     def _generate(self):
