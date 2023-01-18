@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -82,8 +82,11 @@ class TypeMeta(object):
     All property values are lazy-loaded upon request.
     """
 
-    ## Seconds before auto-clearing message from cache
+    ## Seconds before auto-clearing message from cache, <=0 disables
     LIFETIME = 2
+
+    ## Max size to constrain cache to, <=0 disables
+    POPULATION = 0
 
     ## {id(msg): TypeMeta()}
     _CACHE = {}
@@ -200,9 +203,16 @@ class TypeMeta(object):
 
     @classmethod
     def sweep(cls):
-        """Discards stale messages from cache."""
+        """Discards stale or surplus messages from cache."""
+        if cls.POPULATION > 0 and len(cls._CACHE) > cls.POPULATION:
+            count = len(cls._CACHE) - cls.POPULATION
+            for msgid, tm in sorted(x[::-1] for x in cls._TIMINGS.items())[:count]:
+                cls._CACHE.pop(msgid, None), cls._TIMINGS.pop(msgid, None)
+                for childid in cls._CHILDREN.pop(msgid, []):
+                    cls._CACHE.pop(childid, None), cls._TIMINGS.pop(childid, None)
+
         now = time.time()
-        if not cls.LIFETIME or cls._LASTSWEEP < now - cls.LIFETIME: return
+        if cls.LIFETIME <= 0 or cls._LASTSWEEP < now - cls.LIFETIME: return
 
         for msgid, tm in list(cls._TIMINGS.items()):
             drop = (tm > now) or (tm < now - cls.LIFETIME)
