@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.01.2023
+@modified    19.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -19,7 +19,7 @@ import os
 import re
 import sys
 
-from . import __version__, api, inputs, outputs, search
+from . import __version__, __version_date__, api, inputs, outputs, search
 from . common import ConsolePrinter, parse_datetime
 from . import plugins
 
@@ -98,7 +98,8 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--version"],
              dest="VERSION", action="version",
-             version="grepros (grep for ROS bag files and live topics) %s" % __version__,
+             version="grepros: grep for ROS bag files and live topics, v%s (%s)" %
+                     (__version__, __version_date__),
              help="display version information and exit"),
 
         dict(args=["--live"],
