@@ -220,8 +220,9 @@ class ConsolePrinter(object):
             text = cls._format(text, *args, **kwargs)
             if text: logging.getLogger(__name__).log(level, text)
             return
-        while not isinstance(level, str): level = logging.getLevelName(level)
-        func = {"DEBUG": cls.debug, "WARN": cls.warn, "ERROR": cls.error}.get(level, cls.print)
+        level = logging.getLevelName(level)
+        if not isinstance(level, str): level = logging.getLevelName(level)
+        func = {"DEBUG": cls.debug, "WARNING": cls.warn, "ERROR": cls.error}.get(level, cls.print)
         func(text, *args, **dict(kwargs, __file=sys.stderr))
 
 
@@ -234,7 +235,11 @@ class ConsolePrinter(object):
 
     @classmethod
     def _format(cls, text="", *args, **kwargs):
-        """Returns text formatted with printf-style or format() arguments, or "" if not unique."""
+        """
+        Returns text formatted with printf-style or format() arguments.
+        
+        @param  __once  registers text, returns "" if text not unique
+        """
         text, fmted = str(text), False
         if kwargs.get("__once"):
             if text in cls._UNIQUES: return ""
@@ -706,10 +711,10 @@ def filter_fields(fieldmap, top=(), include=(), exclude=()):
 
 def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
     """
-    Yields filenames from current directory or given paths, .
+    Yields filenames from current directory or given paths.
 
     Seeks only files with given extensions if names not given.
-    Prints errors for names and paths not found.
+    Logs errors for names and paths not found.
 
     @param   names            list of specific files to return (supports * wildcards)
     @param   paths            list of paths to look under, if not using current directory

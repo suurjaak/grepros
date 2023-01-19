@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    08.01.2023
+@modified    18.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -599,9 +599,9 @@ class AppSink(Sink):
 
     def __init__(self, emit=None, metaemit=None, highlight=False, **__):
         """
-        @param   emit        callback(topic, msg, stamp, highlighted msg, index in topic)
-        @param   metaemit    callback(metadata dict) invoked before first emit from source batch
-        @param   highlight   whether to highlight matching fields in emitted messages
+        @param   emit        callback(topic, msg, stamp, highlighted msg, index in topic), if any
+        @param   metaemit    callback(metadata dict) if any, invoked before first emit from source batch
+        @param   highlight   whether to expect highlighted matching fields from source messages
         """
         super(AppSink, self).__init__()
         self._emit      = emit

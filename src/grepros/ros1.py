@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.01.2023
+@modified    17.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -98,6 +98,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         @param   reindex     if true and bag is unindexed, make a copy
                              of the file (unless unindexed format) and reindex original
         @param   progress    show progress bar with reindexing status
+        @param   kwargs      additional keyword arguments for `rosbag.Bag`, like `compression`
         """
         self.__topics = {}  # {(topic, typename, typehash): message count}
         f,    args = (args[0] if args else kwargs.pop("f")), args[1:]
@@ -554,15 +555,19 @@ def get_message_class(typename):
 
 
 def get_message_definition(msg_or_type):
-    """Returns ROS1 message type definition full text, including subtype definitions."""
+    """
+    Returns ROS1 message type definition full text, including subtype definitions.
+
+    Returns None if unknown type.
+    """
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
-    return msg_or_cls._full_text
+    return None if msg_or_cls is None else msg_or_cls._full_text
 
 
 def get_message_type_hash(msg_or_type):
-    """Returns ROS message type MD5 hash."""
+    """Returns ROS message type MD5 hash, or "" if unknown type."""
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
-    return msg_or_cls._md5sum
+    return None if msg_or_cls is None else msg_or_cls._md5sum
 
 
 def get_message_fields(val):

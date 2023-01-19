@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.01.2023
+@modified    17.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -352,7 +352,8 @@ class Bag(BaseBag):
         @param   mode      return reader if "r" else writer
         @param   reindex   reindex unindexed bag (ROS1 only), making a backup if indexed format
         @param   progress  show progress bar with reindexing status
-        @param   kwargs    additiional keyword arguments for format-specific Bag constructor
+        @param   kwargs    additional keyword arguments for format-specific Bag constructor,
+                           like `compression` for ROS1 bag
         """
         classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
         for detect, bagcls in ((d, c) for d in (True, False) for c in list(classes)):
@@ -663,17 +664,21 @@ def format_message_value(msg, name, value):
 
 
 def get_message_class(typename):
-    """Returns ROS message class."""
+    """Returns ROS message class, or None if unavailable."""
     return realapi.get_message_class(typename)
 
 
 def get_message_definition(msg_or_type):
-    """Returns ROS message type definition full text, including subtype definitions."""
+    """
+    Returns ROS message type definition full text, including subtype definitions.
+    
+    Returns None if unknown type.
+    """
     return realapi.get_message_definition(msg_or_type)
 
 
 def get_message_type_hash(msg_or_type):
-    """Returns ROS message type MD5 hash."""
+    """Returns ROS message type MD5 hash, or "" if unknown type."""
     return realapi.get_message_type_hash(msg_or_type)
 
 
@@ -693,7 +698,7 @@ def get_message_value(msg, name, typename):
 
 
 def get_rostime():
-    """Returns current ROS time."""
+    """Returns current ROS time, as rospy.Time or rclpy.time.Time."""
     return realapi.get_rostime()
 
 
@@ -741,7 +746,7 @@ def is_ros_message(val, ignore_time=False):
 
 
 def is_ros_time(val):
-    """Returns whether value is a ROS2 time/duration."""
+    """Returns whether value is a ROS time/duration."""
     return realapi.is_ros_time(val)
 
 
@@ -752,9 +757,10 @@ def iter_message_fields(msg, messages_only=False, scalars=(), top=()):
     @param  messages_only  whether to yield only values that are ROS messages themselves
                            or lists of ROS messages, else will yield scalar and list values
     @param  scalars        sequence of ROS types to consider as scalars, like ("time", duration")
+    @param  top            internal recursion helper
     """
     fieldmap = realapi.get_message_fields(msg)
-    if fieldmap is msg: return
+    if not fieldmap: return
     if messages_only:
         for k, t in fieldmap.items():
             v, scalart = realapi.get_message_value(msg, k, t), realapi.scalar(t)
