@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.01.2023
+@modified    20.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -17,11 +17,12 @@ import atexit
 import collections
 import logging
 import os
+import random
 import re
 import sys
 
 from . import __version__, __version_date__, api, inputs, outputs, search
-from . common import ConsolePrinter, parse_datetime
+from . common import ConsolePrinter, MatchMarkers, parse_datetime
 from . import plugins
 
 
@@ -515,6 +516,7 @@ def preload_plugins():
 
 def run():
     """Parses command-line arguments and runs search."""
+    MatchMarkers.populate("%08x" % random.randint(1, 1E9))
     preload_plugins()
     argparser = make_parser()
     if len(sys.argv) < 2:

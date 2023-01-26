@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    18.01.2023
+@modified    20.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -22,7 +22,13 @@ from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans,
 
 
 class Scanner(object):
-    """ROS message grepper."""
+    """
+    ROS message grepper.
+
+    In highlighted results, message field values that match search criteria are modified
+    to wrap the matching parts in {@link common.MatchMarkers MatchMarkers} tags,
+    with numeric field values converted to strings beforehand.
+    """
 
     ## Namedtuple of (topic name, ROS message, ROS time object, message if matched).
     GrepMessage = collections.namedtuple("BagMessage", "topic message timestamp match")

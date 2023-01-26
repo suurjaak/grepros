@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.01.2023
+@modified    20.01.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -25,7 +25,6 @@ import itertools
 import logging
 import math
 import os
-import random
 import re
 import shutil
 import sys
@@ -47,11 +46,26 @@ else: PATH_TYPES += (importlib.import_module("pathlib").Path, )
 class MatchMarkers(object):
     """Highlight markers for matches in message values."""
 
-    ID    = "%08x" % random.randint(1, 1E9)  ## Unique marker for match highlight replacements
-    START = "<%s>"  % ID                     ## Temporary placeholder in front of match
-    END   = "</%s>" % ID                     ## Temporary placeholder at end of match
-    EMPTY = START + END                      ## Temporary placeholder for empty string match
-    EMPTY_REPL = "%s''%s" % (START, END)     ## Replacement for empty string match
+    ## Unique marker for match highlight replacements
+    ID    = "matching"
+    ## Placeholder in front of match
+    START = "<%s>"  % ID
+    ## Placeholder at end of match
+    END   = "</%s>" % ID
+    ## Placeholder for empty string match
+    EMPTY = START + END
+    ## Replacement for empty string match
+    EMPTY_REPL = "%s''%s" % (START, END)
+
+    @classmethod
+    def populate(cls, value):
+        """Populates highlight markers with specified value."""
+        cls.ID    = str(value)
+        cls.START = "<%s>"  % cls.ID
+        cls.END   = "</%s>" % cls.ID
+        cls.EMPTY = cls.START + cls.END
+        cls.EMPTY_REPL = "%s''%s" % (cls.START, cls.END)
+        
 
 
 class ConsolePrinter(object):
