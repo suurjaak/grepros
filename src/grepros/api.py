@@ -318,6 +318,16 @@ class BaseBag(object):
         """Returns whether file is closed."""
         raise NotImplementedError
 
+    @property
+    def stop_on_error(self):
+        """Whether raising read error on unknown message type (ROS2 SQLite .db3 specific)."""
+        return getattr(self, "_stop_on_error", None)
+
+    @stop_on_error.setter
+    def stop_on_error(self, flag):
+        """Sets whether to raise read error on unknown message type (ROS2 SQLite .db3 specific)."""
+        setattr(self, "_stop_on_error", flag)
+
 
 class Bag(BaseBag):
     """

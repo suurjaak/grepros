@@ -102,9 +102,8 @@ Installation
 
 grepros is written in Python, supporting both Python 2 and Python 3.
 
-Developed and tested under ROS1 noetic and ROS2 foxy,
-it should also work in later ROS2 versions;
-it _may_ work in earlier ROS1 versions.
+Developed and tested under ROS1 Noetic and ROS2 Foxy,
+should also work in later ROS2 versions; _may_ work in earlier ROS1 versions.
 
 
 ### Using pip
@@ -662,6 +661,7 @@ optional arguments:
                         (built-in plugins: grepros.plugins.embag,
                          grepros.plugins.mcap, grepros.plugins.parquet,
                          grepros.plugins.sql)
+  --stop-on-error       stop further execution on any error like unknown message type
 
 Filtering:
   -t TOPIC [TOPIC ...], --topic TOPIC [TOPIC ...]

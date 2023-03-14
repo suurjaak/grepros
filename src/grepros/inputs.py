@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.01.2023
+@modified    17.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -406,7 +406,8 @@ class BagSource(Source, ConditionMixin):
     DEFAULT_ARGS = dict(FILE=(), PATH=(), RECURSE=False, TOPIC=(), TYPE=(),
                         SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
-                        DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False)
+                        DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False,
+                        STOP_ON_ERROR=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -445,6 +446,7 @@ class BagSource(Source, ConditionMixin):
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
         @param   args.progress          whether to print progress bar
+        @param   args.stop_on_error     stop execution on any error like unknown message type
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args0 = args
@@ -717,9 +719,11 @@ class BagSource(Source, ConditionMixin):
                 else: raise Exception("decompression not enabled")
             bag = api.Bag(filename, mode="r", reindex=self.args.REINDEX,
                           progress=self.args.PROGRESS) if bag is None else bag
+            bag.stop_on_error = self.args.STOP_ON_ERROR
             bag.open()
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename or bag, e)
+            if self.args.STOP_ON_ERROR: raise
             return False
 
         self._bag      = bag
@@ -762,7 +766,7 @@ class TopicSource(Source, ConditionMixin):
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
                         END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITION=(),
-                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False)
+                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False, STOP_ON_ERROR=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -785,6 +789,7 @@ class TopicSource(Source, ConditionMixin):
         @param   args.queue_size_in     subscriber queue size (default 10)
         @param   args.ros_time_in       stamp messages with ROS time instead of wall time
         @param   args.progress          whether to print progress bar
+        @param   args.stop_on_error     stop execution on any error like unknown message type
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
@@ -911,10 +916,10 @@ class TopicSource(Source, ConditionMixin):
             dct = filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
             if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
-            try: api.get_message_class(typename)  # Raises error in ROS2
-            except Exception as e:
-                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
-                                    (typename, topic), e, __once=True)
+            if api.get_message_class(typename) is None:
+                msg = "Error loading type %s in topic %s." % (typename, topic)
+                if self.args.STOP_ON_ERROR: raise Exception(msg)
+                ConsolePrinter.warn(msg, __once=True)
                 continue  # for topic, typename
             topickey = (topic, typename, None)
             if topickey in self.topics:
@@ -923,10 +928,11 @@ class TopicSource(Source, ConditionMixin):
             handler = functools.partial(self._on_message, topic)
             try:
                 sub = api.create_subscriber(topic, typename, handler,
-                                               queue_size=self.args.QUEUE_SIZE_IN)
+                                            queue_size=self.args.QUEUE_SIZE_IN)
             except Exception as e:
                 ConsolePrinter.warn("Error subscribing to topic %s: %%r" % topic,
                                     e, __once=True)
+                if self.args.STOP_ON_ERROR: raise
                 continue  # for topic, typename
             self._subs[topickey] = sub
             self.topics[topickey] = None

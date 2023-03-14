@@ -2,11 +2,12 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.1 (2023-01-16)
+0.5.1 (2023-03-14)
 -------------------
 * add inputs.AppSource and outputs.AppSink
 * add MCAP bag interface
 * add --no-highlight option
+- add --stop-on-error option
 * support stream objects in bag interface
 * avoid raising errors for unknown message types in ROS2 bags if not reading those topics
 * fix embag reader

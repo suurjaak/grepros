@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    18.01.2023
+@modified    17.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -131,6 +131,7 @@ PRAGMA synchronous=NORMAL;
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
         self._ttinfo = None  # Cached result for get_type_and_topic_info()
         self._filename = str(filename)
+        self._stop_on_error = True
 
         self._ensure_open(populate=("r" != mode))
 
@@ -328,8 +329,10 @@ PRAGMA synchronous=NORMAL;
                 if raw: msg = (typename, row["data"], typehash or None, cls)
                 else:   msg = rclpy.serialization.deserialize_message(row["data"], cls)
             except Exception as e:
-                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
-                                    (typename, topic), e, __once=True)
+                reportfunc = ConsolePrinter.error if self._stop_on_error else ConsolePrinter.warn
+                reportfunc("Error loading type %s in topic %s: %%s" % (typename, topic),
+                           e, __once=not self._stop_on_error)
+                if self._stop_on_error: raise
                 if raw: msg = (typename, row["data"], typehash or None, msgtypes.get(typename))
                 elif set(n for n, c in msgtypes.items() if c is None) == topicset:
                     break  # for row
@@ -431,6 +434,12 @@ PRAGMA synchronous=NORMAL;
     def mode(self):
         """Returns file open mode."""
         return self._mode
+
+
+    @property
+    def stop_on_error(self):
+        """Whether raising read error on unknown message type; defaults to true."""
+        return self._stop_on_error
 
 
     def __contains__(self, key):

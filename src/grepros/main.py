@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.01.2023
+@modified    26.01.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -126,6 +126,10 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--plugin"],
              dest="PLUGIN", nargs="+", default=[], action="append",
              help="load a Python module or class as plugin"),
+
+        dict(args=["--stop-on-error"],
+             dest="STOP_ON_ERROR", action="store_true",
+             help="stop further execution on any error like unknown message type"),
     ],
 
     "groups": {"Filtering": [
