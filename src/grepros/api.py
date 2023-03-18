@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.03.2023
+@modified    18.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -42,6 +42,9 @@ ROS2 = None
 
 ## ROS version from environment, populated on validate() as integer
 ROS_VERSION = None
+
+## ROS Python module family, "rospy" or "rclpy", populated on validate()
+ROS_FAMILY = None
 
 ## All built-in numeric types in ROS
 ROS_NUMERIC_TYPES = ["byte", "char", "int8", "int16", "int32", "int64", "uint8",
@@ -570,7 +573,7 @@ def validate(live=False):
 
     @param   live  whether environment must support launching a ROS node
     """
-    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS1, ROS2, ROS_VERSION, \
+    global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS1, ROS2, ROS_VERSION, ROS_FAMILY, \
            ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES, ROS_ALIAS_TYPES
     if realapi:
         return True
@@ -580,12 +583,12 @@ def validate(live=False):
         from . import ros1
         realapi = ros1
         success = realapi.validate()
-        ROS1, ROS2, ROS_VERSION = True, False, 1
+        ROS1, ROS2, ROS_VERSION, ROS_FAMILY = True, False, 1, "rospy"
     elif "2" == version:
         from . import ros2
         realapi = ros2
         success = realapi.validate(live)
-        ROS1, ROS2, ROS_VERSION = False, True, 2
+        ROS1, ROS2, ROS_VERSION, ROS_FAMILY = False, True, 2, "rclpy"
     elif not version:
         ConsolePrinter.error("ROS environment not set: missing ROS_VERSION.")
     else:
@@ -1068,7 +1071,7 @@ def to_time(val):
 
 __all___ = [
     "BAG_EXTENSIONS", "NODE_NAME", "ROS_ALIAS_TYPES", "ROS_BUILTIN_CTORS", "ROS_BUILTIN_TYPES",
-    "ROS_COMMON_TYPES", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
+    "ROS_COMMON_TYPES", "ROS_FAMILY", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
     "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "BaseBag", "TypeMeta",
     "calculate_definition_hash", "canonical", "create_publisher", "create_subscriber",
     "deserialize_message", "dict_to_message", "format_message_value", "get_alias_type",
