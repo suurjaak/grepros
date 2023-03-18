@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.01.2023
+@modified    18.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -154,8 +154,8 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              dest="CONDITION", nargs="+", default=[], action="append",
              help="extra conditions to require for matching messages,\n"
                   "as ordinary Python expressions, can refer to last messages\n"
-                  "in topics as {topic /my/topic}; topic name can contain wildcards.\n"
-                  'E.g. --condition "{topic /robot/enabled}.data" matches\n'
+                  "in topics as <topic /my/topic>; topic name can contain wildcards.\n"
+                  'E.g. --condition "<topic /robot/enabled>.data" matches\n'
                   "messages only while last message in '/robot/enabled' has data=true."),
 
         dict(args=["-t0", "--start-time"],

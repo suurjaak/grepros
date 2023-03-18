@@ -675,8 +675,8 @@ Filtering:
   --condition CONDITION [CONDITION ...]
                         extra conditions to require for matching messages,
                         as ordinary Python expressions, can refer to last messages
-                        in topics as {topic /my/topic}; topic name can contain wildcards.
-                        E.g. --condition "{topic /robot/enabled}.data" matches
+                        in topics as <topic /my/topic>; topic name can contain wildcards.
+                        E.g. --condition "<topic /robot/enabled>.data" matches
                         messages only while last message in '/robot/enabled' has data=true.
   -t0 TIME, --start-time TIME
                         earliest timestamp of messages to read
