@@ -550,6 +550,12 @@ def format_message_value(msg, name, value):
 @memoize
 def get_message_class(typename):
     """Returns ROS1 message class."""
+    if typename in ROS_TIME_TYPES:
+        return next(k for k, v in ROS_TIME_CLASSES.items() if v == typename)
+    if typename in ("genpy/Time", "rospy/Time"):
+        return rospy.Time
+    if typename in ("genpy/Duration", "rospy/Duration"):
+        return rospy.Duration
     try: return roslib.message.get_message_class(typename)
     except Exception: return None
 
@@ -561,25 +567,31 @@ def get_message_definition(msg_or_type):
     Returns None if unknown type.
     """
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
-    return None if msg_or_cls is None else msg_or_cls._full_text
+    return getattr(msg_or_cls, "_full_text", None)
 
 
 def get_message_type_hash(msg_or_type):
     """Returns ROS message type MD5 hash, or "" if unknown type."""
     msg_or_cls = msg_or_type if is_ros_message(msg_or_type) else get_message_class(msg_or_type)
-    return None if msg_or_cls is None else msg_or_cls._md5sum
+    return getattr(msg_or_cls, "_md5sum", "")
 
 
 def get_message_fields(val):
-    """Returns OrderedDict({field name: field type name}) if ROS1 message, else {}."""
+    """
+    Returns OrderedDict({field name: field type name}) if ROS1 message, else {}.
+
+    @param   val  ROS1 message class or instance
+    """
     names = getattr(val, "__slots__", [])
-    if isinstance(val, tuple(ROS_TIME_CLASSES)):  # Empty __slots__
-        names = genpy.TVal.__slots__
+    if is_ros_time(val): names = genpy.TVal.__slots__  # Empty __slots__
     return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
 
 
 def get_message_type(msg_or_cls):
     """Returns ROS1 message type name, like "std_msgs/Header"."""
+    if is_ros_time(msg_or_cls):
+        cls = msg_or_cls if inspect.isclass(msg_or_cls) else type(msg_or_cls)
+        return "duration" if "duration" in cls.__name__.lower() else "time"
     return msg_or_cls._type
 
 
@@ -611,16 +623,17 @@ def get_topic_types():
 
 def is_ros_message(val, ignore_time=False):
     """
-    Returns whether value is a ROS1 message or special like ROS1 time/duration.
+    Returns whether value is a ROS1 message or special like ROS1 time/duration class or instance.
 
     @param  ignore_time  whether to ignore ROS1 time/duration types
     """
-    return isinstance(val, genpy.Message if ignore_time else (genpy.Message, genpy.TVal))
+    isfunc = issubclass if inspect.isclass(val) else isinstance
+    return isfunc(val, genpy.Message if ignore_time else (genpy.Message, genpy.TVal))
 
 
 def is_ros_time(val):
-    """Returns whether value is a ROS1 time/duration."""
-    return isinstance(val, genpy.TVal)
+    """Returns whether value is a ROS1 time/duration class or instance."""
+    return issubclass(val, genpy.TVal) if inspect.isclass(val) else isinstance(val, genpy.TVal)
 
 
 def make_duration(secs=0, nsecs=0):
@@ -688,7 +701,7 @@ def to_time(val):
         result = rospy.Time(int(val.timestamp()), 1000 * val.microsecond)
     elif isinstance(val, (float, int)):
         result = rospy.Time(val)
-    elif isinstance(val, rospy.Duration):
+    elif isinstance(val, genpy.Duration):
         result = rospy.Time(val.secs, val.nsecs)
     return result
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    17.03.2023
+@modified    20.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -791,7 +791,7 @@ def _get_message_type_hash(typename):
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
     if not is_ros_message(val): return {}
-    fields = {k: canonical(v) for k, v in val.get_fields_and_field_types().items()}
+    fields = ((k, canonical(v)) for k, v in val.get_fields_and_field_types().items())
     return collections.OrderedDict(fields)
 
 
@@ -842,18 +842,18 @@ def get_topic_types():
 
 def is_ros_message(val, ignore_time=False):
     """
-    Returns whether value is a ROS2 message or special like ROS2 time/duration.
+    Returns whether value is a ROS2 message or special like ROS2 time/duration class or instance.
 
     @param  ignore_time  whether to ignore ROS2 time/duration types
     """
     is_message = rosidl_runtime_py.utilities.is_message(val)
-    if is_message and ignore_time:
-        is_message = not isinstance(val, tuple(ROS_TIME_CLASSES))
+    if is_message and ignore_time: is_message = not is_ros_time(val)
     return is_message
 
 
 def is_ros_time(val):
-    """Returns whether value is a ROS2 time/duration."""
+    """Returns whether value is a ROS2 time/duration class or instance."""
+    if inspect.isclass(val): return issubclass(val, tuple(ROS_TIME_CLASSES))
     return isinstance(val, tuple(ROS_TIME_CLASSES))
 
 

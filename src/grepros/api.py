@@ -696,7 +696,11 @@ def get_message_type_hash(msg_or_type):
 
 
 def get_message_fields(val):
-    """Returns OrderedDict({field name: field type name}) if ROS message, else {}."""
+    """
+    Returns OrderedDict({field name: field type name}) if ROS message, else {}.
+
+    @param   val  ROS message class or instance
+    """
     return realapi.get_message_fields(val)
 
 
@@ -751,7 +755,7 @@ def get_alias_type(typename):
 
 def is_ros_message(val, ignore_time=False):
     """
-    Returns whether value is a ROS message or special like ROS time/duration.
+    Returns whether value is a ROS message or special like ROS time/duration class or instance.
 
     @param  ignore_time  whether to ignore ROS time/duration types
     """
@@ -759,7 +763,7 @@ def is_ros_message(val, ignore_time=False):
 
 
 def is_ros_time(val):
-    """Returns whether value is a ROS time/duration."""
+    """Returns whether value is a ROS time/duration class or instance."""
     return realapi.is_ros_time(val)
 
 
@@ -965,7 +969,6 @@ def parse_definition_subtypes(typedef, nesting=False):
     """
     Returns subtype names and type definitions from a full message definition.
 
-    @param   typename   message type name
     @param   typedef    message type definition including all subtype definitions
     @param   nesting    whether to additionally return type nesting information as
                         {typename: [typename contained in parent]}
