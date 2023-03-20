@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.01.2023
+@modified    19.03.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -65,7 +65,7 @@ class MatchMarkers(object):
         cls.END   = "</%s>" % cls.ID
         cls.EMPTY = cls.START + cls.END
         cls.EMPTY_REPL = "%s''%s" % (cls.START, cls.END)
-        
+
 
 
 class ConsolePrinter(object):
@@ -251,7 +251,7 @@ class ConsolePrinter(object):
     def _format(cls, text="", *args, **kwargs):
         """
         Returns text formatted with printf-style or format() arguments.
-        
+
         @param  __once  registers text, returns "" if text not unique
         """
         text, fmted = str(text), False
@@ -848,10 +848,12 @@ def makedirs(path):
 
 
 def memoize(func):
-    """Returns a results-caching wrapper for the function."""
+    """Returns a results-caching wrapper for the function, cache used if arguments hashable."""
     cache = {}
     def inner(*args, **kwargs):
         key = args + sum(kwargs.items(), ())
+        try: hash(key)
+        except Exception: return func(*args, **kwargs)
         if key not in cache:
             cache[key] = func(*args, **kwargs)
         return cache[key]
