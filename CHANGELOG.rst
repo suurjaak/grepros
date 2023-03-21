@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.1 (2023-03-14)
+1.0.0 (2022-03-14)
 -------------------
 * add inputs.AppSource and outputs.AppSink
 * add MCAP bag interface
@@ -13,6 +13,10 @@ Changelog for package grepros
 * fix embag reader
 * verify sinks being writable on startup
 * support "postgres://" as auto-detected Postgres target in addition to "postgresql://"
+
+0.6.0 (2023-03-21)
+-------------------
+* add nesting=array|all to --write Parquet options
 
 0.5.0 (2022-10-18)
 -------------------

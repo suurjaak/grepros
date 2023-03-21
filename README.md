@@ -552,7 +552,7 @@ Read or write messages in [MCAP](https://mcap.dev) format.
     --plugin grepros.plugins.parquet \
     --write path/to/my.parquet [format=parquet] [overwrite=true|false] \
             [column-name=rostype:value] [type-rostype=arrowtype] \
-            [writer-argname=argvalue]
+            [nesting=array|all] [writer-argname=argvalue]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file.
@@ -646,7 +646,7 @@ optional arguments:
                           message-yaml=true|false  whether to populate table field messages.yaml
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
-                                                   in Postgres/SQLite output,
+                                                   in Parquet/Postgres/SQLite output,
                                                    only for arrays if "array"
                                                    else for any nested types
                                                    (array fields in parent will be populated
