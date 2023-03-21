@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    20.01.2023
+@modified    21.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -65,6 +65,25 @@ class Scanner(object):
                                           both sides if one value, start and end if more than one,
                                           or no wrapping if zero values (default "**")
         @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
+        <!--sep-->
+
+        Additional arguments when using match() or find(grepros.api.Bag):
+
+        @param   args.topic               ROS topics to read if not all
+        @param   args.type                ROS message types to read if not all
+        @param   args.skip_topic          ROS topics to skip
+        @param   args.skip_type           ROS message types to skip
+        @param   args.start_time          earliest timestamp of messages to read
+        @param   args.end_time            latest timestamp of messages to read
+        @param   args.start_index         message index within topic to start from
+        @param   args.end_index           message index within topic to stop at
+        @param   args.unique              emit messages that are unique in topic
+        @param   args.nth_message         read every Nth message in topic
+        @param   args.nth_interval        minimum time interval between messages in topic
+        @param   args.condition           Python expressions that must evaluate as true
+                                          for message to be processable, see ConditionMixin
+        @param   args.progress            whether to print progress bar
+        @param   args.stop_on_error       stop execution on any error like unknown message type
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
@@ -124,7 +143,7 @@ class Scanner(object):
         """
         result = None
         if not isinstance(self.source, inputs.AppSource):
-            self._prepare(inputs.AppSource(), highlight=highlight)
+            self._prepare(inputs.AppSource(self.args), highlight=highlight)
         if self._highlight != bool(highlight): self._configure_flags(highlight=highlight)
 
         self.source.push(topic, msg, stamp)
