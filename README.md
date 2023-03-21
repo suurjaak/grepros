@@ -821,7 +821,7 @@ Specifying write `format=mcap` is not required if the filename ends with `.mcap`
     --plugin grepros.plugins.parquet \
     --write path/to/my.parquet [format=parquet] [overwrite=true|false] \
             [column-name=rostype:value] [type-rostype=arrowtype] \
-            [writer-argname=argvalue]
+            [nesting=array|all] [writer-argname=argvalue]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -859,6 +859,72 @@ For example, specifying no compression:
     --write path/to/my.parquet writer-compression=null
 
 The value is interpreted as JSON if possible, e.g. `writer-use_dictionary=false`.
+
+To recursively populate nested array fields:
+
+    --write path/to/my.parquet nesting=array
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would populate files with following schemas:
+
+```python
+"diagnostic_msgs/DiagnosticArray": (
+  "header.seq"          int64(),
+  "header.stamp.secs"   int32(),
+  "header.stamp.nsecs"  int32(),
+  "header.frame_id"     string(),
+  status                string(),     -- [_id from "diagnostic_msgs/DiagnosticStatus", ]
+  _topic                string(),
+  _timestamp            int64(),
+  _id                   int64(),      -- UUID4
+  _parent_type          string(),
+  _parent_id            int64()
+);
+
+"diagnostic_msgs/DiagnosticStatus": (
+  level                 int16(),
+  name                  string(),
+  message               string(),
+  hardware_id           string(),
+  "values"              string(),     -- [_id from "diagnostic_msgs/KeyValue", ]
+  _topic                string(),     -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            int64(),      -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   int64(),
+  _parent_type          string(),     -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            int64()       -- _id from "diagnostic_msgs/DiagnosticArray"
+)
+
+"diagnostic_msgs/KeyValue": (
+  "key"                 string(),
+  value                 string(),
+  _topic                string(),     -- _topic from "diagnostic_msgs/DiagnosticStatus"
+  _timestamp            int64(),      -- _timestamp from "diagnostic_msgs/DiagnosticStatus"
+  _id                   int64(),
+  _parent_type          string(),     -- "diagnostic_msgs/DiagnosticStatus"
+  _parent_id            int64()       -- _id from "diagnostic_msgs/DiagnosticStatus"
+)
+```
+
+Without nesting, array field values are inserted as JSON with full subtype content.
+
+To recursively populate all nested message types:
+
+    --write path/to/my.parquet nesting=all
+
+E.g. for `diagnostic_msgs/DiagnosticArray`, this would, in addition to the above, populate:
+
+```python
+"std_msgs/Header": (
+  seq                   int64(),
+  "stamp.secs"          int32(),
+  "stamp.nsecs"         int32(),
+  frame_id              string(),
+  _topic                string(),    -- _topic from "diagnostic_msgs/DiagnosticArray"
+  _timestamp            int64(),     -- _timestamp from "diagnostic_msgs/DiagnosticArray"
+  _id                   int64(),
+  _parent_type          string(),    -- "diagnostic_msgs/DiagnosticArray"
+  _parent_id            int64()      -- _id from "diagnostic_msgs/DiagnosticArray"
+);
+```
 
 
 ### sql
@@ -1016,7 +1082,7 @@ optional arguments:
                           message-yaml=true|false  whether to populate table field messages.yaml
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
-                                                   in Postgres/SQLite output,
+                                                   in Parquet/Postgres/SQLite output,
                                                    only for arrays if "array" 
                                                    else for any nested types
                                                    (array fields in parent will be populated 

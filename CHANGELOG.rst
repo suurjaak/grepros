@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.6.0 (2023-03-21)
+-------------------
+* add nesting=array|all to --write Parquet options
+
 0.5.0 (2022-10-30)
 -------------------
 * add --plugin grepros.plugins.mcap (MCAP input and output)
