@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    20.03.2023
+@modified    21.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -24,11 +24,11 @@ from .. import api
 
 try: import mcap, mcap.reader
 except ImportError: mcap = None
-if api.ROS1:
+if "1" == os.getenv("ROS_VERSION"):
     import genpy.dynamic
     try: import mcap_ros1 as mcap_ros, mcap_ros1.decoder, mcap_ros1.writer
     except ImportError: mcap_ros = None
-elif api.ROS2:
+elif "2" == os.getenv("ROS_VERSION"):
     try: import mcap_ros2 as mcap_ros, mcap_ros2.decoder, mcap_ros2.writer
     except ImportError: mcap_ros = None
 else: mcap_ros = None
