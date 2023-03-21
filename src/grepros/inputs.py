@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.03.2023
+@modified    21.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -74,7 +74,7 @@ class Source(object):
         ## ProgressBar instance, if any
         self.bar = None
         ## Result of validate()
-        self.valid = None  
+        self.valid = None
         ## Apply all filter arguments when reading, not only topic and type
         self.preprocess = True
 
@@ -503,7 +503,8 @@ class BagSource(Source, ConditionMixin):
         """Returns whether ROS environment is set and arguments valid, prints error if not."""
         if self.valid is not None: return self.valid
         self.valid = api.validate()
-        if not self._bag0 and not verify_io(self.args.FILE, "r"):
+        if not self._bag0 and self.args.FILE and os.path.isfile(self.args.FILE[0]) \
+        and not verify_io(self.args.FILE, "r"):
             ConsolePrinter.error("File not readable.")
             self.valid = False
         if not self._bag0 and is_stream(self.args.FILE) \
@@ -1041,7 +1042,9 @@ class AppSource(Source, ConditionMixin):
         Returns (topic, msg, stamp) from push queue, or `None` if no queue
         or message in queue is condition topic only.
         """
-        item = self._queue.get(block=False)
+        item = None
+        try: item = self._queue.get(block=False)
+        except queue.Empty: pass
         if item is None: return None
 
         topic, msg, stamp = item
@@ -1064,8 +1067,8 @@ class AppSource(Source, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
-        if stamp is None: stamp = api.get_rostime()
-        self._queue.put(None) if topic is None else (topic, msg, stamp)
+        if stamp is None and topic is not None: stamp = api.get_rostime()
+        self._queue.put(None if topic is None else (topic, msg, stamp))
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters."""
