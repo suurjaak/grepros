@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    17.01.2023
+@modified    20.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -46,6 +46,7 @@ class EmbagReader(api.BaseBag):
         self._types    = {}    # {(typename, typehash): message type class}
         self._hashdefs = {}    # {(topic, typehash): typename}
         self._typedefs = {}    # {(typename, typehash): type definition text}
+        self._iterer   = None  # Generator from read_messages() for next()
         self._ttinfo   = None  # Cached result for get_type_and_topic_info()
         self._view     = embag.View(filename)
         self._filename = str(filename)
@@ -194,7 +195,8 @@ class EmbagReader(api.BaseBag):
         """Closes the bag file."""
         if self._view:
             del self._view
-            self._view = None
+            self._view   = None
+            self._iterer = None
 
 
     @property
@@ -230,6 +232,13 @@ class EmbagReader(api.BaseBag):
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
+
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if self._iterer is None: self._iterer = self.read_messages()
+        return next(self._iterer)
 
 
     def _populate_meta(self):

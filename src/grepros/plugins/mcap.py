@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    17.01.2023
+@modified    20.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -78,6 +78,7 @@ class McapBag(api.BaseBag):
         self._reader         = None   # mcap.McapReader
         self._decoder        = None   # mcap_ros.Decoder
         self._writer         = None   # mcap_ros.Writer
+        self._iterer         = None   # Generator from read_messages() for next()
         self._ttinfo         = None   # Cached result for get_type_and_topic_info()
         self._opened         = False  # Whether file has been opened at least once
         self._filename       = None   # File path, or None if stream
@@ -299,7 +300,7 @@ class McapBag(api.BaseBag):
         if self._file is not None:
             if self._writer: self._writer.finish()
             self._file.close()
-            self._file, self._reader, self._writer = None, None, None
+            self._file, self._reader, self._writer, self._iterer = None, None, None, None
 
 
     @property
@@ -339,6 +340,13 @@ class McapBag(api.BaseBag):
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
+
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if self.__iterer is None: self.__iterer = self.read_messages()
+        return next(self.__iterer)
 
 
     def _decode_message(self, message, channel, schema):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.03.2023
+@modified    20.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -100,7 +100,8 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         @param   progress    show progress bar with reindexing status
         @param   kwargs      additional keyword arguments for `rosbag.Bag`, like `compression`
         """
-        self.__topics = {}  # {(topic, typename, typehash): message count}
+        self.__topics = {}    # {(topic, typename, typehash): message count}
+        self.__iterer = None  # Generator from read_messages() for next()
         f,    args = (args[0] if args else kwargs.pop("f")), args[1:]
         mode, args = (args[0] if args else kwargs.pop("mode", "r")), args[1:]
         if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
@@ -270,9 +271,24 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
             self._open(self.filename, self.mode, allow_unindexed=True)
 
 
+    def close(self):
+        """Closes the bag file."""
+        if self._file:
+            super(ROS1Bag, self).close()
+            self._iterer = None
+            self._clear_index()
+
+
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self.__topics)
+
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if self.__iterer is None: self.__iterer = self.read_messages()
+        return next(self.__iterer)
 
 
     @property

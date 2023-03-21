@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    18.03.2023
+@modified    20.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -19,6 +19,7 @@ import decimal
 import hashlib
 import os
 import re
+import sys
 import time
 
 from . common import ConsolePrinter, LenIterable, filter_fields, format_bytes, memoize
@@ -124,6 +125,11 @@ class BaseBag(object):
     def __len__(self):
         """Returns the number of messages in the bag."""
         return self.get_message_count()
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        raise NotImplementedError
+    if sys.version_info < (3, ): next = __next__
 
     def __nonzero__(self): return True  # Iterables by default use len() for bool() [Py2]
 
@@ -368,19 +374,20 @@ class Bag(BaseBag):
         @param   kwargs    additional keyword arguments for format-specific Bag constructor,
                            like `compression` for ROS1 bag
         """
-        classes = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES)
+        classes, errors = set(cls.READER_CLASSES if "r" == mode else cls.WRITER_CLASSES), []
         for detect, bagcls in ((d, c) for d in (True, False) for c in list(classes)):
             use, discard = not detect, False  # Try auto-detecting suitable class first
             try:
-                if detect and callable(vars(bagcls).get("autodetect")):
+                if detect and callable(getattr(bagcls, "autodetect", None)):
                     use, discard = bagcls.autodetect(f), True
                 if use:
                     return bagcls(f, mode, reindex=reindex, progress=progress, **kwargs)
             except Exception as e:
                 discard = True
-                ConsolePrinter.warn("Failed to open %r for %s with %s: %s.",
-                                    f, "reading" if "r" == mode else "writing", bagcls, e)
+                errors.append("Failed to open %r for %s with %s: %s." %
+                              (f, "reading" if "r" == mode else "writing", bagcls, e))
             discard and classes.discard(bagcls)
+        for err in errors: ConsolePrinter.warn(err)
         raise Exception("No suitable %s class available" % ("reader" if "r" == mode else "writer"))
 
 
@@ -684,7 +691,7 @@ def get_message_class(typename):
 def get_message_definition(msg_or_type):
     """
     Returns ROS message type definition full text, including subtype definitions.
-    
+
     Returns None if unknown type.
     """
     return realapi.get_message_definition(msg_or_type)

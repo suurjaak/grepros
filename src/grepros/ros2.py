@@ -129,6 +129,7 @@ PRAGMA synchronous=NORMAL;
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
+        self._iterer = None  # Generator from read_messages() for next()
         self._ttinfo = None  # Cached result for get_type_and_topic_info()
         self._filename = str(filename)
         self._stop_on_error = True
@@ -398,8 +399,9 @@ PRAGMA synchronous=NORMAL;
         """Closes the bag file."""
         if self._db:
             self._db.close()
-            self._db   = None
-            self._mode = None
+            self._db     = None
+            self._mode   = None
+            self._iterer = None
 
 
     @property
@@ -445,6 +447,13 @@ PRAGMA synchronous=NORMAL;
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
+
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if self._iterer is None: self._iterer = self.read_messages()
+        return next(self._iterer)
 
 
     def _ensure_open(self, populate=False):
