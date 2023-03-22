@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.10.2022
+@modified    22.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -433,10 +433,10 @@ def get_message_type_hash(msg_or_type):
 
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS1 message, else {}."""
-    names = getattr(val, "__slots__", [])
-    if isinstance(val, tuple(ROS_TIME_CLASSES)):  # Empty __slots__
-        names = genpy.TVal.__slots__
-    return collections.OrderedDict(zip(names, getattr(val, "_slot_types", [])))
+    names, types = (getattr(val, k, []) for k in ("__slots__", "_slot_types"))
+    # Bug in genpy: class slot types defined as "int32", but everywhere else types use "uint32"
+    if isinstance(val, genpy.TVal): types = ["uint32", "uint32"]
+    return collections.OrderedDict(zip(names, types))
 
 
 def get_message_type(msg_or_cls):
