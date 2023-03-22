@@ -552,7 +552,7 @@ Read or write messages in [MCAP](https://mcap.dev) format.
     --plugin grepros.plugins.parquet \
     --write path/to/my.parquet [format=parquet] [overwrite=true|false] \
             [column-name=rostype:value] [type-rostype=arrowtype] \
-            [nesting=array|all] [writer-argname=argvalue]
+            [idgenerator=callable] [nesting=array|all] [writer-argname=argvalue]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file.
@@ -643,6 +643,9 @@ optional arguments:
                                                    load additional SQL dialect options
                                                    for Postgres/SQLite output
                                                    from a YAML or JSON file
+                          idgenerator=callable     callable or iterable for producing message IDs
+                                                   in Parquet output, like 'uuid.uuid4' or 'itertools.count()';
+                                                   by default only nesting uses IDs
                           message-yaml=true|false  whether to populate table field messages.yaml
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
