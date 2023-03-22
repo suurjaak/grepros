@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    01.01.2023
+@modified    22.03.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -392,11 +392,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
     /**
      * Returns formatted timestamp for [seconds, nanoseconds],
-     * format defaulting to "%Y-%m-%d %H:%M:%s.%f",
+     * format defaulting to "%Y-%m-%d %H:%M:%S.%f",
      * with trailing zeros stripped from ending fractional seconds.
      */
     var formatStamp = function(secs_nsecs, format) {
-      format = format || "%Y-%m-%d %H:%M:%s.%f";
+      format = format || "%Y-%m-%d %H:%M:%S.%f";
       var result = makeDate(secs_nsecs).strftime(format);
       return RegExp("((%f)|(%n))$", "i").test(format) ? result.replace(/\\.?0+$/, "") : result;
     };
