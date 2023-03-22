@@ -2,9 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.6.0 (2023-03-21)
+0.6.0 (2023-03-22)
 -------------------
 * add nesting=array|all to --write Parquet options
+* add idgenerator=callable to --write Parquet options
 
 0.5.0 (2022-10-30)
 -------------------
