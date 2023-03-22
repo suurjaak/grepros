@@ -7,6 +7,7 @@ Changelog for package grepros
 * add nesting=array|all to --write Parquet options
 * add idgenerator=callable to --write Parquet options
 * workaround for ROS1 time/duration fields defined as int32 while actually being uint32
+* fix date formatting in HTML output
 
 0.5.0 (2022-10-30)
 -------------------
