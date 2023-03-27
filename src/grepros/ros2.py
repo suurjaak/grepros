@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    20.03.2023
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -564,12 +564,16 @@ def validate(live=False):
 
 
 @memoize
-def canonical(typename):
+def canonical(typename, unbounded=False):
     """
     Returns "pkg/Type" for "pkg/msg/Type", standardizes various ROS2 formats.
 
     Converts DDS types like "octet" to "byte", and "sequence<uint8, 100>" to "uint8[100]".
+
+    @param  unbounded  drop constraints like array and string bounds,
+                       e.g. returning "uint8[]" for "uint8[10]" and "string" for "string<=8"
     """
+    if not typename: return typename
     is_array, bound, dimension = False, "", ""
 
     if "<" in typename:
@@ -596,7 +600,8 @@ def canonical(typename):
     if typename.count("/") > 1:
         typename = "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
 
-    suffix = ("<=%s" % bound if bound else "") + ("[%s]" % dimension if is_array else "")
+    if unbounded: suffix = "[]" if is_array else ""
+    else: suffix = ("<=%s" % bound if bound else "") + ("[%s]" % dimension if is_array else "")
     return DDS_TYPES.get(typename, typename) + suffix
 
 
@@ -938,8 +943,8 @@ def scalar(typename):
     Like "uint8" from "uint8[]", or "string" from "string<=10[<=5]".
     Returns type unchanged if not a collection or bounded type.
     """
-    if "["  in typename: typename = typename[:typename.index("[")]
-    if "<=" in typename: typename = typename[:typename.index("<=")]
+    if typename and "["  in typename: typename = typename[:typename.index("[")]
+    if typename and "<=" in typename: typename = typename[:typename.index("<=")]
     return typename
 
 
