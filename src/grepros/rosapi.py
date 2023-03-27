@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    17.10.2022
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.rosapi
@@ -343,6 +343,18 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
                 typestr = calculate_definition_hash(subtype, subtypedefs[subtype], extradefs)
             lines.append("%s %s" % (typestr, namestr))
     return hashlib.md5("\n".join(lines).encode()).hexdigest()
+
+
+def canonical(typename, unbounded=False):
+    """
+    Returns "pkg/Type" for "pkg/subdir/Type", standardizes various ROS2 formats.
+
+    Converts ROS2 DDS types like "octet" to "byte", and "sequence<uint8, 100>" to "uint8[100]".
+
+    @param  unbounded  drop constraints like array bounds, and string bounds in ROS2,
+                       e.g. returning "uint8[]" for "uint8[10]"
+    """
+    return realapi.canonical(typename, unbounded)
 
 
 def create_publisher(topic, cls_or_typename, queue_size):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.03.2023
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -341,6 +341,19 @@ def validate(live=False):
     return not missing
 
 
+def canonical(typename, unbounded=False):
+    """
+    Returns "pkg/Type" for "pkg/subdir/Type".
+
+    @param  unbounded  drop array bounds, e.g. returning "uint8[]" for "uint8[10]"
+    """
+    if typename and typename.count("/") > 1:
+        typename = "%s/%s" % tuple((x[0], x[-1]) for x in [typename.split("/")])[0]
+    if unbounded and typename and "[" in typename:
+        typename = typename[:typename.index("[")] + "[]"
+    return typename
+
+
 def create_publisher(topic, cls_or_typename, queue_size):
     """Returns a rospy.Publisher."""
     def pub_unregister():
@@ -501,7 +514,7 @@ def scalar(typename):
 
     Returns type unchanged if already a scalar.
     """
-    return typename[:typename.index("[")] if "[" in typename else typename
+    return typename[:typename.index("[")] if typename and "[" in typename else typename
 
 
 def set_message_value(obj, name, value):
