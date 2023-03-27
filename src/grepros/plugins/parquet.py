@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    22.03.2023
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -282,12 +282,11 @@ class ParquetSink(Sink):
 
         @param  fallback  fallback typename to use for lookup if typename not found
         """
-        scalartype = api.scalar(typename)
-        timetype   = api.get_ros_time_category(scalartype)
-        coltype    = self.COMMON_TYPES.get(typename)
+        noboundtype = api.canonical(typename, unbounded=True)
+        scalartype  = api.scalar(typename)
+        timetype    = api.get_ros_time_category(scalartype)
+        coltype     = self.COMMON_TYPES.get(typename) or self.COMMON_TYPES.get(noboundtype)
 
-        if not coltype and "[" not in typename and scalartype in self.COMMON_TYPES:
-            coltype = self.COMMON_TYPES[scalartype]  # Bounded type like "string<=10"
         if not coltype and scalartype in self.COMMON_TYPES:
             coltype = pyarrow.list_(self.COMMON_TYPES[scalartype])
         if not coltype and timetype in self.COMMON_TYPES:
@@ -306,11 +305,13 @@ class ParquetSink(Sink):
         """Returns column value suitable for adding to Parquet file."""
         v = value
         if isinstance(v, (list, tuple)):
+            noboundtype = rosapi.canonical(typename, unbounded=True)
             if v and api.is_ros_time(v[0]):
                 v = [api.to_nsec(x) for x in v]
             elif api.scalar(typename) not in api.ROS_BUILTIN_TYPES:
                 v = str([api.message_to_dict(m) for m in v])
-            elif pyarrow.binary() == self.COMMON_TYPES.get(typename):
+            elif pyarrow.binary() in (self.COMMON_TYPES.get(typename),
+                                      self.COMMON_TYPES.get(noboundtype)):
                 v = bytes(bytearray(v))  # Py2/Py3 compatible
             else:
                 v = list(v)  # Ensure lists not tuples

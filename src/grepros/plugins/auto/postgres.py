@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    01.01.2023
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -170,7 +170,7 @@ class PostgresSink(BaseDataSink):
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
         TYPES = self._get_dialect_option("types")
-        plaintype = typename and api.scalar(typename)  # "string<=10" -> "string"
+        plaintype = api.scalar(typename)  # "string<=10" -> "string"
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
@@ -184,7 +184,8 @@ class PostgresSink(BaseDataSink):
                 if self._nesting: v = None
                 else: v = psycopg2.extras.Json([api.message_to_dict(m, replace)
                                                 for m in v], json.dumps)
-            elif "BYTEA" == TYPES.get(typename):
+            elif "BYTEA" in (TYPES.get(typename),
+                             TYPES.get(rosapi.canonical(typename, unbounded=True))):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
                 v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2

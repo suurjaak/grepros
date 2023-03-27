@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    01.01.2023
+@modified    27.03.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -324,10 +324,8 @@ class SqlMixin(object):
 
         scalartype = api.scalar(typename)
         timetype   = api.get_ros_time_category(scalartype)
-        coltype    = TYPES.get(typename)
+        coltype    = TYPES.get(typename) or TYPES.get(rosapi.canonical(typename, unbounded=True))
 
-        if not coltype and "[" not in typename and scalartype in TYPES:
-            coltype = TYPES[scalartype]  # Bounded type like "string<=10"
         if not coltype and scalartype in TYPES:
             coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])
         if not coltype and timetype in TYPES:
