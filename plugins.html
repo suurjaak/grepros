@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" type="text/css" href="css/shadowbox.css" />
     <script src="js/shadowbox.js"></script>
+    <script src="js/common.js"></script>
     <script type="text/javascript"> Shadowbox.init({animate: true}); </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   </head>
@@ -122,7 +123,7 @@ if the filename ends with <code>.mcap</code>.
 --plugin grepros.plugins.parquet \
 --write path/to/my.parquet [format=parquet] [overwrite=true|false] \
         [column-name=rostype:value] [type-rostype=arrowtype] \
-        [writer-argname=argvalue]
+        [idgenerator=callable] [nesting=array|all] [writer-argname=argvalue]
 </pre>
 
 <p>
@@ -144,6 +145,20 @@ Specifying <code>format=parquet</code> is not required if the filename ends with
 
 <p>
 Requires <a href="https://pypi.org/project/pandas">pandas</a> and <a href="https://pypi.org/project/pyarrow">pyarrow</a>.
+</p>
+
+<p>
+By default, message IDs are only added when populating nested message types,
+as field <code>_id string()</code> with UUID content. To explicitly add ID columns:
+</p>
+
+<pre>
+--write path/to/my.parquet idgenerator="itertools.count()"
+</pre>
+
+<p>
+Column type is auto-detected from produced ID values: <code>int64</code>/<code>float64</code> for numerics,
+<code>string</code> for anything else (non-numerics cast to string).
 </p>
 
 <p>
@@ -186,6 +201,86 @@ For example, specifying no compression:
 <p>
 The value is interpreted as JSON if possible, e.g. <code>writer-use_dictionary=false</code>.
 </p>
+
+<p>
+To recursively populate nested array fields:
+<p>
+
+<pre>
+--write path/to/my.parquet nesting=array
+</pre>
+
+<p>
+E.g. for <code>diagnostic_msgs/DiagnosticArray</code>, this would populate files with following schemas:
+<p>
+
+<pre class="collapsible">
+diagnostic_msgs__DiagnosticArray = pyarrow.schema([
+  ("header.seq",          pyarrow.int64()),
+  ("header.stamp.secs",   pyarrow.int32()),
+  ("header.stamp.nsecs",  pyarrow.int32()),
+  ("header.frame_id",     pyarrow.string()),
+  ("status",              pyarrow.string()),   <code class="comment"># [_id from "diagnostic_msgs/DiagnosticStatus", ]</code>
+  ("_topic",              pyarrow.string()),
+  ("_timestamp",          pyarrow.int64()),
+  ("_id",                 pyarrow.string()),
+  ("_parent_type",        pyarrow.string()),
+  ("_parent_id",          pyarrow.string()),
+])
+
+diagnostic_msgs__DiagnosticStatus = pyarrow.schema([
+  ("level",               pyarrow.int16()),
+  ("name",                pyarrow.string()),
+  ("message",             pyarrow.string()),
+  ("hardware_id",         pyarrow.string()),
+  ("values"",             pyarrow.string()),   <code class="comment"># [_id from "diagnostic_msgs/KeyValue", ]</code>
+  ("_topic",              pyarrow.string()),   <code class="comment"># _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  ("_timestamp",          pyarrow.int64()),    <code class="comment"># _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  ("_id",                 pyarrow.string()),
+  ("_parent_type",        pyarrow.string()),   <code class="comment"># "diagnostic_msgs/DiagnosticArray"</code>
+  ("_parent_id",          pyarrow.string()),   <code class="comment"># _id from "diagnostic_msgs/DiagnosticArray"</code>
+])
+
+diagnostic_msgs__KeyValue = pyarrow.schema([
+  ("key"                  pyarrow.string()),
+  ("value",               pyarrow.string()),
+  ("_topic",              pyarrow.string()),   <code class="comment"># _topic from "diagnostic_msgs/DiagnosticStatus"</code>
+  ("_timestamp",          pyarrow.int64()),    <code class="comment"># _timestamp from "diagnostic_msgs/DiagnosticStatus"</code>
+  ("_id",                 pyarrow.string()),
+  ("_parent_type",        pyarrow.string()),   <code class="comment"># "diagnostic_msgs/DiagnosticStatus"</code>
+  ("_parent_id",          pyarrow.string()),   <code class="comment"># _id from "diagnostic_msgs/DiagnosticStatus"</code>
+])<a class="toggle"></a>
+</pre>
+
+<p>
+Without nesting, array field values are inserted as JSON with full subtype content.
+
+<p>
+To recursively populate all nested message types:
+</p>
+
+<pre>
+--write path/to/my.parquet nesting=all
+</pre>
+
+<p>
+E.g. for <code>diagnostic_msgs/DiagnosticArray</code>, this would, in addition to the above, populate:
+</p>
+
+<pre class="collapsible">
+std_msgs__Header = pyarrow.schema([
+  "seq",                  pyarrow.int64()),
+  "stamp.secs",           pyarrow.int32()),
+  "stamp.nsecs",          pyarrow.int32()),
+  "frame_id",             pyarrow.string()),
+  "_topic",               pyarrow.string()),   <code class="comment"># _topic from "diagnostic_msgs/DiagnosticArray"</code>
+  "_timestamp",           pyarrow.int64()),    <code class="comment"># _timestamp from "diagnostic_msgs/DiagnosticArray"</code>
+  "_id",                  pyarrow.string()),
+  "_parent_type",         pyarrow.string()),   <code class="comment"># "diagnostic_msgs/DiagnosticArray"</code>
+  "_parent_id",           pyarrow.string()),   <code class="comment"># _id from "diagnostic_msgs/DiagnosticArray"</code>
+])<a class="toggle"></a>
+</pre>
+
 
 
 <h3 id="sql">sql</h3>
@@ -280,6 +375,7 @@ Convenience methods:
       </footer>
     </div>
     <script src="js/scale.fix.js"></script>
+    <script type="text/javascript"> bindToggles(); </script>
 
   </body>
 </html>

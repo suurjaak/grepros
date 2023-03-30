@@ -35,6 +35,17 @@
 <h2>Changelog</h2>
 
 
+<h4>0.6.0 (2023-03-30)</h4>
+<ul>
+  <li>add nesting=array|all to --write Parquet options</li>
+  <li>add idgenerator=callable to --write Parquet options</li>
+  <li>add rosapi.canonical()</li>
+  <li>match bounded array fields to configured output types properly 
+      in Parquet/Postgres/SQL/SQLite output, like "uint8[10]" for "BYTEA" in Postgres</li>
+  <li>workaround for ROS1 time/duration fields defined as int32 while actually being uint32</li>
+  <li>fix date formatting in HTML output</li>
+</ul>
+
 <h4>0.5.0 (2022-10-30)</h4>
 <ul>
   <li>add --plugin grepros.plugins.mcap (MCAP input and output)</li>
