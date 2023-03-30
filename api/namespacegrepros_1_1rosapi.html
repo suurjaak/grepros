@@ -26,7 +26,7 @@
  <tr style="height: 56px;">
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">grepros
-   &#160;<span id="projectnumber">0.5.0</span>
+   &#160;<span id="projectnumber">0.6.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -109,6 +109,9 @@ Functions</h2></td></tr>
 <tr class="memitem:aed2557ab9ca5e2dc0d9c3c8c39fe456a"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1rosapi.html#aed2557ab9ca5e2dc0d9c3c8c39fe456a">calculate_definition_hash</a> (typename, msgdef, extradefs=())</td></tr>
 <tr class="memdesc:aed2557ab9ca5e2dc0d9c3c8c39fe456a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns MD5 hash for message type definition.  <a href="namespacegrepros_1_1rosapi.html#aed2557ab9ca5e2dc0d9c3c8c39fe456a">More...</a><br /></td></tr>
 <tr class="separator:aed2557ab9ca5e2dc0d9c3c8c39fe456a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a09386af941dd321c4c76b2dc57259965"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1rosapi.html#a09386af941dd321c4c76b2dc57259965">canonical</a> (typename, unbounded=False)</td></tr>
+<tr class="memdesc:a09386af941dd321c4c76b2dc57259965"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns "pkg/Type" for "pkg/subdir/Type", standardizes various ROS2 formats.  <a href="namespacegrepros_1_1rosapi.html#a09386af941dd321c4c76b2dc57259965">More...</a><br /></td></tr>
+<tr class="separator:a09386af941dd321c4c76b2dc57259965"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa5251a259f70bdaea2b69a0c6eaf6fd6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1rosapi.html#aa5251a259f70bdaea2b69a0c6eaf6fd6">create_publisher</a> (topic, cls_or_typename, queue_size)</td></tr>
 <tr class="memdesc:aa5251a259f70bdaea2b69a0c6eaf6fd6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a ROS publisher instance, with .get_num_connections() and .unregister().  <a href="namespacegrepros_1_1rosapi.html#aa5251a259f70bdaea2b69a0c6eaf6fd6">More...</a><br /></td></tr>
 <tr class="separator:aa5251a259f70bdaea2b69a0c6eaf6fd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -301,6 +304,44 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="a09386af941dd321c4c76b2dc57259965"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09386af941dd321c4c76b2dc57259965">&#9670;&nbsp;</a></span>canonical()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def grepros.rosapi.canonical </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>typename</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>unbounded</em> = <code>False</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns "pkg/Type" for "pkg/subdir/Type", standardizes various ROS2 formats. </p>
+<p>Converts ROS2 DDS types like "octet" to "byte", and "sequence&lt;uint8, 100&gt;" to "uint8[100]". </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">unbounded</td><td>drop constraints like array bounds, and string bounds in ROS2, e.g. returning "uint8[]" for "uint8[10]" </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00381">381</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+
+</div>
+</div>
 <a id="aa5251a259f70bdaea2b69a0c6eaf6fd6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa5251a259f70bdaea2b69a0c6eaf6fd6">&#9670;&nbsp;</a></span>create_publisher()</h2>
 
@@ -335,7 +376,7 @@ Variables</h2></td></tr>
 
 <p>Returns a ROS publisher instance, with .get_num_connections() and .unregister(). </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00374">374</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00385">385</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -380,7 +421,7 @@ Variables</h2></td></tr>
 <p>Returns a ROS subscriber instance. </p>
 <p>Supplemented with .unregister(), .<a class="el" href="namespacegrepros_1_1rosapi.html#a6aec0ad2ea4bc4390ac2b02b42a48cf5" title="Returns ROS message class.">get_message_class()</a>, .<a class="el" href="namespacegrepros_1_1rosapi.html#abbea141a06e1997ac5b186180ca023d1" title="Returns ROS message type definition full text, including subtype definitions.">get_message_definition()</a>, .<a class="el" href="namespacegrepros_1_1rosapi.html#ac860232a393d6e2610d054de1c48bc14" title="Returns ROS message type MD5 hash.">get_message_type_hash()</a>, and .get_qoses(). </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00385">385</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00396">396</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -419,7 +460,7 @@ Variables</h2></td></tr>
 <p>Returns a message attribute value as string. </p>
 <p>Result is at least 10 chars wide if message is a ROS time/duration (aligning seconds and nanoseconds). </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00395">395</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00406">406</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -442,7 +483,7 @@ Variables</h2></td></tr>
 <p>Returns ROS built-in type for alias like "char", if any; reverse of <a class="el" href="namespacegrepros_1_1rosapi.html#a109ad261ec0a8290ef7620fc804f87bd" title="Returns ROS built-in type for alias like &quot;char&quot;, if any; reverse of get_alias_type().">get_alias_type()</a>. </p>
 <p>In ROS1, byte and char are aliases for int8 and uint8; in ROS2 the reverse. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00469">469</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00480">480</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -464,7 +505,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message class. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00399">399</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00410">410</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -486,7 +527,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message as a serialized binary. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00404">404</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00415">415</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -508,7 +549,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message type definition full text, including subtype definitions. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00409">409</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00420">420</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -530,7 +571,7 @@ Variables</h2></td></tr>
 
 <p>Returns OrderedDict({field name: field type name}) if ROS message, else {}. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00419">419</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00430">430</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -552,7 +593,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message type name, like "std_msgs/Header". </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00424">424</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00435">435</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -574,7 +615,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message type MD5 hash. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00414">414</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00425">425</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -612,7 +653,7 @@ Variables</h2></td></tr>
 
 <p>Returns object attribute value, with numeric arrays converted to lists. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00429">429</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00440">440</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -634,7 +675,7 @@ Variables</h2></td></tr>
 
 <p>Returns "time" or "duration" for time/duration type, else typename. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00439">439</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00450">450</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -655,7 +696,7 @@ Variables</h2></td></tr>
 
 <p>Returns current ROS time. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00434">434</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00445">445</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -677,7 +718,7 @@ Variables</h2></td></tr>
 <p>Returns currently available ROS topics, as [(topicname, typename)]. </p>
 <p>Omits topics that the current ROS node itself has published. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00451">451</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00462">462</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -700,7 +741,7 @@ Variables</h2></td></tr>
 <p>Returns alias like "char" for ROS built-in type, if any; reverse of <a class="el" href="namespacegrepros_1_1rosapi.html#a4634a3154230c7ba8bd60b1864c085cb" title="Returns alias like &quot;char&quot; for ROS built-in type, if any; reverse of get_type_alias().">get_type_alias()</a>. </p>
 <p>In ROS1, byte and char are aliases for int8 and uint8; in ROS2 the reverse. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00460">460</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00471">471</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -761,7 +802,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00478">478</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00489">489</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -783,7 +824,7 @@ Variables</h2></td></tr>
 
 <p>Returns whether value is a ROS2 time/duration. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00482">482</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00493">493</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -834,7 +875,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00494">494</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00505">505</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -867,7 +908,7 @@ Variables</h2></td></tr>
 <p>Returns timestamp string or datetime instance as ROS time. </p>
 <p>Stamp interpreted as delta from bag start/end time if numeric string with sign prefix. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00523">523</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00534">534</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -899,7 +940,7 @@ Variables</h2></td></tr>
 
 <p>Returns a ROS duration. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00546">546</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00557">557</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -922,7 +963,7 @@ Variables</h2></td></tr>
 <p>Returns timestamp string or datetime instance as ROS time. </p>
 <p>Stamp interpreted as delta from system time if numeric string with sign prefix. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00537">537</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00548">548</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -967,7 +1008,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00562">562</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00573">573</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -999,7 +1040,7 @@ Variables</h2></td></tr>
 
 <p>Returns a ROS time. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00551">551</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00562">562</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1037,7 +1078,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00590">590</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00601">601</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1077,7 +1118,7 @@ Variables</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>ordered {field name: type name}, like "std_msgs/Header", "a": "bool", "b": "my_pkg/MyCls2"} </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00619">619</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00630">630</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1118,7 +1159,7 @@ Variables</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>{"pkg/MsgType": "full definition for MsgType including subtypes"} or ({typedefs}, {nesting}) if nesting </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00651">651</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00662">662</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1141,7 +1182,7 @@ Variables</h2></td></tr>
 <p>Returns scalar type from ROS message data type, like "uint8" from uint8-array. </p>
 <p>Returns type unchanged if an ordinary type. In ROS2, returns unbounded type, e.g. "string" from "string&lt;=10[&lt;=5]". </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00697">697</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00708">708</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1179,7 +1220,7 @@ Variables</h2></td></tr>
 
 <p>Sets message or object attribute value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00701">701</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00712">712</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1222,7 +1263,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as datetime.datetime if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00706">706</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00717">717</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1244,7 +1285,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as decimal.Decimal if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00712">712</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00723">723</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1266,7 +1307,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in nanoseconds if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00719">719</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00730">730</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1288,7 +1329,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in seconds if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00724">724</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00735">735</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1310,7 +1351,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as (seconds, nanoseconds) if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00729">729</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="rosapi_8py_source.html#l00740">740</a> of file <a class="el" href="rosapi_8py_source.html">rosapi.py</a>.</p>
 
 </div>
 </div>
@@ -1549,7 +1590,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1rosapi.html">rosapi</a></li>
-    <li class="footer">Generated on Sun Oct 30 2022 14:51:36 for grepros by
+    <li class="footer">Generated on Thu Mar 30 2023 20:01:15 for grepros by
     <a href="http://www.doxygen.org/index.html">
     <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
   </ul>

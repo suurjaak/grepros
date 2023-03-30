@@ -1,6 +1,7 @@
 var ros1_8py =
 [
     [ "Bag", "classgrepros_1_1ros1_1_1_bag.html", "classgrepros_1_1ros1_1_1_bag" ],
+    [ "canonical", "ros1_8py.html#a23cb79a6ea1c50ace5af27a7b2b7e2ce", null ],
     [ "create_publisher", "ros1_8py.html#a79056ed4cbcec177f9beb28184f0b738", null ],
     [ "create_subscriber", "ros1_8py.html#a7769cb4c1152068bf45663330bb34319", null ],
     [ "format_message_value", "ros1_8py.html#ae55fa9f7149d83030f0a9d8384586e50", null ],

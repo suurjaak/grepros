@@ -3,6 +3,7 @@ var rosapi_8py =
     [ "Bag", "classgrepros_1_1rosapi_1_1_bag.html", "classgrepros_1_1rosapi_1_1_bag" ],
     [ "TypeMeta", "classgrepros_1_1rosapi_1_1_type_meta.html", "classgrepros_1_1rosapi_1_1_type_meta" ],
     [ "calculate_definition_hash", "rosapi_8py.html#aed2557ab9ca5e2dc0d9c3c8c39fe456a", null ],
+    [ "canonical", "rosapi_8py.html#a09386af941dd321c4c76b2dc57259965", null ],
     [ "create_publisher", "rosapi_8py.html#aa5251a259f70bdaea2b69a0c6eaf6fd6", null ],
     [ "create_subscriber", "rosapi_8py.html#a8f0fd7face46f2648145c57b53041c1c", null ],
     [ "format_message_value", "rosapi_8py.html#adac1fb02e55380794cc46143fb4b3410", null ],
