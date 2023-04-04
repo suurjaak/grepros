@@ -2,12 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.0 (2022-03-14)
+1.0.0 (2022-04-04)
 -------------------
 * add inputs.AppSource and outputs.AppSink
 * add MCAP bag interface
 * add --no-highlight option
 - add --stop-on-error option
+* add api.time_message()
 * support stream objects in bag interface
 * avoid raising errors for unknown message types in ROS2 bags if not reading those topics
 * fix embag reader
@@ -18,7 +19,7 @@ Changelog for package grepros
 -------------------
 * add nesting=array|all to --write Parquet options
 * add idgenerator=callable to --write Parquet options
-* add rosapi.canonical()
+* add api.canonical()
 * match bounded array fields to configured output types properly 
   in Parquet/Postgres/SQL/SQLite output, like "uint8[10]" for "BYTEA" in Postgres
 * workaround for ROS1 time/duration fields defined as int32 while actually being uint32

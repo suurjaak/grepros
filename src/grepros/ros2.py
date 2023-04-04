@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    27.03.2023
+@modified    04.04.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -27,6 +27,7 @@ import time
 
 import builtin_interfaces.msg
 import rclpy
+import rclpy.clock
 import rclpy.duration
 import rclpy.executors
 import rclpy.serialization
@@ -958,6 +959,25 @@ def set_message_value(obj, name, value):
     setattr(obj, name, value)
 
 
+def time_message(val, to_message=True, clock_type=None):
+    """
+    Converts ROS2 time/duration between `rclpy` and `builtin_interfaces` objects.
+
+    @param   val         ROS2 time/duration object from `rclpy` or `builtin_interfaces`
+    @param   to_message  whether to convert from `rclpy` to `builtin_interfaces` or vice versa
+    @param   clock_type  ClockType for converting to `rclpy.Time`, defaults to `ROS_TIME`
+    @return              value converted to appropriate type, or original value if not convertible
+    """
+    to_message, clock_type = bool(to_message), (clock_type or rclpy.clock.ClockType.ROS_TIME)
+    if isinstance(val, tuple(ROS_TIME_CLASSES)):
+        rcl_cls = next(k for k, v in ROS_TIME_MESSAGES.items() if isinstance(val, (k, v)))
+        is_rcl = isinstance(val, tuple(ROS_TIME_MESSAGES))
+        name = "to_msg" if to_message and is_rcl else "from_msg" if to_message == is_rcl else None
+        args = [val] + ([clock_type] if rcl_cls is rclpy.time.Time and "from_msg" == name else [])
+        return getattr(rcl_cls, name)(*args) if name else val
+    return val
+
+
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
     if not isinstance(val, tuple(ROS_TIME_CLASSES)):
@@ -1017,5 +1037,5 @@ __all__ = [
     "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
     "is_ros_message", "is_ros_time", "make_duration", "make_full_typename", "make_subscriber_qos",
     "make_time", "qos_to_dict", "scalar", "serialize_message", "set_message_value", "shutdown_node",
-    "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "time_message", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]

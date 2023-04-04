@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.03.2023
+@modified    04.04.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -1053,6 +1053,21 @@ def set_message_value(obj, name, value):
     realapi.set_message_value(obj, name, value)
 
 
+def time_message(val, to_message=True, clock_type=None):
+    """
+    Converts ROS2 time/duration between `rclpy` and `builtin_interfaces` objects.
+
+    Returns input value as-is in ROS1.
+
+    @param   val         ROS2 time/duration object from `rclpy` or `builtin_interfaces`
+    @param   to_message  whether to convert from `rclpy` to `builtin_interfaces` or vice versa
+    @param   clock_type  ClockType for converting to `rclpy.Time`, defaults to `ROS_TIME`
+    @return              value converted to appropriate type, or original value if not convertible
+    """
+    if ROS1: return val
+    return realapi.time_message(val, to_message, clock_type=clock_type)
+
+
 def to_datetime(val):
     """Returns value as datetime.datetime if value is ROS time/duration, else value."""
     sec = realapi.to_sec(val)
@@ -1097,6 +1112,6 @@ __all___ = [
     "get_topic_types", "get_type_alias", "init_node", "is_ros_message", "is_ros_time",
     "iter_message_fields", "make_bag_time", "make_duration", "make_live_time", "make_message_hash",
     "make_time", "message_to_dict", "parse_definition_fields", "parse_definition_subtypes",
-    "scalar", "deserialize_message", "set_message_value", "shutdown_node", "to_datetime",
-    "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "scalar", "deserialize_message", "set_message_value", "shutdown_node", "time_message",
+    "to_datetime", "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
