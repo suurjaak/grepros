@@ -433,8 +433,8 @@ Specifying write `format=mcap` is not required if the filename ends with `.mcap`
 
     --plugin grepros.plugins.parquet \
     --write path/to/my.parquet [format=parquet] [overwrite=true|false] \
-            [column-name=rostype:value] [type-rostype=arrowtype] \
-            [writer-argname=argvalue]
+            [column-NAME=ROSTYPE:VALUE] [type-ROSTYPE=ARROWTYPE] \
+            [writer-ARGNAME=ARGVALUE]
 
 Write messages to Apache Parquet files (columnar storage format, version 2.6),
 each message type to a separate file, named `path/to/package__MessageType__typehash/my.parquet`
@@ -473,7 +473,7 @@ unless they are mapped to pyarrow types explicitly, like:
 Supports additional arguments given to [pyarrow.parquet.ParquetWriter](
 https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html), as:
 
-    --write path/to/my.parquet writer-argname=argvalue
+    --write path/to/my.parquet writer-ARGNAME=ARGVALUE
 
 For example, specifying no compression:
 

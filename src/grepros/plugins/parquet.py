@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    27.03.2023
+@modified    05.04.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -447,9 +447,9 @@ def init(*_, **__):
         raise ImportWarning()
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
-        ("column-name=rostype:value",  "additional column to add in Parquet output,\n"
+        ("column-NAME=ROSTYPE:VALUE",  "additional column to add in Parquet output,\n"
                                        "like column-bag_hash=string:26dfba2c"),
-        ("idgenerator=callable",       "callable or iterable for producing message IDs \n"
+        ("idgenerator=CALLABLE",       "callable or iterable for producing message IDs \n"
                                        "in Parquet output, like 'uuid.uuid4' or 'itertools.count()';\n"
                                        "nesting uses UUID values by default"),
         ("nesting=array|all",          "create tables for nested message types\n"
@@ -460,10 +460,10 @@ def init(*_, **__):
                                        " with foreign keys instead of messages as JSON)"),
         ("overwrite=true|false",       "overwrite existing file in Parquet output\n"
                                        "instead of appending unique counter (default false)"),
-        ("type-rostype=arrowtype",     "custom mapping between ROS and pyarrow type\n"
+        ("type-ROSTYPE=ARROWTYPE",     "custom mapping between ROS and pyarrow type\n"
                                        "for Parquet output, like type-time=\"timestamp('ns')\"\n"
                                        "or type-uint8[]=\"list(uint8())\""),
-        ("writer-argname=argvalue",    "additional arguments for Parquet output\n"
+        ("writer-ARGNAME=ARGVALUE",    "additional arguments for Parquet output\n"
                                        "given to pyarrow.parquet.ParquetWriter"),
     ])
 

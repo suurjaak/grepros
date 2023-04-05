@@ -643,7 +643,7 @@ optional arguments:
                                                    load additional SQL dialect options
                                                    for Postgres/SQLite output
                                                    from a YAML or JSON file
-                          idgenerator=callable     callable or iterable for producing message IDs
+                          idgenerator=CALLABLE     callable or iterable for producing message IDs
                                                    in Parquet output, like 'uuid.uuid4' or 'itertools.count()';
                                                    by default only nesting uses IDs
                           message-yaml=true|false  whether to populate table field messages.yaml
