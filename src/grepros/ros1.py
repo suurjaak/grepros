@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.03.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -205,6 +205,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
                                     (topic, message, timestamp as rospy.Time)
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
+        if "w" == self._mode: raise io.UnsupportedOperation("read")
 
         hashtypes = {}
         for n, h in self.__TYPEDEFS: hashtypes.setdefault(h, []).append(n)
@@ -261,6 +262,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
                                     as {"topic", "type", "md5sum", "message_definition"}
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
+        if "r" == self._mode: raise io.UnsupportedOperation("write")
         self._register_write(topic, msg, raw, connection_header)
         return super(ROS1Bag, self).write(topic, msg, to_time(t), raw, connection_header)
 
@@ -606,7 +608,7 @@ def get_message_fields(val):
     """
     names, types = (getattr(val, k, []) for k in ("__slots__", "_slot_types"))
     # Bug in genpy: class slot types defined as "int32", but everywhere else types use "uint32"
-    if isinstance(val, genpy.TVal): types = ["uint32", "uint32"]
+    if isinstance(val, genpy.TVal): names, types = genpy.TVal.__slots__, ["uint32", "uint32"]
     return collections.OrderedDict(zip(names, types))
 
 
@@ -624,9 +626,16 @@ def get_message_value(msg, name, typename):
     return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
 
 
-def get_rostime():
-    """Returns current ROS1 time, as rospy.Time."""
-    return rospy.get_rostime()
+def get_rostime(fallback=False):
+    """
+    Returns current ROS1 time, as rospy.Time.
+
+    @param   fallback  use wall time if node not initialized
+    """
+    try: return rospy.get_rostime()
+    except Exception:
+        if fallback: return make_time(time.time())
+        raise
 
 
 def get_topic_types():

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.03.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -495,7 +495,7 @@ class BagSource(Source, ConditionMixin):
                         yield self.SourceMessage(topic, msg, stamp)
                 if not self._running:
                     break  # for topics
-            self._counts and self.sink.flush()
+            self._counts and self.sink and self.sink.flush()
             self.close_batch()
         self._running = False
 
@@ -504,7 +504,7 @@ class BagSource(Source, ConditionMixin):
         if self.valid is not None: return self.valid
         self.valid = api.validate()
         if not self._bag0 and self.args.FILE and os.path.isfile(self.args.FILE[0]) \
-        and not verify_io(self.args.FILE, "r"):
+        and not verify_io(self.args.FILE[0], "r"):
             ConsolePrinter.error("File not readable.")
             self.valid = False
         if not self._bag0 and is_stream(self.args.FILE) \
@@ -971,8 +971,7 @@ class TopicSource(Source, ConditionMixin):
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""
-        stamp = api.get_rostime() if self.args.ROS_TIME_IN else \
-                api.make_time(time.time())
+        stamp = api.get_rostime() if self.args.ROS_TIME_IN else api.make_time(time.time())
         self._queue and self._queue.put((topic, msg, stamp))
 
 
@@ -983,9 +982,9 @@ class AppSource(Source, ConditionMixin):
     DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
                         END_TIME=None, START_INDEX=None, END_INDEX=None, UNIQUE=False,
                         SELECT_FIELD=(), NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0,
-                        CONDITION=())
+                        CONDITION=(), ITERABLE=None)
 
-    def __init__(self, args=None, iterable=None, **kwargs):
+    def __init__(self, args=None, **kwargs):
         """
         @param   args                  arguments as namespace or dictionary, case-insensitive
         @param   args.topic            ROS topics to read if not all
@@ -1003,15 +1002,14 @@ class AppSource(Source, ConditionMixin):
         @param   args.nth_interval     minimum time interval between messages in topic
         @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin
-        @param   iterable              iterable yielding (topic, msg, stamp) or (topic, msg);
+        @param   args.iterable         iterable yielding (topic, msg, stamp) or (topic, msg);
                                        yielding `None` signals end of content
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._iterable = iterable
-        self._queue    = queue.Queue()  # [(topic, msg, ROS time)]
+        self._queue = queue.Queue()  # [(topic, msg, ROS time)]
 
         self._configure()
 
@@ -1019,13 +1017,13 @@ class AppSource(Source, ConditionMixin):
         """Yields messages from iterable or pushed data, as (topic, msg, ROS timestamp)."""
         def generate(iterable):
             for x in iterable: yield x
-        feeder = generate(self._iterable) if self._iterable else None
+        feeder = generate(self.args.ITERABLE) if self.args.ITERABLE else None
         while True:
             item = self._queue.get() if not feeder or self._queue.qsize() else next(feeder, None)
             if item is None: break  # while
 
             if len(item) > 2: topic, msg, stamp = item[:3]
-            else: (topic, msg), stamp = item[:2], api.get_rostime()
+            else: (topic, msg), stamp = item[:2], api.get_rostime(fallback=True)
             topickey = api.TypeMeta.make(msg, topic, self).topickey
             self._counts[topickey] += 1
             self.conditions_register_message(topic, msg)
@@ -1067,7 +1065,7 @@ class AppSource(Source, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
-        if stamp is None and topic is not None: stamp = api.get_rostime()
+        if stamp is None and topic is not None: stamp = api.get_rostime(fallback=True)
         self._queue.put(None if topic is None else (topic, msg, stamp))
 
     def is_processable(self, topic, msg, stamp, index=None):

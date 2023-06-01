@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    20.03.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -122,7 +122,8 @@ class EmbagReader(api.BaseBag):
         """
         Returns thorough metainfo on topic and message types.
 
-        @param   topic_filters  list of topics or a single topic to filter by, if at all
+        @param   topic_filters  list of topics or a single topic to filter returned topics-dict by,
+                                if any
         @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
@@ -132,7 +133,7 @@ class EmbagReader(api.BaseBag):
 
         topics = topic_filters
         topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
-        msgtypes = {n: h for t, n, h in self._topics if not topics or t in topics}
+        msgtypes = {n: h for t, n, h in self._topics}
         topicdict = {}
 
         def median(vals):

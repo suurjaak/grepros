@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    21.03.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -130,16 +130,17 @@ class McapBag(api.BaseBag):
 
         @param   typehash  message type definition hash, if any
         """
-        typehash = typehash or next((t for n, t in self._types if n == typename), None)
+        typehash = typehash or next((h for t, h in self._typedefs if t == typename), None)
         typekey = (typename, typehash)
         if typekey not in self._types and typekey in self._typedefs:
             if api.ROS2:
                 name = typename.split("/")[-1]
                 fields = api.parse_definition_fields(typename, self._typedefs[typekey])
-                self._types[typekey] = type(name, (types.SimpleNamespace, ), {
+                cls = type(name, (types.SimpleNamespace, ), {
                     "__name__": name, "__slots__": list(fields),
                     "__repr__": message_repr, "__str__": message_repr
                 })
+                self._types[typekey] = self._patch_message_class(cls, typename, typehash)
             else:
                 typeclses = genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey])
                 self._types[typekey] = typeclses[typename]
@@ -158,7 +159,8 @@ class McapBag(api.BaseBag):
 
     def get_message_type_hash(self, msg_or_type):
         """Returns ROS message type MD5 hash."""
-        typename = api.get_message_type(msg_or_type)
+        typename = msg_or_type
+        if api.is_ros_message(msg_or_type): typename = api.get_message_type(msg_or_type)
         return next((h for n, h in self._typedefs if n == typename), None)
 
 
@@ -176,7 +178,8 @@ class McapBag(api.BaseBag):
         """
         Returns thorough metainfo on topic and message types.
 
-        @param   topic_filters  list of topics or a single topic to filter by, if at all
+        @param   topic_filters  list of topics or a single topic to filter returned topics-dict by,
+                                if any
         @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
@@ -186,7 +189,7 @@ class McapBag(api.BaseBag):
 
         topics = topic_filters
         topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
-        msgtypes = {n: h for t, n, h in self._topics if not topics or t in topics}
+        msgtypes = {n: h for t, n, h in self._topics}
         topicdict = {}
 
         def median(vals):
@@ -224,7 +227,7 @@ class McapBag(api.BaseBag):
         if self.closed: raise ValueError("I/O operation on closed file.")
         if "w" == self._mode: raise io.UnsupportedOperation("read")
 
-        topics = topics if isinstance(topics, list) else [topics] if topics else []
+        topics = topics if isinstance(topics, list) else [topics] if topics else None
         start_ns, end_ns = (api.to_nsec(api.to_time(x)) for x in (start_time, end_time))
         for schema, channel, message in self._reader.iter_messages(topics, start_ns, end_ns):
             if raw:
@@ -345,8 +348,8 @@ class McapBag(api.BaseBag):
     def __next__(self):
         """Retrieves next message from bag as (topic, message, timestamp)."""
         if self.closed: raise ValueError("I/O operation on closed file.")
-        if self.__iterer is None: self.__iterer = self.read_messages()
-        return next(self.__iterer)
+        if self._iterer is None: self._iterer = self.read_messages()
+        return next(self._iterer)
 
 
     def _decode_message(self, message, channel, schema):
@@ -355,10 +358,10 @@ class McapBag(api.BaseBag):
 
         @param   message  mcap.records.Message instance
         @param   channel  mcap.records.Channel instance for message
-        @param   shcema   mcap.records.Schema instance for message type
+        @param   schema   mcap.records.Schema instance for message type
         """
         cls = self._make_message_class(schema, message, generate=False)
-        if api.ROS2 and not isinstance(cls, types.SimpleNamespace):
+        if api.ROS2 and not issubclass(cls, types.SimpleNamespace):
             msg = api.deserialize_message(message.data, cls)
         else:
             msg = self._decoder.decode(schema=schema, message=message)
@@ -375,7 +378,7 @@ class McapBag(api.BaseBag):
         """
         Returns message type class, generating if not already available.
 
-        @param   shcema    mcap.records.Schema instance for message type
+        @param   schema    mcap.records.Schema instance for message type
         @param   message   mcap.records.Message instance
         @param   generate  generate message class dynamically if not available
         """
@@ -648,7 +651,13 @@ class McapSink(Sink):
         """Opens output file if not already open."""
         if self._file: return
 
-        self._filename = self.args.WRITE if self._overwrite else unique_path(self.args.WRITE)
+        filename = self.args.WRITE
+        if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
+            filename = unique_path(filename)
+            if self.args.VERBOSE:
+                ConsolePrinter.debug("Making unique filename %r, as %s does not support "
+                                     "appending.", filename, type(self).__name___)
+        self._filename = filename
         makedirs(os.path.dirname(self._filename))
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)

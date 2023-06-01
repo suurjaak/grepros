@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.01.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -48,7 +48,7 @@ class Sink(object):
 
         self.args = ensure_namespace(args, Sink.DEFAULT_ARGS, **kwargs)
         ## Result of validate()
-        self.valid = None  
+        self.valid = None
         ## inputs.Source instance bound to this sink
         self.source = None
 
@@ -113,7 +113,7 @@ class Sink(object):
 
     def _ensure_stamp_index(self, topic, msg, stamp=None, index=None):
         """Returns (stamp, index) populated with current ROS time and topic index if `None`."""
-        if stamp is None: stamp = api.get_rostime()
+        if stamp is None: stamp = api.get_rostime(fallback=True)
         if index is None: index = self._counts.get(api.TypeMeta.make(msg, topic).topickey, 0) + 1
         return stamp, index
 
@@ -597,40 +597,43 @@ class TopicSink(Sink):
 class AppSink(Sink):
     """Provides messages to callback function."""
 
-    def __init__(self, emit=None, metaemit=None, highlight=False, **__):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(EMIT=None, METAEMIT=None, HIGHLIGHT=False)
+
+    def __init__(self, args=None, **kwargs):
         """
-        @param   emit        callback(topic, msg, stamp, highlighted msg, index in topic), if any
-        @param   metaemit    callback(metadata dict) if any, invoked before first emit from source batch
-        @param   highlight   whether to expect highlighted matching fields from source messages
+        @param   args             arguments as namespace or dictionary, case-insensitive
+        @param   args.emit        callback(topic, msg, stamp, highlighted msg, index in topic), if any
+        @param   args.metaemit    callback(metadata dict) if any, invoked before first emit from source batch
+        @param   args.highlight   whether to expect highlighted matching fields from source messages
+        @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
-        super(AppSink, self).__init__()
-        self._emit      = emit
-        self._metaemit  = metaemit
-        self._highlight = bool(highlight)
+        args = ensure_namespace(args, AppSink.DEFAULT_ARGS, **kwargs)
+        super(AppSink, self).__init__(args)
 
     def emit_meta(self):
         """Invokes registered metaemit callback, if any, and not already invoked."""
-        batch = self.source.get_batch() if self._metaemit else None
-        if self._metaemit and batch not in self._batch_meta:
+        batch = self.source.get_batch() if self.args.METAEMIT else None
+        if self.args.METAEMIT and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.get_meta()
-            self._metaemit(meta)
+            self.args.METAEMIT(meta)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Registers message and invokes registered emit callback, if any."""
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         super(AppSink, self).emit(topic, msg, stamp, match, index)
-        if self._emit: self._emit(topic, msg, stamp, match, index)
+        if self.args.EMIT: self.args.EMIT(topic, msg, stamp, match, index)
 
     def is_highlighting(self):
         """Returns whether emitted matches are highlighted."""
-        return self._highlight
+        return self.args.HIGHLIGHT
 
 
 class MultiSink(Sink):
     """Combines any number of sinks."""
 
     ## Autobinding between argument flags and sink classes
-    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink}
+    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink, "APP": AppSink}
 
     ## Autobinding between `--write .. format=FORMAT` and sink classes
     FORMAT_CLASSES = {"bag": BagSink}
@@ -641,6 +644,7 @@ class MultiSink(Sink):
         @param   args.console   print matches to console
         @param   args.write     [[target, format=FORMAT, key=value, ], ]
         @param   args.publish   publish matches to live topics
+        @param   args.app       provide messages to given callback function
         @param   sinks          pre-created sinks, arguments will be ignored
         @param   kwargs         any and all arguments as keyword overrides, case-insensitive
         """
@@ -657,7 +661,8 @@ class MultiSink(Sink):
             kwargs.update(kv for x in dumpopts[1:] if isinstance(x, dict) for kv in x.items())
             target, cls = dumpopts[0], self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:
-                cls = next((c for c in self.FORMAT_CLASSES.values()
+                cls = next((c for c in sorted(self.FORMAT_CLASSES.values(),
+                                              key=lambda x: x is BagSink)
                             if callable(getattr(c, "autodetect", None))
                             and c.autodetect(target)), None)
             if not cls:

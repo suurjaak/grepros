@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.03.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -837,6 +837,12 @@ def is_stream(value):
     except NameError: return isinstance(value, io.IOBase)  # Py3
 
 
+def iterable(value):
+    """Returns whether value is iterable."""
+    try: iter(value)
+    except Exception: return False
+
+
 def makedirs(path):
     """Creates directory structure for path if not already existing."""
     parts, accum = list(filter(bool, os.path.realpath(path).split(os.sep))), []
@@ -997,7 +1003,7 @@ def verify_io(f, mode):
                 if not os.path.exists(curpath):
                     os.mkdir(curpath)
                     paths_created.append(curpath)
-        elif "r" == mode:  # not present
+        elif not present and "r" == mode:
             return False
         with open(f, {"r": "rb", "w": "ab", "a": "ab+"}[mode]) as g:
             if mode in ("r", "a"):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    21.03.2023
+@modified    29.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -30,8 +30,8 @@ class Scanner(object):
     with numeric field values converted to strings beforehand.
     """
 
-    ## Namedtuple of (topic name, ROS message, ROS time object, message if matched).
-    GrepMessage = collections.namedtuple("BagMessage", "topic message timestamp match")
+    ## Namedtuple of (topic name, ROS message, ROS time object, message if matched, index in topic).
+    GrepMessage = collections.namedtuple("BagMessage", "topic message timestamp match index")
 
     ## Match patterns for global any-match
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]

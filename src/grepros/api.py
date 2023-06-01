@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    04.04.2023
+@modified    31.05.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -17,6 +17,7 @@ import collections
 import datetime
 import decimal
 import hashlib
+import inspect
 import os
 import re
 import sys
@@ -229,7 +230,8 @@ class BaseBag(object):
         """
         Returns thorough metainfo on topic and message types.
 
-        @param   topic_filters  list of topics or a single topic to filter by, if any
+        @param   topic_filters  list of topics or a single topic to filter returned topics-dict by,
+                                if any
         @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
@@ -728,16 +730,24 @@ def get_message_value(msg, name, typename):
     return realapi.get_message_value(msg, name, typename)
 
 
-def get_rostime():
-    """Returns current ROS time, as rospy.Time or rclpy.time.Time."""
-    return realapi.get_rostime()
+def get_rostime(fallback=False):
+    """
+    Returns current ROS time, as rospy.Time or rclpy.time.Time.
+
+    @param   fallback  use wall time if node not initialized
+    """
+    return realapi.get_rostime(fallback=fallback)
 
 
-def get_ros_time_category(typename):
-    """Returns "time" or "duration" for time/duration type, else typename."""
-    if typename in ROS_TIME_TYPES:
-        return "duration" if "duration" in typename.lower() else "time"
-    return typename
+def get_ros_time_category(msg_or_type):
+    """Returns "time" or "duration" for time/duration type or instance, else original argument."""
+    cls = msg_or_type if inspect.isclass(msg_or_type) else \
+          type(msg_or_type) if is_ros_message(msg_or_type) else None
+    if cls is None:
+        cls = next((x for x in ROS_TIME_CLASSES if get_message_type(x) == msg_or_type), None)
+    if cls in ROS_TIME_CLASSES:
+        return "duration" if "duration" in ROS_TIME_CLASSES[cls].lower() else "time"
+    return msg_or_type
 
 
 def get_topic_types():
@@ -903,7 +913,7 @@ def message_to_dict(msg, replace=None):
     for name, typename in realapi.get_message_fields(msg).items():
         v = realapi.get_message_value(msg, name, typename)
         if realapi.is_ros_time(v):
-            v = dict(zip(["secs", "nsecs"], realapi.to_sec_nsec(v)))
+            v = dict(zip(realapi.get_message_fields(v), realapi.to_sec_nsec(v)))
         elif realapi.is_ros_message(v):
             v = message_to_dict(v)
         elif isinstance(v, (list, tuple)):

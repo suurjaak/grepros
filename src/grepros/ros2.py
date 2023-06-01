@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    04.04.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -196,7 +196,8 @@ PRAGMA synchronous=NORMAL;
         """
         Returns thorough metainfo on topic and message types.
 
-        @param   topic_filters  list of topics or a single topic to filter by, if at all
+        @param   topic_filters  list of topics or a single topic to filter returned topics-dict by,
+                                if any
         @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
@@ -207,7 +208,7 @@ PRAGMA synchronous=NORMAL;
         counts = self.get_topic_info()
         topics = topic_filters
         topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
-        msgtypes = {n: h for t, n, h in counts if not topics or t in topics}
+        msgtypes = {n: h for t, n, h in counts}
         topicdict = {}
 
         def median(vals):
@@ -216,7 +217,7 @@ PRAGMA synchronous=NORMAL;
             return None if not vlen else vals[vlen // 2] if vlen % 2 else \
                    float(vals[vlen // 2 - 1] + vals[vlen // 2]) / 2
 
-        for (t, n, _), c in sorted(counts.items()):
+        for (t, n, _), c in sorted(counts.items(), key=lambda x: x[0][:2]):
             if topics and t not in topics: continue  # for
             mymedian = None
             if c > 1:
@@ -358,7 +359,7 @@ PRAGMA synchronous=NORMAL;
         @param   qoses  topic Quality-of-Service settings, if any, as a list of dicts
         """
         if self.closed: raise ValueError("I/O operation on closed file.")
-        if "r" == self._mode: raise io.UnsupportedOperation("read")
+        if "r" == self._mode: raise io.UnsupportedOperation("write")
 
         self._ensure_topics()
         if raw:
@@ -439,12 +440,6 @@ PRAGMA synchronous=NORMAL;
         return self._mode
 
 
-    @property
-    def stop_on_error(self):
-        """Whether raising read error on unknown message type; defaults to true."""
-        return self._stop_on_error
-
-
     def __contains__(self, key):
         """Returns whether bag contains given topic."""
         return any(key == t for t, _, _ in self._topics)
@@ -483,7 +478,7 @@ PRAGMA synchronous=NORMAL;
         if not self._db or all(v is not None for v in self._counts.values()) \
         or not self._has_table("messages"): return
         self._ensure_topics()
-        topickeys = {self._topics[(t, n)]["id"]: (t, n, h) for (t, n, h) in self._counts.values()}
+        topickeys = {self._topics[(t, n)]["id"]: (t, n, h) for (t, n, h) in self._counts}
         self._counts.clear()
         for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
                                     "GROUP BY topic_id").fetchall():
@@ -501,10 +496,12 @@ PRAGMA synchronous=NORMAL;
         or not any(h is None for t, _, h in self._counts if topics is None or t in topics):
             return
         self._ensure_topics()
-        for (topic, typename, typehash), count in list(self._counts.items()):
+        for countkey, count in list(self._counts.items()):
+            (topic, typename, typehash) = countkey
             if typehash is None and (topics is None or topic in topics):
                 typehash = get_message_type_hash(typename)
-            self._counts[(topic, typename, typehash)] = count
+                self._counts.pop(countkey)
+                self._counts[(topic, typename, typehash)] = count
 
 
     def _has_table(self, name):
@@ -830,9 +827,16 @@ def get_message_value(msg, name, typename):
     return v
 
 
-def get_rostime():
-    """Returns current ROS2 time, as rclpy.time.Time."""
-    return node.get_clock().now()
+def get_rostime(fallback=False):
+    """
+    Returns current ROS2 time, as rclpy.time.Time.
+
+    @param   fallback  use wall time if node not initialized
+    """
+    try: return node.get_clock().now()
+    except Exception:
+        if fallback: return make_time(time.time())
+        raise
 
 
 def get_topic_types():
