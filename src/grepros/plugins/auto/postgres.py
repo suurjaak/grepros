@@ -185,7 +185,7 @@ class PostgresSink(BaseDataSink):
                 else: v = psycopg2.extras.Json([api.message_to_dict(m, replace)
                                                 for m in v], json.dumps)
             elif "BYTEA" in (TYPES.get(typename),
-                             TYPES.get(rosapi.canonical(typename, unbounded=True))):
+                             TYPES.get(api.canonical(typename, unbounded=True))):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
                 v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2

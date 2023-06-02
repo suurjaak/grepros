@@ -324,7 +324,7 @@ class SqlMixin(object):
 
         scalartype = api.scalar(typename)
         timetype   = api.get_ros_time_category(scalartype)
-        coltype    = TYPES.get(typename) or TYPES.get(rosapi.canonical(typename, unbounded=True))
+        coltype    = TYPES.get(typename) or TYPES.get(api.canonical(typename, unbounded=True))
 
         if not coltype and scalartype in TYPES:
             coltype = ARRAYTEMPLATE.format(type=TYPES[scalartype])

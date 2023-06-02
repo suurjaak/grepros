@@ -305,7 +305,7 @@ class ParquetSink(Sink):
         """Returns column value suitable for adding to Parquet file."""
         v = value
         if isinstance(v, (list, tuple)):
-            noboundtype = rosapi.canonical(typename, unbounded=True)
+            noboundtype = api.canonical(typename, unbounded=True)
             if v and api.is_ros_time(v[0]):
                 v = [api.to_nsec(x) for x in v]
             elif api.scalar(typename) not in api.ROS_BUILTIN_TYPES:
