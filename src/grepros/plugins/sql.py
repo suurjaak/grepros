@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    08.01.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -49,7 +49,7 @@ class SqlSink(Sink, SqlMixin):
                               ("_timestamp",  "time"), ]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(WRITE_OPTIONS={})
+    DEFAULT_ARGS = dict(WRITE_OPTIONS={}, VERBOSE=False)
 
 
     def __init__(self, args=None, **kwargs):
@@ -61,6 +61,7 @@ class SqlSink(Sink, SqlMixin):
                                        "nesting": true|false to created nested type tables,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+        @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
