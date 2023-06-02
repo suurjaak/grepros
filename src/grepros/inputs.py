@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    31.05.2023
+@modified    01.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -456,7 +456,7 @@ class BagSource(Source, ConditionMixin):
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._args0     = copy.deepcopy(args)  # Original arguments
+        self._args0     = copy.deepcopy(self.args)  # Original arguments
         self._status    = None   # Match status of last produced message
         self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
