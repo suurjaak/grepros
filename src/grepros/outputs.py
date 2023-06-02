@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    31.05.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -26,6 +26,7 @@ from . import api
 from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, is_stream, makedirs, \
                      merge_spans, plural, unique_path, verify_io, wildcard_to_regex
+from . inputs import Source
 
 
 class Sink(object):
@@ -50,7 +51,7 @@ class Sink(object):
         ## Result of validate()
         self.valid = None
         ## inputs.Source instance bound to this sink
-        self.source = None
+        self.source = Source(self.args)
 
     def __enter__(self):
         """Context manager entry."""
