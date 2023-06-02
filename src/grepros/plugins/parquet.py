@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    05.04.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -162,25 +162,32 @@ class ParquetSink(Sink):
 
     def close(self):
         """Writes out any remaining messages, closes writers, clears structures."""
-        for k, vv in list(self._caches.items()):
-            vv and self._write_table(k)
-        for k in list(self._writers):
-            self._writers.pop(k).close()
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            sizes = {n: os.path.getsize(n) for n in self._filenames.values()}
-            ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
-                                 common.plural("message", sum(self._counts.values())),
-                                 common.plural("topic", self._counts),
-                                 common.plural("Parquet file", sizes),
-                                 common.format_bytes(sum(sizes.values())))
-            for (t, h), name in self._filenames.items():
-                count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
-                ConsolePrinter.debug("- %s (%s, %s)", name, common.format_bytes(sizes[name]),
-                                     common.plural("message", count))
-        self._caches.clear()
-        self._schemas.clear()
-        self._filenames.clear()
+        try:
+            for k, vv in list(self._caches.items()):
+                vv and self._write_table(k)
+            for k in list(self._writers):
+                self._writers.pop(k).close()
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                sizes = {n: None for n in self._filenames.values()}
+                for n in self._filenames.values():
+                    try: sizes[n] = os.path.getsize(n)
+                    except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
+                ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
+                                     common.plural("message", sum(self._counts.values())),
+                                     common.plural("topic", self._counts),
+                                     common.plural("Parquet file", sizes),
+                                     common.format_bytes(sum(filter(bool, sizes.values()))))
+                for (t, h), name in self._filenames.items():
+                    count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
+                    ConsolePrinter.debug("- %s (%s, %s)", name,
+                                         "error getting size" if sizes[name] is None else
+                                         common.format_bytes(sizes[name]),
+                                         common.plural("message", count))
+            self._caches.clear()
+            self._schemas.clear()
+            self._filenames.clear()
 
 
     def _process_type(self, topic, msg, rootmsg=None):

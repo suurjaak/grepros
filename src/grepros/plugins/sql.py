@@ -122,30 +122,35 @@ class SqlSink(Sink, SqlMixin):
 
     def close(self):
         """Rewrites out everything to SQL schema file, ensuring all source metas."""
-        if self._file:
-            self._file.seek(0)
-            self._write_header()
-            for key in sorted(self._types):
-                self._write_entity("table", self._types[key])
-            for key in sorted(self._topics):
-                self._write_entity("view", self._topics[key])
-            self._file.close()
-            self._file = None
-        if not self._close_printed and self._types:
-            self._close_printed = True
-            ConsolePrinter.debug("Wrote %s and %s to SQL %s (%s).",
-                                 plural("message type table",
-                                        len(self._types) - len(self._nested_types)),
-                                 plural("topic view", self._topics), self._filename,
-                                 format_bytes(os.path.getsize(self._filename)))
-            if self._nested_types:
-                ConsolePrinter.debug("Wrote %s to SQL %s.",
-                                     plural("nested message type table", self._nested_types),
-                                     self._filename)
-        self._nested_types.clear()
-        del self._batch_metas[:]
-        SqlMixin.close(self)
-        super(SqlSink, self).close()
+        try:
+            if self._file:
+                self._file.seek(0)
+                self._write_header()
+                for key in sorted(self._types):
+                    self._write_entity("table", self._types[key])
+                for key in sorted(self._topics):
+                    self._write_entity("view", self._topics[key])
+                self._file.close()
+                self._file = None
+        finally:
+            if not self._close_printed and self._types:
+                self._close_printed = True
+                try: sz = format_bytes(os.path.getsize(self._filename))
+                except Exception as e:
+                    ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
+                    sz = "error getting size"
+                ConsolePrinter.debug("Wrote %s and %s to SQL %s (%s).",
+                                     plural("message type table",
+                                            len(self._types) - len(self._nested_types)),
+                                     plural("topic view", self._topics), self._filename, sz)
+                if self._nested_types:
+                    ConsolePrinter.debug("Wrote %s to SQL %s.",
+                                         plural("nested message type table", self._nested_types),
+                                         self._filename)
+            self._nested_types.clear()
+            del self._batch_metas[:]
+            SqlMixin.close(self)
+            super(SqlSink, self).close()
 
 
     def _ensure_open(self):

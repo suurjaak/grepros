@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    08.01.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -119,17 +119,22 @@ class HtmlSink(Sink, TextSinkMixin):
 
     def close(self):
         """Closes output file, if any."""
-        if self._writer:
-            writer, self._writer = self._writer, None
-            self._queue.put(None)
-            writer.is_alive() and writer.join()
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self._filename,
-                                 format_bytes(os.path.getsize(self._filename)))
-        super(HtmlSink, self).close()
+        try:
+            if self._writer:
+                writer, self._writer = self._writer, None
+                self._queue.put(None)
+                writer.is_alive() and writer.join()
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                try: sz = format_bytes(os.path.getsize(self._filename))
+                except Exception as e:
+                    ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
+                    sz = "error getting size"
+                ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
+                                     plural("message", sum(self._counts.values())),
+                                     plural("topic", self._counts), self._filename, sz)
+            super(HtmlSink, self).close()
 
     def flush(self):
         """Writes out any pending data to disk."""

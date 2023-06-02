@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    08.01.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -84,22 +84,29 @@ class CsvSink(Sink):
 
     def close(self):
         """Closes output file(s), if any."""
-        names = {k: f.name for k, f in self._files.items()}
-        for k in names:
-            self._files.pop(k).close()
-        self._writers.clear()
-        self._lasttopickey = None
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            sizes = {k: os.path.getsize(n) for k, n in names.items()}
-            ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), format_bytes(sum(sizes.values())))
-            for topickey, name in names.items():
-                ConsolePrinter.debug("- %s (%s, %s)", name,
-                                    format_bytes(sizes[topickey]),
-                                    plural("message", self._counts[topickey]))
-        super(CsvSink, self).close()
+        try:
+            names = {k: f.name for k, f in self._files.items()}
+            for k in names:
+                self._files.pop(k).close()
+            self._writers.clear()
+            self._lasttopickey = None
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                sizes = {k: None for k in names.values()}
+                for k, n in names.items():
+                    try: sizes[k] = os.path.getsize(n)
+                    except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
+                ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
+                                     plural("message", sum(self._counts.values())),
+                                     plural("topic", self._counts),
+                                     format_bytes(sum(filter(bool, sizes.values()))))
+                for topickey, name in names.items():
+                    ConsolePrinter.debug("- %s (%s, %s)", name,
+                                         "error getting size" if sizes[topickey] is None else
+                                         format_bytes(sizes[topickey]),
+                                         plural("message", self._counts[topickey]))
+            super(CsvSink, self).close()
 
     def _make_writer(self, topic, msg):
         """

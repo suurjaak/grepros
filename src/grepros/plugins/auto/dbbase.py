@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    01.01.2023
+@modified    02.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -136,29 +136,32 @@ class BaseDataSink(Sink, SqlMixin):
 
     def close(self):
         """Closes database connection, if any."""
-        if self.db:
-            for sql in list(self._sql_queue):
-                self._executemany(sql, self._sql_queue.pop(sql))
-            self.db.commit()
-            self._cursor.close()
-            self._cursor = None
-            self.db.close()
-            self.db = None
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            target = self._make_db_label()
-            ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self.ENGINE, target)
-            if self._nested_counts:
+        try:
+            if self.db:
+                for sql in list(self._sql_queue):
+                    self._executemany(sql, self._sql_queue.pop(sql))
+                self.db.commit()
+                self._cursor.close()
+                self._cursor = None
+                self.db.close()
+                self.db = None
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                target = self._make_db_label()
                 ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
-                                     plural("nested message", sum(self._nested_counts.values())),
-                                     plural("nested message type", self._nested_counts),
-                                     self.ENGINE, target)
-        self._checkeds.clear()
-        self._nested_counts.clear()
-        SqlMixin.close(self)
-        super(BaseDataSink, self).close()
+                                     plural("message", sum(self._counts.values())),
+                                     plural("topic", self._counts), self.ENGINE, target)
+                if self._nested_counts:
+                    ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
+                        plural("nested message", sum(self._nested_counts.values())),
+                        plural("nested message type", self._nested_counts),
+                        self.ENGINE, target
+                    )
+            self._checkeds.clear()
+            self._nested_counts.clear()
+            SqlMixin.close(self)
+            super(BaseDataSink, self).close()
 
 
     def _init_db(self):

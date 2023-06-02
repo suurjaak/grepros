@@ -472,14 +472,17 @@ class BagSink(Sink):
     def close(self):
         """Closes output bag, if any."""
         if not self._close_printed and self._counts and self._bag:
-            size = None if self._bag.filename else self._bag.size
             self._close_printed = True
             self._bag.close()
+            try: sz = format_bytes(os.path.getsize(self._bag.filename)
+                                   if self._bag.filename else self._bag.size or 0)
+            except Exception as e:
+                ConsolePrinter.warn("Error getting size of %s: %s", self._bag.filename, e)
+                sz = "error getting size"
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", self._counts), self._bag.filename or "<stream>",
-                                 format_bytes(os.path.getsize(self._bag.filename))
-                                 if self._bag.filename else size)
+                                 sz)
         self._bag  and self._bag.close()
         super(BagSink, self).close()
 
@@ -591,7 +594,10 @@ class TopicSink(Sink):
                                  plural("message", sum(self._counts.values())),
                                  plural("topic", self._pubs))
         for k in list(self._pubs):
-            self._pubs.pop(k).unregister()
+            try: self._pubs.pop(k).unregister()
+            except Exception as e:
+                if self.args.VERBOSE:
+                    ConsolePrinter.warn("Error closing publisher on topic %r: %s", k[0], e)
         super(TopicSink, self).close()
 
 
