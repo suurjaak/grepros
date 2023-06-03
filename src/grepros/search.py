@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    29.05.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -124,7 +124,7 @@ class Scanner(object):
                             or `None` if yielding a context message
         """
         if isinstance(source, api.Bag):
-            source = inputs.BagSource(self.args, bag=source)
+            source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, highlight=highlight)
         for topic, msg, stamp, matched, index in self._generate():
             yield self.GrepMessage(topic, msg, stamp, matched, index)
