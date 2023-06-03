@@ -185,7 +185,7 @@ class EmbagReader(api.BaseBag):
             stamp = api.make_time(m.timestamp.secs, m.timestamp.nsecs)
             if raw: msg = (typename, m.data(), m.md5, self.get_message_class(typename, m.md5))
             else: msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
-            api.TypeMeta.make(msg, topic, self)
+            api.TypeMeta.make(msg, m.topic, self)
             yield self.BagMessage(m.topic, msg, stamp)
 
 
