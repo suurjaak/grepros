@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    31.05.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -22,6 +22,8 @@ import os
 import re
 import sys
 import time
+
+import six
 
 from . common import ConsolePrinter, LenIterable, filter_fields, format_bytes, memoize
 #from . import ros1, ros2  # Imported conditionally
@@ -340,6 +342,7 @@ class BaseBag(object):
         setattr(self, "_stop_on_error", flag)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Bag(BaseBag):
     """
     Bag factory. Result is a format-specific class instance, auto-detected from file extension
@@ -353,8 +356,6 @@ class Bag(BaseBag):
     Classes can have a static/class method `autodetect(filename)`
     returning whether given file is in recognizable format for the plugin class.
     """
-
-    __metaclass__ = abc.ABCMeta
 
     ## Bag reader classes, as {Cls, }
     READER_CLASSES = set()
