@@ -809,6 +809,7 @@ grepros requires Python 3.8+ or Python 2.7,
 and the following 3rd-party Python packages:
 
 - pyyaml (https://pypi.org/project/PyYAML)
+- six (https://pypi.org/project/six)
 - ROS1: rospy, roslib, rosbag, genpy
 - ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces
 
@@ -842,7 +843,7 @@ Optional, for generating API documentation:
 
 All dependencies other than rospy/rclpy can be installed with:
 
-    pip install pyyaml zstandard embag psycopg2 pandas pyarrow \
+    pip install pyyaml six zstandard embag psycopg2 pandas pyarrow \
                 mcap mcap_ros1_support mcap_ros2_support \
                 git+https://github.com/Feneric/doxypypy
 

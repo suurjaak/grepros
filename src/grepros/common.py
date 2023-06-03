@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    31.05.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -33,14 +33,18 @@ import time
 try: import curses
 except ImportError: curses = None
 
+import six
 try: import zstandard
 except ImportError: zstandard = None
 
 
 ## Python types for filesystem paths
-PATH_TYPES = (str, )
-if sys.version_info < (3, ): PATH_TYPES += (unicode, )
-else: PATH_TYPES += (importlib.import_module("pathlib").Path, )
+PATH_TYPES = (six.binary_type, six.text_type)
+if six.PY34: PATH_TYPES += (importlib.import_module("pathlib").Path, )
+## Python types for both byte strings and text strings
+STRING_TYPES = (six.binary_type, six.text_type)
+## Python types for text strings
+TEXT_TYPES = (six.binary_type, six.text_type) if six.PY2 else (six.text_type, )
 
 
 class MatchMarkers(object):
@@ -235,7 +239,7 @@ class ConsolePrinter(object):
             if text: logging.getLogger(__name__).log(level, text)
             return
         level = logging.getLevelName(level)
-        if not isinstance(level, str): level = logging.getLevelName(level)
+        if not isinstance(level, TEXT_TYPES): level = logging.getLevelName(level)
         func = {"DEBUG": cls.debug, "WARNING": cls.warn, "ERROR": cls.error}.get(level, cls.print)
         func(text, *args, **dict(kwargs, __file=sys.stderr))
 
@@ -539,7 +543,7 @@ class TextWrapper(object):
 
     def reserve_width(self, reserved=""):
         """Decreases the configured width by given amount (number or string)."""
-        reserved = self.strlen(reserved) if isinstance(reserved, str) else reserved
+        reserved = self.strlen(reserved) if isinstance(reserved, TEXT_TYPES) else reserved
         self.width = max(self.minwidth, self.realwidth - reserved)
 
 
@@ -941,12 +945,11 @@ def unique_path(pathname, empty_ok=False):
     @param   empty_ok  whether to ignore existence if file is empty
     """
     result = pathname
-    if "linux2" == sys.platform and sys.version_info < (3, 0) \
-    and isinstance(result, unicode) and "utf-8" != sys.getfilesystemencoding():
+    if "linux2" == sys.platform and six.PY2 and isinstance(result, six.text_type) \
+    and "utf-8" != sys.getfilesystemencoding():
         result = result.encode("utf-8") # Linux has trouble if locale not UTF-8
     if os.path.isfile(result) and empty_ok and not os.path.getsize(result):
-        string_types = (str, unicode) if sys.version_info < (3, 0) else (bytes, str)
-        return result if isinstance(result, string_types) else str(result)
+        return result if isinstance(result, STRING_TYPES) else str(result)
     path, name = os.path.split(result)
     base, ext = os.path.splitext(name)
     if len(name) > 255: # Filesystem limitation

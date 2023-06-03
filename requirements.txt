@@ -7,3 +7,4 @@
 # decompressing archived bags: zstandard
 # for generating API documentation: git+https://github.com/Feneric/doxypypy
 pyyaml
+six

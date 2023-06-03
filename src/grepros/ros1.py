@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    31.05.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -27,11 +27,12 @@ import genpy.dynamic
 import rosbag
 import roslib
 import rospy
+import six
 
 from . import api
 from . api import TypeMeta, calculate_definition_hash, parse_definition_subtypes
-from . common import ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, is_stream, \
-                     memoize, verify_io
+from . common import TEXT_TYPES, ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, \
+                     is_stream, memoize, verify_io
 
 
 ## Bagfile extensions to seek
@@ -515,7 +516,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
         if not pub.get_num_connections(): super(rospy.Publisher, pub).unregister()
 
     cls = cls_or_typename
-    if isinstance(cls, str): cls = get_message_class(cls)
+    if isinstance(cls, TEXT_TYPES): cls = get_message_class(cls)
     pub = rospy.Publisher(topic, cls, queue_size=queue_size)
     pub.unregister = pub_unregister
     return pub
@@ -690,7 +691,7 @@ def serialize_message(msg):
 def deserialize_message(raw, cls_or_typename):
     """Returns ROS1 message or service request/response instantiated from serialized binary."""
     cls = cls_or_typename
-    if isinstance(cls, str): cls = get_message_class(cls)
+    if isinstance(cls, TEXT_TYPES): cls = get_message_class(cls)
     return cls().deserialize(raw)
 
 
@@ -731,7 +732,7 @@ def to_time(val):
         result = rospy.Time(int(val), float(val % 1) * 10**9)
     elif isinstance(val, datetime.datetime):
         result = rospy.Time(int(val.timestamp()), 1000 * val.microsecond)
-    elif isinstance(val, (float, int)):
+    elif isinstance(val, six.integer_types + (float, )):
         result = rospy.Time(val)
     elif isinstance(val, genpy.Duration):
         result = rospy.Time(val.secs, val.nsecs)

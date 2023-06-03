@@ -8,17 +8,17 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    02.06.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
 from __future__ import absolute_import
 import atexit
 import csv
-import io
 import itertools
 import os
-import sys
+
+import six
 
 from ... import api
 from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
@@ -129,7 +129,7 @@ class CsvSink(Sink):
                     if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
                     open(name, "w").close()
                 else: name = unique_path(name)
-            flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
+            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": ""}
             f = open(name, **flags)
             w = CsvWriter(f)
             if topickey not in self._files:
@@ -177,13 +177,13 @@ class CsvWriter(object):
         @param   fmtparams  override individual format parameters in dialect
         """
         self._file    = csvfile
-        self._buffer  = io.BytesIO() if sys.version_info < (3, 0) else io.StringIO()
+        self._buffer  = six.BytesIO() if "b" in csvfile.mode else six.StringIO()
         self._writer  = csv.writer(self._buffer, dialect, **dict(fmtparams, lineterminator=""))
         self._dialect = csv.writer(self._buffer, dialect, **fmtparams).dialect
         self._format  = lambda v: int(v) if isinstance(v, bool) else v
-        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
+        if six.PY2:  # In Py2, CSV is written in binary mode
             self._format = lambda v: int(v) if isinstance(v, bool) else \
-                                     v.encode("utf-8") if isinstance(v, unicode) else v
+                                     v.encode("utf-8") if isinstance(v, six.text_type) else v
 
     @property
     def dialect(self):
@@ -207,12 +207,13 @@ class CsvWriter(object):
             self._buffer.seek(0); self._buffer.truncate()       # very memory-hungry for huge rows
             return count
 
-        result, chunk, inter, STEP = 0, [], "", 10000
+        result, chunk, inter, DELIM, STEP = 0, [], "", self.dialect.delimiter, 10000
+        if "b" in self._file.mode: DELIM = six.binary_type(self.dialect.delimiter)
         for v in row:
             chunk.append(self._format(v))
             if len(chunk) >= STEP:
                 result += write_columns(chunk, inter)
-                chunk, inter = [], self.dialect.delimiter
+                chunk, inter = [], DELIM
         if chunk: result += write_columns(chunk, inter)
         result += self._file.write(self.dialect.lineterminator)
         return result

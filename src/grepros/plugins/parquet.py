@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    02.06.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -24,6 +24,7 @@ try: import pyarrow
 except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
+import six
 
 from .. import api, common
 from .. common import ConsolePrinter
@@ -403,9 +404,6 @@ class ParquetSink(Sink):
         """Configures ID generator from args.WRITE_OPTIONS, returns success."""
         ok = True
 
-        try: integer_types, text_types = (int, long), (str, unicode)         # Py2
-        except Exception: integer_types, text_types = (int, ), (bytes, str)  # Py3
-
         k, v = "idgenerator", self.args.WRITE_OPTIONS.get("idgenerator")
         if k in self.args.WRITE_OPTIONS:
             val, ex, ns = v, None, dict(self.ARROW_TYPES, itertools=itertools, uuid=uuid)
@@ -416,7 +414,7 @@ class ParquetSink(Sink):
             except Exception: pass
             try: val = eval(compile(v, "", "eval"), ns)
             except Exception as e: ok, ex = False, e
-            if isinstance(val, text_types): ok = False
+            if isinstance(val, (six.binary_type, six.text_type)): ok = False
 
             if ok:
                 try: self._idgenerator = iter(val)
@@ -432,7 +430,7 @@ class ParquetSink(Sink):
                 fval, typename, generator = next(self._idgenerator), None, self._idgenerator
                 if api.is_ros_time(fval):
                     typename = "time" if "time" in str(type(fval)).lower() else "duration"
-                elif isinstance(fval, integer_types):
+                elif isinstance(fval, six.integer_types):
                     typename = "int64"
                 elif isinstance(fval, float):
                     typename = "float64"

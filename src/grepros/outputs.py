@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.06.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -20,10 +20,11 @@ import os
 import re
 import sys
 
+import six
 import yaml
 
 from . import api
-from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
+from . common import PATH_TYPES, TEXT_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, is_stream, makedirs, \
                      merge_spans, plural, unique_path, verify_io, wildcard_to_regex
 from . inputs import Source
@@ -241,9 +242,9 @@ class TextSinkMixin(object):
             return v
 
         indent = "  " * len(top)
-        if isinstance(val, (int, float, bool)):
+        if isinstance(val, six.integer_types + (float, bool)):
             return str(val)
-        if isinstance(val, str):
+        if isinstance(val, TEXT_TYPES):
             if val in ("", MatchMarkers.EMPTY):
                 return MatchMarkers.EMPTY_REPL if val else "''"
             # default_style='"' avoids trailing "...\n"
@@ -664,7 +665,7 @@ class MultiSink(Sink):
                       if getattr(args, flag, None)] if not sinks else list(sinks)
 
         for dumpopts in args.WRITE if not sinks else ():
-            kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, str))
+            kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, TEXT_TYPES))
             kwargs.update(kv for x in dumpopts[1:] if isinstance(x, dict) for kv in x.items())
             target, cls = dumpopts[0], self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:

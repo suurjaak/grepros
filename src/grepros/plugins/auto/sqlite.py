@@ -16,7 +16,8 @@ import collections
 import json
 import os
 import sqlite3
-import sys
+
+import six
 
 from ... import api
 from ... common import ConsolePrinter, format_bytes, makedirs, verify_io
@@ -108,9 +109,8 @@ class SqliteSink(BaseDataSink):
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        sqlite3.register_adapter(int, lambda x: str(x) if abs(x) > self.MAX_INT else x)
-        if sys.version_info < (3, ):
-            sqlite3.register_adapter(long, lambda x: str(x) if abs(x) > self.MAX_INT else x)
+        for t in six.integer_types:
+            sqlite3.register_adapter(t, lambda x: str(x) if abs(x) > self.MAX_INT else x)
         sqlite3.register_converter("JSON", json.loads)
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
