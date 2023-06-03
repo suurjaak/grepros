@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    08.01.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -178,6 +178,15 @@ class SqliteSink(BaseDataSink):
             self._id_counters[table] = self.db.execute(sql).fetchone()["id"]
         self._id_counters[table] += 1
         return self._id_counters[table]
+
+
+    def _make_db_label(self):
+        """Returns formatted label for database, with file path and size."""
+        try: sz = format_bytes(os.path.getsize(self._filename))
+        except Exception as e:
+            ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
+            sz = "error getting size"
+        return "%s (%s)" % (self._filename, sz)
 
 
 
