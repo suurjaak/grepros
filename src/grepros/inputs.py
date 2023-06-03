@@ -13,7 +13,6 @@ Released under the BSD License.
 """
 ## @namespace grepros.inputs
 from __future__ import print_function
-import copy
 import collections
 import datetime
 import functools
@@ -28,8 +27,8 @@ import time
 from . import api
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, has_arg, is_stream, plural, verify_io, \
-                     wildcard_to_regex
+                     format_stamp, format_timedelta, has_arg, is_stream, plural, structcopy, \
+                     verify_io, wildcard_to_regex
 
 
 class Source(object):
@@ -456,7 +455,7 @@ class BagSource(Source, ConditionMixin):
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._args0     = copy.deepcopy(self.args)  # Original arguments
+        self._args0     = structcopy(self.args)  # Original arguments
         self._status    = None   # Match status of last produced message
         self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
@@ -750,7 +749,7 @@ class BagSource(Source, ConditionMixin):
         self._topics = dct
         self._meta   = self.get_meta()
 
-        args = self.args = copy.deepcopy(self._args0)
+        args = self.args = structcopy(self._args0)
         if args.START_TIME is not None:
             args.START_TIME = api.make_bag_time(args.START_TIME, bag)
         if args.END_TIME is not None:

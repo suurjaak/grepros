@@ -142,6 +142,10 @@ class BaseBag(object):
         """Returns whether bag contains given topic."""
         raise NotImplementedError
 
+    def __copy__(self): return self
+
+    def __deepcopy__(self, memo=None): return self
+
     def __getitem__(self, key):
         """Returns an iterator yielding messages from the bag in given topic, supporting len()."""
         if key not in self: return LenIterable([], 0)

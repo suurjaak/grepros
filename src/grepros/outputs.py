@@ -15,7 +15,6 @@ Released under the BSD License.
 from __future__ import print_function
 import atexit
 import collections
-import copy
 import os
 import re
 import sys
@@ -26,7 +25,7 @@ import yaml
 from . import api
 from . common import PATH_TYPES, TEXT_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
                      ensure_namespace, filter_fields, format_bytes, is_stream, makedirs, \
-                     merge_spans, plural, unique_path, verify_io, wildcard_to_regex
+                     merge_spans, plural, structcopy, unique_path, verify_io, wildcard_to_regex
 from . inputs import Source
 
 
@@ -358,7 +357,7 @@ class ConsoleSink(Sink, TextSinkMixin):
         """
         args = ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
         if args.WRAP_WIDTH is None:
-            args = copy.deepcopy(args)
+            args = structcopy(args)
             args.WRAP_WIDTH = ConsolePrinter.WIDTH
 
         super(ConsoleSink, self).__init__(args)
@@ -677,7 +676,7 @@ class MultiSink(Sink):
                 ConsolePrinter.error('Unknown output format in "%s"' % " ".join(map(str, dumpopts)))
                 self.valid = False
                 continue  # for dumpopts
-            clsargs = copy.deepcopy(args)
+            clsargs = structcopy(args)
             clsargs.WRITE, clsargs.WRITE_OPTIONS = target, kwargs
             self.sinks += [cls(clsargs)]
 

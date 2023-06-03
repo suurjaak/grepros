@@ -663,13 +663,13 @@ def ensure_namespace(val, defaults=None, **kwargs):
     @param  kwargs    any and all argument overrides as keyword overrides
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
-    else: val = copy.deepcopy(val)
+    else: val = structcopy(val)
     for k, v in vars(val).items():
         if not k.isupper():
             delattr(val, k)
             setattr(val, k.upper(), v)
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
-        if not hasattr(val, k): setattr(val, k, copy.deepcopy(v))
+        if not hasattr(val, k): setattr(val, k, structcopy(v))
     for k, v in ((k.upper(), v) for k, v in kwargs.items()): setattr(val, k, v)
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
         if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
@@ -855,6 +855,20 @@ def makedirs(path):
         curpath = os.path.join(os.sep, accum[0] + os.sep, *accum[1:])  # Windows drive letter thing
         if not os.path.exists(curpath):
             os.mkdir(curpath)
+
+
+def structcopy(value):
+    """
+    Returns a deep copy of a standard data structure (dict, list, set, tuple),
+    other object types reused instead of copied.
+    """
+    COLLECTIONS = (dict, list, set, tuple)
+    memo = {}
+    def collect(x):  # Walk structure and collect objects to skip copying
+        if not isinstance(x, COLLECTIONS): return memo.update([(id(x), x)])
+        for y in sum(map(list, x.items()), []) if isinstance(x, dict) else x: collect(y)
+    collect(value)
+    return copy.deepcopy(value, memo)
 
 
 def memoize(func):
