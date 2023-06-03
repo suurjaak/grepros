@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    02.06.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -202,12 +202,13 @@ PRAGMA synchronous=NORMAL;
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
         """
-        if self._ttinfo: return self._ttinfo
+        topics = topic_filters
+        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
+        if self._ttinfo and (not topics or set(topics) == set(t for t, _, _ in self._counts)):
+            return self._ttinfo
         if self.closed: raise ValueError("I/O operation on closed file.")
 
         counts = self.get_topic_info()
-        topics = topic_filters
-        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
         msgtypes = {n: h for t, n, h in counts}
         topicdict = {}
 
@@ -227,8 +228,9 @@ PRAGMA synchronous=NORMAL;
                 mymedian = median(sorted(s1 - s0 for s1, s0 in zip(stamps[1:], stamps[:-1])))
             freq = 1.0 / mymedian if mymedian else None
             topicdict[t] = self.TopicTuple(n, c, len(self.get_qoses(t, n) or []), freq)
-        self._ttinfo = self.TypesAndTopicsTuple(msgtypes, topicdict)
-        return self._ttinfo
+        result = self.TypesAndTopicsTuple(msgtypes, topicdict)
+        if not topics or set(topics) == set(t for t, _, _ in self._counts): self._ttinfo = result
+        return result
 
 
     def get_qoses(self, topic, typename):

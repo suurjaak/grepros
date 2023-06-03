@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    02.06.2023
+@modified    03.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -184,7 +184,10 @@ class McapBag(api.BaseBag):
                                 msg_types as dict of {typename: typehash},
                                 topics as a dict of {topic: TopicTuple() namedtuple}.
         """
-        if self._ttinfo: return self._ttinfo
+        topics = topic_filters
+        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
+        if self._ttinfo and (not topics or set(topics) == set(t for t, _, _ in self._topics)):
+            return self._ttinfo
         if self.closed: raise ValueError("I/O operation on closed file.")
 
         topics = topic_filters
@@ -206,8 +209,9 @@ class McapBag(api.BaseBag):
                 mymedian = median(sorted(s1 - s0 for s1, s0 in zip(stamps[1:], stamps[:-1])))
             freq = 1.0 / mymedian if mymedian else None
             topicdict[t] = self.TopicTuple(n, c, len(self._qoses.get((t, n)) or []), freq)
-        self._ttinfo = self.TypesAndTopicsTuple(msgtypes, topicdict)
-        return self._ttinfo
+        result = self.TypesAndTopicsTuple(msgtypes, topicdict)
+        if not topics or set(topics) == set(t for t, _, _ in self._topics): self._ttinfo = result
+        return result
 
 
     def read_messages(self, topics=None, start_time=None, end_time=None, raw=False):
