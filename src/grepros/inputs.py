@@ -27,8 +27,8 @@ import time
 from . import api
 from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
                      ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, has_arg, is_stream, plural, structcopy, \
-                     verify_io, wildcard_to_regex
+                     format_stamp, format_timedelta, has_arg, is_iterable, is_stream, plural, \
+                     structcopy, verify_io, wildcard_to_regex
 
 
 class Source(object):
@@ -473,7 +473,7 @@ class BagSource(Source, ConditionMixin):
 
         for _ in self._produce_bags():
             if not self._running:
-                continue  # for filename
+                break  # for _
 
             topicsets = [self._topics]
             if "topic" == self.args.ORDERBY:  # Group output by sorted topic names
@@ -522,13 +522,14 @@ class BagSource(Source, ConditionMixin):
     def close(self):
         """Closes current bag, if any."""
         self._running = False
-        self._bag and self._bag.close()
+        if self._bag and not self._bag0: self._bag.close()
         ConditionMixin.close_batch(self)
         super(BagSource, self).close()
 
     def close_batch(self):
         """Closes current bag, if any."""
-        self._bag and self._bag.close()
+        if self._bag0: self._running = False
+        elif self._bag: self._bag.close()
         self._bag = None
         if self.bar:
             self.bar.update(flush=True)
@@ -664,7 +665,7 @@ class BagSource(Source, ConditionMixin):
         encountereds = set()
         for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
             if not self._running:
-                continue  # for filename
+                break  # for filename
 
             fullname = os.path.realpath(os.path.abspath(filename))
             skip = Decompressor.make_decompressed_name(fullname) in encountereds
@@ -985,7 +986,8 @@ class AppSource(Source, ConditionMixin):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                  arguments as namespace or dictionary, case-insensitive
+        @param   args                  arguments as namespace or dictionary, case-insensitive;
+                                       or iterable yielding messages
         @param   args.topic            ROS topics to read if not all
         @param   args.type             ROS message types to read if not all
         @param   args.skip_topic       ROS topics to skip
@@ -1005,6 +1007,8 @@ class AppSource(Source, ConditionMixin):
                                        yielding `None` signals end of content
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
+        if is_iterable(args) and not isinstance(args, dict):
+            args = ensure_namespace(None, iterable=args)
         args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)

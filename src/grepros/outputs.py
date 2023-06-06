@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.06.2023
+@modified    06.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -609,12 +609,14 @@ class AppSink(Sink):
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args             arguments as namespace or dictionary, case-insensitive
+        @param   args             arguments as namespace or dictionary, case-insensitive;
+                                  or emit callback
         @param   args.emit        callback(topic, msg, stamp, highlighted msg, index in topic), if any
         @param   args.metaemit    callback(metadata dict) if any, invoked before first emit from source batch
         @param   args.highlight   whether to expect highlighted matching fields from source messages
         @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
+        if callable(args): args = ensure_namespace(None, emit=args)
         args = ensure_namespace(args, AppSink.DEFAULT_ARGS, **kwargs)
         super(AppSink, self).__init__(args)
 

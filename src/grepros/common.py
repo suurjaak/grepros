@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.06.2023
+@modified    06.06.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -835,16 +835,17 @@ def import_item(name):
     return result
 
 
+def is_iterable(value):
+    """Returns whether value is iterable."""
+    try: iter(value)
+    except Exception: return False
+    return True
+
+
 def is_stream(value):
     """Returns whether value is a file-like object."""
     try: return isinstance(value, (file, io.IOBase))       # Py2
     except NameError: return isinstance(value, io.IOBase)  # Py3
-
-
-def iterable(value):
-    """Returns whether value is iterable."""
-    try: iter(value)
-    except Exception: return False
 
 
 def makedirs(path):
@@ -1055,7 +1056,7 @@ def wildcard_to_regex(text, end=False):
 __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
-    "format_bytes", "format_stamp", "format_timedelta", "has_arg", "import_item", "makedirs",
-    "memoize", "merge_dicts", "merge_spans", "parse_datetime", "plural", "unique_path", "verify_io",
-    "wildcard_to_regex",
+    "format_bytes", "format_stamp", "format_timedelta", "has_arg", "import_item", "is_iterable",
+    "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans", "parse_datetime", "plural",
+    "unique_path", "verify_io", "wildcard_to_regex",
 ]
