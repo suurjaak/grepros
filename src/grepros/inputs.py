@@ -1020,15 +1020,21 @@ class AppSource(Source, ConditionMixin):
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._queue = queue.Queue()  # [(topic, msg, ROS time)]
+        self._reading = False
 
         self._configure()
 
     def read(self):
-        """Yields messages from iterable or pushed data, as (topic, msg, ROS timestamp)."""
+        """
+        Yields messages from iterable or pushed data, as (topic, msg, ROS timestamp).
+
+        Blocks until a message is available, or source is closed.
+        """
         def generate(iterable):
             for x in iterable: yield x
         feeder = generate(self.args.ITERABLE) if self.args.ITERABLE else None
-        while True:
+        self._reading = True
+        while self._reading:
             item = self._queue.get() if not feeder or self._queue.qsize() else next(feeder, None)
             if item is None: break  # while
 
@@ -1044,6 +1050,13 @@ class AppSource(Source, ConditionMixin):
                 yield self.SourceMessage(topic, msg, stamp)
             if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
                 self._processables[topickey] = (self._counts[topickey], stamp)
+        self._reading = False
+
+    def close(self):
+        """Closes current read() yielding, if any."""
+        if self._reading:
+            self._reading = False
+            self._queue.put(None)
 
     def read_queue(self):
         """
@@ -1075,8 +1088,8 @@ class AppSource(Source, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
-        if stamp is None and topic is not None: stamp = api.get_rostime(fallback=True)
-        self._queue.put(None if topic is None else (topic, msg, stamp))
+        if topic is None: self._queue.put(None)
+        else: self._queue.put((topic, msg, stamp or api.get_rostime(fallback=True)))
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters."""
