@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.06.2023
+@modified    07.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -622,6 +622,7 @@ class AppSink(Sink):
 
     def emit_meta(self):
         """Invokes registered metaemit callback, if any, and not already invoked."""
+        if not self.source: return
         batch = self.source.get_batch() if self.args.METAEMIT else None
         if self.args.METAEMIT and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.get_meta()
