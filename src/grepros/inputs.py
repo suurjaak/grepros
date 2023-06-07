@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    01.06.2023
+@modified    07.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -402,7 +402,7 @@ class BagSource(Source, ConditionMixin):
                             "File span {delta} ({start} - {end})"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(FILE=(), PATH=(), RECURSE=False, TOPIC=(), TYPE=(),
+    DEFAULT_ARGS = dict(BAG=(), FILE=(), PATH=(), RECURSE=False, TOPIC=(), TYPE=(),
                         SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False,
@@ -413,19 +413,20 @@ class BagSource(Source, ConditionMixin):
         @param   args                   arguments as namespace or dictionary, case-insensitive;
                                         or a single path as the ROS bagfile to read,
                                         or a stream to read from,
-                                        or a {@link api.Bag Bag} instance
+                                        or one or more {@link api.Bag Bag} instances
         <!--sep-->
 
         Bag-specific arguments:
         @param   args.file              names of ROS bagfiles to read if not all in directory,
-                                        or a stream to read from
+                                        or a stream to read from;
+                                        or one or more {@link api.Bag Bag} instances
         @param   args.path              paths to scan if not current directory
         @param   args.recurse           recurse into subdirectories when looking for bagfiles
         @param   args.orderby           "topic" or "type" if any to group results by
         @param   args.decompress        decompress archived bags to file directory
         @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.write             outputs, to skip in input files
-        @param   bag                    Bag instance to use instead
+        @param   args.bag               one or more {@link api.Bag Bag} instances
         <!--sep-->
 
         General arguments:
@@ -449,9 +450,10 @@ class BagSource(Source, ConditionMixin):
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args0 = args
+        is_bag = isinstance(args, api.Bag) or \
+                 is_iterable(args) and all(isinstance(x, api.Bag) for x in args)
         args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else \
-               {"FILE": args} if is_stream(args) else \
-               {} if isinstance(args, api.Bag) else args
+               {"FILE": args} if is_stream(args) else {} if is_bag else args
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
@@ -464,7 +466,7 @@ class BagSource(Source, ConditionMixin):
         self._bag       = None   # Current bag object instance
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
-        self._bag0      = args0 if isinstance(args0, api.Bag) else None  # Provided bag object
+        self._bag0      = ([args0] if isinstance(args0, api.Bag) else args0) if is_bag else None
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -510,7 +512,7 @@ class BagSource(Source, ConditionMixin):
         and not any(c.STREAMABLE for c in api.Bag.READER_CLASSES):
             ConsolePrinter.error("Bag format does not support reading streams.")
             self.valid = False
-        if self._bag0 and self._bag0.mode not in ("r", "a"):
+        if self._bag0 and not any(x.mode in ("r", "a") for x in self._bag0):
             ConsolePrinter.error("Bag not in read mode.")
             self.valid = False
         if self.args.ORDERBY and self.conditions_get_topics():
@@ -653,9 +655,10 @@ class BagSource(Source, ConditionMixin):
 
     def _produce_bags(self):
         """Yields Bag instances from configured arguments."""
-        if self._bag0 is not None:
-            if self._configure(bag=self._bag0):
-                yield self._bag
+        if self._bag0:
+            for bag in self._bag0:
+                if self._configure(bag=bag):
+                    yield self._bag
             return
 
         names, paths = self.args.FILE, self.args.PATH
@@ -708,6 +711,10 @@ class BagSource(Source, ConditionMixin):
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
+
+        if bag is not None and bag.mode not in ("r", "a"):
+            ConsolePrinter.warn("Cannot read %s: bag in write mode.", bag)
+            return False
 
         if filename and self.args.WRITE \
         and any(os.path.realpath(x[0]) == os.path.realpath(filename)
