@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    03.06.2023
+@modified    07.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -171,10 +171,12 @@ class Scanner(object):
         """
         Greps messages yielded from source and emits matched content to sink.
 
-        @param   source  inputs.Source instance
+        @param   source  inputs.Source or api.Bag instance
         @param   sink    outputs.Sink instance
         @return          count matched
         """
+        if isinstance(source, api.Bag):
+            source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, sink, highlight=self.args.HIGHLIGHT)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
