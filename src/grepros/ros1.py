@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -30,9 +30,9 @@ import rospy
 import six
 
 from . import api
+from . import common
 from . api import TypeMeta, calculate_definition_hash, parse_definition_subtypes
-from . common import TEXT_TYPES, ConsolePrinter, MatchMarkers, ProgressBar, format_bytes, \
-                     is_stream, memoize, verify_io
+from . common import ConsolePrinter, memoize
 
 
 ## Bagfile extensions to seek
@@ -112,8 +112,8 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
         for n in set(kwargs) - set(getargspec(rosbag.Bag).args): kwargs.pop(n)
 
-        if is_stream(f):
-            if not verify_io(f, mode):
+        if common.is_stream(f):
+            if not common.verify_io(f, mode):
                 raise io.UnsupportedOperation({"r": "read", "w": "write", "a": "append"}[mode])
             super(ROS1Bag, self).__init__(f, mode, *args, **kwargs)
             self._populate_meta()
@@ -384,10 +384,10 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         kwargs.update(zip(KWS, args), allow_unindexed=True)
         copied, bar, f2 = False, None, None
         if progress:
-            fmt = lambda s: format_bytes(s, strip=False)
+            fmt = lambda s: common.format_bytes(s, strip=False)
             name, size = os.path.basename(f), os.path.getsize(f)
             aftertemplate = " Reindexing %s (%s): {afterword}" % (name, fmt(size))
-            bar = ProgressBar(size, interval=0.1, pulse=True, aftertemplate=aftertemplate)
+            bar = common.ProgressBar(size, interval=0.1, pulse=True, aftertemplate=aftertemplate)
 
         ConsolePrinter.warn("Unindexed bag %s, reindexing.", f)
         bar and bar.update(0).start()  # Start progress pulse
@@ -422,7 +422,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         update_bar = noop = lambda s: None
         indexbag, writebag = (inbag, outbag) if inbag.version == 102 else (outbag, None)
         if bar:
-            fmt = lambda s: format_bytes(s, strip=False)
+            fmt = lambda s: common.format_bytes(s, strip=False)
             update_bar = lambda s: (setattr(bar, "afterword", fmt(s)),
                                     setattr(bar, "pulse", False), bar.update(s).stop())
         # v102: build index from inbag, write all messages to outbag.
@@ -516,7 +516,7 @@ def create_publisher(topic, cls_or_typename, queue_size):
         if not pub.get_num_connections(): super(rospy.Publisher, pub).unregister()
 
     cls = cls_or_typename
-    if isinstance(cls, TEXT_TYPES): cls = get_message_class(cls)
+    if isinstance(cls, common.TEXT_TYPES): cls = get_message_class(cls)
     pub = rospy.Publisher(topic, cls, queue_size=queue_size)
     pub.unregister = pub_unregister
     return pub
@@ -568,7 +568,7 @@ def format_message_value(msg, name, value):
     if not isinstance(msg, genpy.TVal) or name not in LENS:
         return v
 
-    EXTRA = sum(v.count(x) * len(x) for x in (MatchMarkers.START, MatchMarkers.END))
+    EXTRA = sum(v.count(x) * len(x) for x in (common.MatchMarkers.START, common.MatchMarkers.END))
     return ("%%%ds" % (LENS[name] + EXTRA)) % v  # Default %10s/%9s for secs/nsecs
 
 
@@ -691,7 +691,7 @@ def serialize_message(msg):
 def deserialize_message(raw, cls_or_typename):
     """Returns ROS1 message or service request/response instantiated from serialized binary."""
     cls = cls_or_typename
-    if isinstance(cls, TEXT_TYPES): cls = get_message_class(cls)
+    if isinstance(cls, common.TEXT_TYPES): cls = get_message_class(cls)
     return cls().deserialize(raw)
 
 

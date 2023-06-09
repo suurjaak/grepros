@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    03.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -21,8 +21,8 @@ import os
 import six
 
 from ... import api
-from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
-                       makedirs, plural, unique_path, verify_io
+from ... import common
+from ... common import ConsolePrinter, plural
 from ... outputs import Sink
 
 
@@ -47,8 +47,8 @@ class CsvSink(Sink):
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
-        args = ensure_namespace(args, CsvSink.DEFAULT_ARGS, **kwargs)
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, CsvSink.DEFAULT_ARGS, **kwargs)
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}
@@ -77,7 +77,7 @@ class CsvSink(Sink):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not verify_io(self.args.WRITE, "w"):
+        if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = result
         return self.valid
@@ -100,11 +100,11 @@ class CsvSink(Sink):
                 ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
                                      plural("message", sum(self._counts.values())),
                                      plural("topic", self._counts),
-                                     format_bytes(sum(filter(bool, sizes.values()))))
+                                     common.format_bytes(sum(filter(bool, sizes.values()))))
                 for topickey, name in names.items():
                     ConsolePrinter.debug("- %s (%s, %s)", name,
                                          "error getting size" if sizes[topickey] is None else
-                                         format_bytes(sizes[topickey]),
+                                         common.format_bytes(sizes[topickey]),
                                          plural("message", self._counts[topickey]))
             super(CsvSink, self).close()
 
@@ -116,7 +116,7 @@ class CsvSink(Sink):
         """
         topickey = api.TypeMeta.make(msg, topic).topickey
         if not self._lasttopickey:
-            makedirs(os.path.dirname(self._filebase))
+            common.makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
@@ -128,7 +128,7 @@ class CsvSink(Sink):
                 if self._overwrite:
                     if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
                     open(name, "w").close()
-                else: name = unique_path(name)
+                else: name = common.unique_path(name)
             flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": ""}
             f = open(name, **flags)
             w = CsvWriter(f)

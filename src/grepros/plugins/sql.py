@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    02.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -19,8 +19,8 @@ import os
 import sys
 
 from .. import api
-from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, \
-                      makedirs, plural, unique_path, verify_io
+from .. import common
+from .. common import ConsolePrinter, plural
 from .. outputs import Sink
 from . auto.sqlbase import SqlMixin
 
@@ -64,8 +64,8 @@ class SqlSink(Sink, SqlMixin):
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
-        args = ensure_namespace(args, SqlSink.DEFAULT_ARGS, **kwargs)
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, SqlSink.DEFAULT_ARGS, **kwargs)
         super(SqlSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 
@@ -102,7 +102,7 @@ class SqlSink(Sink, SqlMixin):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             ok = False
-        if not verify_io(self.args.WRITE, "w"):
+        if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = sqlconfig_ok and ok
         return self.valid
@@ -135,7 +135,7 @@ class SqlSink(Sink, SqlMixin):
         finally:
             if not self._close_printed and self._types:
                 self._close_printed = True
-                try: sz = format_bytes(os.path.getsize(self._filename))
+                try: sz = common.format_bytes(os.path.getsize(self._filename))
                 except Exception as e:
                     ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
                     sz = "error getting size"
@@ -157,8 +157,8 @@ class SqlSink(Sink, SqlMixin):
         """Opens output file if not already open, writes header."""
         if self._file: return
 
-        self._filename = self.args.WRITE if self._overwrite else unique_path(self.args.WRITE)
-        makedirs(os.path.dirname(self._filename))
+        self._filename = self.args.WRITE if self._overwrite else common.unique_path(self.args.WRITE)
+        common.makedirs(os.path.dirname(self._filename))
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             action = "Overwriting" if sz and self._overwrite else "Creating"

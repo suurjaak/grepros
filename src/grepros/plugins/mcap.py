@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    03.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -34,8 +34,8 @@ elif "2" == os.getenv("ROS_VERSION"):
 else: mcap_ros = None
 import yaml
 
-from .. common import PATH_TYPES, ConsolePrinter, ensure_namespace, format_bytes, is_stream, \
-                      makedirs, plural, unique_path, verify_io
+from .. import common
+from .. common import ConsolePrinter
 from .. outputs import Sink
 
 
@@ -83,15 +83,15 @@ class McapBag(api.BaseBag):
         self._opened         = False  # Whether file has been opened at least once
         self._filename       = None   # File path, or None if stream
 
-        if is_stream(f):
-            if not verify_io(f, mode):
+        if common.is_stream(f):
+            if not common.verify_io(f, mode):
                 raise io.UnsupportedOperation("read" if "r" == mode else "write")
             self._file, self._filename = f, None
             f.seek(0)
         else:
-            if not isinstance(f, PATH_TYPES):
+            if not isinstance(f, common.PATH_TYPES):
                 raise ValueError("invalid filename %r" % type(f))
-            if "w" == mode: makedirs(os.path.dirname(f))
+            if "w" == mode: common.makedirs(os.path.dirname(f))
             self._filename = str(f)
 
         if api.ROS2 and "r" == mode: self._temporal_ctors.update(
@@ -518,7 +518,7 @@ class McapBag(api.BaseBag):
     @classmethod
     def autodetect(cls, f):
         """Returns whether file is readable as MCAP format."""
-        if is_stream(f):
+        if common.is_stream(f):
             pos, _ = f.tell(), f.seek(0)
             result, _ = (f.read(len(cls.MCAP_MAGIC)) == cls.MCAP_MAGIC), f.seek(pos)
         elif os.path.isfile(f) and os.path.getsize(f):
@@ -580,8 +580,8 @@ class McapSink(Sink):
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
-        args = ensure_namespace(args, McapSink.DEFAULT_ARGS, **kwargs)
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, McapSink.DEFAULT_ARGS, **kwargs)
         super(McapSink, self).__init__(args)
 
         self._filename      = None  # Output filename
@@ -611,7 +611,7 @@ class McapSink(Sink):
         if not mcap_ros_ok:
             ConsolePrinter.error("mcap_ros%s not available: cannot work with MCAP files.",
                                  api.ROS_VERSION or "")
-        if not verify_io(self.args.WRITE, "w"):
+        if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and mcap_ok and mcap_ros_ok
         return self.valid
@@ -646,13 +646,13 @@ class McapSink(Sink):
         finally:
             if not self._close_printed and self._counts:
                 self._close_printed = True
-                try: sz = format_bytes(os.path.getsize(self._filename))
+                try: sz = common.format_bytes(os.path.getsize(self._filename))
                 except Exception as e:
                     ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
                     sz = "error getting size"
                 ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                     plural("message", sum(self._counts.values())),
-                                     plural("topic", self._counts), self._filename, sz)
+                                     common.plural("message", sum(self._counts.values())),
+                                     common.plural("topic", self._counts), self._filename, sz)
             super(McapSink, self).close()
 
 
@@ -662,12 +662,12 @@ class McapSink(Sink):
 
         filename = self.args.WRITE
         if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
-            filename = unique_path(filename)
+            filename = common.unique_path(filename)
             if self.args.VERBOSE:
                 ConsolePrinter.debug("Making unique filename %r, as %s does not support "
                                      "appending.", filename, type(self).__name___)
         self._filename = filename
-        makedirs(os.path.dirname(self._filename))
+        common.makedirs(os.path.dirname(self._filename))
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
             action = "Overwriting" if sz and self._overwrite else "Creating"

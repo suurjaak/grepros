@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    02.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -21,8 +21,8 @@ import sys
 import threading
 
 from ... import api
-from ... common import PATH_TYPES, ConsolePrinter, MatchMarkers, ensure_namespace, \
-                       format_bytes, makedirs, plural, unique_path, verify_io
+from ... import common
+from ... common import ConsolePrinter, MatchMarkers, plural
 from ... outputs import Sink, TextSinkMixin
 from ... vendor import step
 
@@ -61,8 +61,8 @@ class HtmlSink(Sink, TextSinkMixin):
         @param   args.orderby          "topic" or "type" if any to group results by
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
-        args = ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = bool(args.HIGHLIGHT)
 
@@ -112,7 +112,7 @@ class HtmlSink(Sink, TextSinkMixin):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not verify_io(self.args.WRITE, "w"):
+        if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = api.validate() and result
         return self.valid
@@ -127,7 +127,7 @@ class HtmlSink(Sink, TextSinkMixin):
         finally:
             if not self._close_printed and self._counts:
                 self._close_printed = True
-                try: sz = format_bytes(os.path.getsize(self._filename))
+                try: sz = common.format_bytes(os.path.getsize(self._filename))
                 except Exception as e:
                     ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
                     sz = "error getting size"
@@ -161,9 +161,9 @@ class HtmlSink(Sink, TextSinkMixin):
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
                       timeline=not self.args.ORDERBY, messages=self._produce())
-            makedirs(os.path.dirname(self.args.WRITE))
+            common.makedirs(os.path.dirname(self.args.WRITE))
             if not self._overwrite:
-                self._filename = unique_path(self.args.WRITE, empty_ok=True)
+                self._filename = common.unique_path(self.args.WRITE, empty_ok=True)
             if self.args.VERBOSE:
                 sz = os.path.isfile(self._filename) and os.path.getsize(self._filename)
                 action = "Overwriting" if sz and self._overwrite else "Creating"

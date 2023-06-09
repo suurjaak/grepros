@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -23,9 +23,8 @@ import six
 import yaml
 
 from . import api
-from . common import PATH_TYPES, TEXT_TYPES, ConsolePrinter, MatchMarkers, TextWrapper, \
-                     ensure_namespace, filter_fields, format_bytes, is_stream, makedirs, \
-                     merge_spans, plural, structcopy, unique_path, verify_io, wildcard_to_regex
+from . import common
+from . common import ConsolePrinter, MatchMarkers
 from . inputs import Source
 
 
@@ -47,7 +46,7 @@ class Sink(object):
         self._batch_meta = {}  # {source batch: "source metadata"}
         self._counts     = {}  # {(topic, typename, typehash): count}
 
-        self.args = ensure_namespace(args, Sink.DEFAULT_ARGS, **kwargs)
+        self.args = common.ensure_namespace(args, Sink.DEFAULT_ARGS, **kwargs)
         ## Result of validate()
         self.valid = None
         ## inputs.Source instance bound to this sink
@@ -156,7 +155,7 @@ class TextSinkMixin(object):
         self._format_repls = {}    # {text to replace if highlight: replacement text}
         self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
-        self._configure(ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs))
+        self._configure(common.ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs))
 
 
     def format_message(self, msg, highlight=False):
@@ -182,7 +181,7 @@ class TextSinkMixin(object):
                     if MatchMarkers.END in l and spans:
                         spans[-1][1] = min(i + NUM + 1, len(lines))
                 lines = sum((lines[a:b - 1] + [lines[b - 1] + self._styles["rst"]]
-                             for a, b in merge_spans(spans)), [])
+                             for a, b in common.merge_spans(spans)), [])
 
             if self._prefix:
                 lines = [self._prefix + l for l in lines]
@@ -243,7 +242,7 @@ class TextSinkMixin(object):
         indent = "  " * len(top)
         if isinstance(val, six.integer_types + (float, bool)):
             return str(val)
-        if isinstance(val, TEXT_TYPES):
+        if isinstance(val, common.TEXT_TYPES):
             if val in ("", MatchMarkers.EMPTY):
                 return MatchMarkers.EMPTY_REPL if val else "''"
             # default_style='"' avoids trailing "...\n"
@@ -262,7 +261,7 @@ class TextSinkMixin(object):
             MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
             vals, fieldmap = [], api.get_message_fields(val)
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
-            fieldmap = filter_fields(fieldmap, top, include=prints, exclude=noprints)
+            fieldmap = common.filter_fields(fieldmap, top, include=prints, exclude=noprints)
             for k, t in fieldmap.items():
                 v = self.message_to_yaml(api.get_message_value(val, k, t), top + (k, ), t)
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:
@@ -288,7 +287,7 @@ class TextSinkMixin(object):
         """Initializes output settings."""
         prints, noprints = args.PRINT_FIELD, args.NOPRINT_FIELD
         for key, vals in [("print", prints), ("noprint", noprints)]:
-            self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
 
         if args.COLOR not in ("never", False):
             self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT if self.args.HIGHLIGHT
@@ -311,7 +310,7 @@ class TextSinkMixin(object):
         wrapargs = dict(max_lines=args.MAX_FIELD_LINES,
                         placeholder="%s ...%s" % (self._styles["ll0"], self._styles["ll1"]))
         if args.WRAP_WIDTH is not None: wrapargs.update(width=args.WRAP_WIDTH)
-        self._wrapper = TextWrapper(custom_widths=custom_widths, **wrapargs)
+        self._wrapper = common.TextWrapper(custom_widths=custom_widths, **wrapargs)
         self._format_repls = {MatchMarkers.START: self._styles["hl0"],
                               MatchMarkers.END:   self._styles["hl1"]}
 
@@ -355,9 +354,9 @@ class ConsoleSink(Sink, TextSinkMixin):
                                             or no wrapping if zero values
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
+        args = common.ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
         if args.WRAP_WIDTH is None:
-            args = structcopy(args)
+            args = common.structcopy(args)
             args.WRAP_WIDTH = ConsolePrinter.WIDTH
 
         super(ConsoleSink, self).__init__(args)
@@ -423,10 +422,10 @@ class BagSink(Sink):
         """
 
         args0 = args
-        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else \
-               {"WRITE": args} if is_stream(args) else \
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else \
+               {"WRITE": args} if common.is_stream(args) else \
                {} if isinstance(args, api.Bag) else args
-        args = ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
+        args = common.ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
         self._bag = args0 if isinstance(args0, api.Bag) else None
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in ("true", True))
@@ -456,10 +455,10 @@ class BagSink(Sink):
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not self._bag and not verify_io(self.args.WRITE, "w"):
+        if not self._bag and not common.verify_io(self.args.WRITE, "w"):
             ConsolePrinter.error("File not writable.")
             result = False
-        if not self._bag and is_stream(self.args.WRITE) \
+        if not self._bag and common.is_stream(self.args.WRITE) \
         and not any(c.STREAMABLE for c in api.Bag.WRITER_CLASSES):
             ConsolePrinter.error("Bag format does not support writing streams.")
             result = False
@@ -474,15 +473,15 @@ class BagSink(Sink):
         if not self._close_printed and self._counts and self._bag:
             self._close_printed = True
             self._bag.close()
-            try: sz = format_bytes(os.path.getsize(self._bag.filename)
-                                   if self._bag.filename else self._bag.size or 0)
+            try: sz = common.format_bytes(os.path.getsize(self._bag.filename)
+                                          if self._bag.filename else self._bag.size or 0)
             except Exception as e:
                 ConsolePrinter.warn("Error getting size of %s: %s", self._bag.filename, e)
                 sz = "error getting size"
             ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self._bag.filename or "<stream>",
-                                 sz)
+                                 common.plural("message", sum(self._counts.values())),
+                                 common.plural("topic", self._counts),
+                                 self._bag.filename or "<stream>", sz)
         self._bag  and self._bag.close()
         super(BagSink, self).close()
 
@@ -491,14 +490,14 @@ class BagSink(Sink):
         if self._bag is not None:
             self._bag.open()
             return
-        if is_stream(self.args.WRITE):
+        if common.is_stream(self.args.WRITE):
             self._bag = api.Bag(self.args.WRITE, mode=getattr(self.args.WRITE, "mode", "w"))
             return
         filename = self.args.WRITE
         if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
             cls = api.Bag.autodetect(filename)
             if cls and "a" not in getattr(cls, "MODES", ("a", )):
-                filename = unique_path(filename)
+                filename = common.unique_path(filename)
                 if self.args.VERBOSE:
                     ConsolePrinter.debug("Making unique filename %r, as %s does not support "
                                          "appending.", filename, cls.__name___)
@@ -507,8 +506,8 @@ class BagSink(Sink):
             ConsolePrinter.debug("%s %s%s.",
                                  "Overwriting" if sz and self._overwrite else
                                  "Appending to" if sz else "Creating",
-                                 filename, (" (%s)" % format_bytes(sz)) if sz else "")
-        makedirs(os.path.dirname(filename))
+                                 filename, (" (%s)" % common.format_bytes(sz)) if sz else "")
+        common.makedirs(os.path.dirname(filename))
         self._bag = api.Bag(filename, mode="w" if self._overwrite else "a")
 
     @classmethod
@@ -538,7 +537,7 @@ class TopicSink(Sink):
         @param   args.verbose           whether to print debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
+        args = common.ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
         super(TopicSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
@@ -591,8 +590,8 @@ class TopicSink(Sink):
         if not self._close_printed and self._counts:
             self._close_printed = True
             ConsolePrinter.debug("Published %s to %s.",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._pubs))
+                                 common.plural("message", sum(self._counts.values())),
+                                 common.plural("topic", self._pubs))
         for k in list(self._pubs):
             try: self._pubs.pop(k).unregister()
             except Exception as e:
@@ -616,8 +615,8 @@ class AppSink(Sink):
         @param   args.highlight   whether to expect highlighted matching fields from source messages
         @param   kwargs           any and all arguments as keyword overrides, case-insensitive
         """
-        if callable(args): args = ensure_namespace(None, emit=args)
-        args = ensure_namespace(args, AppSink.DEFAULT_ARGS, **kwargs)
+        if callable(args): args = common.ensure_namespace(None, emit=args)
+        args = common.ensure_namespace(args, AppSink.DEFAULT_ARGS, **kwargs)
         super(AppSink, self).__init__(args)
 
     def emit_meta(self):
@@ -658,7 +657,7 @@ class MultiSink(Sink):
         @param   sinks          pre-created sinks, arguments will be ignored
         @param   kwargs         any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, **kwargs)
+        args = common.ensure_namespace(args, **kwargs)
         super(MultiSink, self).__init__(args)
         self.valid = True
 
@@ -667,7 +666,7 @@ class MultiSink(Sink):
                       if getattr(args, flag, None)] if not sinks else list(sinks)
 
         for dumpopts in args.WRITE if not sinks else ():
-            kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, TEXT_TYPES))
+            kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, common.TEXT_TYPES))
             kwargs.update(kv for x in dumpopts[1:] if isinstance(x, dict) for kv in x.items())
             target, cls = dumpopts[0], self.FORMAT_CLASSES.get(kwargs.pop("format", None))
             if not cls:
@@ -679,7 +678,7 @@ class MultiSink(Sink):
                 ConsolePrinter.error('Unknown output format in "%s"' % " ".join(map(str, dumpopts)))
                 self.valid = False
                 continue  # for dumpopts
-            clsargs = structcopy(args)
+            clsargs = common.structcopy(args)
             clsargs.WRITE, clsargs.WRITE_OPTIONS = target, kwargs
             self.sinks += [cls(clsargs)]
 

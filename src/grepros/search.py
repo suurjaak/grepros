@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    07.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -17,8 +17,8 @@ import collections
 import re
 
 from . import api
+from . import common
 from . import inputs
-from . common import MatchMarkers, ensure_namespace, filter_fields, merge_spans, wildcard_to_regex
 
 
 class Scanner(object):
@@ -106,7 +106,7 @@ class Scanner(object):
         ## Sink instance
         self.sink   = None
 
-        self.args = ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs)
+        self.args = common.ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs)
         if self.args.CONTEXT: self.args.BEFORE = self.args.AFTER = self.args.CONTEXT
         self._parse_patterns()
 
@@ -319,7 +319,7 @@ class Scanner(object):
 
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
-            self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
 
 
     def _register_message(self, topickey, msgid, msg, stamp):
@@ -387,7 +387,7 @@ class Scanner(object):
                         if self.args.INVERT:
                             break  # for match
             if any(WRAPS):
-                spans = merge_spans(spans) if not self.args.INVERT else \
+                spans = common.merge_spans(spans) if not self.args.INVERT else \
                         [] if spans else [(0, len(v1))] if v1 or not is_collection else []
                 for a, b in reversed(spans):  # Work from last to first, indices stay the same
                     v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
@@ -398,7 +398,7 @@ class Scanner(object):
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
             fieldmap = fieldmap0 = api.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
-                fieldmap = filter_fields(fieldmap, top, include=selects, exclude=noselects)
+                fieldmap = common.filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
                 v, path = api.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))
@@ -429,7 +429,7 @@ class Scanner(object):
 
         do_highlight = self._highlight and not self.sink
         WRAPS = self.args.MATCH_WRAPPER if do_highlight else \
-                (MatchMarkers.START, MatchMarkers.END)
+                (common.MatchMarkers.START, common.MatchMarkers.END)
         WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
         WRAPS = ((WRAPS or [""]) * 2)[:2]
 

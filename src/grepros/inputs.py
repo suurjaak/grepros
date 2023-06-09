@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    07.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -25,10 +25,8 @@ import threading
 import time
 
 from . import api
-from . common import PATH_TYPES, ConsolePrinter, Decompressor, ProgressBar, \
-                     ensure_namespace, drop_zeros, filter_dict, find_files, format_bytes, \
-                     format_stamp, format_timedelta, has_arg, is_iterable, is_stream, plural, \
-                     structcopy, verify_io, wildcard_to_regex
+from . import common
+from . common import ConsolePrinter, ensure_namespace, drop_zeros
 
 
 class Source(object):
@@ -140,7 +138,7 @@ class Source(object):
         """Returns message metainfo data dict."""
         with api.TypeMeta.make(msg, topic) as m:
             return dict(topic=topic, type=m.typename, stamp=drop_zeros(api.to_sec(stamp)),
-                        index=index, dt=drop_zeros(format_stamp(api.to_sec(stamp)), " "),
+                        index=index, dt=drop_zeros(common.format_stamp(api.to_sec(stamp)), " "),
                         hash=m.typehash, schema=m.definition)
 
     def get_message_class(self, typename, typehash=None):
@@ -189,7 +187,7 @@ class Source(object):
         """Parses pattern arguments into re.Patterns."""
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
-            self._patterns[key] = [(tuple(v.split(".")), wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
 
 
 class ConditionMixin(object):
@@ -376,7 +374,7 @@ class ConditionMixin(object):
             self._topic_states.update({t: True for t in topics})
             self._topics_per_condition.append(topics)
             for t in (t for t in topics if "*" in t):
-                self._wildcard_topics[t] = wildcard_to_regex(t, end=True)
+                self._wildcard_topics[t] = common.wildcard_to_regex(t, end=True)
             expr = self.TOPIC_RGX.sub(r'get_topic("\1")', v)
             self._conditions[expr] = compile(expr, "", "eval")
 
@@ -451,13 +449,13 @@ class BagSource(Source, ConditionMixin):
         """
         args0 = args
         is_bag = isinstance(args, api.Bag) or \
-                 is_iterable(args) and all(isinstance(x, api.Bag) for x in args)
-        args = {"FILE": str(args)} if isinstance(args, PATH_TYPES) else \
-               {"FILE": args} if is_stream(args) else {} if is_bag else args
+                 common.is_iterable(args) and all(isinstance(x, api.Bag) for x in args)
+        args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else \
+               {"FILE": args} if common.is_stream(args) else {} if is_bag else args
         args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._args0     = structcopy(self.args)  # Original arguments
+        self._args0     = common.structcopy(self.args)  # Original arguments
         self._status    = None   # Match status of last produced message
         self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
@@ -505,10 +503,10 @@ class BagSource(Source, ConditionMixin):
         if self.valid is not None: return self.valid
         self.valid = api.validate()
         if not self._bag0 and self.args.FILE and os.path.isfile(self.args.FILE[0]) \
-        and not verify_io(self.args.FILE[0], "r"):
+        and not common.verify_io(self.args.FILE[0], "r"):
             ConsolePrinter.error("File not readable.")
             self.valid = False
-        if not self._bag0 and is_stream(self.args.FILE) \
+        if not self._bag0 and common.is_stream(self.args.FILE) \
         and not any(c.STREAMABLE for c in api.Bag.READER_CLASSES):
             ConsolePrinter.error("Bag format does not support reading streams.")
             self.valid = False
@@ -558,12 +556,12 @@ class BagSource(Source, ConditionMixin):
             return self._meta
         mcount = self._bag.get_message_count()
         start, end = (self._bag.get_start_time(), self._bag.get_end_time()) if mcount else ("", "")
-        delta = format_timedelta(datetime.timedelta(seconds=(end or 0) - (start or 0)))
-        self._meta = dict(file=self._filename, size=format_bytes(self._bag.size),
-                          mcount=mcount, tcount=len(self.topics),
+        delta = common.format_timedelta(datetime.timedelta(seconds=(end or 0) - (start or 0)))
+        self._meta = dict(file=self._filename, size=common.format_bytes(self._bag.size),
+                          mcount=mcount, tcount=len(self.topics), delta=delta,
                           start=drop_zeros(start), end=drop_zeros(end),
-                          startdt=drop_zeros(format_stamp(start)) if start != "" else "",
-                          enddt=drop_zeros(format_stamp(end)) if end != "" else "", delta=delta)
+                          startdt=drop_zeros(common.format_stamp(start)) if start != "" else "",
+                          enddt=drop_zeros(common.format_stamp(end)) if end != "" else "")
         return self._meta
 
     def get_message_meta(self, topic, msg, stamp, index=None):
@@ -663,15 +661,15 @@ class BagSource(Source, ConditionMixin):
 
         names, paths = self.args.FILE, self.args.PATH
         exts, skip_exts = api.BAG_EXTENSIONS, api.SKIP_EXTENSIONS
-        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in Decompressor.EXTENSIONS]
+        exts = list(exts) + ["%s%s" % (a, b) for a in exts for b in common.Decompressor.EXTENSIONS]
 
         encountereds = set()
-        for filename in find_files(names, paths, exts, skip_exts, self.args.RECURSE):
+        for filename in common.find_files(names, paths, exts, skip_exts, self.args.RECURSE):
             if not self._running:
                 break  # for filename
 
             fullname = os.path.realpath(os.path.abspath(filename))
-            skip = Decompressor.make_decompressed_name(fullname) in encountereds
+            skip = common.Decompressor.make_decompressed_name(fullname) in encountereds
             encountereds.add(fullname)
 
             if skip or not self._configure(filename):
@@ -684,7 +682,7 @@ class BagSource(Source, ConditionMixin):
         """Initializes progress bar, if any, for current bag."""
         if self.args.PROGRESS and not self.bar:
             self._ensure_totals()
-            self.bar = ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
+            self.bar = common.ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
             self.bar.afterword = os.path.basename(self._filename or "<stream>")
             self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items()
                                    if c and t == t_ and n in nn)
@@ -694,7 +692,7 @@ class BagSource(Source, ConditionMixin):
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
         if not self._totals_ok:  # ROS2 bag probably
-            has_ensure = has_arg(self._bag.get_topic_info, "ensure_types")
+            has_ensure = common.has_arg(self._bag.get_topic_info, "ensure_types")
             kws = dict(ensure_types=False) if has_ensure else {}
             for (t, n, h), c in self._bag.get_topic_info(**kws).items():
                 self.topics[(t, n, h)] = c
@@ -721,9 +719,9 @@ class BagSource(Source, ConditionMixin):
                 for x in self.args.WRITE):
             return False
         try:
-            if filename and Decompressor.is_compressed(filename):
+            if filename and common.Decompressor.is_compressed(filename):
                 if self.args.DECOMPRESS:
-                    filename = Decompressor.decompress(filename, self.args.PROGRESS)
+                    filename = common.Decompressor.decompress(filename, self.args.PROGRESS)
                 else: raise Exception("decompression not enabled")
             bag = api.Bag(filename, mode="r", reindex=self.args.REINDEX,
                           progress=self.args.PROGRESS) if bag is None else bag
@@ -738,7 +736,7 @@ class BagSource(Source, ConditionMixin):
         self._filename = bag.filename
 
         dct = fulldct = {}  # {topic: [typename, ]}
-        kws = dict(ensure_types=False) if has_arg(bag.get_topic_info, "ensure_types") else {}
+        kws = dict(ensure_types=False) if common.has_arg(bag.get_topic_info, "ensure_types") else {}
         for (t, n, h), c in bag.get_topic_info(counts=False, **kws).items():
             dct.setdefault(t, []).append(n)
             self.topics[(t, n, h)] = c
@@ -746,10 +744,10 @@ class BagSource(Source, ConditionMixin):
         for topic in self.conditions_get_topics():
             self.conditions_set_topic_state(topic, True)
 
-        dct = filter_dict(dct, self.args.TOPIC, self.args.TYPE)
-        dct = filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True)
+        dct = common.filter_dict(dct, self.args.TOPIC, self.args.TYPE)
+        dct = common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True)
         for topic in self.conditions_get_topics():  # Add topics used in conditions
-            matches = [t for p in [wildcard_to_regex(topic, end=True)] for t in fulldct
+            matches = [t for p in [common.wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
             for topic in matches:
                 dct.setdefault(topic, fulldct[topic])
@@ -757,7 +755,7 @@ class BagSource(Source, ConditionMixin):
         self._topics = dct
         self._meta   = self.get_meta()
 
-        args = self.args = structcopy(self._args0)
+        args = self.args = common.structcopy(self._args0)
         if args.START_TIME is not None:
             args.START_TIME = api.make_bag_time(args.START_TIME, bag)
         if args.END_TIME is not None:
@@ -903,7 +901,7 @@ class TopicSource(Source, ConditionMixin):
             result += ", ROS master %s" % metadata["ROS_MASTER_URI"]
         if "ROS_DOMAIN_ID" in metadata:
             result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
-        result += ", %s initially" % plural("topic", metadata["tcount"])
+        result += ", %s initially" % common.plural("topic", metadata["tcount"])
         return result
 
     def is_processable(self, topic, msg, stamp, index=None):
@@ -921,8 +919,8 @@ class TopicSource(Source, ConditionMixin):
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in api.get_topic_types():
-            dct = filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
-            if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
+            dct = common.filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
+            if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
             if api.get_message_class(typename) is None:
                 msg = "Error loading type %s in topic %s." % (typename, topic)
@@ -948,14 +946,14 @@ class TopicSource(Source, ConditionMixin):
     def _init_progress(self):
         """Initializes progress bar, if any."""
         if self.args.PROGRESS and not self.bar:
-            self.bar = ProgressBar(afterword="ROS%s live" % api.ROS_VERSION,
-                                   aftertemplate=" {afterword}", pulse=True)
+            self.bar = common.ProgressBar(afterword="ROS%s live" % api.ROS_VERSION,
+                                          aftertemplate=" {afterword}", pulse=True)
             self.bar.start()
 
     def _update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS%s live, %s" % (api.ROS_VERSION, plural("message", count))
+            afterword = "ROS%s live, %s" % (api.ROS_VERSION, common.plural("message", count))
             self.bar.afterword, self.bar.max = afterword, count
             if not running:
                 self.bar.pause, self.bar.pulse_pos = True, None
@@ -1014,7 +1012,7 @@ class AppSource(Source, ConditionMixin):
                                        yielding `None` signals end of content
         @param   kwargs                any and all arguments as keyword overrides, case-insensitive
         """
-        if is_iterable(args) and not isinstance(args, dict):
+        if common.is_iterable(args) and not isinstance(args, dict):
             args = ensure_namespace(None, iterable=args)
         args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)
@@ -1093,8 +1091,9 @@ class AppSource(Source, ConditionMixin):
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters."""
-        dct = filter_dict({topic: [api.get_message_type(msg)]}, self.args.TOPIC, self.args.TYPE)
-        if not filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
+        dct = common.filter_dict({topic: [api.get_message_type(msg)]},
+                                 self.args.TOPIC, self.args.TYPE)
+        if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
             return False
         if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
