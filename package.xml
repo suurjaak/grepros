@@ -2,7 +2,7 @@
 <package format="3">
   <name>grepros</name>
   <version>1.0.0</version>
-  <description>grep for ROS bag files and live topics</description>
+  <description>grep for ROS bag files and live topics: read, filter, export</description>
 
   <maintainer email="erki@lap.ee">Erki Suurjaak</maintainer>
   <author email="erki@lap.ee">Erki Suurjaak</author>

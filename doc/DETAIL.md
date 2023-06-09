@@ -6,12 +6,13 @@
   - [html](#html)
   - [postgres](#postgres)
   - [sqlite](#sqlite)
-  - [console / html message formatting](#console--html-message-formatting)
+- [Console / html message formatting](#console--html-message-formatting)
 - [Plugins](#plugins)
   - [embag](#embag)
   - [mcap](#mcap)
   - [parquet](#parquet)
   - [sql](#sql)
+  - [Custom plugins](#custom-plugins)
 - [SQL dialects](#sql-dialects)
 
 
@@ -330,7 +331,8 @@ CREATE TABLE "std_msgs/Header" (
 ```
 
 
-### console / html message formatting
+console / html message formatting
+---------------------------------
 
 Set maximum number of lines to output per message:
 
@@ -377,20 +379,6 @@ Plugins
     --plugin some.python.module some.other.module.Class
 
 Load one or more Python modules or classes as plugins.
-Supported (but not required) plugin interface methods:
-
-- `init(args)`: invoked at startup with command-line arguments
-- `load(category, args)`: invoked with category "scan" or "source" or "sink",
-                          using returned value for specified component if not None
-
-Plugins are free to modify `grepros` internals, like adding command-line arguments
-to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
-
-Convenience methods:
-
-- `plugins.add_write_format(name, cls, label=None, options=())`:
-   adds an output plugin to defaults
-- `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
 
 Specifying `--plugin someplugin` and `--help` will include plugin options in printed help.
 
@@ -465,7 +453,7 @@ Supports custom mapping between ROS and pyarrow types with `type-rostype=arrowty
     --write path/to/my.parquet type-time="timestamp('ns')"
     --write path/to/my.parquet type-uint8[]="list(uint8())"
 
-Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+Time/duration types are flattened into separate integer columns as seconds and nanoseconds,
 unless they are mapped to pyarrow types explicitly, like:
 
     --write path/to/my.parquet type-time="timestamp('ns')" type-duration="duration('ns')"
@@ -580,6 +568,31 @@ Additional dialects, or updates for existing dialects, can be loaded from a YAML
     --write path/to/my.sql dialect=mydialect dialect-file=path/to/dialects.yaml
 
 
+### Custom plugins
+
+Custom plugins for input sources, output sinks, or message scanning can be provided as Python modules.
+All modules specified with `--plugin` will be imported, and the following functions invoked if present:
+
+- `init(args)`: invoked at startup with command-line arguments namespace
+- `load(category, args)`: invoked with category "scan" or "source" or "sink",
+                          and command-line arguments namespace,
+                          using returned value for specified component if not None
+
+Provided classes are expected to provide the same public API as 
+[inputs.Source](https://suurjaak.github.io/grepros/api/classgrepros_1_1inputs_1_1_source.html),
+[outputs.Sink](https://suurjaak.github.io/grepros/api/classgrepros_1_1outputs_1_1_sink.html) and
+[search.Scanner](https://suurjaak.github.io/grepros/api/classgrepros_1_1search_1_1_scanner.html).
+
+Plugins are free to modify `grepros` internals, like adding command-line arguments
+to `grepros.main.ARGUMENTS` or adding sink types to `grepros.outputs.MultiSink`.
+
+Convenience method for hooking an output sink plugin:
+
+- `plugins.add_write_format(name, cls, label=None, options=())`:
+   adds an output sink plugin to defaults
+
+
+
 SQL dialects
 ------------
 
@@ -609,7 +622,7 @@ dialectname:
 Template parameters like `table_name_template` use Python `str.format()` keyword syntax,
 e.g. `{"table_name_template": "{type}", "view_name_template": "{topic}"}`.
 
-Time/duration types are flattened into separate integer columns `secs` and `nsecs`,
+Time/duration types are flattened into separate integer columns as seconds and nanoseconds,
 unless the dialect maps them to SQL types explicitly, e.g. `{"time": "BIGINT"}`.
 
 Any dialect options not specified in the given dialect or built-in dialects,

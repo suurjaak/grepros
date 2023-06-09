@@ -16,10 +16,9 @@ to `main.ARGUMENTS` or sink types to `outputs.MultiSink`.
 
 Convenience methods:
 
-- `plugins.add_write_format(name, cls, label=None, options=())`:
+- `plugins.add_write_format(name, cls, label=None, options=((name, help), ))`:
    adds an output plugin to defaults
-- `plugins.add_write_options(label, [(name, help)])`: adds options for an output plugin
-- `plugins.get_argument(name)`: returns a command-line argument dictionary, or None
+- `plugins.get_argument(name)`: returns a command-line argument configuration dictionary, or None
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.

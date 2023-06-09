@@ -1,6 +1,6 @@
 \internal  Entrypoint README for doxygen  \endinternal
 
-grep for ROS bag files and live topics.
+grep for ROS bag files and live topics: read, filter, export.
 
 Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.

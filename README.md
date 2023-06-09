@@ -1,7 +1,7 @@
 grepros
 =======
 
-grep for ROS bag files and live topics.
+grep for ROS bag files and live topics: read, filter, export.
 
 Searches through ROS messages and matches any message field value by regular
 expression patterns or plain text, regardless of field type.
@@ -11,6 +11,8 @@ By default, matches are printed to console. Additionally, matches can be written
 to a bagfile or HTML/CSV/MCAP/Parquet/Postgres/SQL/SQLite, or published to live topics.
 
 Supports both ROS1 and ROS2. ROS environment variables need to be set, at least `ROS_VERSION`.
+
+Supported bag formats: `.bag` (ROS1), `.db3` (ROS2), `.mcap` (ROS1, ROS2).
 
 In ROS1, messages can be grepped even if Python packages for message types are not installed.
 Using ROS1 live topics requires ROS master to be running.
@@ -164,6 +166,8 @@ Input is either from one or more ROS bag files (default), or from live ROS topic
 
 Read messages from ROS bag files, by default all in current directory.
 
+For reading bags in MCAP format, see the [MCAP plugin](doc/DETAIL.md#mcap).
+
 Recurse into subdirectories when looking for bagfiles:
 
     -r
@@ -243,12 +247,14 @@ accept raw control characters (`more -f` or `less -R`).
 
     --write path/to/my.bag [format=bag] [overwrite=true|false]
 
-Write messages to a ROS bag file, the custom `.bag` format in ROS1
+Write messages to a ROS bag file, the custom `.bag` format in ROS1,
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists,
 it is appended to, unless specified to overwrite.
 
 Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
+
+For writing bags in MCAP format, see the [MCAP plugin](doc/DETAIL.md#mcap).
 
 
 ### live

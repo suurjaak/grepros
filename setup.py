@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.06.2023
+@modified    09.06.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -66,7 +66,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
     version         = get_version(),
     entry_points    = {"console_scripts": ["{0} = {0}.main:run".format(PACKAGE)]},
 
-    description     = "grep for ROS bag files and live topics",
+    description     = "grep for ROS bag files and live topics: read, filter, export",
     url             = "https://github.com/suurjaak/" + PACKAGE,
     author          = "Erki Suurjaak",
     author_email    = "erki@lap.ee",
