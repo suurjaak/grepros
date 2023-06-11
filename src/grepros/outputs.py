@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.06.2023
+@modified    11.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -125,7 +125,7 @@ class TextSinkMixin(object):
     NOCOLOR_HIGHLIGHT_WRAPPERS = "**", "**"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, PRINT_FIELD=(), NOPRINT_FIELD=(),
+    DEFAULT_ARGS = dict(COLOR=True, EMIT_FIELD=(), NOEMIT_FIELD=(), HIGHLIGHT=True,
                         MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
                         MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
                         WRAP_WIDTH=None, MATCH_WRAPPER=None)
@@ -135,8 +135,8 @@ class TextSinkMixin(object):
         @param   args                       arguments as namespace or dictionary, case-insensitive
         @param   args.color                 False or "never" for not using colors in replacements
         @param   args.highlight             highlight matched values (default true)
-        @param   args.print_field           message fields to use in output if not all
-        @param   args.noprint_field         message fields to skip in output
+        @param   args.emit_field            message fields to emit if not all
+        @param   args.noemit_field          message fields to skip in output
         @param   args.max_field_lines       maximum number of lines to output per field
         @param   args.start_line            message line number to start output from
         @param   args.end_line              message line number to stop output at
@@ -285,7 +285,7 @@ class TextSinkMixin(object):
 
     def _configure(self, args):
         """Initializes output settings."""
-        prints, noprints = args.PRINT_FIELD, args.NOPRINT_FIELD
+        prints, noprints = args.EMIT_FIELD, args.NOEMIT_FIELD
         for key, vals in [("print", prints), ("noprint", noprints)]:
             self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
 
@@ -327,8 +327,8 @@ class ConsoleSink(Sink, TextSinkMixin):
     SEP                  = "---"  # Prefix of message separators and metainfo lines
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(COLOR=True, HIGHLIGHT=True, META=False, PRINT_FIELD=(),
-                        NOPRINT_FIELD=(), LINE_PREFIX=True, MAX_FIELD_LINES=None, START_LINE=None,
+    DEFAULT_ARGS = dict(COLOR=True, EMIT_FIELD=(), NOEMIT_FIELD=(), HIGHLIGHT=True, META=False,
+                        LINE_PREFIX=True, MAX_FIELD_LINES=None, START_LINE=None,
                         END_LINE=None, MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None,
                         MATCHED_FIELDS_ONLY=False, WRAP_WIDTH=None, MATCH_WRAPPER=None)
 
@@ -339,8 +339,8 @@ class ConsoleSink(Sink, TextSinkMixin):
         @param   args.color                 False or "never" for not using colors in replacements
         @param   args.highlight             highlight matched values (default true)
         @param   args.meta                  whether to print metainfo
-        @param   args.print_field           message fields to print in output if not all
-        @param   args.noprint_field         message fields to skip in output
+        @param   args.emit_field            message fields to emit if not all
+        @param   args.noemit_field          message fields to skip in output
         @param   args.line_prefix           print source prefix like bag filename on each message line
         @param   args.max_field_lines       maximum number of lines to print per field
         @param   args.start_line            message line number to start output from

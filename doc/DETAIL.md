@@ -357,11 +357,11 @@ Output only matched fields and specified number of lines around match:
 
 Output only specific message fields (supports nested.paths and * wildcards):
 
-    --print-field *data
+    --emit-field *data
 
 Skip outputting specific message fields (supports nested.paths and * wildcards):
 
-    --no-print-field header.stamp
+    --no-emit-field header.stamp
 
 Wrap matches in custom texts:
 

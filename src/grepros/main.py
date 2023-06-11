@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.06.2023
+@modified    11.06.2023
 ------------------------------------------------------------------------------
 """
 
@@ -63,7 +63,7 @@ Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
     grepros --type diagnostic_msgs/* --select-field name message \\
-            --print-field header.stamp status.values -- navigation
+            --emit-field header.stamp status.values -- navigation
 
 Print first message from each lidar topic on host 1.2.3.4, without highlight:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
@@ -245,13 +245,13 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="emit NUM messages of leading and trailing context\n"
                   "around match"),
 
-        dict(args=["-pf", "--print-field"],
-             dest="PRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
+        dict(args=["-ef", "--emit-field"],
+             dest="EMIT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to emit in console/HTML output if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
-        dict(args=["-np", "--no-print-field"],
-             dest="NOPRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
+        dict(args=["-nf", "--no-emit-field"],
+             dest="NOEMIT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
              help="message fields to skip in console/HTML output\n"
                   "(supports nested.paths and * wildcards)"),
 

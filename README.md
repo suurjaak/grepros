@@ -73,7 +73,7 @@ containing "navigation" in fields "name" or "message",
 print only header stamp and values:
 
     grepros --type diagnostic_msgs/* --select-field name message \
-            --print-field header.stamp status.values -- navigation
+            --emit-field header.stamp status.values -- navigation
 
 Print first message from each lidar topic on host 1.2.3.4, without highlight:
 
@@ -346,11 +346,11 @@ Output only matched fields and specified number of lines around match:
 
 Output only specific message fields (supports nested.paths and * wildcards):
 
-    --print-field *data
+    --emit-field *data
 
 Skip outputting specific message fields (supports nested.paths and * wildcards):
 
-    --no-print-field header.stamp
+    --no-emit-field header.stamp
 
 Wrap matches in custom texts:
 
@@ -738,10 +738,10 @@ Output control:
   -C NUM, --context NUM
                         emit NUM messages of leading and trailing context
                         around match
-  -pf FIELD [FIELD ...], --print-field FIELD [FIELD ...]
+  -ef FIELD [FIELD ...], --emit-field FIELD [FIELD ...]
                         message fields to emit in console/HTML output if not all
                         (supports nested.paths and * wildcards)
-  -np FIELD [FIELD ...], --no-print-field FIELD [FIELD ...]
+  -nf FIELD [FIELD ...], --no-emit-field FIELD [FIELD ...]
                         message fields to skip in console/HTML output
                         (supports nested.paths and * wildcards)
   -mo, --matched-fields-only
