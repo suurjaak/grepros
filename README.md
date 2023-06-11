@@ -438,12 +438,12 @@ Skip specific message types from reading (supports * wildcards):
     -nd       *Twist*
     --no-type sensor_msgs/*
 
-Set specific message fields to read (supports nested.paths and * wildcards):
+Set specific message fields to scan (supports nested.paths and * wildcards):
 
     -sf            twist.linear
     --select-field *data
 
-Skip specific message fields in read (supports nested.paths and * wildcards):
+Skip specific message fields in scan (supports nested.paths and * wildcards):
 
     -ns               twist.linear
     --no-select-field *data
@@ -739,32 +739,33 @@ Output control:
                         emit NUM messages of leading and trailing context
                         around match
   -pf FIELD [FIELD ...], --print-field FIELD [FIELD ...]
-                        message fields to print in console output if not all
+                        message fields to emit in console/HTML output if not all
                         (supports nested.paths and * wildcards)
   -np FIELD [FIELD ...], --no-print-field FIELD [FIELD ...]
-                        message fields to skip in console output
+                        message fields to skip in console/HTML output
                         (supports nested.paths and * wildcards)
   -mo, --matched-fields-only
-                        print only the fields where PATTERNs find a match
+                        emit only the fields where PATTERNs find a match
+                        in console/HTML output
   -la NUM, --lines-around-match NUM
-                        print only matched fields and NUM message lines
-                        around match
+                        enut only matched fields and NUM message lines
+                        around match in console/HTML output
   -lf NUM, --lines-per-field NUM
-                        maximum number of lines to print per field
+                        maximum number of lines to emit per field in console/HTML output
   -l0 NUM, --start-line NUM
-                        message line number to start printing from
+                        message line number to start emitting from in console/HTML output
                         (1-based if positive, counts back from total if negative)
   -l1 NUM, --end-line NUM
-                        message line number to stop printing at
+                        message line number to stop emitting at in console/HTML output
                         (1-based if positive, counts back from total if negative)
   -lm NUM, --lines-per-message NUM
-                        maximum number of lines to print per message
+                        maximum number of lines to emit per message in console/HTML output
   --match-wrapper [STR [STR ...]]
                         string to wrap around matched values,
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
                         (default "**" in colorless output)
-  --wrap-width NUM      character width to wrap message YAML output at,
+  --wrap-width NUM      character width to wrap message YAML console output at,
                         0 disables (defaults to detected terminal width)
   --color {auto,always,never}
                         use color output in console (default "always")

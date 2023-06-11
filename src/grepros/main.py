@@ -8,9 +8,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.03.2023
+@modified    10.06.2023
 ------------------------------------------------------------------------------
 """
+
 ## @namespace grepros.main
 import argparse
 import atexit
@@ -246,51 +247,51 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-pf", "--print-field"],
              dest="PRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
-             help="message fields to print in console output if not all\n"
+             help="message fields to emit in console/HTML output if not all\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-np", "--no-print-field"],
              dest="NOPRINT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
-             help="message fields to skip in console output\n"
+             help="message fields to skip in console/HTML output\n"
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-mo", "--matched-fields-only"],
              dest="MATCHED_FIELDS_ONLY", action="store_true",
-             help="print only the fields where PATTERNs find a match"),
+             help="emit only the fields where PATTERNs find a match in console/HTML output"),
 
         dict(args=["-la", "--lines-around-match"],
              dest="LINES_AROUND_MATCH", metavar="NUM", type=int,
-             help="print only matched fields and NUM message lines\n"
-                  "around match"),
+             help="emit only matched fields and NUM message lines\n"
+                  "around match in console/HTML output"),
 
         dict(args=["-lf", "--lines-per-field"],
              dest="MAX_FIELD_LINES", metavar="NUM", type=int,
-             help="maximum number of lines to print per field"),
+             help="maximum number of lines to emit per field in console/HTML output"),
 
         dict(args=["-l0", "--start-line"],
              dest="START_LINE", metavar="NUM", type=int,
-             help="message line number to start printing from\n"
+             help="message line number to start emitting from in console/HTML output\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-l1", "--end-line"],
              dest="END_LINE", metavar="NUM", type=int,
-             help="message line number to stop printing at\n"
+             help="message line number to stop emitting at in console/HTML output\n"
                   "(1-based if positive, counts back from total if negative)"),
 
         dict(args=["-lm", "--lines-per-message"],
              dest="MAX_MESSAGE_LINES", metavar="NUM", type=int,
-             help="maximum number of lines to print per message"),
+             help="maximum number of lines to emit per message in console/HTML output"),
 
         dict(args=["--match-wrapper"],
              dest="MATCH_WRAPPER", metavar="STR", nargs="*",
-             help="string to wrap around matched values,\n"
+             help="string to wrap around matched values in console/HTML output,\n"
                   "both sides if one value, start and end if more than one,\n"
                   "or no wrapping if zero values\n"
                   '(default "**" in colorless output)'),
 
         dict(args=["--wrap-width"],
              dest="WRAP_WIDTH", metavar="NUM", type=int,
-             help="character width to wrap message YAML output at,\n"
+             help="character width to wrap message YAML console output at,\n"
                   "0 disables (defaults to detected terminal width)"),
 
         dict(args=["--color"], dest="COLOR",
