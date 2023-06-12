@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.06.2023
+@modified    12.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -666,8 +666,8 @@ def canonical(typename, unbounded=False):
 
     Converts ROS2 DDS types like "octet" to "byte", and "sequence<uint8, 100>" to "uint8[100]".
 
-    @param  unbounded  drop constraints like array bounds, and string bounds in ROS2,
-                       e.g. returning "uint8[]" for "uint8[10]"
+    @param   unbounded  drop constraints like array bounds, and string bounds in ROS2,
+                        e.g. returning "uint8[]" for "uint8[10]"
     """
     return realapi.canonical(typename, unbounded)
 
@@ -786,7 +786,7 @@ def is_ros_message(val, ignore_time=False):
     """
     Returns whether value is a ROS message or special like ROS time/duration class or instance.
 
-    @param  ignore_time  whether to ignore ROS time/duration types
+    @param   ignore_time  whether to ignore ROS time/duration types
     """
     return realapi.is_ros_message(val, ignore_time)
 
@@ -796,16 +796,19 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, messages_only=False, scalars=(), top=()):
+def iter_message_fields(msg, messages_only=False, scalars=(), include=(), exclude=(), top=()):
     """
     Yields ((nested, path), value, typename) from ROS message.
 
-    @param  messages_only  whether to yield only values that are ROS messages themselves
-                           or lists of ROS messages, else will yield scalar and list values
-    @param  scalars        sequence of ROS types to consider as scalars, like ("time", duration")
-    @param  top            internal recursion helper
+    @param   messages_only  whether to yield only values that are ROS messages themselves
+                            or lists of ROS messages, else will yield scalar and list values
+    @param   scalars        sequence of ROS types to consider as scalars, like ("time", duration")
+    @param   include        [((nested, path), re.Pattern())] to require in field path, if any
+    @param   exclude        [((nested, path), re.Pattern())] to reject in field path, if any
+    @param   top            internal recursion helper
     """
     fieldmap = realapi.get_message_fields(msg)
+    if include or exclude: fieldmap = filter_fields(fieldmap, (), include, exclude)
     if not fieldmap: return
     if messages_only:
         for k, t in fieldmap.items():
@@ -1123,7 +1126,7 @@ __all___ = [
     "calculate_definition_hash", "canonical", "create_publisher", "create_subscriber",
     "deserialize_message", "dict_to_message", "format_message_value", "get_alias_type",
     "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
-    "get_message_type_hash", "get_message_value",    "get_ros_time_category", "get_rostime",
+    "get_message_type_hash", "get_message_value", "get_ros_time_category", "get_rostime",
     "get_topic_types", "get_type_alias", "init_node", "is_ros_message", "is_ros_time",
     "iter_message_fields", "make_bag_time", "make_duration", "make_live_time", "make_message_hash",
     "make_time", "message_to_dict", "parse_definition_fields", "parse_definition_subtypes",

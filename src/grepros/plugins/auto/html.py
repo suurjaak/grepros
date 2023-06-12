@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.06.2023
+@modified    12.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -203,6 +203,9 @@ def init(*_, **__):
         ("overwrite=true|false",   "overwrite existing file in HTML output\n"
                                    "instead of appending unique counter (default false)")
     ])
+    plugins.add_output_label("HTML", ["--emit-field", "--no-emit-field", "--matched-fields-only",
+                                      "--lines-around-match", "--lines-per-field", "--start-line",
+                                      "--end-line", "--lines-per-message", "--match-wrapper"])
 
 
 __all__ = ["HtmlSink", "init"]

@@ -18,7 +18,10 @@ Convenience methods:
 
 - `plugins.add_write_format(name, cls, label=None, options=((name, help), ))`:
    adds an output plugin to defaults
-- `plugins.get_argument(name)`: returns a command-line argument configuration dictionary, or None
+- `plugins.add_output_label(label, flags)`:
+   adds plugin label to outputs enumerated in given argument help texts
+- `plugins.get_argument(name, group=None)`:
+   returns a command-line argument configuration dictionary, or None
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -26,12 +29,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    14.03.2023
+@modified    12.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
 import glob
 import os
+import re
 
 from .. common import ConsolePrinter, ensure_namespace, import_item
 from .. outputs import MultiSink
@@ -40,6 +44,9 @@ from . import auto
 
 ## {"some.module" or "some.module.Cls": <module 'some.module' from ..> or <class 'some.module.Cls'>}
 PLUGINS = {}
+
+## Added output labels to insert into argument texts, as {label: [argument flag, ]}
+OUTPUT_LABELS = {}
 
 ## Added write options, as {plugin label: [(name, help), ]}
 WRITE_OPTIONS = {}
@@ -74,6 +81,7 @@ def init(args=None, **kwargs):
             if args.STOP_ON_ERROR: raise
     if args: configure(args)
     populate_known_plugins()
+    populate_output_arguments()
     populate_write_formats()
 
 
@@ -124,6 +132,16 @@ def load(category, args, collect=False):
     return result if collect else result[0] if result else None
 
 
+def add_output_label(label, flags):
+    """
+    Adds plugin label to outputs enumerated in given argument help texts.
+
+    @param   label  output label to add, like "Parquet"
+    @param   flags  list of argument flags like "--emit-field" to add the output label to
+    """
+    OUTPUT_LABELS.setdefault(label, []).extend(flags)
+
+
 def add_write_format(name, cls, label=None, options=()):
     """
     Adds plugin to `--write` in main.ARGUMENTS and MultiSink formats.
@@ -152,6 +170,34 @@ def get_argument(name, group=None):
                      if name in d.get("args")), None)
     return next((d for d in main.ARGUMENTS.get("arguments", [])
                  if name in d.get("args")), None)
+
+
+def populate_output_arguments():
+    """Populates argument texts with added output labels."""
+    if not OUTPUT_LABELS: return
+    from .. import main  # Late import to avoid circular
+
+    argslist = sum(main.ARGUMENTS.get("groups", {}).values(), main.ARGUMENTS["arguments"][:])
+    args = {f: x for x in argslist for f in x["args"]}  # {flag or id(argdict): argdict}
+    args.update((id(x), x) for x in argslist)
+    arglabels = {}  # {id(argdict): [label, ]}
+
+    # First pass: collect arguments where to update output labels
+    for label, flag in ((l, f) for l, ff in OUTPUT_LABELS.items() for f in ff):
+        if flag in args: arglabels.setdefault(id(args[flag]), []).append(label)
+        else: ConsolePrinter.warn("Unknown command-line flag %r from output %r.", flag, label)
+
+    # Second pass: replace argument help with full set of output labels
+    for arg, labels in ((args[x], ll) for x, ll in arglabels.items()):
+        match = re.search(r"(\A.*?\s*in\s)(\S+)(\s+output.*\Z)", arg["help"], re.DOTALL)
+        if not match:
+            ConsolePrinter.warn("Command-line flag %s has no text on output for labels %s.",
+                                arg["args"], ", ".join(map(repr, sorted(set(labels)))))
+            continue  # for arg, labels
+        labels2 = sorted(set(labels + match[2].split("/")), key=lambda x: x.lower())
+        arg["help"] = match.expand(r"\1%s\3" % "/".join(labels2))
+
+    OUTPUT_LABELS.clear()
 
 
 def populate_known_plugins():
@@ -223,6 +269,8 @@ def populate_write_formats():
     text = "\n".join(sorted("".join((LEADING, n, inters[n], fmt(n, h)))
                             for n, h in texts.items()))
     writearg["help"] += "\n" + text
+
+    WRITE_OPTIONS.clear()
 
 
 
