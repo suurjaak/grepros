@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    09.06.2023
+@modified    11.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -33,12 +33,14 @@ class CsvSink(Sink):
     FILE_EXTENSIONS = (".csv", )
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={}, VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the base name of CSV files to write
+        @param   args.emit_field      message fields to emit in output if not all
+        @param   args.noemit_field    message fields to skip in output
         @param   args.write           base name of CSV files to write,
                                       will add topic name like "name.__my__topic.csv" for "/my/topic",
                                       will add counter like "name.__my__topic.2.csv" if exists
@@ -53,10 +55,13 @@ class CsvSink(Sink):
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}
         self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
+        self._patterns      = {}          # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
         self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._close_printed = False
 
+        for key, vals in [("print", args.EMIT_FIELD), ("noprint", args.NOEMIT_FIELD)]:
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
@@ -148,7 +153,9 @@ class CsvSink(Sink):
 
         Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
         """
+        prints, noprints = self._patterns["print"], self._patterns["noprint"]
         fieldmap, identity = api.get_message_fields(msg), lambda x: x
+        fieldmap = common.filter_fields(fieldmap, top, include=prints, exclude=noprints)
         for k, t in fieldmap.items() if fieldmap != msg else ():
             v, path, baset = api.get_message_value(msg, k, t), top + (k, ), api.scalar(t)
             is_sublist = isinstance(v, (list, tuple)) and baset not in api.ROS_BUILTIN_TYPES
@@ -237,6 +244,7 @@ def init(*_, **__):
         ("overwrite=true|false",  "overwrite existing files in CSV output\n"
                                   "instead of appending unique counter (default false)")
     ])
+    plugins.add_output_label("CSV", ["--emit-field", "--no-emit-field"])
 
 
 __all__ = ["CsvSink", "CsvWriter", "init"]

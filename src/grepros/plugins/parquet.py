@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    03.06.2023
+@modified    12.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -85,14 +85,17 @@ class ParquetSink(Sink):
     WRITER_ARGS = {"version": "2.6"}
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={},
+                        VERBOSE=False)
 
 
     def __init__(self, args=None, **kwargs):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the base name of Parquet files to write
+        @param   args.emit_field      message fields to emit in output if not all
         @param   args.meta            whether to print metainfo
+        @param   args.noemit_field    message fields to skip in output
         @param   args.write           base name of Parquet files to write
         @param   args.write_options   {"column": additional columns as {name: (rostype, value)},
                                        "type": {rostype: PyArrow type or typename like "uint8"},
@@ -120,6 +123,7 @@ class ParquetSink(Sink):
         self._writers        = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
         self._extra_basecols = []  # [(name, rostype)]
         self._extra_basevals = []  # [(name, value)]
+        self._patterns       = {}  # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._nesting        = args.WRITE_OPTIONS.get("nesting")
         self._idgenerator    = iter(lambda: str(uuid.uuid4()), self) if self._nesting else None
 
@@ -208,7 +212,8 @@ class ParquetSink(Sink):
 
         cols = []
         scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
-        for path, value, subtype in api.iter_message_fields(msg, scalars=scalars):
+        fltrs = dict(include=self._patterns["print"], exclude=self._patterns["noprint"])
+        for path, value, subtype in api.iter_message_fields(msg, scalars=scalars, **fltrs):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
         MSGCOLS = self.MESSAGE_TYPE_BASECOLS + (self.MESSAGE_TYPE_NESTCOLS if self._nesting else [])
@@ -228,7 +233,7 @@ class ParquetSink(Sink):
         self._schemas[typekey]   = schema
         self._writers[typekey]   = writer
 
-        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True, **fltrs) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
@@ -253,7 +258,8 @@ class ParquetSink(Sink):
         if self._idgenerator: myid = next(self._idgenerator)
         with api.TypeMeta.make(msg, topic, root=rootmsg) as m:
             typename, typekey = m.typename, m.typekey
-        for p, v, t in api.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
+        fltrs = dict(include=self._patterns["print"], exclude=self._patterns["noprint"])
+        for p, v, t in api.iter_message_fields(msg, scalars=set(self.COMMON_TYPES), **fltrs):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
         if self._idgenerator: data.update(_id=myid)
@@ -265,7 +271,7 @@ class ParquetSink(Sink):
         super(ParquetSink, self).emit(topic, index, stamp, msg, match)
 
         subids = {}  # {message field path: [ids]}
-        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True, **fltrs) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
             scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
@@ -361,6 +367,9 @@ class ParquetSink(Sink):
             if arrowtype not in self.ARROW_TYPES.values():
                 arrowtype = eval(compile(arrowtype, "", "eval"), {"__builtins__": self.ARROW_TYPES})
             self.COMMON_TYPES[rostype] = arrowtype
+
+        for key, vals in [("print", self.args.EMIT_FIELD), ("noprint", self.args.NOEMIT_FIELD)]:
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
 
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):
@@ -471,6 +480,7 @@ def init(*_, **__):
         ("writer-ARGNAME=ARGVALUE",    "additional arguments for Parquet output\n"
                                        "given to pyarrow.parquet.ParquetWriter"),
     ])
+    plugins.add_output_label("Parquet", ["--emit-field", "--no-emit-field"])
 
 
 __all__ = ["ParquetSink", "init"]

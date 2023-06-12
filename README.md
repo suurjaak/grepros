@@ -739,10 +739,10 @@ Output control:
                         emit NUM messages of leading and trailing context
                         around match
   -ef FIELD [FIELD ...], --emit-field FIELD [FIELD ...]
-                        message fields to emit in console/HTML output if not all
+                        message fields to emit in console/CSV/HTML/Parquet output if not all
                         (supports nested.paths and * wildcards)
   -nf FIELD [FIELD ...], --no-emit-field FIELD [FIELD ...]
-                        message fields to skip in console/HTML output
+                        message fields to skip in console/CSV/HTML/Parquet output
                         (supports nested.paths and * wildcards)
   -mo, --matched-fields-only
                         emit only the fields where PATTERNs find a match
