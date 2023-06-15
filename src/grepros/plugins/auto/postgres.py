@@ -6,9 +6,10 @@ Sink plugin for dumping messages to a Postgres database.
 This file is part of grepros - grep for ROS bag files and live topics.
 Released under the BSD License.
 
-@author      Erki Suurjaak
+@author      [Erki Suurjaak, Iftach Naftaly]
 @created     02.12.2021
 @modified    27.03.2023
+@modified    15.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
