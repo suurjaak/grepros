@@ -27,6 +27,26 @@ from ... import rosapi
 from ... common import ConsolePrinter
 from . dbbase import DataSinkBase, quote
 
+import numpy
+from psycopg2.extensions import register_adapter, AsIs
+def addapt_numpy_uint32(numpy_uint32):
+    return AsIs(numpy_uint32)
+def addapt_numpy_float32(numpy_float32):
+    return AsIs(numpy_float32)
+def addapt_numpy_int32(numpy_int32):
+    return AsIs(numpy_int32)
+def addapt_numpy_uint64(numpy_uint64):
+    return AsIs(numpy_uint64)
+def addapt_numpy_float64(numpy_float64):
+    return AsIs(numpy_float64)
+def addapt_numpy_int64(numpy_int64):
+    return AsIs(numpy_int64)
+register_adapter(numpy.uint32, addapt_numpy_uint32)
+register_adapter(numpy.float32, addapt_numpy_float32)
+register_adapter(numpy.int32, addapt_numpy_int32)
+register_adapter(numpy.uint64, addapt_numpy_uint64)
+register_adapter(numpy.float64, addapt_numpy_float64)
+register_adapter(numpy.int64, addapt_numpy_int64)
 
 class PostgresSink(DataSinkBase):
     """
