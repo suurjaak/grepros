@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    06.06.2023
+@modified    19.06.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -367,7 +367,6 @@ class ProgressBar(threading.Thread):
         @param   afterword      text after progress bar
         @param   interval       ticker thread interval, in seconds
         @param   pulse          ignore value-min-max, use constant pulse instead
-        @param   counts         print value and nax afterword
         @param   aftertemplate  afterword format() template, populated with vars(self)
         """
         threading.Thread.__init__(self)

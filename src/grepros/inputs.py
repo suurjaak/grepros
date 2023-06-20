@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Input sources for search content.
+Input sources for ROS messages.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.06.2023
+@modified    19.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -213,8 +213,8 @@ class ConditionMixin(object):
     different types in one topic), evaluation is done for each set of
     topics separately, condition passing if any set passes.
 
-    Example condition: `<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0
-                        and <topic */cmd_vel>.angular.z < 0.02`.
+    Example condition: `<topic */control_enable>.data and <topic */cmd_vel>.linear.x > 0`
+                       `and <topic */cmd_vel>.angular.z < 0.02`.
     """
 
     TOPIC_RGX = re.compile(r"<topic\s+([^\s><]+)\s*>")  # "<topic /some/thing>"

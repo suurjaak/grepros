@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-HTML output for search results.
+HTML output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    12.06.2023
+@modified    19.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html

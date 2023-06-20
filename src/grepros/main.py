@@ -11,7 +11,6 @@ Released under the BSD License.
 @modified    12.06.2023
 ------------------------------------------------------------------------------
 """
-
 ## @namespace grepros.main
 import argparse
 import atexit

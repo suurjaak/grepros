@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CSV output for search results.
+CSV output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    11.06.2023
+@modified    19.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv

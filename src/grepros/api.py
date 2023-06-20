@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    12.06.2023
+@modified    19.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -86,13 +86,13 @@ class BaseBag(object):
     """
     ROS bag interface.
 
-    Bag can be used a context manager, is an iterable providing (topic, message, timestamp) tuples
+    %Bag can be used a context manager, is an iterable providing (topic, message, timestamp) tuples
     and supporting `len(bag)`; and supports topic-based membership
     (`if mytopic in bag`, `for t, m, s in bag[mytopic]`, `len(bag[mytopic])`).
 
     Extra methods and properties compared with rosbag.Bag: Bag.get_message_class(),
     Bag.get_message_definition(), Bag.get_message_type_hash(), Bag.get_topic_info();
-    Bag.closed and and Bag.topics.
+    Bag.closed and Bag.topics.
     """
 
     ## Returned from read_messages() as (topic name, ROS message, ROS timestamp object).
@@ -349,9 +349,10 @@ class BaseBag(object):
 @six.add_metaclass(abc.ABCMeta)
 class Bag(BaseBag):
     """
-    Bag factory. Result is a format-specific class instance, auto-detected from file extension
-    or content: an extended rosbag.Bag for ROS1 bags, otherwise an object
-    with a conforming interface.
+    %Bag factory metaclass.
+
+    Result is a format-specific class instance, auto-detected from file extension or content:
+    an extended rosbag.Bag for ROS1 bags, otherwise an object with a conforming interface.
 
     E.g. {@link plugins.mcap.McapBag McapBag} if {@link plugins.mcap mcap} plugin loaded
     and file recognized as MCAP format.

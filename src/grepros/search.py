@@ -99,7 +99,7 @@ class Scanner(object):
         self._brute_prechecks = []
         self._idcounter       = 0      # Counter for unique message IDs
         self._highlight       = None   # Highlight matched values in message fields
-        self._passthrough     = False  # Pass all messages to sink, skip matching and highlighting
+        self._passthrough     = False  # Emit messages without pattern-matching and highlighting
 
         ## Source instance
         self.source = None
