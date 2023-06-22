@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.06.2023
+@modified    21.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -846,29 +846,50 @@ def make_full_typename(typename, category="msg"):
 
 def make_bag_time(stamp, bag):
     """
-    Returns timestamp string or datetime instance as ROS time.
+    Returns value as ROS timestamp, conditionally as relative to bag start/end time.
 
-    Stamp interpreted as delta from bag start/end time if numeric string with sign prefix.
+    Stamp is interpreted as relative offset from bag start/end time
+    if numeric string with sign prefix, or timedelta, or ROS duration.
+
+    @param   stamp   converted to ROS timestamp if int/float/str/duration/datetime/timedelta/decimal
+    @param   bag     an open bag to use for relative start/end time
     """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
+    shift = 0
+    if is_ros_time(stamp):
+        if "duration" != get_ros_time_category(stamp): return stamp
+        shift = bag.get_start_time() if stamp >= 0 else bag.get_end_time()
+    elif isinstance(stamp, datetime.datetime):
+        stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
+    elif isinstance(stamp, datetime.timedelta):
+        stamp = stamp.total_seconds()
+        shift = bag.get_start_time() if stamp >= 0 else bag.get_end_time()
+    elif isinstance(stamp, (six.binary_type, six.text_type)):
+        sign = stamp[0] in ("+", b"+") if six.text_type(stamp[0]) in "+-" else None
         shift = 0 if sign is None else bag.get_start_time() if sign else bag.get_end_time()
+        stamp = float(stamp)
     return make_time(stamp + shift)
 
 
 def make_live_time(stamp):
     """
-    Returns timestamp string or datetime instance as ROS time.
+    Returns value as ROS timestamp, conditionally as relative to system time.
 
-    Stamp interpreted as delta from system time if numeric string with sign prefix.
+    Stamp is interpreted as relative offset from system time
+    if numeric string with sign prefix, or timedelta, or ROS duration.
+
+    @param   stamp   converted to ROS timestamp if int/float/str/duration/datetime/timedelta/decimal
     """
-    if isinstance(stamp, datetime.datetime):
-        stamp, shift = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6, 0
-    else:
-        stamp, sign = float(stamp), ("+" == stamp[0] if stamp[0] in "+-" else None)
-        shift = 0 if sign is None else time.time()
+    shift = 0
+    if is_ros_time(stamp):
+        if "duration" != get_ros_time_category(stamp): return stamp
+        shift = time.time()
+    elif isinstance(stamp, datetime.datetime):
+        stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
+    elif isinstance(stamp, datetime.timedelta):
+        stamp, shift = stamp.total_seconds(), time.time()
+    elif isinstance(stamp, (six.binary_type, six.text_type)):
+        sign = stamp[0] in ("+", b"+") if six.text_type(stamp[0]) in "+-" else None
+        stamp, shift = float(stamp), (0 if sign is None else time.time())
     return make_time(stamp + shift)
 
 
