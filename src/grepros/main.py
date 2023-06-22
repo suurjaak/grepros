@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.06.2023
+@modified    21.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -20,6 +20,8 @@ import os
 import random
 import re
 import sys
+
+import six
 
 from . import __version__, __version_date__, api, inputs, outputs, search
 from . common import ConsolePrinter, MatchMarkers, parse_datetime
@@ -410,7 +412,7 @@ def process_args(args):
 
     @param   args  arguments object like argparse.Namespace
     """
-    for arg in sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"]):
+    for arg in sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"][:]):
         name = arg.get("dest") or arg["args"][0]
         if "version" != arg.get("action") and argparse.SUPPRESS != arg.get("default") \
         and "HELP" != name and not hasattr(args, name):
@@ -421,7 +423,8 @@ def process_args(args):
         args.BEFORE = args.AFTER = args.CONTEXT
 
     # Default to printing metadata for publish/write if no console output
-    args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE)
+    args.VERBOSE = False if args.SKIP_VERBOSE else \
+                   (args.VERBOSE or not args.CONSOLE and not ConsolePrinter.APIMODE)
 
     # Show progress bar only if no console output
     args.PROGRESS = args.PROGRESS and not args.CONSOLE
@@ -437,9 +440,9 @@ def process_args(args):
                               if not (x in here or here.add(x))])
 
     for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
-        if v is None: continue  # for v, n
+        if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, n
         try: v = float(v)
-        except Exception: pass
+        except Exception: pass  # If numeric, leave as string for source to process as relative time
         try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
         except Exception: pass
 
