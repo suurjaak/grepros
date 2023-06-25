@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -619,10 +619,11 @@ class BagSource(Source, ConditionMixin):
 
         @param   topics  {topic: [typename, ]}
         """
+        if not self._running or not self._bag: return
         counts = collections.Counter()
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
-                break  # for topic
+                break  # for topic, 
             typename = api.get_message_type(msg)
             if topics and typename not in topics[topic]:
                 continue  # for topic
@@ -650,6 +651,8 @@ class BagSource(Source, ConditionMixin):
                 for entry in self._produce({topic: typename}, continue_from):
                     yield entry
                 self._sticky = False
+            if not self._running or not self._bag:
+                break  # for topic
 
     def _produce_bags(self):
         """Yields Bag instances from configured arguments."""

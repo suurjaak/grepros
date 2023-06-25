@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    09.06.2023
+@modified    25.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -242,6 +242,7 @@ class McapBag(api.BaseBag):
             else: msg = self._decode_message(message, channel, schema)
             api.TypeMeta.make(msg, channel.topic, self)
             yield self.BagMessage(channel.topic, msg, api.make_time(nsecs=message.publish_time))
+            if self.closed: break  # for schema
 
 
     def write(self, topic, msg, t=None, raw=False, **__):

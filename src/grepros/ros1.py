@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    09.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -230,10 +230,11 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
                 if in_range(topic, stamp):
                     TypeMeta.make(msg, topic, self)
                     yield self.BagMessage(topic, msg, stamp)
+                if self.closed: break  # for topic
             return
 
         for topic, msg, stamp in super(ROS1Bag, self).read_messages(**kwargs):
-            if not in_range(topic, stamp): continue  # for
+            if not in_range(topic, stamp): continue  # for topic
 
             # Workaround for rosbag bug of using wrong type for identical type hashes
             if topic in dupes:
@@ -245,6 +246,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
                         msg = self._convert_message(msg, *dupes[topic])
             TypeMeta.make(msg, topic, self)
             yield self.BagMessage(topic, msg, stamp)
+            if self.closed: break  # for topic
 
 
     def write(self, topic, msg, t=None, raw=False, connection_header=None, **__):

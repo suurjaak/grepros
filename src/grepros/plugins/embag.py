@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    03.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -187,6 +187,7 @@ class EmbagReader(api.BaseBag):
             else: msg = self._populate_message(self.get_message_class(typename, m.md5)(), m.data())
             api.TypeMeta.make(msg, m.topic, self)
             yield self.BagMessage(m.topic, msg, stamp)
+            if self.closed: break  # for m
 
 
     def open(self):
