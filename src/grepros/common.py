@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -807,6 +807,26 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
+def get_name(obj):
+    """
+    Returns the fully namespaced name for a Python module, class, function or object.
+
+    E.g. "my.thing" or "my.module.MyCls" or "my.module.MyCls.my_method"
+    or "my.module.MyCls<0x1234abcd>" or "my.module.MyCls<0x1234abcd>.my_method".
+    """
+    namer = lambda x: getattr(x, "__qualname__", getattr(x, "__name__", ""))
+    if inspect.ismodule(obj): return namer(obj)
+    if inspect.isclass(obj):  return ".".join((obj.__module__, namer(obj)))
+    if inspect.isroutine(obj):
+        parts, self = [], six.get_method_self(obj)
+        if self is not None:           parts.extend((get_name(self), obj.__name__))
+        elif hasattr(obj, "im_class"): parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
+        else:                          parts.extend((obj.__module__, namer(obj)))          # Py3
+        return ".".join(parts)
+    cls = type(obj)
+    return "%s.%s<0x%x>" % (cls.__module__, namer(cls), id(obj))
+
+
 def has_arg(func, name):
     """Returns whether function supports taking specified argument by name."""
     spec = getattr(inspect, "getfullargspec", inspect.getargspec)(func)  # Py3/Py2
@@ -1055,7 +1075,7 @@ def wildcard_to_regex(text, end=False):
 __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
-    "format_bytes", "format_stamp", "format_timedelta", "has_arg", "import_item", "is_iterable",
-    "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans", "parse_datetime", "plural",
-    "unique_path", "verify_io", "wildcard_to_regex",
+    "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
+    "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
+    "parse_datetime", "plural", "unique_path", "verify_io", "wildcard_to_regex",
 ]

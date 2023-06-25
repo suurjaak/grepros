@@ -29,7 +29,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    12.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -37,7 +37,9 @@ import glob
 import os
 import re
 
-from .. common import ConsolePrinter, ensure_namespace, import_item
+import six
+
+from .. common import ConsolePrinter, ensure_namespace, get_name, import_item
 from .. outputs import MultiSink
 from . import auto
 
@@ -61,7 +63,8 @@ def init(args=None, **kwargs):
 
     @param   args                arguments as namespace or dictionary, case-insensitive
     @param   args.plugin         list of Python modules or classes to import,
-                                 as ["my.module", "other.module.SomeClass", ]
+                                 as ["my.module", "other.module.SomeClass", ],
+                                 or module or class instances
     @param   args.stop_on_error  stop execution on any error like failing to load plugin
     @param   kwargs              any and all arguments as keyword overrides, case-insensitive
     """
@@ -91,13 +94,16 @@ def configure(args=None, **kwargs):
 
     @param   args          arguments as namespace or dictionary, case-insensitive
     @param   args.plugin   list of Python modules or classes to import,
-                           as ["my.module", "other.module.SomeClass", ]
+                           as ["my.module", "other.module.SomeClass", ],
+                           or module or class instances
     @param   kwargs        any and all arguments as keyword overrides, case-insensitive
     """
     args = ensure_namespace(args, DEFAULT_ARGS, **kwargs)
-    for name in (n for n in args.PLUGIN if n not in PLUGINS):
+    for obj in args.PLUGIN:
+        name = obj if isinstance(obj, six.string_types) else get_name(obj)
+        if name in PLUGINS: continue  # for obj
         try:
-            plugin = import_item(name)
+            plugin = import_item(name) if isinstance(obj, six.string_types) else obj
             if callable(getattr(plugin, "init", None)): plugin.init(args)
             PLUGINS[name] = plugin
         except ImportWarning:
