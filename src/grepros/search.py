@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    09.06.2023
+@modified    25.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -37,9 +37,9 @@ class Scanner(object):
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, RAW=False, INVERT=False, HIGHLIGHT=False,
-                        NTH_MATCH=1, BEFORE=0, AFTER=0, CONTEXT=0, MAX_MATCHES=0,
-                        MAX_TOPIC_MATCHES=0, MAX_TOPICS=0, SELECT_FIELD=(), NOSELECT_FIELD=(),
+    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, FIXED_STRING=False, INVERT=False, HIGHLIGHT=False,
+                        NTH_MATCH=1, BEFORE=0, AFTER=0, CONTEXT=0, MAX_COUNT=0,
+                        MAX_PER_TOPIC=0, MAX_TOPICS=0, SELECT_FIELD=(), NOSELECT_FIELD=(),
                         MATCH_WRAPPER="**")
 
 
@@ -47,7 +47,7 @@ class Scanner(object):
         """
         @param   args                     arguments as namespace or dictionary, case-insensitive
         @param   args.pattern             pattern(s) to find in message field values
-        @param   args.raw                 pattern contains ordinary strings, not regular expressions
+        @param   args.fixed_string        pattern contains ordinary strings, not regular expressions
         @param   args.case                use case-sensitive matching in pattern
         @param   args.invert              select messages not matching pattern
         @param   args.highlight           highlight matched values
@@ -55,8 +55,8 @@ class Scanner(object):
         @param   args.after               number of messages of trailing context to emit after match
         @param   args.context             number of messages of leading and trailing context to emit
                                           around match, overrides args.before and args.after
-        @param   args.max_matches         number of matched messages to emit (per file if bag input)
-        @param   args.max_topic_matches   number of matched messages to emit from each topic
+        @param   args.max_count           number of matched messages to emit (per file if bag input)
+        @param   args.max_per_topic       number of matched messages to emit from each topic
         @param   args.max_topics          number of topics to emit matches from
         @param   args.nth_match           emit every Nth match in topic
         @param   args.select_field        message fields to use in matching if not all
@@ -240,11 +240,10 @@ class Scanner(object):
         and current message in topic is in configured range, if any.
         """
         topickey = api.TypeMeta.make(msg, topic).topickey
-        if self.args.MAX_MATCHES \
-        and sum(x[True] for x in self._counts.values()) >= self.args.MAX_MATCHES:
+        if self.args.MAX_COUNT \
+        and sum(x[True] for x in self._counts.values()) >= self.args.MAX_COUNT:
             return False
-        if self.args.MAX_TOPIC_MATCHES \
-        and self._counts[topickey][True] >= self.args.MAX_TOPIC_MATCHES:
+        if self.args.MAX_PER_TOPIC and self._counts[topickey][True] >= self.args.MAX_PER_TOPIC:
             return False
         if self.args.MAX_TOPICS:
             topics_matched = [k for k, vv in self._counts.items() if vv[True]]
@@ -307,11 +306,11 @@ class Scanner(object):
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
-            v = (re.escape(v) if self.args.RAW else v) + ("|^$" if v in ("''", '""') else "")
+            v = "|^$" if v in ("''", '""') else (re.escape(v) if self.args.FIXED_STRING else v)
             path = re.compile(r"(^|\.)%s($|\.)" % ".*".join(map(re.escape, path.split("*")))) \
                    if path else ()
             contents.append((path, re.compile("(%s)" % v, FLAGS)))
-            if BRUTE and (self.args.RAW or not any(x in v for x in NOBRUTE_SIGILS)):
+            if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
         if not self.args.PATTERN:  # Add match-all pattern
             contents.append(self.ANY_MATCHES[0])
@@ -343,11 +342,11 @@ class Scanner(object):
     def _is_max_done(self):
         """Returns whether max match count has been reached (and message after-context emitted)."""
         result, is_maxed = False, False
-        if self.args.MAX_MATCHES:
-            is_maxed = sum(vv[True] for vv in self._counts.values()) >= self.args.MAX_MATCHES
-        if not is_maxed and self.args.MAX_TOPIC_MATCHES:
+        if self.args.MAX_COUNT:
+            is_maxed = sum(vv[True] for vv in self._counts.values()) >= self.args.MAX_COUNT
+        if not is_maxed and self.args.MAX_PER_TOPIC:
             count_required = self.args.MAX_TOPICS or len(self.source.topics)
-            count_maxed = sum(vv[True] >= self.args.MAX_TOPIC_MATCHES
+            count_maxed = sum(vv[True] >= self.args.MAX_PER_TOPIC
                               or vv[None] >= (self.source.topics.get(k) or 0)
                               for k, vv in self._counts.items())
             is_maxed = (count_maxed >= count_required)

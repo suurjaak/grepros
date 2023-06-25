@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.06.2023
+@modified    25.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -89,7 +89,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="show this help message and exit"),
 
         dict(args=["-F", "--fixed-strings"],
-             dest="RAW", action="store_true",
+             dest="FIXED_STRING", action="store_true",
              help="PATTERNs are ordinary strings, not regular expressions"),
 
         dict(args=["-I", "--no-ignore-case"],
@@ -213,11 +213,11 @@ Export all bag messages to SQLite and Postgres, print only export progress:
                   "(supports nested.paths and * wildcards)"),
 
         dict(args=["-m", "--max-count"],
-             dest="MAX_MATCHES", metavar="NUM", default=0, type=int,
+             dest="MAX_COUNT", metavar="NUM", default=0, type=int,
              help="number of matched messages to emit (per each file if bag input)"),
 
         dict(args=["--max-per-topic"],
-             dest="MAX_TOPIC_MATCHES", metavar="NUM", default=0, type=int,
+             dest="MAX_PER_TOPIC", metavar="NUM", default=0, type=int,
              help="number of matched messages to emit from each topic\n"
                   "(per each file if bag input)"),
 
@@ -475,10 +475,10 @@ def validate_args(args):
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
-    for v in args.PATTERN if not args.RAW else ():
+    for v in args.PATTERN if not args.FIXED_STRING else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
-        try: re.compile(re.escape(v) if args.RAW else v)
+        try: re.compile(re.escape(v) if args.FIXED_STRING else v)
         except Exception as e:
             errors["Invalid regular expression"].append("'%s': %s" % (v, e))
 
