@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    02.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -72,8 +72,8 @@ class BaseDataSink(Sink, SqlMixin):
         @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
-        @param   args.meta            whether to print metainfo
-        @param   args.verbose         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -46,7 +46,8 @@ class CsvSink(Sink):
                                       will add counter like "name.__my__topic.2.csv" if exists
         @param   args.write_options   {"overwrite": whether to overwrite existing files
                                                     (default false)}
-        @param   args.verbose         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args

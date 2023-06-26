@@ -73,7 +73,11 @@ class MatchMarkers(object):
 
 
 class ConsolePrinter(object):
-    """Prints to console, supports color output."""
+    """
+    Prints to console, supports color output.
+
+    If configured with `apimode=True`, logs debugs and warnings to logger and raises errors.
+    """
 
     STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight
     STYLE_HIGHLIGHT = "\x1b[31m"                # Red

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -40,7 +40,7 @@ class Sink(object):
     def __init__(self, args=None, **kwargs):
         """
         @param   args        arguments as namespace or dictionary, case-insensitive
-        @param   args.meta   whether to print metainfo
+        @param   args.meta   whether to emit metainfo
         @param   kwargs      any and all arguments as keyword overrides, case-insensitive
         """
         self._batch_meta = {}  # {source batch: "source metadata"}
@@ -61,7 +61,7 @@ class Sink(object):
         self.close()
 
     def emit_meta(self):
-        """Prints source metainfo like bag header as debug stream, if not already printed."""
+        """Outputs source metainfo like bag header as debug stream, if not already emitted."""
         batch = self.args.META and self.source.get_batch()
         if self.args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.format_meta()
@@ -412,12 +412,12 @@ class BagSink(Sink):
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the ROS bagfile to write,
                                       or a stream or {@link api.Bag Bag} instance to write to
-        @param   args.meta            whether to print metainfo
         @param   args.write           name of ROS bagfile to create or append to,
                                       or a stream to write to
         @param   args.write_options   {"overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.verbose         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
 
@@ -447,7 +447,7 @@ class BagSink(Sink):
         super(BagSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
-        """Returns whether write options are valid and ROS environment set, prints error if not."""
+        """Returns whether write options are valid and ROS environment set, emits error if not."""
         if self.valid is not None: return self.valid
         result = True
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
@@ -528,13 +528,13 @@ class TopicSink(Sink):
         """
         @param   args                   arguments as namespace or dictionary, case-insensitive
         @param   args.live              whether reading messages from live ROS topics
-        @param   args.meta              whether to print metainfo
         @param   args.queue_size_out    publisher queue size (default 10)
         @param   args.publish_prefix    output topic prefix, prepended to input topic
         @param   args.publish_suffix    output topic suffix, appended to output topic
         @param   args.publish_fixname   single output topic name to publish to,
                                         overrides prefix and suffix if given
-        @param   args.verbose           whether to print debug information
+        @param   args.meta              whether to emit metainfo
+        @param   args.verbose           whether to emit debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = common.ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
@@ -572,7 +572,7 @@ class TopicSink(Sink):
     def validate(self):
         """
         Returns whether ROS environment is set for publishing,
-        and output topic configuration is valid, prints error if not.
+        and output topic configuration is valid, emits error if not.
         """
         if self.valid is not None: return self.valid
         result = api.validate(live=True)
@@ -649,6 +649,8 @@ class MultiSink(Sink):
 
     def __init__(self, args=None, sinks=(), **kwargs):
         """
+        Accepts more arguments, given to the real sinks constructed.
+
         @param   args           arguments as namespace or dictionary, case-insensitive
         @param   args.console   print matches to console
         @param   args.write     [[target, format=FORMAT, key=value, ], ]
@@ -685,7 +687,7 @@ class MultiSink(Sink):
     def emit_meta(self):
         """Outputs source metainfo in one sink, if not already emitted."""
         sink = next((s for s in self.sinks if isinstance(s, ConsoleSink)), None)
-        # Print meta in one sink only, prefer console
+        # Emit meta in one sink only, prefer console
         sink = sink or self.sinks[0] if self.sinks else None
         sink and sink.emit_meta()
 

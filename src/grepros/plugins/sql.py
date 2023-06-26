@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -61,7 +61,8 @@ class SqlSink(Sink, SqlMixin):
                                        "nesting": true|false to created nested type tables,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.verbose         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args

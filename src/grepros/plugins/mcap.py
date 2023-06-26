@@ -574,10 +574,10 @@ class McapSink(Sink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the file to write
-        @param   args.meta            whether to print metainfo
         @param   args.write           base name of MCAP files to write
         @param   args.write_options   {"overwrite": whether to overwrite existing file
                                                     (default false)}
+        @param   args.meta            whether to print metainfo
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -64,7 +64,6 @@ class SqliteSink(BaseDataSink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the name of SQLitefile to write
-        @param   args.meta            whether to print metainfo
         @param   args.write           name of SQLite file to write, will be appended to if exists
         @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
                                        "message-yaml": populate messages.yaml (default true),
@@ -72,7 +71,8 @@ class SqliteSink(BaseDataSink):
                                                   of nested types, or "all" for any nesting),
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         super(SqliteSink, self).__init__(args, **kwargs)

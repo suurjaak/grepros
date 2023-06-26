@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    19.06.2023
+@modified    26.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -41,25 +41,39 @@ class HtmlSink(Sink, TextSinkMixin):
 
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, HIGHLIGHT=True, MATCH_WRAPPER=None,
-                        VERBOSE=False)
+                        ORDERBY=None, VERBOSE=False, COLOR=True, EMIT_FIELD=(), NOEMIT_FIELD=(), 
+                        MAX_FIELD_LINES=None, START_LINE=None, END_LINE=None,
+                        MAX_MESSAGE_LINES=None, LINES_AROUND_MATCH=None, MATCHED_FIELDS_ONLY=False,
+                        WRAP_WIDTH=None)
 
     def __init__(self, args=None, **kwargs):
         """
-        @param   args                  arguments as namespace or dictionary, case-insensitive;
-                                       or a single path as the name of HTML file to write
-        @param   args.meta             whether to print metainfo
-        @param   args.write            name of HTML file to write,
-                                       will add counter like .2 to filename if exists
-        @param   args.write_options    {"template": path to custom HTML template, if any,
-                                        "overwrite": whether to overwrite existing file
-                                                     (default false)}
-        @param   args.verbose          whether to print debug information
-        @param   args.highlight        highlight matched values (default true)
-        @param   args.match_wrapper    string to wrap around matched values,
-                                       both sides if one value, start and end if more than one,
-                                       or no wrapping if zero values
-        @param   args.orderby          "topic" or "type" if any to group results by
-        @param   kwargs                any and all arguments as keyword overrides, case-insensitive
+        @param   args                       arguments as namespace or dictionary, case-insensitive;
+                                            or a single path as the name of HTML file to write
+        @param   args.write                 name of HTML file to write,
+                                            will add counter like .2 to filename if exists
+        @param   args.write_options         {"template": path to custom HTML template, if any,
+                                             "overwrite": whether to overwrite existing file
+                                                          (default false)}
+        @param   args.highlight             highlight matched values (default true)
+        @param   args.orderby               "topic" or "type" if any to group results by
+        @param   args.color                 False or "never" for not using colors in replacements
+        @param   args.emit_field            message fields to emit if not all
+        @param   args.noemit_field          message fields to skip in output
+        @param   args.max_field_lines       maximum number of lines to output per field
+        @param   args.start_line            message line number to start output from
+        @param   args.end_line              message line number to stop output at
+        @param   args.max_message_lines     maximum number of lines to output per message
+        @param   args.lines_around_match    number of message lines around matched fields to output
+        @param   args.matched_fields_only   output only the fields where match was found
+        @param   args.wrap_width            character width to wrap message YAML output at
+        @param   args.match_wrapper         string to wrap around matched values,
+                                            both sides if one value, start and end if more than one,
+                                            or no wrapping if zero values
+        @param   args.meta                  whether to emit metainfo
+        @param   args.verbose               whether to emit debug information
+        @param   kwargs                     any and all arguments as keyword overrides,
+                                            case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
         args = common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
@@ -100,7 +114,7 @@ class HtmlSink(Sink, TextSinkMixin):
     def validate(self):
         """
         Returns whether write options are valid and ROS environment is set and file is writable,
-        prints error if not.
+        emits error if not.
         """
         if self.valid is not None: return self.valid
         result = True
