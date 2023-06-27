@@ -21,9 +21,10 @@ Using ROS2 requires Python packages for message types to be available in path.
 
 Supports loading custom plugins, mainly for additional output formats.
 
-[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/screen.png)
+Usable as a Python library, see [LIBRARY.md](doc/LIBRARY.md).
+Full API documentation available at https://suurjaak.github.io/grepros.
 
-API documentation available at https://suurjaak.github.io/grepros.
+[![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/th_screen.png)](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/screen.png)
 
 
 - [Example usage](#example-usage)
