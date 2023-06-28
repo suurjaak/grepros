@@ -26,6 +26,8 @@ import threading
 import time
 
 import builtin_interfaces.msg
+try: import numpy
+except Exception: numpy = None
 import rclpy
 import rclpy.clock
 import rclpy.duration
@@ -819,9 +821,9 @@ def get_message_type(msg_or_cls):
 def get_message_value(msg, name, typename):
     """Returns object attribute value, with numeric arrays converted to lists."""
     v, scalartype = getattr(msg, name), scalar(typename)
-    if isinstance(v, (bytes, array.array)) \
-    or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        v = list(v)
+    if isinstance(v, (bytes, array.array)): v = list(v)
+    elif numpy and isinstance(v, (numpy.generic, numpy.ndarray)):
+        v = v.tolist()  # Returns value as Python type, either scalar or list
     if v and isinstance(v, (list, tuple)) and scalartype in ("byte", "uint8"):
         if isinstance(v[0], bytes):
             v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
