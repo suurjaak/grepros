@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    26.06.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -52,9 +52,11 @@ class HtmlSink(Sink, TextSinkMixin):
                                             or a single path as the name of HTML file to write
         @param   args.write                 name of HTML file to write,
                                             will add counter like .2 to filename if exists
-        @param   args.write_options         {"template": path to custom HTML template, if any,
+        @param   args.write_options         ```
+                                            {"template": path to custom HTML template, if any,
                                              "overwrite": whether to overwrite existing file
                                                           (default false)}
+                                            ```
         @param   args.highlight             highlight matched values (default true)
         @param   args.orderby               "topic" or "type" if any to group results by
         @param   args.color                 False or "never" for not using colors in replacements

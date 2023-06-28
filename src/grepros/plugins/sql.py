@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    26.06.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -57,10 +57,12 @@ class SqlSink(Sink, SqlMixin):
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the file to write
         @param   args.write           output file path
-        @param   args.write_options   {"dialect": SQL dialect if not default,
+        @param   args.write_options   ```
+                                      {"dialect": SQL dialect if not default,
                                        "nesting": true|false to created nested type tables,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+                                      ```
         @param   args.meta            whether to emit metainfo
         @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    26.06.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -81,9 +81,11 @@ class PostgresSink(BaseDataSink):
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single item as the database connection string
         @param   args.write           Postgres connection string like "postgresql://user@host/db"
-        @param   args.write_options   {"commit-interval": transaction size (0 is autocommit),
+        @param   args.write_options   ```
+                                      {"commit-interval": transaction size (0 is autocommit),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
+                                      ```
         @param   args.meta            whether to emit metainfo
         @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    19.06.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -94,12 +94,15 @@ class ParquetSink(Sink):
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the base name of Parquet files to write
         @param   args.emit_field      message fields to emit in output if not all
-        @param   args.meta            whether to print metainfo
         @param   args.noemit_field    message fields to skip in output
         @param   args.write           base name of Parquet files to write
-        @param   args.write_options   {"column": additional columns as {name: (rostype, value)},
+        @param   args.write_options   ```
+                                      {"column": additional columns as {name: (rostype, value)},
                                        "type": {rostype: PyArrow type or typename like "uint8"},
                                        "writer": dictionary of arguments passed to ParquetWriter,
+                                       "idgenerator": callable or iterable for producing message IDs
+                                                      like uuid.uuid4 or itertools.count();
+                                                      nesting uses UUID values by default,
                                        "column-k=rostype:v": one "column"-argument
                                                              in flat string form,
                                        "type-k=v: one "type"-argument in flat string form,
@@ -108,6 +111,8 @@ class ParquetSink(Sink):
                                                   of nested types, or "all" for any nesting,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+                                      ```
+        @param   args.meta            whether to print metainfo
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
