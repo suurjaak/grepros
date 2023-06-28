@@ -150,11 +150,13 @@ INPUT_FILTER           =
 # blank out project headers, strip blank lines from before param-blocks
 # as those somehow make params unparseable for doxygen,
 # add an empty comment line after param-block, 
-# add <code>-tags around backticked phrases, and shift single-line docstrings
-# for classes/functions one line higher to retain correct line numbers.
+# add <code>-tags around backticked phrases,
+# add <pre>-tags around and strip leading spaces from triple-backticked blocks,
+# and shift single-line docstrings for classes/functions one line higher
+# to retain correct line numbers.
 
 # rst: replace "^^^\ntext\n^^^" with "\nCHANGELOG\n========="
-FILTER_PATTERNS        = *.py="myfilter() { if python3 -m doxypypy.doxypypy -a -c $1 > /dev/null 2>&1 ; then python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#-{40,}$/,/^#-{40,}$/{s/.+//g}' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g' | sed -r ':r;$!{N;br};s/(# +@param [^\n]+\n *#\n)/\1\n/g' | sed -r 's|([^`])`([^`]+)`|\1<code>\2</code>|g' | sed -r ':r;$!{N;br};s/\n(\n( *@[^\n]+\n)? *## @brief [^\n]+\n *(def|class) [^\n]+\n)/\1\n/g' ; else cat $1 ; fi; }; myfilter" *.rst="sed -r ':r;$!{N;br};s/\^{20,}\n[^\n]+\n\^{20,}\n/\nCHANGELOG\n=========\n/g'"
+FILTER_PATTERNS        = *.py="myfilter() { if python3 -m doxypypy.doxypypy -a -c $1 > /dev/null 2>&1 ; then python3 -m doxypypy.doxypypy -a -c $1 | sed -r '/^#-{40,}$/,/^#-{40,}$/{s/.+//g}' | sed -r ':r;$!{N;br};s/\n *#(\n *# *@param)/\1/g' | sed -r ':r;$!{N;br};s/(# +@param [^\n]+\n *#\n)/\1\n/g' | sed -r 's|([^`])`([^`]+)`|\1<code>\2</code>|g' | python3 doc/preify.py | sed -r ':r;$!{N;br};s/\n(\n( *@[^\n]+\n)? *## @brief [^\n]+\n *(def|class) [^\n]+\n)/\1\n/g' ; else cat $1 ; fi; }; myfilter" *.rst="sed -r ':r;$!{N;br};s/\^{20,}\n[^\n]+\n\^{20,}\n/\nCHANGELOG\n=========\n/g'"
 
 FILTER_SOURCE_FILES    = NO
 
