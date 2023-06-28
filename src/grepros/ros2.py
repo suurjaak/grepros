@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    03.06.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -336,7 +336,8 @@ PRAGMA synchronous=NORMAL;
             except Exception as e:
                 reportfunc = ConsolePrinter.error if self._stop_on_error else ConsolePrinter.warn
                 reportfunc("Error loading type %s in topic %s: %%s" % (typename, topic),
-                           e, __once=not self._stop_on_error)
+                           "message class not found." if cls is None else e,
+                           __once=not self._stop_on_error)
                 if self._stop_on_error: raise
                 if raw: msg = (typename, row["data"], typehash or None, msgtypes.get(typename))
                 elif set(n for n, c in msgtypes.items() if c is None) == topicset:
