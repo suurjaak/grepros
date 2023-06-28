@@ -661,7 +661,7 @@ def ensure_namespace(val, defaults=None, **kwargs):
 
     Arguments with list/tuple values in defaults are ensured to have list/tuple values.
 
-    @param  value     `argparse.Namespace` or dictionary or `None`
+    @param  val       `argparse.Namespace` or dictionary or `None`
     @param  defaults  additional arguments to set to namespace if missing
     @param  kwargs    any and all argument overrides as keyword overrides
     """
