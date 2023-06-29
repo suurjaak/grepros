@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    28.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -273,7 +273,7 @@ class ParquetSink(Sink):
             data.update(zip(COLS, [parent_type, parent_id]))
         data.update(self._extra_basevals)
         self._caches[typekey].append(data)
-        super(ParquetSink, self).emit(topic, index, stamp, msg, match)
+        super(ParquetSink, self).emit(topic, msg, stamp, match, index)
 
         subids = {}  # {message field path: [ids]}
         nesteds = api.iter_message_fields(msg, messages_only=True, **fltrs) if self._nesting else ()
