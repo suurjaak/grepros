@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    25.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -408,7 +408,7 @@ class McapBag(api.BaseBag):
         """
         Patches MCAP ROS2 message class with expected attributes and methods, recursively.
 
-        @param   cös       ROS message class as returned from mcap_ros2.decoder
+        @param   cls       ROS message class as returned from mcap_ros2.decoder
         @param   typename  ROS message type name, like "std_msgs/Bool"
         @param   typehash  ROS message type hash
         @return            patched class

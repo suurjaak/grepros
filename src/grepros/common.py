@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-## @namespace grepros.common
 """
 Common utilities.
 
@@ -12,6 +11,7 @@ Released under the BSD License.
 @modified    26.06.2023
 ------------------------------------------------------------------------------
 """
+## @namespace grepros.common
 from __future__ import print_function
 import argparse
 import copy

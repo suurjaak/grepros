@@ -4,35 +4,35 @@ grepros library interface.
 
 Source classes:
 
-- {@link inputs.AppSource AppSource}: produces messages from iterable or pushed data
-- {@link inputs.BagSource BagSource}: produces messages from ROS bagfiles
-- {@link inputs.TopicSource TopicSource}: produces messages from live ROS topics
+- {@link grepros.inputs.AppSource AppSource}: produces messages from iterable or pushed data
+- {@link grepros.inputs.BagSource BagSource}: produces messages from ROS bagfiles
+- {@link grepros.inputs.TopicSource TopicSource}: produces messages from live ROS topics
 
 Sink classes:
 
-- {@link outputs.AppSink AppSink}: provides messages to callback function
-- {@link outputs.BagSink BagSink}: writes messages to bagfile
-- {@link outputs.ConsoleSink ConsoleSink}: prints messages to console
-- {@link plugins.auto.csv.CsvSink CsvSink}: writes messages to CSV files, each topic to a separate file
-- {@link plugins.auto.html.HtmlSink HtmlSink}: writes messages to an HTML file
-- {@link plugins.mcap.McapSink McapSink}: writes messages to MCAP file
-- {@link outputs.MultiSink MultiSink}: combines any number of sinks
-- {@link plugins.parquet.ParquetSink ParquetSink}: writes messages to Apache Parquet files
-- {@link plugins.auto.postgres.PostgresSink PostgresSink}: writes messages to a Postgres database
-- {@link plugins.auto.sqlite.SqliteSink SqliteSink}: writes messages to an SQLite database
-- {@link plugins.sql.SqlSink SqlSink}: writes SQL schema file for message type tables and topic views
-- {@link outputs.TopicSink TopicSink}: publishes messages to ROS topics
+- {@link grepros.outputs.AppSink AppSink}: provides messages to callback function
+- {@link grepros.outputs.BagSink BagSink}: writes messages to bagfile
+- {@link grepros.outputs.ConsoleSink ConsoleSink}: prints messages to console
+- {@link grepros.plugins.auto.csv.CsvSink CsvSink}: writes messages to CSV files, each topic to a separate file
+- {@link grepros.plugins.auto.html.HtmlSink HtmlSink}: writes messages to an HTML file
+- {@link grepros.plugins.mcap.McapSink McapSink}: writes messages to MCAP file
+- {@link grepros.outputs.MultiSink MultiSink}: combines any number of sinks
+- {@link grepros.plugins.parquet.ParquetSink ParquetSink}: writes messages to Apache Parquet files
+- {@link grepros.plugins.auto.postgres.PostgresSink PostgresSink}: writes messages to a Postgres database
+- {@link grepros.plugins.auto.sqlite.SqliteSink SqliteSink}: writes messages to an SQLite database
+- {@link grepros.plugins.sql.SqlSink SqlSink}: writes SQL schema file for message type tables and topic views
+- {@link grepros.outputs.TopicSink TopicSink}: publishes messages to ROS topics
 
-{@link api.BaseBag Bag}: generic bag interface.
-{@link search.Scanner Scanner}: ROS message grepper.
+{@link grepros.api.BaseBag Bag}: generic bag interface.
+{@link grepros.search.Scanner Scanner}: ROS message grepper.
 
 Format-specific bag classes:
 
-- {@link ros1.ROS1Bag ROS1Bag}: ROS1 bag reader and writer in .bag format
-- {@link ros2.ROS2Bag ROS2Bag}: ROS2 bag reader and writer in .db3 SQLite format
-- {@link plugins.embag.EmbagReader EmbagReader}: ROS1 bag reader
+- {@link grepros.ros1.ROS1Bag ROS1Bag}: ROS1 bag reader and writer in .bag format
+- {@link grepros.ros2.ROS2Bag ROS2Bag}: ROS2 bag reader and writer in .db3 SQLite format
+- {@link grepros.plugins.embag.EmbagReader EmbagReader}: ROS1 bag reader
   using the <a href="https://github.com/embarktrucks/embag">embag</a> library
-- {@link plugins.mcap.McapBag McapBag}: ROS1/ROS2 bag reader and writer in MCAP format
+- {@link grepros.plugins.mcap.McapBag McapBag}: ROS1/ROS2 bag reader and writer in MCAP format
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -40,7 +40,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    27.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -78,7 +78,7 @@ def grep(args=None, **kwargs):
 
     @param   args                     arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the ROS bagfile to read,
-                                      or one or more {@link api.Bag Bag} instances
+                                      or one or more {@link grepros.api.Bag Bag} instances
     @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
     <!--sep-->
 
@@ -89,7 +89,7 @@ def grep(args=None, **kwargs):
     @param   args.decompress          decompress archived bags to file directory
     @param   args.reindex             make a copy of unindexed bags and reindex them (ROS1 only)
     @param   args.orderby             "topic" or "type" if any to group results by
-    @param   args.bag                 one or more {@link api.Bag Bag} instances
+    @param   args.bag                 one or more {@link grepros.api.Bag Bag} instances
     <!--sep-->
 
     Live source:
@@ -146,7 +146,7 @@ def grep(args=None, **kwargs):
                                       both sides if one value, start and end if more than one,
                                       or no wrapping if zero values
 
-    @return  {@link Scanner.GrepMessage GrepMessage} namedtuples
+    @return  {@link grepros.Scanner.GrepMessage GrepMessage} namedtuples
              of (topic, message, timestamp, match, index)
     """
     DEFAULT_ARGS = dict(FILE=[], LIVE=False, APP=False, ITERABLE=None,
@@ -177,7 +177,7 @@ def grep(args=None, **kwargs):
 
 def source(args=None, **kwargs):
     """
-    Convenience for creating a {@link inputs.Source Source} instance from arguments.
+    Convenience for creating a {@link grepros.inputs.Source Source} instance from arguments.
 
     Initializes grepros if not already initialized.
 
@@ -242,8 +242,8 @@ def source(args=None, **kwargs):
 
 def sink(args=None, **kwargs):
     """
-    Convenience for creating a {@link outputs.Sink Sink} instance from arguments,
-    {@link outputs.MultiSink MultiSink} if several outputs.
+    Convenience for creating a {@link grepros.outputs.Sink Sink} instance from arguments,
+    {@link grepros.outputs.MultiSink MultiSink} if several outputs.
 
     Initializes grepros if not already initialized.
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -411,7 +411,7 @@ class BagSink(Sink):
         """
         @param   args                 arguments as namespace or dictionary, case-insensitive;
                                       or a single path as the ROS bagfile to write,
-                                      or a stream or {@link api.Bag Bag} instance to write to
+                                      or a stream or {@link grepros.api.Bag Bag} instance to write to
         @param   args.write           name of ROS bagfile to create or append to,
                                       or a stream to write to
         @param   args.write_options   {"overwrite": whether to overwrite existing file

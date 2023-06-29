@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    25.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -26,7 +26,7 @@ class Scanner(object):
     ROS message grepper.
 
     In highlighted results, message field values that match search criteria are modified
-    to wrap the matching parts in {@link common.MatchMarkers MatchMarkers} tags,
+    to wrap the matching parts in {@link grepros.common.MatchMarkers MatchMarkers} tags,
     with numeric field values converted to strings beforehand.
     """
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    21.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -354,8 +354,8 @@ class Bag(BaseBag):
     Result is a format-specific class instance, auto-detected from file extension or content:
     an extended rosbag.Bag for ROS1 bags, otherwise an object with a conforming interface.
 
-    E.g. {@link plugins.mcap.McapBag McapBag} if {@link plugins.mcap mcap} plugin loaded
-    and file recognized as MCAP format.
+    E.g. {@link grepros.plugins.mcap.McapBag McapBag} if {@link grepros.plugins.mcap mcap}
+    plugin loaded and file recognized as MCAP format.
 
     User plugins can add their own format support to READER_CLASSES and WRITER_CLASSES.
     Classes can have a static/class method `autodetect(filename)`

@@ -142,7 +142,7 @@ EXCLUDE_SYMLINKS       = YES
 
 EXCLUDE_PATTERNS       = CMakeLists.txt setup.py */vendor */__*__.py
 
-EXCLUDE_SYMBOLS        = logger
+EXCLUDE_SYMBOLS        = curses genpy logger mcap_ros numpy pandas psycopg2 pyarrow zstandard _inited
 
 INPUT_FILTER           =
 

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.06.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -411,20 +411,20 @@ class BagSource(Source, ConditionMixin):
         @param   args                   arguments as namespace or dictionary, case-insensitive;
                                         or a single path as the ROS bagfile to read,
                                         or a stream to read from,
-                                        or one or more {@link api.Bag Bag} instances
+                                        or one or more {@link grepros.api.Bag Bag} instances
         <!--sep-->
 
         Bag-specific arguments:
         @param   args.file              names of ROS bagfiles to read if not all in directory,
                                         or a stream to read from;
-                                        or one or more {@link api.Bag Bag} instances
+                                        or one or more {@link grepros.api.Bag Bag} instances
         @param   args.path              paths to scan if not current directory
         @param   args.recurse           recurse into subdirectories when looking for bagfiles
         @param   args.orderby           "topic" or "type" if any to group results by
         @param   args.decompress        decompress archived bags to file directory
         @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
         @param   args.write             outputs, to skip in input files
-        @param   args.bag               one or more {@link api.Bag Bag} instances
+        @param   args.bag               one or more {@link grepros.api.Bag Bag} instances
         <!--sep-->
 
         General arguments:
