@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    29.06.2023
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -25,7 +25,7 @@ import time
 
 import six
 
-from . common import ConsolePrinter, LenIterable, filter_fields, format_bytes, memoize
+from . common import ConsolePrinter, LenIterable, format_bytes, memoize
 #from . import ros1, ros2  # Imported conditionally
 
 
@@ -688,6 +688,32 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     return realapi.create_subscriber(topic, cls_or_typename, handler, queue_size)
 
 
+def filter_fields(fieldmap, top=(), include=(), exclude=()):
+    """
+    Returns fieldmap filtered by include and exclude patterns.
+
+    @param   fieldmap   {field name: field type name}
+    @param   top        parent path as (rootattr, ..)
+    @param   include    [((nested, path), re.Pattern())] to require in parent path
+    @param   exclude    [((nested, path), re.Pattern())] to reject in parent path
+    """
+    NESTED_RGX = re.compile(".+/.+|" + "|".join("^%s$" % re.escape(x) for x in ROS_TIME_TYPES))
+    result = type(fieldmap)() if include or exclude else fieldmap
+    for k, v in fieldmap.items() if not result else ():
+        trailstr = ".".join(map(str, top + (k, )))
+        for is_exclude, patterns in enumerate((include, exclude)):
+            # Nested fields need filtering on deeper level
+            matches = not is_exclude and NESTED_RGX.match(v) \
+                      or any(r.match(trailstr) for _, r in patterns)
+            if patterns and (not matches if is_exclude else matches):
+                result[k] = v
+            elif patterns and is_exclude and matches:
+                result.pop(k, None)
+            if include and exclude and k not in result:  # Failing to include takes precedence
+                break  # for is_exclude
+    return result
+
+
 def format_message_value(msg, name, value):
     """
     Returns a message attribute value as string.
@@ -1146,12 +1172,13 @@ __all___ = [
     "ROS_COMMON_TYPES", "ROS_FAMILY", "ROS_NUMERIC_TYPES", "ROS_STRING_TYPES", "ROS_TIME_CLASSES",
     "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "BaseBag", "TypeMeta",
     "calculate_definition_hash", "canonical", "create_publisher", "create_subscriber",
-    "deserialize_message", "dict_to_message", "format_message_value", "get_alias_type",
-    "get_message_class", "get_message_definition", "get_message_fields", "get_message_type",
-    "get_message_type_hash", "get_message_value", "get_ros_time_category", "get_rostime",
-    "get_topic_types", "get_type_alias", "init_node", "is_ros_message", "is_ros_time",
-    "iter_message_fields", "make_bag_time", "make_duration", "make_live_time", "make_message_hash",
-    "make_time", "message_to_dict", "parse_definition_fields", "parse_definition_subtypes",
-    "scalar", "deserialize_message", "set_message_value", "shutdown_node", "time_message",
-    "to_datetime", "to_decimal", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "deserialize_message", "dict_to_message", "filter_fields", "format_message_value",
+    "get_alias_type", "get_message_class", "get_message_definition", "get_message_fields",
+    "get_message_type", "get_message_type_hash", "get_message_value", "get_ros_time_category",
+    "get_rostime", "get_topic_types", "get_type_alias", "init_node", "is_ros_message",
+    "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration", "make_live_time",
+    "make_message_hash", "make_time", "message_to_dict", "parse_definition_fields",
+    "parse_definition_subtypes", "scalar", "deserialize_message", "set_message_value",
+    "shutdown_node", "time_message", "to_datetime", "to_decimal", "to_nsec", "to_sec",
+    "to_sec_nsec", "to_time", "validate",
 ]

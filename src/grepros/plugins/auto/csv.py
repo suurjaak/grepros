@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    26.06.2023
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -156,7 +156,7 @@ class CsvSink(Sink):
         """
         prints, noprints = self._patterns["print"], self._patterns["noprint"]
         fieldmap, identity = api.get_message_fields(msg), lambda x: x
-        fieldmap = common.filter_fields(fieldmap, top, include=prints, exclude=noprints)
+        fieldmap = api.filter_fields(fieldmap, top, include=prints, exclude=noprints)
         for k, t in fieldmap.items() if fieldmap != msg else ():
             v, path, baset = api.get_message_value(msg, k, t), top + (k, ), api.scalar(t)
             is_sublist = isinstance(v, (list, tuple)) and baset not in api.ROS_BUILTIN_TYPES

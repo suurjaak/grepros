@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    29.06.2023
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -397,7 +397,7 @@ class Scanner(object):
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
             fieldmap = fieldmap0 = api.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
-                fieldmap = common.filter_fields(fieldmap, top, include=selects, exclude=noselects)
+                fieldmap = api.filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
                 v, path = api.get_message_value(obj, k, t), top + (k, )
                 is_collection = isinstance(v, (list, tuple))

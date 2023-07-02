@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.0 (2022-06-28)
+1.0.0 (2022-07-02)
 -------------------
 * make grepros conveniently usable as a library
 * add --no-highlight option
@@ -11,6 +11,7 @@ Changelog for package grepros
 * support --emit-field --no-emit-field in CSV and Parquet exports
 * handle all numpy types in ROS2 messages, not only ndarrays
 * avoid raising errors for unknown message types in ROS2 bags if not reading those topics
+* fix grepping and emitting specific messages fields only
 * fix embag reader
 * verify output targets being writable on startup
 * provide connection header in writing ROS1 bag if topic has multiple types

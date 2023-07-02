@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.06.2023
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -261,7 +261,7 @@ class TextSinkMixin(object):
             MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
             vals, fieldmap = [], api.get_message_fields(val)
             prints, noprints = self._patterns["print"], self._patterns["noprint"]
-            fieldmap = common.filter_fields(fieldmap, top, include=prints, exclude=noprints)
+            fieldmap = api.filter_fields(fieldmap, top, include=prints, exclude=noprints)
             for k, t in fieldmap.items():
                 v = self.message_to_yaml(api.get_message_value(val, k, t), top + (k, ), t)
                 if not v or MATCHED_ONLY and MatchMarkers.START not in v:

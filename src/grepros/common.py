@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.06.2023
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -706,30 +706,6 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     return result
 
 
-def filter_fields(fieldmap, top=(), include=(), exclude=()):
-    """
-    Returns fieldmap filtered by include and exclude patterns.
-
-    @param   fieldmap  {field name: field type name}
-    @param   top       parent path as (rootattr, ..)
-    @param   include   [((nested, path), re.Pattern())] to require in parent path
-    @param   exclude   [((nested, path), re.Pattern())] to reject in parent path
-    """
-    result = type(fieldmap)() if include or exclude else fieldmap
-    for k, v in fieldmap.items() if not result else ():
-        trail, trailstr = top + (k, ), ".".join(top + (k, ))
-        for is_exclude, patterns in enumerate((include, exclude)):
-            matches = any(p[:len(trail)] == trail[:len(p)] or r.match(trailstr)
-                          for p, r in patterns)  # Match by beginning or wildcard pattern
-            if patterns and (not matches if is_exclude else matches):
-                result[k] = v
-            elif patterns and is_exclude and matches:
-                result.pop(k, None)
-            if include and exclude and k not in result:  # Failing to include takes precedence
-                break  # for is_exclude
-    return result
-
-
 def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
     """
     Yields filenames from current directory or given paths.
@@ -1078,7 +1054,7 @@ def wildcard_to_regex(text, end=False):
 
 __all__ = [
     "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
-    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "filter_fields", "find_files",
+    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
     "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
     "parse_datetime", "plural", "unique_path", "verify_io", "wildcard_to_regex",
