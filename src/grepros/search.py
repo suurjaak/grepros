@@ -426,8 +426,7 @@ class Scanner(object):
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 
-        do_highlight = self._highlight and not self.sink
-        WRAPS = self.args.MATCH_WRAPPER if do_highlight else \
+        WRAPS = [] if not self._highlight else self.args.MATCH_WRAPPER if not self.sink else \
                 (common.MatchMarkers.START, common.MatchMarkers.END)
         WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
         WRAPS = ((WRAPS or [""]) * 2)[:2]
@@ -435,7 +434,7 @@ class Scanner(object):
         result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
         process_message(result)
         yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
-        return (result if do_highlight else msg) if yes else None
+        return (result if self._highlight else msg) if yes else None
 
 
 __all__ = ["Scanner"]
