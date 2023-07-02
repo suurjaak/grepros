@@ -865,6 +865,7 @@ def structcopy(value):
     COLLECTIONS = (dict, list, set, tuple)
     memo = {}
     def collect(x):  # Walk structure and collect objects to skip copying
+        if isinstance(x, argparse.Namespace): x = vars(x)
         if not isinstance(x, COLLECTIONS): return memo.update([(id(x), x)])
         for y in sum(map(list, x.items()), []) if isinstance(x, dict) else x: collect(y)
     collect(value)
