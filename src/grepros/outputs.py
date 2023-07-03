@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.07.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -667,7 +667,7 @@ class MultiSink(Sink):
         self.sinks = [cls(args) for flag, cls in self.FLAG_CLASSES.items()
                       if getattr(args, flag, None)] if not sinks else list(sinks)
 
-        for dumpopts in args.WRITE if not sinks else ():
+        for dumpopts in getattr(args, "WRITE", []) if not sinks else ():
             kwargs = dict(x.split("=", 1) for x in dumpopts[1:] if isinstance(x, common.TEXT_TYPES))
             kwargs.update(kv for x in dumpopts[1:] if isinstance(x, dict) for kv in x.items())
             target, cls = dumpopts[0], self.FORMAT_CLASSES.get(kwargs.pop("format", None))
