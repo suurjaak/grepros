@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    28.06.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -18,6 +18,7 @@ import datetime
 import os
 import sys
 
+from .. import __title__
 from .. import api
 from .. import common
 from .. common import ConsolePrinter, plural
@@ -222,20 +223,20 @@ class SqlSink(Sink, SqlMixin):
 
     def _write_header(self):
         """Writes header to current file."""
-        args = {
-            "dialect":  self._dialect,
-            "args":      " ".join(sys.argv[1:]),
-            "source":   "\n\n".join("-- Source:\n" +
-                                    "\n".join("-- " + x for x in s.strip().splitlines())
-                                    for s in self._batch_metas),
-            "dt":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        }
+        values = {"title":    __title__,
+                  "dialect":  self._dialect,
+                  "args":     " ".join(sys.argv[1:]),
+                  "source":   "\n\n".join("-- Source:\n" +
+                                          "\n".join("-- " + x for x in s.strip().splitlines())
+                                          for s in self._batch_metas),
+                  "dt":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), }
         self._file.write((
             "-- SQL dialect: {dialect}.\n"
-            "-- Written by grepros on {dt}.\n"
-            "-- Command: grepros {args}.\n"
-            "\n{source}\n\n"
-        ).format(**args).encode("utf-8"))
+            "-- Written by {title} on {dt}.\n"
+        ).format(**values).encode("utf-8"))
+        if values["args"] and not ConsolePrinter.APIMODE:
+            self._file.write("-- Command: grepros {args}.\n".format(**values).encode("utf-8"))
+        self._file.write("\n{source}\n\n".format(**values).encode("utf-8"))
 
 
     def _write_entity(self, category, item):

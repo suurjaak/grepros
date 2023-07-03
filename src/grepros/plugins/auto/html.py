@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.06.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -175,8 +175,9 @@ class HtmlSink(Sink, TextSinkMixin):
         try:
             with open(self._template_path, "r") as f: tpl = f.read()
             template = step.Template(tpl, escape=True, strip=False)
-            ns = dict(source=self.source, sink=self, args=["grepros"] + sys.argv[1:],
-                      timeline=not self.args.ORDERBY, messages=self._produce())
+            ns = dict(source=self.source, sink=self, messages=self._produce(),
+                      args=None, timeline=not self.args.ORDERBY)
+            if not ConsolePrinter.APIMODE: ns.update(args=sys.argv[1:])
             common.makedirs(os.path.dirname(self.args.WRITE))
             if not self._overwrite:
                 self._filename = common.unique_path(self.args.WRITE, empty_ok=True)

@@ -4,7 +4,7 @@ HTML export template.
 
 @param   source     inputs.Source instance
 @param   sink       inputs.HtmlSink instance
-@param   args       list of command-line arguments
+@param   args       list of command-line arguments, if any
 @param   timeline   whether to create timeline
 @param   messages   iterable yielding (topic, msg, stamp, match, index)
 
@@ -14,11 +14,11 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    22.03.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
-from grepros import __version__, api
+from grepros import __title__, __version__, api
 
 dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 sourcemeta = source.get_meta()
@@ -27,8 +27,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 <!DOCTYPE HTML><html lang="">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-  <meta name="generator" content="grepros {{ __version__ }}" />
-  <title>grepros {{ subtitle }} {{ dt }}</title>
+  <meta name="generator" content="{{ __title__ }} {{ __version__ }}" />
+  <title>{{ __title__ }} {{ subtitle }} {{ dt }}</title>
   <style>
     body {
       background:             #300A24;
@@ -975,8 +975,12 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 <body>
 
 <div id="header">
+%if source.format_meta().strip() or isdef("args") and args:
   <div id="meta">{{ source.format_meta().strip() }}
-Command: {{ " ".join(args) }}
+    %if isdef("args") and args:
+Command: {{ __title__ }} {{ " ".join(args) }}
+    %endif
+%endif
   </div>
   <div id="topics">
     <span title="Toggle contents" onclick="return toggleClass('toc', 'collapsed', document.getElementById('toggle_topics'))">
@@ -1022,7 +1026,7 @@ Command: {{ " ".join(args) }}
 </div>
 
 
-<div id="footer">Written by grepros on {{ dt }}.</div>
+<div id="footer">Written by {{ __title__ }} on {{ dt }}.</div>
 
 
 <div id="content">
