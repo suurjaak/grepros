@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    28.06.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -853,8 +853,8 @@ def get_topic_types():
     result = []
     myname, myns = node.get_name(), node.get_namespace()
     mytypes = {}  # {topic: [typename, ]}
-    for topic, typename in node.get_publisher_names_and_types_by_node(myname, myns):
-        mytypes.setdefault(topic, []).append(typename)
+    for topic, typenames in node.get_publisher_names_and_types_by_node(myname, myns):
+        mytypes.setdefault(topic, []).extend(typenames)
     for t in ("/parameter_events", "/rosout"):  # Published by all nodes
         mytypes.pop(t, None)
     for topic, typenames in node.get_topic_names_and_types():  # [(topicname, [typename, ])]
