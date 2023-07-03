@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    26.06.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -457,7 +457,7 @@ def init_node(name):
         master = rospy.client.get_master()
         available = None
         while not available:
-            try: uri = master.getUri()
+            try: uri = master.getUri()[-1]
             except Exception:
                 if available is None:
                     ConsolePrinter.log(logging.ERROR,
