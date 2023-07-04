@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.06.2023
+@modified    04.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -23,7 +23,7 @@ import sys
 
 import six
 
-from . import __version__, __version_date__, api, inputs, outputs, search
+from . import __title__, __version__, __version_date__, api, inputs, outputs, search
 from . common import ConsolePrinter, MatchMarkers, parse_datetime
 from . import plugins
 
@@ -41,41 +41,41 @@ target matches if any value matches.
 Example usage:
 
 Search for "my text" in all bags under current directory and subdirectories:
-    grepros -r "my text"
+    %(title)s -r "my text"
 
 Print 30 lines of the first message from each live ROS topic:
-    grepros --max-per-topic 1 --lines-per-message 30 --live
+    %(title)s --max-per-topic 1 --lines-per-message 30 --live
 
 Find first message containing "future" (case-sensitive) in my.bag:
-    grepros future -I --max-count 1 --name my.bag
+    %(title)s future -I --max-count 1 --name my.bag
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory, reindexing any unindexed bags:
-    grepros frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
+    %(title)s frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
-    grepros "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
+    %(title)s "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
 
 Find messages with field "key" containing "0xA002",
 in topics ending with "diagnostics", in bags under "/tmp":
-    grepros key=0xA002 --topic *diagnostics --path /tmp
+    %(title)s key=0xA002 --topic *diagnostics --path /tmp
 
 Find diagnostics_msgs messages in bags in current directory,
 containing "navigation" in fields "name" or "message",
 print only header stamp and values:
-    grepros --type diagnostic_msgs/* --select-field name message \\
+    %(title)s --type diagnostic_msgs/* --select-field name message \\
             --emit-field header.stamp status.values -- navigation
 
 Print first message from each lidar topic on host 1.2.3.4, without highlight:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
-    grepros --live --topic *lidar* --max-per-topic 1 --no-highlight
+    %(title)s --live --topic *lidar* --max-per-topic 1 --no-highlight
 
 Export all bag messages to SQLite and Postgres, print only export progress:
-    grepros -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
+    %(title)s -n my.bag --write my.bag.sqlite --no-console-output --no-verbose --progress
 
-    grepros -n my.bag --write postgresql://user@host/dbname \\
+    %(title)s -n my.bag --write postgresql://user@host/dbname \\
             --no-console-output --no-verbose --progress
-    """,
+    """ % dict(title=__title__),
 
     "arguments": [
         dict(args=["PATTERN"], nargs="*", default=[],
@@ -102,8 +102,8 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--version"],
              dest="VERSION", action="version",
-             version="grepros: grep for ROS bag files and live topics, v%s (%s)" %
-                     (__version__, __version_date__),
+             version="%s: grep for ROS bag files and live topics, v%s (%s)" %
+                     (__title__, __version__, __version_date__),
              help="display version information and exit"),
 
         dict(args=["--live"],
@@ -381,6 +381,9 @@ Export all bag messages to SQLite and Postgres, print only export progress:
     ]},
 }
 
+## List of command-line arguments the program was invoked with
+CLI_ARGS = None
+
 
 class HelpFormatter(argparse.RawTextHelpFormatter):
     """RawTextHelpFormatter returning custom metavar for WRITE."""
@@ -424,7 +427,7 @@ def process_args(args):
 
     # Default to printing metadata for publish/write if no console output
     args.VERBOSE = False if args.SKIP_VERBOSE else \
-                   (args.VERBOSE or not args.CONSOLE and not ConsolePrinter.APIMODE)
+                   (args.VERBOSE or not args.CONSOLE and bool(CLI_ARGS))
 
     # Show progress bar only if no console output
     args.PROGRESS = args.PROGRESS and not args.CONSOLE
@@ -516,22 +519,24 @@ def preload_plugins():
                                    "(default false)")
 
     ])
-    args = make_parser().parse_known_args()[0] if "--plugin" in sys.argv else None
+    args = make_parser().parse_known_args(CLI_ARGS)[0] if "--plugin" in CLI_ARGS else None
     try: plugins.init(process_args(args) if args else None)
     except ImportWarning: sys.exit(1)
 
 
 def run():
     """Parses command-line arguments and runs search."""
+    global CLI_ARGS
+    CLI_ARGS = sys.argv[1:]
     MatchMarkers.populate("%08x" % random.randint(1, 1E9))
     preload_plugins()
     argparser = make_parser()
-    if len(sys.argv) < 2:
+    if not CLI_ARGS:
         argparser.print_usage()
         return
 
     atexit.register(flush_stdout)
-    args, _ = argparser.parse_known_args()
+    args, _ = argparser.parse_known_args(CLI_ARGS)
     if args.HELP:
         argparser.print_help()
         return
@@ -575,7 +580,7 @@ def run():
 
 
 __all__ = [
-    "ARGUMENTS", "HelpFormatter",
+    "ARGUMENTS", "CLI_ARGS", "HelpFormatter",
     "make_parser", "process_args", "validate_args", "flush_stdout", "preload_plugins", "run",
 ]
 

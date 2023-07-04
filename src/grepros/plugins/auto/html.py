@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    03.07.2023
+@modified    04.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -17,11 +17,11 @@ import os
 try: import queue  # Py3
 except ImportError: import Queue as queue  # Py2
 import re
-import sys
 import threading
 
 from ... import api
 from ... import common
+from ... import main
 from ... common import ConsolePrinter, MatchMarkers, plural
 from ... outputs import Sink, TextSinkMixin
 from ... vendor import step
@@ -177,7 +177,7 @@ class HtmlSink(Sink, TextSinkMixin):
             template = step.Template(tpl, escape=True, strip=False)
             ns = dict(source=self.source, sink=self, messages=self._produce(),
                       args=None, timeline=not self.args.ORDERBY)
-            if not ConsolePrinter.APIMODE: ns.update(args=sys.argv[1:])
+            if main.CLI_ARGS: ns.update(args=main.CLI_ARGS)
             common.makedirs(os.path.dirname(self.args.WRITE))
             if not self._overwrite:
                 self._filename = common.unique_path(self.args.WRITE, empty_ok=True)

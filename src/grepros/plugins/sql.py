@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    03.07.2023
+@modified    04.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -16,11 +16,11 @@ import atexit
 import collections
 import datetime
 import os
-import sys
 
 from .. import __title__
 from .. import api
 from .. import common
+from .. import main
 from .. common import ConsolePrinter, plural
 from .. outputs import Sink
 from . auto.sqlbase import SqlMixin
@@ -225,7 +225,7 @@ class SqlSink(Sink, SqlMixin):
         """Writes header to current file."""
         values = {"title":    __title__,
                   "dialect":  self._dialect,
-                  "args":     " ".join(sys.argv[1:]),
+                  "args":     " ".join(main.CLI_ARGS or []),
                   "source":   "\n\n".join("-- Source:\n" +
                                           "\n".join("-- " + x for x in s.strip().splitlines())
                                           for s in self._batch_metas),
@@ -234,7 +234,7 @@ class SqlSink(Sink, SqlMixin):
             "-- SQL dialect: {dialect}.\n"
             "-- Written by {title} on {dt}.\n"
         ).format(**values).encode("utf-8"))
-        if values["args"] and not ConsolePrinter.APIMODE:
+        if values["args"]:
             self._file.write("-- Command: grepros {args}.\n".format(**values).encode("utf-8"))
         self._file.write("\n{source}\n\n".format(**values).encode("utf-8"))
 
