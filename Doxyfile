@@ -140,9 +140,9 @@ EXCLUDE                = test/ doc/ .dev
 
 EXCLUDE_SYMLINKS       = YES
 
-EXCLUDE_PATTERNS       = CMakeLists.txt setup.py */vendor */__*__.py
+EXCLUDE_PATTERNS       = CMakeLists.txt setup.py */vendor __main__.py
 
-EXCLUDE_SYMBOLS        = curses genpy logger mcap_ros numpy pandas psycopg2 pyarrow zstandard _inited
+EXCLUDE_SYMBOLS        = curses genpy logger mcap_ros numpy pandas psycopg2 pyarrow zstandard _a* _b* _c* _d* _e* _f* _g* _h* _i* _j* _k* _l* _m* _n* _o* _p* _q* _r* _s* _t* _u* _v* _w* _x* _y* _z* _A* _B* _C* _D* _E* _F* _G* _H* _I* _J* _K* _L* _M* _N* _O* _P* _Q* _R* _S* _T* _U* _V* _W* _X* _Y* _Z* 
 
 INPUT_FILTER           =
 
