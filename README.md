@@ -635,41 +635,53 @@ optional arguments:
   -h, --help            show this help message and exit
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
-  -v, --invert-match    select non-matching messages
+  -v, --invert-match    select messages not matching PATTERN
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
-  --write TARGET [format=bag|csv|html|postgres|sqlite] [KEY=VALUE ...]
+  --write TARGET [format=bag|csv|html|mcap|parquet|postgres|sql|sqlite] [KEY=VALUE ...]
                         write matched messages to specified output,
                         format is autodetected from TARGET if not specified.
                         Bag or database will be appended to if it already exists.
                         Keyword arguments are given to output writer.
+                          column-NAME=ROSTYPE:VALUE
+                                                   additional column to add in Parquet output,
+                                                   like column-bag_hash=string:26dfba2c
                           commit-interval=NUM      transaction size for Postgres/SQLite output
                                                    (default 1000, 0 is autocommit)
                           dialect-file=path/to/dialects.yaml
                                                    load additional SQL dialect options
-                                                   for Postgres/SQLite output
+                                                   for Postgres/SQL/SQLite output
                                                    from a YAML or JSON file
-                          idgenerator=CALLABLE     callable or iterable for producing message IDs
+                          dialect=clickhouse|postgres|sqlite
+                                                   use specified SQL dialect in SQL output
+                                                   (default "sqlite")
+                          idgenerator=CALLABLE     callable or iterable for producing message IDs 
                                                    in Parquet output, like 'uuid.uuid4' or 'itertools.count()';
-                                                   by default only nesting uses IDs
+                                                   nesting uses UUID values by default
                           message-yaml=true|false  whether to populate table field messages.yaml
                                                    in SQLite output (default true)
                           nesting=array|all        create tables for nested message types
-                                                   in Parquet/Postgres/SQLite output,
-                                                   only for arrays if "array"
+                                                   in Parquet/Postgres/SQL/SQLite output,
+                                                   only for arrays if "array" 
                                                    else for any nested types
-                                                   (array fields in parent will be populated
+                                                   (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
-                          overwrite=true|false     overwrite existing file in bag/CSV/HTML/SQLite output
+                          overwrite=true|false     overwrite existing file 
+                                                   in bag/CSV/HTML/MCAP/Parquet/SQL/SQLite output
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
                           template=/my/path.tpl    custom template to use for HTML output
+                          type-ROSTYPE=ARROWTYPE   custom mapping between ROS and pyarrow type
+                                                   for Parquet output, like type-time="timestamp('ns')"
+                                                   or type-uint8[]="list(uint8())"
+                          writer-ARGNAME=ARGVALUE  additional arguments for Parquet output
+                                                   given to pyarrow.parquet.ParquetWriter
   --plugin PLUGIN [PLUGIN ...]
                         load a Python module or class as plugin
-                        (built-in plugins: grepros.plugins.embag,
-                         grepros.plugins.mcap, grepros.plugins.parquet,
+                        (built-in plugins: grepros.plugins.embag, 
+                         grepros.plugins.mcap, grepros.plugins.parquet, 
                          grepros.plugins.sql)
   --stop-on-error       stop further execution on any error like unknown message type
 
@@ -746,10 +758,9 @@ Output control:
                         message fields to skip in console/CSV/HTML/Parquet output
                         (supports nested.paths and * wildcards)
   -mo, --matched-fields-only
-                        emit only the fields where PATTERNs find a match
-                        in console/HTML output
+                        emit only the fields where PATTERNs find a match in console/HTML output
   -la NUM, --lines-around-match NUM
-                        enut only matched fields and NUM message lines
+                        emit only matched fields and NUM message lines
                         around match in console/HTML output
   -lf NUM, --lines-per-field NUM
                         maximum number of lines to emit per field in console/HTML output
@@ -762,7 +773,7 @@ Output control:
   -lm NUM, --lines-per-message NUM
                         maximum number of lines to emit per message in console/HTML output
   --match-wrapper [STR [STR ...]]
-                        string to wrap around matched values,
+                        string to wrap around matched values in console/HTML output,
                         both sides if one value, start and end if more than one,
                         or no wrapping if zero values
                         (default "**" in colorless output)

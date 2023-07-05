@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.07.2023
+@modified    05.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -513,7 +513,7 @@ def flush_stdout():
 def preload_plugins():
     """Imports and initializes plugins from auto-load folder and from arguments."""
     plugins.add_write_format("bag", outputs.BagSink, "bag", [
-        ("overwrite=true|false",   "overwrite existing file in bag output\n"
+        ("overwrite=true|false",   "overwrite existing file\nin bag output\n"
                                    "instead of appending to if bag or database\n"
                                    "or appending unique counter to file name\n"
                                    "(default false)")
