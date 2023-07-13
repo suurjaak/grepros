@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    18.06.2023
+@modified    13.07.2023
 ------------------------------------------------------------------------------
 """
 import inspect
@@ -382,13 +382,15 @@ class TestLibrary(testbase.TestBase):
                 (dict(write=self._outname),           grepros.BagSink),
                 (dict(write=self.mkfile(".csv")),     grepros.CsvSink),
                 (dict(write=self.mkfile(".html")),    grepros.HtmlSink),
-                (dict(write=self.mkfile(".parquet")), grepros.ParquetSink),
                 (dict(write=self.mkfile(".sql")),     grepros.SqlSink),
                 (dict(write=self.mkfile(".sqlite")),  grepros.SqliteSink),
            ],
         }
         if ".mcap" in api.BAG_EXTENSIONS: FUNC_TESTS[grepros.sink].append(
                 (dict(write=self.mkfile(".mcap")),    grepros.McapSink),
+        )
+        if "parquet" in grepros.MultiSink.FORMAT_CLASSES: FUNC_TESTS[grepros.sink].append(
+                (dict(write=self.mkfile(".parquet")), grepros.ParquetSink),
         )
 
         for func, args in FUNC_TESTS.items():
