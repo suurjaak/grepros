@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    09.06.2023
+@modified    13.07.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -31,9 +31,10 @@ def readfile(path):
 def get_description():
     """Returns package description from README."""
     LINK_RGX = r"\[([^\]]+)\]\(([^\)]+)\)"  # 1: content in [], 2: content in ()
-    linkify = lambda s: "#" + re.sub(r"[^\w -]", "", s).lower().replace(" ", "-")
-    # Unwrap local links like [Page link](#page-link) and [LICENSE.md](LICENSE.md)
-    repl = lambda m: m.group(1 if m.group(2) in (m.group(1), linkify(m.group(1))) else 0)
+    KEEP = ("ftp://", "http://", "https://", "www.")
+    # Unwrap local links like [Page link](#page-link) and [DETAIL.md](doc/DETAIL.md)
+    repl = lambda m: m.group(0 if any(map(m.group(2).startswith, KEEP)) else
+                             1 if m.group(2).startswith("#") else 2)
     return re.sub(LINK_RGX, repl, readfile("README.md"))
 
 def get_version():
