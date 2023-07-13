@@ -102,7 +102,7 @@ Stop after matching a specified number of messages (per each file if bag input):
 </pre>
 
 <p>
-Scan only a specified number of topics (per each file if bag input):
+Read only a specified number of topics (per each file if bag input):
 </p>
 <pre>
 --max-topics 10
@@ -126,7 +126,7 @@ Emit every Nth match in topic:
 <h3 id="filtering">Filtering</h3>
 
 <p>
-Scan specific topics only (supports * wildcards):
+Read specific topics only (supports * wildcards):
 </p>
 <pre>
 -t      *lidar* *ins*
@@ -142,7 +142,7 @@ Skip specific topics (supports * wildcards):
 </pre>
 
 <p>
-Scan specific message types only (supports * wildcards):
+Read specific message types only (supports * wildcards):
 </p>
 <pre>
 -d     *Twist*
@@ -150,7 +150,7 @@ Scan specific message types only (supports * wildcards):
 </pre>
 
 <p>
-Skip specific message types from scanning (supports * wildcards):
+Skip specific message types from reading (supports * wildcards):
 </p>
 <pre>
 -nd       *Twist*
@@ -183,7 +183,7 @@ taking <code>--select-field</code> and <code>--no-select-field</code> into accou
 </pre>
 
 <p>
-Start scanning from a specific timestamp:
+Start reading from a specific timestamp:
 </p>
 <pre>
 -t0          2021-11     <code class="comment"># (using partial ISO datetime)</code>
@@ -193,7 +193,7 @@ Start scanning from a specific timestamp:
 </pre>
 
 <p>
-Stop scanning at a specific timestamp:
+Stop readng at a specific timestamp:
 </p>
 <pre>
 -t1        2021-11     <code class="comment"># (using partial ISO datetime)</code>
@@ -203,7 +203,7 @@ Stop scanning at a specific timestamp:
 </pre>
 
 <p>
-Start scanning from a specific message index in topic:
+Start reading from a specific message index in topic:
 </p>
 <pre>
 -n0           -100  <code class="comment"># (counts back from topic total message count in bag)</code>
@@ -211,7 +211,7 @@ Start scanning from a specific message index in topic:
 </pre>
 
 <p>
-Stop scanning at a specific message index in topic:
+Stop reading at a specific message index in topic:
 </p>
 <pre>
 -n1         -100  <code class="comment"># (counts back from topic total message count in bag)</code>
@@ -219,14 +219,14 @@ Stop scanning at a specific message index in topic:
 </pre>
 
 <p>
-Scan every Nth message in topic:
+Read every Nth message in topic:
 </p>
 <pre>
 --every-nth-message 10  <code class="comment"># (skips 9 messages in topic with each step)</code>
 </pre>
 
 <p>
-Scan messages in topic with timestamps at least N seconds apart:
+Read messages in topic with timestamps at least N seconds apart:
 </p>
 <pre>
 --every-nth-interval 5  <code class="comment"># (samples topic messages no more often than every 5 seconds)</code>

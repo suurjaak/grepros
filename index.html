@@ -32,7 +32,7 @@
       </header>
       <section>
 
-<h2>grep for ROS bag files and live topics</h2>
+<h2>grep for ROS bag files and live topics: read, filter, export.</h2>
 
 <p>Searches through ROS messages and matches any message field value by regular expression patterns or plain text, regardless of field type. Can also look for specific values in specific message fields only.</p>
 
@@ -40,11 +40,15 @@
 
 <p>Supports both ROS1 and ROS2. ROS environment variables need to be set, at least <code>ROS_VERSION</code>.</p>
 
+<p>Supported bag formats: <code>.bag</code> (ROS1), <code>.db3</code> (ROS2), <code>.mcap</code> (ROS1, ROS2).</p>
+
 <p>In ROS1, messages can be grepped even if Python packages for message types are not installed. Using ROS1 live topics requires ROS master to be running.</p>
 
 <p>Using ROS2 requires Python packages for message types to be available in path.</p>
 
 <p>Supports loading custom plugins, mainly for additional output formats.</p>
+
+<p>Usable as a Python library, see <a href="api/">API documentation</a>.</p>
 
 <a href="img/screen.png" rel="lightbox" title="Command-line example"><img src="img/th_screen.png" alt="Command-line example" /></a>
 </p>
@@ -68,10 +72,10 @@ in message type packages and use the correct version of the message type.
 </p>
 
 <p>
-ROS2 does not provide message type definitions, neither in bagfiles nor in live
-topics. Due to this, the message type packages always need to be installed.
-Also, ROS2 does not provide options for generating type classes at run-time,
-and it does not have the concept of a message type hash.
+ROS2 does not provide message type definitions, neither in the .db3 bagfiles
+nor in live topics. Due to this, the message type packages always need to be
+installed. Also, ROS2 does not provide options for generating type classes
+at run-time, and it does not have the concept of a message type hash.
 </p>
 
 <p>
@@ -96,6 +100,15 @@ message type packages, when recording ROS2 bags.
 <p>
 grepros does provide the message type hash itself in ROS2 exports, by calculating
 the ROS2 message type hash on its own from the locally installed type definition.
+</p>
+
+<p>
+The situation in ROS2 with the newer MCAP format is a bit better: at least
+parsed message data can be read from MCAP bags without needing the specific message
+packages installed. However, reading from MCAP bags yields only data structs,
+not usable as ROS messages e.g. for publishing to live topics.
+grepros tries to smooth over this difference by defaulting to locally installed
+message classes if available, with definitions matching message types in bag.
 </p>
 
 

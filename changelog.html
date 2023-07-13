@@ -35,6 +35,33 @@
 <h2>Changelog</h2>
 
 
+<h4>1.0.0 (2023-07-05)</h4>
+<ul>
+  <li>make grepros conveniently usable as a library</li>
+  <li>add --no-highlight option</li>
+  <li>add --stop-on-error option</li>
+  <li>rename options --print-field and --no-print-field to --emit-field and --no-emit-field</li>
+  <li>support --emit-field --no-emit-field in CSV and Parquet exports</li>
+  <li>handle all numpy types in ROS2 messages, not only ndarrays</li>
+  <li>avoid raising errors for unknown message types in ROS2 bags if not reading those topics</li>
+  <li>fix grepping and emitting specific messages fields only</li>
+  <li>fix not skipping live topics published by grepros itself in ROS2</li>
+  <li>fix embag reader</li>
+  <li>verify output targets being writable on startup</li>
+  <li>provide connection header in writing ROS1 bag if topic has multiple types</li>
+  <li>smooth over rosbag bug of ignoring topic and time filters in format v1.2</li>
+  <li>print ROS1 master URI in verbose mode on connecting to live topics</li>
+  <li>raise error on loading Parquet plugin if libraries unavailable</li>
+  <li>support "postgres://" as auto-detected Postgres target in addition to "postgresql://"</li>
+  <li>use bagfile format as last when auto-detecting output format</li>
+  <li>add MCAP bag interface</li>
+  <li>auto-detect MCAP output by file extension</li>
+  <li>add inputs.AppSource and outputs.AppSink</li>
+  <li>add api.deserialize_message() dict_to_message() make_full_typename() time_message() to_time() </li>
+  <li>rename api.get_message_data() to serialize_message()</li>
+  <li>fix api.message_to_dict() giving invalid names for temporal types in ROS2</li>
+</ul>
+
 <h4>0.6.0 (2023-03-30)</h4>
 <ul>
   <li>add nesting=array|all to --write Parquet options</li>

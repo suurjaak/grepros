@@ -96,7 +96,7 @@ print only header stamp and values:
 </p>
 <pre>
 grepros --type diagnostic_msgs/* --select-field name message \
-        --print-field header.stamp status.values -- navigation
+        --emit-field header.stamp status.values -- navigation
 </pre>
 
 <p>
@@ -148,6 +148,10 @@ Input is either from one or more ROS bag files (default), or from live ROS topic
 
 <p>
 Read messages from ROS bag files, by default all in current directory.
+</p>
+
+<p>
+For reading bags in MCAP format, see the <a href="plugins.html#mcap">MCAP plugin</a>.
 </p>
 
 <p>

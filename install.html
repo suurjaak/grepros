@@ -46,7 +46,7 @@ grepros is written in Python, supporting both Python 2 and Python 3.
 </p>
 
 <p>
-Developed and tested under ROS1 noetic and ROS2 foxy,
+Developed and tested under ROS1 Noetic and ROS2 Foxy,
 <br />
 it should also work in later ROS2 versions;
 it <em>may</em> work in earlier ROS1 versions. 
@@ -120,6 +120,7 @@ grepros requires Python 3.8+ or Python 2.7, and the following 3rd-party Python p
 
 <ul>
   <li>pyyaml (<a href="https://pypi.org/project/PyYAML">pypi.org/project/PyYAML</a>)</li>
+  <li>six (<a href="https://pypi.org/project/six">pypi.org/project/six</a>)</li>
   <li>ROS1: rospy, roslib, rosbag, genpy</li>
   <li>ROS2: rclpy, rosidl_parser, rosidl_runtime_py, builtin_interfaces</li>
 </ul>
@@ -165,6 +166,14 @@ Optional, for generating API documentation:
       needs latest master: <code>pip install git+https://github.com/Feneric/doxypypy</code>
   </li>
 </ul>
+
+All dependencies other than rospy/rclpy can be installed with:
+
+<pre>
+pip install pyyaml six zstandard embag psycopg2 pandas pyarrow \
+            mcap mcap_ros1_support mcap_ros2_support \
+            git+https://github.com/Feneric/doxypypy
+</pre>
 
 
       </section>

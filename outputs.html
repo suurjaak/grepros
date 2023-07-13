@@ -91,7 +91,7 @@ the pager needs to accept raw control characters (<code>more -f</code> or <code>
 </pre>
 
 <p>
-Write messages to a ROS bag file, the custom <code>.bag</code> format in ROS1
+Write messages to a ROS bag file, the custom <code>.bag</code> format in ROS1,
 or the <code>.db3</code> SQLite database format in ROS2. If the bagfile already exists,
 it is appended to, unless specified to overwrite.
 </p>
@@ -99,6 +99,10 @@ it is appended to, unless specified to overwrite.
 <p>
 Specifying <code>format=bag</code> is not required
 if the filename ends with <code>.bag</code> in ROS1 or <code>.db3</code> in ROS2.
+</p>
+
+<p>
+For writing bags in MCAP format, see the <a href="plugins.html#mcap">MCAP plugin</a>.
 </p>
 
 
@@ -393,14 +397,14 @@ Output only matched fields and specified number of lines around match:
 Output only specific message fields (supports nested.paths and <code>*</code> wildcards):
 </p>
 <pre>
---print-field *data
+--emit-field *data
 </pre>
 
 <p>
 Skip outputting specific message fields (supports nested.paths and <code>*</code> wildcards):
 </p>
 <pre>
---no-print-field header.stamp
+--no-emit-field header.stamp
 </pre>
 
 <p>
