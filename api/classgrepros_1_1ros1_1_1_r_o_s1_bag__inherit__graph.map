@@ -1,0 +1,7 @@
+<map id="ROS1Bag" name="ROS1Bag">
+<area shape="rect" id="Node000001" title="ROS1 bag reader and writer." alt="" coords="30,79,113,104"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,52,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="45,41,67,77,62,80,40,44"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1api_1_1_base_bag.html" title="ROS bag interface." alt="" coords="76,5,155,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="103,44,81,80,76,77,99,41"/>
+</map>

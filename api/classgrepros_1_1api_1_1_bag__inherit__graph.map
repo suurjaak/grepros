@@ -1,0 +1,5 @@
+<map id="Bag" name="Bag">
+<area shape="rect" id="Node000001" title="Bag factory metaclass." alt="" coords="21,79,68,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_base_bag.html" title="ROS bag interface." alt="" coords="5,5,84,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="47,44,47,79,42,79,42,44"/>
+</map>

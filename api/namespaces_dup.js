@@ -1,12 +1,5 @@
 var namespaces_dup =
 [
-    [ "Command-line Scripts", "index.html#autotoc_md0", null ],
-    [ "Plugins Interface", "index.html#autotoc_md1", [
-      [ "Auto-loaded plugins", "index.html#autotoc_md2", null ],
-      [ "Explicitly loaded plugins", "index.html#autotoc_md3", null ]
-    ] ],
-    [ "a", "namespacea.html", null ],
-    [ "b", "namespaceb.html", null ],
-    [ "generate_msgs", "namespacegenerate__msgs.html", null ],
+    [ "generate_msgs", "namespacegenerate__msgs.html", "namespacegenerate__msgs" ],
     [ "grepros", "namespacegrepros.html", "namespacegrepros" ]
 ];

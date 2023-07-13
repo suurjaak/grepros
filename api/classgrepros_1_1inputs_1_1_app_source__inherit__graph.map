@@ -1,0 +1,7 @@
+<map id="AppSource" name="AppSource">
+<area shape="rect" id="Node000001" title="Produces messages from iterable or pushed data." alt="" coords="52,79,143,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1inputs_1_1_source.html" title="Message producer base class." alt="" coords="5,5,72,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,40,90,77,86,80,55,43"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1inputs_1_1_condition_mixin.html" title="Provides topic conditions evaluation." alt="" coords="96,5,216,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="140,43,109,80,105,77,136,40"/>
+</map>

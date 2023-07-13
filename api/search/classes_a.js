@@ -1,9 +1,6 @@
 var searchData=
 [
-  ['searcher_387',['Searcher',['../classgrepros_1_1search_1_1_searcher.html',1,'grepros::search']]],
-  ['sinkbase_388',['SinkBase',['../classgrepros_1_1outputs_1_1_sink_base.html',1,'grepros::outputs']]],
-  ['sourcebase_389',['SourceBase',['../classgrepros_1_1inputs_1_1_source_base.html',1,'grepros::inputs']]],
-  ['sqlitesink_390',['SqliteSink',['../classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html',1,'grepros::plugins::auto::sqlite']]],
-  ['sqlmixin_391',['SqlMixin',['../classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html',1,'grepros::plugins::auto::sqlbase']]],
-  ['sqlsink_392',['SqlSink',['../classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html',1,'grepros::plugins::sql']]]
+  ['parquetsink_0',['ParquetSink',['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html',1,'grepros::plugins::parquet']]],
+  ['postgressink_1',['PostgresSink',['../classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html',1,'grepros::plugins::auto::postgres']]],
+  ['progressbar_2',['ProgressBar',['../classgrepros_1_1common_1_1_progress_bar.html',1,'grepros::common']]]
 ];

@@ -1,6 +1,9 @@
 <map id="SqliteSink" name="SqliteSink">
-<area shape="rect" id="node1" title="Writes messages to an SQLite database." alt="" coords="55,155,142,181"/>
-<area shape="rect" id="node2" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_data_sink_base.html" title="Base class for writing messages to a database." alt="" coords="42,80,155,107"/>
-<area shape="rect" id="node3" href="$classgrepros_1_1outputs_1_1_sink_base.html" title="Output base class." alt="" coords="5,5,88,32"/>
-<area shape="rect" id="node4" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title="Base class for producing SQL for topics and messages." alt="" coords="113,5,191,32"/>
+<area shape="rect" id="Node000001" title="Writes messages to an SQLite database." alt="" coords="31,152,118,177"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html" title="Base class for writing messages to a database." alt="" coords="18,79,131,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,118,77,152,72,152,72,118"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="47,41,70,77,65,80,43,44"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title="Base class for producing SQL for topics and messages." alt="" coords="81,5,159,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="107,44,84,80,80,77,103,41"/>
 </map>

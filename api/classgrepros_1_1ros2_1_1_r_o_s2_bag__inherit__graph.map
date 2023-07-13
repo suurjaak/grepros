@@ -1,0 +1,5 @@
+<map id="ROS2Bag" name="ROS2Bag">
+<area shape="rect" id="Node000001" title="ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface." alt="" coords="5,79,88,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_base_bag.html" title="ROS bag interface." alt="" coords="7,5,86,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="49,44,49,79,44,79,44,44"/>
+</map>

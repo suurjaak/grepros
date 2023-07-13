@@ -1,0 +1,5 @@
+<map id="EmbagReader" name="EmbagReader">
+<area shape="rect" id="Node000001" title="embag reader interface, providing most of rosbag.Bag interface." alt="" coords="5,79,119,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_base_bag.html" title="ROS bag interface." alt="" coords="23,5,101,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="65,44,65,79,59,79,59,44"/>
+</map>

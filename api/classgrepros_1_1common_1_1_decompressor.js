@@ -1,9 +1,9 @@
 var classgrepros_1_1common_1_1_decompressor =
 [
-    [ "decompress", "classgrepros_1_1common_1_1_decompressor.html#adb5bece19722ba188d4b205a7de1cf24", null ],
-    [ "is_compressed", "classgrepros_1_1common_1_1_decompressor.html#a076bb39cd43c5e24718d58cfef776520", null ],
-    [ "make_decompressed_name", "classgrepros_1_1common_1_1_decompressor.html#ab10deb1b0b3424fa47b1dcb39809e9b6", null ],
-    [ "validate", "classgrepros_1_1common_1_1_decompressor.html#a389efe91f5934c31d830e1352b5f9c6d", null ],
+    [ "decompress", "classgrepros_1_1common_1_1_decompressor.html#a0cfcbc1743b700cc433dd5d3f8d44db0", null ],
+    [ "is_compressed", "classgrepros_1_1common_1_1_decompressor.html#a4e86856299d41afaf3b0e4f4e433fe4f", null ],
+    [ "make_decompressed_name", "classgrepros_1_1common_1_1_decompressor.html#aa8ae2dd4843b1f85cfcc4350c52dc934", null ],
+    [ "validate", "classgrepros_1_1common_1_1_decompressor.html#ab5417f324cfda877a9061d192ef90b49", null ],
     [ "EXTENSIONS", "classgrepros_1_1common_1_1_decompressor.html#ad2788c37d3aed499aa410f6d17e2f4b9", null ],
-    [ "ZSTD_MAGIC", "classgrepros_1_1common_1_1_decompressor.html#a69348d5743a47cc864a5ea5a93349d63", null ]
+    [ "ZSTD_MAGIC", "classgrepros_1_1common_1_1_decompressor.html#adaa355ae6afede1c40ec9ad35775d21d", null ]
 ];

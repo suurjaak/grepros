@@ -1,0 +1,13 @@
+<map id="BaseBag" name="BaseBag">
+<area shape="rect" id="Node000001" title="ROS bag interface." alt="" coords="216,5,295,31"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_bag.html" title="Bag factory metaclass." alt="" coords="5,79,52,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="206,37,64,81,53,85,51,80,63,76,204,32"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html" title="embag reader interface, providing most of rosbag.Bag interface." alt="" coords="76,79,189,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="225,40,154,81,151,76,223,35"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html" title="MCAP bag interface, providing most of rosbag.Bag interface." alt="" coords="214,79,297,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="258,44,258,79,253,79,253,44"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1ros1_1_1_r_o_s1_bag.html" title="ROS1 bag reader and writer." alt="" coords="321,79,403,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="285,36,346,76,343,81,282,40"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1ros2_1_1_r_o_s2_bag.html" title="ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface." alt="" coords="427,79,510,104"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="303,32,435,76,433,81,302,37"/>
+</map>

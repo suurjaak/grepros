@@ -1,14 +1,15 @@
 var searchData=
 [
-  ['chunk_5fsize_597',['CHUNK_SIZE',['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a283e3475cc530e33d9cfa0c7723813cb',1,'grepros::plugins::parquet::ParquetSink']]],
-  ['color_598',['COLOR',['../classgrepros_1_1common_1_1_console_printer.html#af90824509586333cf45ce757d2711ce3',1,'grepros::common::ConsolePrinter']]],
-  ['commit_5finterval_599',['COMMIT_INTERVAL',['../classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_data_sink_base.html#ad039d9418885a07152e08e681c46bbcb',1,'grepros.plugins.auto.dbbase.DataSinkBase.COMMIT_INTERVAL()'],['../classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_data_sink_base.html#aca2f2e27f215cb15d19bb340c543f11c',1,'grepros.plugins.auto.dbbase.DataSinkBase.COMMIT_INTERVAL()']]],
-  ['common_5ftypes_600',['COMMON_TYPES',['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a38b63964f48cdcadfc369eccf2721c14',1,'grepros::plugins::parquet::ParquetSink']]],
-  ['context_601',['context',['../namespacegrepros_1_1ros2.html#a261f9f58ccbeaa962c4e675e4212c9cc',1,'grepros::ros2']]],
-  ['context_5fprefix_5fsep_602',['CONTEXT_PREFIX_SEP',['../classgrepros_1_1outputs_1_1_console_sink.html#a2269f517200b55b231916944c8eff52f',1,'grepros::outputs::ConsoleSink']]],
-  ['create_5fsql_603',['CREATE_SQL',['../classgrepros_1_1ros2_1_1_bag.html#a813f579da2c64cffb0f9648bbab7863d',1,'grepros::ros2::Bag']]],
-  ['curses_604',['curses',['../namespacegrepros_1_1common.html#ad049e9a9e637920340bda40f4ca0bc21',1,'grepros::common']]],
-  ['custom_5flens_605',['custom_lens',['../classgrepros_1_1common_1_1_text_wrapper.html#aa6a15ee24d54eae658b86b0257188f91',1,'grepros::common::TextWrapper']]],
-  ['custom_5frgx_606',['custom_rgx',['../classgrepros_1_1common_1_1_text_wrapper.html#a815024d0c2db3754f20d8f1caebb45df',1,'grepros::common::TextWrapper']]],
-  ['customs_607',['customs',['../classgrepros_1_1common_1_1_text_wrapper.html#a146beaa715edc2d5a95859b066a631aa',1,'grepros::common::TextWrapper']]]
+  ['chunk_5fsize_0',['CHUNK_SIZE',['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a283e3475cc530e33d9cfa0c7723813cb',1,'grepros::plugins::parquet::ParquetSink']]],
+  ['cli_5fargs_1',['CLI_ARGS',['../namespacegrepros_1_1main.html#a58a99e750be9fde3f8b342af1b3d08df',1,'grepros::main']]],
+  ['close_2',['close',['../classgrepros_1_1outputs_1_1_bag_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.outputs.BagSink.close'],['../classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.plugins.auto.csv.CsvSink.close'],['../classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.plugins.auto.dbbase.BaseDataSink.close'],['../classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.plugins.auto.html.HtmlSink.close'],['../classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.plugins.mcap.McapSink.close'],['../classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a12e1f53c847d07ce9e58df470087c0fa',1,'grepros.plugins.sql.SqlSink.close']]],
+  ['color_3',['COLOR',['../classgrepros_1_1common_1_1_console_printer.html#af90824509586333cf45ce757d2711ce3',1,'grepros::common::ConsolePrinter']]],
+  ['commit_5finterval_4',['COMMIT_INTERVAL',['../classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#ad039d9418885a07152e08e681c46bbcb',1,'grepros.plugins.auto.dbbase.BaseDataSink.COMMIT_INTERVAL'],['../classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#aca2f2e27f215cb15d19bb340c543f11c',1,'grepros.plugins.auto.dbbase.BaseDataSink.COMMIT_INTERVAL']]],
+  ['common_5ftypes_5',['COMMON_TYPES',['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a69f0c5e3f44fc3a6e76857a5ce1ed57a',1,'grepros.plugins.parquet.ParquetSink.COMMON_TYPES'],['../classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#ace60196b318ae18f9d7aaebf58047c94',1,'grepros.plugins.parquet.ParquetSink.COMMON_TYPES']]],
+  ['context_6',['context',['../namespacegrepros_1_1ros2.html#a261f9f58ccbeaa962c4e675e4212c9cc',1,'grepros::ros2']]],
+  ['context_5fprefix_5fsep_7',['CONTEXT_PREFIX_SEP',['../classgrepros_1_1outputs_1_1_console_sink.html#a1d57f80faeb7ae105eac686b24f69f25',1,'grepros::outputs::ConsoleSink']]],
+  ['create_5fsql_8',['CREATE_SQL',['../classgrepros_1_1ros2_1_1_r_o_s2_bag.html#aef521a4e950862ce2962c34a9aaa9537',1,'grepros.ros2.ROS2Bag.CREATE_SQL'],['../classgrepros_1_1ros2_1_1_r_o_s2_bag.html#acec5fd3cff113b05bab609a2c1e67f16',1,'grepros.ros2.ROS2Bag.CREATE_SQL']]],
+  ['custom_5flens_9',['custom_lens',['../classgrepros_1_1common_1_1_text_wrapper.html#aa6a15ee24d54eae658b86b0257188f91',1,'grepros::common::TextWrapper']]],
+  ['custom_5frgx_10',['custom_rgx',['../classgrepros_1_1common_1_1_text_wrapper.html#a815024d0c2db3754f20d8f1caebb45df',1,'grepros::common::TextWrapper']]],
+  ['customs_11',['customs',['../classgrepros_1_1common_1_1_text_wrapper.html#a146beaa715edc2d5a95859b066a631aa',1,'grepros::common::TextWrapper']]]
 ];

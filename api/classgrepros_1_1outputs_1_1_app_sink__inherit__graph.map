@@ -1,0 +1,5 @@
+<map id="AppSink" name="AppSink">
+<area shape="rect" id="Node000001" title="Provides messages to callback function." alt="" coords="5,79,80,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="17,5,68,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="45,44,45,79,40,79,40,44"/>
+</map>

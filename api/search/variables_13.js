@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['zstandard_714',['zstandard',['../namespacegrepros_1_1common.html#a6dd0e8b6ec356a42afca43d19e31a18a',1,'grepros::common']]],
-  ['zstd_5fmagic_715',['ZSTD_MAGIC',['../classgrepros_1_1common_1_1_decompressor.html#a69348d5743a47cc864a5ea5a93349d63',1,'grepros::common::Decompressor']]]
+  ['zstd_5fmagic_0',['ZSTD_MAGIC',['../classgrepros_1_1common_1_1_decompressor.html#adaa355ae6afede1c40ec9ad35775d21d',1,'grepros::common::Decompressor']]]
 ];

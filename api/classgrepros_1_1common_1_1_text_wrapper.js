@@ -1,10 +1,10 @@
 var classgrepros_1_1common_1_1_text_wrapper =
 [
-    [ "__init__", "classgrepros_1_1common_1_1_text_wrapper.html#aa2946015d9dc1b24300f7bb0439c6adc", null ],
-    [ "reserve_width", "classgrepros_1_1common_1_1_text_wrapper.html#ae02c47a0db2c25ceda38c474a35398a6", null ],
-    [ "strip", "classgrepros_1_1common_1_1_text_wrapper.html#a2354be14036ab63e94d74cd4f5ba1959", null ],
-    [ "strlen", "classgrepros_1_1common_1_1_text_wrapper.html#a691096ca68413d152adb147808c9330f", null ],
-    [ "wrap", "classgrepros_1_1common_1_1_text_wrapper.html#ae79644dfff8aaf480fb1c314b52d48b4", null ],
+    [ "__init__", "classgrepros_1_1common_1_1_text_wrapper.html#af2e08effc880373b353591807c5cdcf8", null ],
+    [ "reserve_width", "classgrepros_1_1common_1_1_text_wrapper.html#a9cbef4155d23d53861bfb64cee75a86b", null ],
+    [ "strip", "classgrepros_1_1common_1_1_text_wrapper.html#a4cf37c7679844282ea497b709b878f30", null ],
+    [ "strlen", "classgrepros_1_1common_1_1_text_wrapper.html#ae084efa20d64215bed791e83ccc61b73", null ],
+    [ "wrap", "classgrepros_1_1common_1_1_text_wrapper.html#a5078c1241ccc4cc24738f5def56dd962", null ],
     [ "break_long_words", "classgrepros_1_1common_1_1_text_wrapper.html#a3f0d44e708e1dd2905c55926eb782465", null ],
     [ "custom_lens", "classgrepros_1_1common_1_1_text_wrapper.html#aa6a15ee24d54eae658b86b0257188f91", null ],
     [ "custom_rgx", "classgrepros_1_1common_1_1_text_wrapper.html#a815024d0c2db3754f20d8f1caebb45df", null ],

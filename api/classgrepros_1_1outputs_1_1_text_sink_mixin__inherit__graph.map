@@ -1,5 +1,7 @@
 <map id="TextSinkMixin" name="TextSinkMixin">
-<area shape="rect" id="node1" title="Provides message formatting as text." alt="" coords="59,5,172,32"/>
-<area shape="rect" id="node2" href="$classgrepros_1_1outputs_1_1_console_sink.html" title="Prints messages to console." alt="" coords="5,80,108,107"/>
-<area shape="rect" id="node3" href="$classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html" title="Writes messages to an HTML file." alt="" coords="133,80,215,107"/>
+<area shape="rect" id="Node000001" title="Provides message formatting as text." alt="" coords="59,5,172,31"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_console_sink.html" title="Prints messages to console." alt="" coords="5,79,108,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,43,68,80,64,77,95,40"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html" title="Writes messages to an HTML file." alt="" coords="133,79,215,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="136,40,167,77,162,80,132,43"/>
 </map>
