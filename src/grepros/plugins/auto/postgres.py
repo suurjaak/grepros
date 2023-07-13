@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sink plugin for dumping messages to a Postgres database.
+Postgres output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.12.2021
-@modified    27.03.2023
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.postgres
@@ -19,16 +19,15 @@ try:
     import psycopg2
     import psycopg2.extensions
     import psycopg2.extras
-    import psycopg2.pool
 except ImportError:
     psycopg2 = None
 
-from ... import rosapi
+from ... import api
 from ... common import ConsolePrinter
-from . dbbase import DataSinkBase, quote
+from . dbbase import BaseDataSink, quote
 
 
-class PostgresSink(DataSinkBase):
+class PostgresSink(BaseDataSink):
     """
     Writes messages to a Postgres database.
 
@@ -77,29 +76,41 @@ class PostgresSink(DataSinkBase):
                               ("_parent_id",   "BIGINT"), ]
 
 
-    def __init__(self, args):
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.WRITE           Postgres connection string postgresql://user@host/db
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single item as the database connection string
+        @param   args.write           Postgres connection string like "postgresql://user@host/db"
+        @param   args.write_options   ```
+                                      {"commit-interval": transaction size (0 is autocommit),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
-        @param   args.META            whether to print metainfo
-        @param   args.VERBOSE         whether to print debug information
+                                      ```
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        super(PostgresSink, self).__init__(args)
+        super(PostgresSink, self).__init__(args, **kwargs)
         self._id_queue = collections.defaultdict(collections.deque)  # {table name: [next ID, ]}
 
 
     def validate(self):
         """
         Returns whether Postgres driver is available,
-        and "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any.
+        and "commit-interval" and "nesting" in args.write_options have valid value, if any,
+        and database is connectable.
         """
-        driver_ok, config_ok = bool(psycopg2), super(PostgresSink, self).validate()
+        if self.valid is not None: return self.valid
+        db_ok, driver_ok, config_ok = False, bool(psycopg2), super(PostgresSink, self).validate()
         if not driver_ok:
             ConsolePrinter.error("psycopg2 not available: cannot write to Postgres.")
-        return driver_ok and config_ok
+        else:
+            try:
+                with self._connect(): db_ok = True
+            except Exception as e:
+                ConsolePrinter.error("Error connecting Postgres: %s", e)
+        self.valid = db_ok and driver_ok and config_ok
+        return self.valid
 
 
     def _init_db(self):
@@ -161,29 +172,29 @@ class PostgresSink(DataSinkBase):
     def _make_column_value(self, value, typename=None):
         """Returns column value suitable for inserting to database."""
         TYPES = self._get_dialect_option("types")
-        plaintype = rosapi.scalar(typename)  # "string<=10" -> "string"
+        plaintype = api.scalar(typename)  # "string<=10" -> "string"
         v = value
         # Common in JSON but disallowed in Postgres
         replace = {float("inf"): None, float("-inf"): None, float("nan"): None}
         if not typename:
             v = psycopg2.extras.Json(v, json.dumps)
         elif isinstance(v, (list, tuple)):
-            scalartype = rosapi.scalar(typename)
-            if scalartype in rosapi.ROS_TIME_TYPES:
+            scalartype = api.scalar(typename)
+            if scalartype in api.ROS_TIME_TYPES:
                 v = [self._convert_time_value(x, scalartype) for x in v]
-            elif scalartype not in rosapi.ROS_BUILTIN_TYPES:
+            elif scalartype not in api.ROS_BUILTIN_TYPES:
                 if self._nesting: v = None
-                else: v = psycopg2.extras.Json([rosapi.message_to_dict(m, replace)
+                else: v = psycopg2.extras.Json([api.message_to_dict(m, replace)
                                                 for m in v], json.dumps)
             elif "BYTEA" in (TYPES.get(typename),
-                             TYPES.get(rosapi.canonical(typename, unbounded=True))):
+                             TYPES.get(api.canonical(typename, unbounded=True))):
                 v = psycopg2.Binary(bytes(bytearray(v)))  # Py2/Py3 compatible
             else:
                 v = list(self._convert_column_value(v, typename))  # Ensure not-tuple for psycopg2
-        elif rosapi.is_ros_time(v):
+        elif api.is_ros_time(v):
             v = self._convert_time_value(v, typename)
-        elif plaintype not in rosapi.ROS_BUILTIN_TYPES:
-            v = psycopg2.extras.Json(rosapi.message_to_dict(v, replace), json.dumps)
+        elif plaintype not in api.ROS_BUILTIN_TYPES:
+            v = psycopg2.extras.Json(api.message_to_dict(v, replace), json.dumps)
         else:
             v = self._convert_column_value(v, plaintype)
         return v
@@ -192,14 +203,14 @@ class PostgresSink(DataSinkBase):
     def _make_db_label(self):
         """Returns formatted label for database."""
         target = self.args.WRITE
-        if not target.startswith("postgresql://"): target = repr(target)
+        if not target.startswith(("postgres://", "postgresql://")): target = repr(target)
         return target
 
 
     @classmethod
     def autodetect(cls, target):
         """Returns true if target is recognizable as a Postgres connection string."""
-        return (target or "").startswith("postgresql://")
+        return (target or "").startswith(("postgres://", "postgresql://"))
 
 
 
@@ -220,3 +231,6 @@ def init(*_, **__):
                                  "(array fields in parent will be populated \n"
                                  " with foreign keys instead of messages as JSON)"),
     ])
+
+
+__all__ = ["PostgresSink", "init"]

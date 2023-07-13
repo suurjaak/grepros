@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CSV output for search results.
+CSV output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,84 +8,111 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    16.03.2022
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
 from __future__ import absolute_import
 import atexit
 import csv
-import io
 import itertools
 import os
-import sys
 
-from ... common import ConsolePrinter, format_bytes, makedirs, plural, unique_path
-from ... import rosapi
-from ... outputs import SinkBase
+import six
+
+from ... import api
+from ... import common
+from ... common import ConsolePrinter, plural
+from ... outputs import Sink
 
 
-class CsvSink(SinkBase):
+class CsvSink(Sink):
     """Writes messages to CSV files, each topic to a separate file."""
 
     ## Auto-detection file extensions
     FILE_EXTENSIONS = (".csv", )
 
-    def __init__(self, args):
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={}, VERBOSE=False)
+
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.WRITE           base name of CSV file to write,
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the base name of CSV files to write
+        @param   args.emit_field      message fields to emit in output if not all
+        @param   args.noemit_field    message fields to skip in output
+        @param   args.write           base name of CSV files to write,
                                       will add topic name like "name.__my__topic.csv" for "/my/topic",
                                       will add counter like "name.__my__topic.2.csv" if exists
-        @param   args.WRITE_OPTIONS   {"overwrite": whether to overwrite existing files
+        @param   args.write_options   {"overwrite": whether to overwrite existing files
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, CsvSink.DEFAULT_ARGS, **kwargs)
         super(CsvSink, self).__init__(args)
         self._filebase      = args.WRITE  # Filename base, will be made unique
         self._files         = {}          # {(topic, typename, typehash): file()}
         self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
+        self._patterns      = {}          # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._close_printed = False
 
+        for key, vals in [("print", args.EMIT_FIELD), ("noprint", args.NOEMIT_FIELD)]:
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
         atexit.register(self.close)
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output file."""
+        if not self.validate(): raise Exception("invalid")
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         data = (v for _, v in self._iter_fields(msg))
-        metadata = [rosapi.to_sec(stamp), rosapi.to_datetime(stamp), rosapi.get_message_type(msg)]
+        metadata = [api.to_sec(stamp), api.to_datetime(stamp), api.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))
-        super(CsvSink, self).emit(topic, index, stamp, msg, match)
+        super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
-        """Returns whether overwrite option is valid."""
+        """Returns whether overwrite option is valid and file base is writable."""
+        if self.valid is not None: return self.valid
         result = True
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        return result
+        if not common.verify_io(self.args.WRITE, "w"):
+            result = False
+        self.valid = result
+        return self.valid
 
     def close(self):
         """Closes output file(s), if any."""
-        names = {k: f.name for k, f in self._files.items()}
-        for k in names:
-            self._files.pop(k).close()
-        self._writers.clear()
-        self._lasttopickey = None
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            sizes = {k: os.path.getsize(n) for k, n in names.items()}
-            ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), format_bytes(sum(sizes.values())))
-            for topickey, name in names.items():
-                ConsolePrinter.debug("- %s (%s, %s)", name,
-                                    format_bytes(sizes[topickey]),
-                                    plural("message", self._counts[topickey]))
-        super(CsvSink, self).close()
+        try:
+            names = {k: f.name for k, f in self._files.items()}
+            for k in names:
+                self._files.pop(k).close()
+            self._writers.clear()
+            self._lasttopickey = None
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                sizes = {k: None for k in names.values()}
+                for k, n in names.items():
+                    try: sizes[k] = os.path.getsize(n)
+                    except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
+                ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
+                                     plural("message", sum(self._counts.values())),
+                                     plural("topic", self._counts),
+                                     common.format_bytes(sum(filter(bool, sizes.values()))))
+                for topickey, name in names.items():
+                    ConsolePrinter.debug("- %s (%s, %s)", name,
+                                         "error getting size" if sizes[topickey] is None else
+                                         common.format_bytes(sizes[topickey]),
+                                         plural("message", self._counts[topickey]))
+            super(CsvSink, self).close()
 
     def _make_writer(self, topic, msg):
         """
@@ -93,9 +120,9 @@ class CsvSink(SinkBase):
 
         File is populated with header if not created during this session.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if not self._lasttopickey:
-            makedirs(os.path.dirname(self._filebase))
+            common.makedirs(os.path.dirname(self._filebase))
         if self._lasttopickey and topickey != self._lasttopickey:
             self._files[self._lasttopickey].close()  # Avoid hitting ulimit
         if topickey not in self._files or self._files[topickey].closed:
@@ -107,8 +134,8 @@ class CsvSink(SinkBase):
                 if self._overwrite:
                     if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
                     open(name, "w").close()
-                else: name = unique_path(name)
-            flags = {"mode": "ab"} if sys.version_info < (3, 0) else {"mode": "a", "newline": ""}
+                else: name = common.unique_path(name)
+            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": ""}
             f = open(name, **flags)
             w = CsvWriter(f)
             if topickey not in self._files:
@@ -127,11 +154,13 @@ class CsvSink(SinkBase):
 
         Lists are returned as ((nested, path, index), value), e.g. (("data", 0), 666).
         """
-        fieldmap, identity = rosapi.get_message_fields(msg), lambda x: x
+        prints, noprints = self._patterns["print"], self._patterns["noprint"]
+        fieldmap, identity = api.get_message_fields(msg), lambda x: x
+        fieldmap = api.filter_fields(fieldmap, top, include=prints, exclude=noprints)
         for k, t in fieldmap.items() if fieldmap != msg else ():
-            v, path, baset = rosapi.get_message_value(msg, k, t), top + (k, ), rosapi.scalar(t)
-            is_sublist = isinstance(v, (list, tuple)) and baset not in rosapi.ROS_BUILTIN_TYPES
-            cast = rosapi.to_sec if baset in rosapi.ROS_TIME_TYPES else identity
+            v, path, baset = api.get_message_value(msg, k, t), top + (k, ), api.scalar(t)
+            is_sublist = isinstance(v, (list, tuple)) and baset not in api.ROS_BUILTIN_TYPES
+            cast = api.to_sec if baset in api.ROS_TIME_TYPES else identity
             if isinstance(v, (list, tuple)) and not is_sublist:
                 for i, lv in enumerate(v):
                     yield path + (i, ), cast(lv)
@@ -139,7 +168,7 @@ class CsvSink(SinkBase):
                 for i, lmsg in enumerate(v):
                     for lp, lv in self._iter_fields(lmsg, path + (i, )):
                         yield lp, lv
-            elif rosapi.is_ros_message(v, ignore_time=True):
+            elif api.is_ros_message(v, ignore_time=True):
                 for mp, mv in self._iter_fields(v, path):
                     yield mp, mv
             else:
@@ -156,13 +185,13 @@ class CsvWriter(object):
         @param   fmtparams  override individual format parameters in dialect
         """
         self._file    = csvfile
-        self._buffer  = io.BytesIO() if sys.version_info < (3, 0) else io.StringIO()
+        self._buffer  = six.BytesIO() if "b" in csvfile.mode else six.StringIO()
         self._writer  = csv.writer(self._buffer, dialect, **dict(fmtparams, lineterminator=""))
         self._dialect = csv.writer(self._buffer, dialect, **fmtparams).dialect
         self._format  = lambda v: int(v) if isinstance(v, bool) else v
-        if sys.version_info < (3, 0):  # Py2, CSV is written in binary mode
+        if six.PY2:  # In Py2, CSV is written in binary mode
             self._format = lambda v: int(v) if isinstance(v, bool) else \
-                                     v.encode("utf-8") if isinstance(v, unicode) else v
+                                     v.encode("utf-8") if isinstance(v, six.text_type) else v
 
     @property
     def dialect(self):
@@ -186,12 +215,13 @@ class CsvWriter(object):
             self._buffer.seek(0); self._buffer.truncate()       # very memory-hungry for huge rows
             return count
 
-        result, chunk, inter, STEP = 0, [], "", 10000
+        result, chunk, inter, DELIM, STEP = 0, [], "", self.dialect.delimiter, 10000
+        if "b" in self._file.mode: DELIM = six.binary_type(self.dialect.delimiter)
         for v in row:
             chunk.append(self._format(v))
             if len(chunk) >= STEP:
                 result += write_columns(chunk, inter)
-                chunk, inter = [], self.dialect.delimiter
+                chunk, inter = [], DELIM
         if chunk: result += write_columns(chunk, inter)
         result += self._file.write(self.dialect.lineterminator)
         return result
@@ -215,3 +245,7 @@ def init(*_, **__):
         ("overwrite=true|false",  "overwrite existing files in CSV output\n"
                                   "instead of appending unique counter (default false)")
     ])
+    plugins.add_output_label("CSV", ["--emit-field", "--no-emit-field"])
+
+
+__all__ = ["CsvSink", "CsvWriter", "init"]

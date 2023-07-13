@@ -8,14 +8,17 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    27.03.2023
+@modified    03.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
 import array
 import collections
+import datetime
+import decimal
 import enum
 import inspect
+import io
 import os
 import re
 import sqlite3
@@ -23,7 +26,10 @@ import threading
 import time
 
 import builtin_interfaces.msg
+try: import numpy
+except Exception: numpy = None
 import rclpy
+import rclpy.clock
 import rclpy.duration
 import rclpy.executors
 import rclpy.serialization
@@ -33,8 +39,8 @@ import rosidl_parser.definition
 import rosidl_runtime_py.utilities
 import yaml
 
-from . common import ConsolePrinter, MatchMarkers, memoize
-from . import rosapi
+from . import api
+from . common import PATH_TYPES, ConsolePrinter, MatchMarkers, memoize
 
 
 ## Bagfile extensions to seek
@@ -51,6 +57,10 @@ ROS_TIME_CLASSES = {rclpy.time.Time:                 "builtin_interfaces/Time",
                     builtin_interfaces.msg.Time:     "builtin_interfaces/Time",
                     rclpy.duration.Duration:         "builtin_interfaces/Duration",
                     builtin_interfaces.msg.Duration: "builtin_interfaces/Duration"}
+
+## ROS2 time/duration types mapped to message types
+ROS_TIME_MESSAGES = {rclpy.time.Time:          builtin_interfaces.msg.Time,
+                     rclpy.duration.Duration:  builtin_interfaces.msg.Duration}
 
 ## Mapping between type aliases and real types, like {"byte": "uint8"}
 ROS_ALIAS_TYPES = {"byte": "uint8", "char": "int8"}
@@ -78,8 +88,11 @@ executor = None
 
 
 
-class Bag(object):
-    """ROS2 bag interface, partially mimicking rosbag.Bag."""
+class ROS2Bag(api.BaseBag):
+    """ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface."""
+
+    ## Whether bag supports reading or writing stream objects, overridden in subclasses
+    STREAMABLE = False
 
     ## ROS2 bag SQLite schema
     CREATE_SQL = """
@@ -110,29 +123,44 @@ PRAGMA synchronous=NORMAL;
         @param   filename  bag file path to open
         @param   mode      file will be overwritten if "w"
         """
+        if not isinstance(filename, PATH_TYPES):
+            raise ValueError("invalid filename %r" % type(filename))
+        if mode not in self.MODES: raise ValueError("invalid mode %r" % mode)
+
         self._db     = None  # sqlite3.Connection instance
         self._mode   = mode
         self._topics = {}    # {(topic, typename): {id, name, type}}
         self._counts = {}    # {(topic, typename, typehash): message count}
         self._qoses  = {}    # {(topic, typename): [{qos profile dict}]}
+        self._iterer = None  # Generator from read_messages() for next()
+        self._ttinfo = None  # Cached result for get_type_and_topic_info()
+        self._filename = str(filename)
+        self._stop_on_error = True
 
-        ## Bagfile path
-        self.filename = filename
+        self._ensure_open(populate=("r" != mode))
 
 
-    def get_message_count(self):
-        """Returns the number of messages in the bag."""
-        self._ensure_open()
-        if self._has_table("messages"):
-            row = self._db.execute("SELECT COUNT(*) AS count FROM messages").fetchone()
-            return row["count"]
+    def get_message_count(self, topic_filters=None):
+        """
+        Returns the number of messages in the bag.
+
+        @param   topic_filters  list of topics or a single topic to filter by, if any
+        """
+        if self._db and self._has_table("messages"):
+            sql, where = "SELECT COUNT(*) AS count FROM messages", ""
+            if topic_filters:
+                self._ensure_topics()
+                topics = topic_filters
+                topics = topics if isinstance(topics, (dict, list, set, tuple)) else [topics]
+                topic_ids = [x["id"] for (topic, _), x in self._topics.items() if topic in topics]
+                where = " WHERE topic_id IN (%s)" % ", ".join(map(str, topic_ids))
+            return self._db.execute(sql + where).fetchone()["count"]
         return None
 
 
     def get_start_time(self):
-        """Returns the start time of the bag, as UNIX timestamp."""
-        self._ensure_open()
-        if self._has_table("messages"):
+        """Returns the start time of the bag, as UNIX timestamp, or None if bag empty."""
+        if self._db and self._has_table("messages"):
             row = self._db.execute("SELECT MIN(timestamp) AS val FROM messages").fetchone()
             if row["val"] is None: return None
             secs, nsecs = divmod(row["val"], 10**9)
@@ -141,9 +169,8 @@ PRAGMA synchronous=NORMAL;
 
 
     def get_end_time(self):
-        """Returns the end time of the bag, as UNIX timestamp."""
-        self._ensure_open()
-        if self._has_table("messages"):
+        """Returns the end time of the bag, as UNIX timestamp, or None if bag empty."""
+        if self._db and self._has_table("messages"):
             row = self._db.execute("SELECT MAX(timestamp) AS val FROM messages").fetchone()
             if row["val"] is None: return None
             secs, nsecs = divmod(row["val"], 10**9)
@@ -151,30 +178,61 @@ PRAGMA synchronous=NORMAL;
         return None
 
 
-    def get_topic_info(self, counts=False):
+    def get_topic_info(self, counts=True, ensure_types=True):
         """
         Returns topic and message type metainfo as {(topic, typename, typehash): count}.
 
-        @param   counts  whether to return actual message counts instead of None
+        Can skip retrieving message counts, as this requires a full table scan.
+        Can skip looking up message type classes, as those might be unavailable in ROS2 environment.
+
+        @param   counts        whether to return actual message counts instead of None
+        @param   ensure_types  whether to look up type classes instead of returning typehash as None
         """
-        self._ensure_open()
-        DEFAULTCOUNT = 0 if counts else None
-        if not self._counts and self._has_table("topics"):
-            for row in self._db.execute("SELECT * FROM topics ORDER BY id").fetchall():
-                topic, typename = row["name"], canonical(row["type"])
-                typehash = get_message_type_hash(typename)
-                self._topics[(topic, typename)] = row
-                self._counts[(topic, typename, typehash)] = DEFAULTCOUNT
-
-        if counts and self._has_table("messages") and not any(self._counts.values()):
-            topickeys = {v["id"]: (t, n, get_message_type_hash(n))
-                         for (t, n), v in self._topics.items()}
-            for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
-                                        "GROUP BY topic_id").fetchall():
-                if row["topic_id"] in topickeys:
-                    self._counts[topickeys[row["topic_id"]]] = row["count"]
-
+        self._ensure_topics()
+        if counts: self._ensure_counts()
+        if ensure_types: self._ensure_types()
         return dict(self._counts)
+
+
+    def get_type_and_topic_info(self, topic_filters=None):
+        """
+        Returns thorough metainfo on topic and message types.
+
+        @param   topic_filters  list of topics or a single topic to filter returned topics-dict by,
+                                if any
+        @return                 TypesAndTopicsTuple(msg_types, topics) namedtuple,
+                                msg_types as dict of {typename: typehash},
+                                topics as a dict of {topic: TopicTuple() namedtuple}.
+        """
+        topics = topic_filters
+        topics = topics if isinstance(topics, (list, set, tuple)) else [topics] if topics else []
+        if self._ttinfo and (not topics or set(topics) == set(t for t, _, _ in self._counts)):
+            return self._ttinfo
+        if self.closed: raise ValueError("I/O operation on closed file.")
+
+        counts = self.get_topic_info()
+        msgtypes = {n: h for t, n, h in counts}
+        topicdict = {}
+
+        def median(vals):
+            """Returns median value from given sorted numbers."""
+            vlen = len(vals)
+            return None if not vlen else vals[vlen // 2] if vlen % 2 else \
+                   float(vals[vlen // 2 - 1] + vals[vlen // 2]) / 2
+
+        for (t, n, _), c in sorted(counts.items(), key=lambda x: x[0][:2]):
+            if topics and t not in topics: continue  # for
+            mymedian = None
+            if c > 1:
+                args = (self._topics[(t, n)]["id"], )
+                cursor = self._db.execute("SELECT timestamp FROM messages WHERE topic_id = ?", args)
+                stamps = sorted(x["timestamp"] / 1E9 for x in cursor)
+                mymedian = median(sorted(s1 - s0 for s1, s0 in zip(stamps[1:], stamps[:-1])))
+            freq = 1.0 / mymedian if mymedian else None
+            topicdict[t] = self.TopicTuple(n, c, len(self.get_qoses(t, n) or []), freq)
+        result = self.TypesAndTopicsTuple(msgtypes, topicdict)
+        if not topics or set(topics) == set(t for t, _, _ in self._counts): self._ttinfo = result
+        return result
 
 
     def get_qoses(self, topic, typename):
@@ -192,32 +250,55 @@ PRAGMA synchronous=NORMAL;
 
 
     def get_message_class(self, typename, typehash=None):
-        """Returns ROS2 message type class."""
-        return get_message_class(typename)
+        """Returns ROS2 message type class, or None if unknown message type for bag."""
+        self._ensure_topics()
+        if any(n == typename for _, n, in self._topics) and typehash is not None \
+        and not any((n, h) == (typename, typehash) for _, n, h in self._counts):
+            self._ensure_types([t for t, n in self._topics if n == typename])
+        if any((typename, typehash) in [(n, h), (n, None)] for _, n, h in self._counts):
+            return get_message_class(typename)
+        return None
 
 
     def get_message_definition(self, msg_or_type):
-        """Returns ROS2 message type definition full text, including subtype definitions."""
-        return get_message_definition(msg_or_type)
+        """
+        Returns ROS2 message type definition full text, including subtype definitions.
+
+        Returns None if unknown message type for bag.
+        """
+        self._ensure_topics()
+        typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
+        if any(n == typename for _, n, _ in self._counts):
+            return get_message_definition(msg_or_type)
+        return None
 
 
     def get_message_type_hash(self, msg_or_type):
-        """Returns ROS2 message type MD5 hash."""
-        return get_message_type_hash(msg_or_type)
+        """Returns ROS2 message type MD5 hash, or None if unknown message type for bag."""
+        typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
+        self._ensure_types([t for t, n in self._topics if n == typename])
+        return next((h for _, n, h in self._counts if n == typename), None)
 
 
-    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False, *_, **__):
+    def read_messages(self, topics=None, start_time=None, end_time=None, raw=False, **__):
         """
         Yields messages from the bag, optionally filtered by topic and timestamp.
 
-        @param   topics      list of topics or a single topic to filter by, if at all
-        @param   start_time  earliest timestamp of message to return, as UNIX timestamp
-        @param   end_time    latest timestamp of message to return, as UNIX timestamp
+        @param   topics      list of topics or a single topic to filter by, if any
+        @param   start_time  earliest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
+        @param   end_time    latest timestamp of message to return, as ROS time or convertible
+                             (int/float/duration/datetime/decimal)
         @param   raw         if True, then returned messages are tuples of
-                             (typename, bytes, typehash, typeclass)
-        @return              generator of (topic, message, rclpy.time.Time) tuples
+                             (typename, bytes, typehash, typeclass).
+                             If message type unavailable, returns None for hash and class.
+        @return              BagMessage namedtuples of
+                             (topic, message, timestamp as rclpy.time.Time)
         """
-        self.get_topic_info()
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if "w" == self._mode: raise io.UnsupportedOperation("read")
+
+        self._ensure_topics()
         if not self._topics or (topics is not None and not topics):
             return
 
@@ -228,110 +309,211 @@ PRAGMA synchronous=NORMAL;
             exprs += ["topic_id IN (%s)" % ", ".join(map(str, topic_ids))]
         if start_time is not None:
             exprs += ["timestamp >= ?"]
-            args  += (start_time.nanoseconds, )
+            args  += (to_nsec(to_time(start_time)), )
         if end_time is not None:
             exprs += ["timestamp <= ?"]
-            args  += (end_time.nanoseconds, )
+            args  += (to_nsec(to_time(end_time)), )
         sql += ((" WHERE " + " AND ".join(exprs)) if exprs else "")
         sql += " ORDER BY timestamp"
 
         topicmap   = {v["id"]: v for v in self._topics.values()}
-        msgtypes   = {}  # {typename: cls}
+        msgtypes   = {}  # {typename: cls or None if unavailable}
         topicset   = set(topics or [t for t, _ in self._topics])
-        errortypes = set()  # {typename failed to instantiate, }
+        typehashes = {n: h for _, n, h in self._counts} # {typename: typehash or None or ""}
         for row in self._db.execute(sql, args):
             tdata = topicmap[row["topic_id"]]
             topic, typename = tdata["name"], canonical(tdata["type"])
-            if not raw and msgtypes.get(typename, typename) is None: continue # for row
-            typehash = next(h for t, n, h in self._counts if (t, n) == (topic, typename))
+            if not raw and msgtypes.get(typename, typename) is None: continue  # for row
+            if typehashes.get(typename) is None:
+                self._ensure_types([topic])
+                selector = (h for t, n, h in self._counts if (t, n) == (topic, typename))
+                typehash = typehashes[typename] = next(selector, None)
+            else: typehash = typehashes[typename]
 
             try:
                 cls = msgtypes.get(typename) or \
                       msgtypes.setdefault(typename, get_message_class(typename))
-                if raw: msg = (typename, row["data"], typehash, cls)
+                if raw: msg = (typename, row["data"], typehash or None, cls)
                 else:   msg = rclpy.serialization.deserialize_message(row["data"], cls)
             except Exception as e:
-                errortypes.add(typename)
-                ConsolePrinter.warn("Error loading type %s in topic %s: %%s" %
-                                    (typename, topic), e, __once=True)
-                if raw: msg = (typename, row["data"], typehash, None)
+                reportfunc = ConsolePrinter.error if self._stop_on_error else ConsolePrinter.warn
+                reportfunc("Error loading type %s in topic %s: %%s" % (typename, topic),
+                           "message class not found." if cls is None else e,
+                           __once=not self._stop_on_error)
+                if self._stop_on_error: raise
+                if raw: msg = (typename, row["data"], typehash or None, msgtypes.get(typename))
                 elif set(n for n, c in msgtypes.items() if c is None) == topicset:
                     break  # for row
                 continue  # for row
-            errortypes.discard(typename)
             stamp = rclpy.time.Time(nanoseconds=row["timestamp"])
 
-            yield topic, msg, stamp
-            if not self._db:
+            api.TypeMeta.make(msg, topic, self)
+            yield self.BagMessage(topic, msg, stamp)
+            if not self._db:  # Bag has been closed in the meantime
                 break  # for row
 
 
-    def write(self, topic, msg, stamp, meta=None):
+    def write(self, topic, msg, t=None, raw=False, qoses=None, **__):
         """
         Writes a message to the bag.
 
         @param   topic  name of topic
         @param   msg    ROS2 message
-        @param   stamp  rclpy.time.Time of message publication
-        @param   meta   message metainfo dict (meta["qoses"] added to topics-table, if any)
+        @param   t      message timestamp if not using wall time, as ROS time or convertible
+                        (int/float/duration/datetime/decimal)
+        @param   qoses  topic Quality-of-Service settings, if any, as a list of dicts
         """
-        self._ensure_open(populate=True)
-        self.get_topic_info()
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if "r" == self._mode: raise io.UnsupportedOperation("write")
 
-        cursor = self._db.cursor()
-        typename = get_message_type(msg)
+        self._ensure_topics()
+        if raw:
+            typename, binary, typehash = msg[:3]
+        else:
+            typename = get_message_type(msg)
+            typehash = get_message_type_hash(msg)
+            binary   = serialize_message(msg)
         topickey = (topic, typename)
+        cursor = self._db.cursor()
         if topickey not in self._topics:
-            full_typename = make_full_typename(get_message_type(msg))
+            full_typename = make_full_typename(typename)
             sql = "INSERT INTO topics (name, type, serialization_format, offered_qos_profiles) " \
                   "VALUES (?, ?, ?, ?)"
-            qoses = yaml.safe_dump(meta["qoses"], ) if meta and meta.get("qoses") else ""
+            qoses = yaml.safe_dump(qoses) if isinstance(qoses, list) else ""
             args = (topic, full_typename, "cdr", qoses)
             cursor.execute(sql, args)
             tdata = {"id": cursor.lastrowid, "name": topic, "type": full_typename,
                      "serialization_format": "cdr", "offered_qos_profiles": qoses}
             self._topics[topickey] = tdata
 
+        timestamp = (time.time_ns() if hasattr(time, "time_ns") else int(time.time() * 10**9)) \
+                    if t is None else to_nsec(to_time(t))
         sql = "INSERT INTO messages (topic_id, timestamp, data) VALUES (?, ?, ?)"
-        args = (self._topics[topickey]["id"], stamp.nanoseconds, get_message_data(msg))
+        args = (self._topics[topickey]["id"], timestamp, binary)
         cursor.execute(sql, args)
+        countkey = (topic, typename, typehash)
+        if self._counts.get(countkey, self) is not None:
+            self._counts[countkey] = self._counts.get(countkey, 0) + 1
+        self._ttinfo = None
+
+
+    def open(self):
+        """Opens the bag file if not already open."""
+        self._ensure_open()
 
 
     def close(self):
         """Closes the bag file."""
         if self._db:
             self._db.close()
-            self._db   = None
-            self._mode = None
+            self._db     = None
+            self._mode   = None
+            self._iterer = None
+
+
+    @property
+    def closed(self):
+        """Returns whether file is closed."""
+        return not self._db
+
+
+    @property
+    def topics(self):
+        """Returns the list of topics in bag, in alphabetic order."""
+        return sorted((t for t, _, _ in self._topics), key=str.lower)
+
+
+    @property
+    def filename(self):
+        """Returns bag file path."""
+        return self._filename
 
 
     @property
     def size(self):
         """Returns current file size in bytes (including journaling files)."""
-        result = os.path.getsize(self.filename) if os.path.isfile(self.filename) else None
+        result = os.path.getsize(self._filename) if os.path.isfile(self._filename) else None
         for suffix in ("-journal", "-wal") if result else ():
-            path = self.filename + suffix
+            path = "%s%s" % (self._filename, suffix)
             result += os.path.getsize(path) if os.path.isfile(path) else 0
         return result
 
 
+    @property
+    def mode(self):
+        """Returns file open mode."""
+        return self._mode
+
+
+    def __contains__(self, key):
+        """Returns whether bag contains given topic."""
+        return any(key == t for t, _, _ in self._topics)
+
+
+    def __next__(self):
+        """Retrieves next message from bag as (topic, message, timestamp)."""
+        if self.closed: raise ValueError("I/O operation on closed file.")
+        if self._iterer is None: self._iterer = self.read_messages()
+        return next(self._iterer)
+
+
     def _ensure_open(self, populate=False):
-        """Opens bag database if not open, can populate schema if not present."""
-        if self._db:
-            return
-        if "w" == self._mode and os.path.exists(self.filename):
-            os.remove(self.filename)
-        self._db = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES,
-                                   isolation_level=None, check_same_thread=False)
-        self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+        """Opens bag database if not open, populates schema if specified."""
+        if not self._db:
+            if "w" == self._mode and os.path.exists(self._filename):
+                os.remove(self._filename)
+            self._db = sqlite3.connect(self._filename, detect_types=sqlite3.PARSE_DECLTYPES,
+                                       isolation_level=None, check_same_thread=False)
+            self._db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
         if populate:
             self._db.executescript(self.CREATE_SQL)
+
+
+    def _ensure_topics(self):
+        """Populates local topic struct from database, if not already available."""
+        if not self._db or self._topics or not self._has_table("topics"): return
+        for row in self._db.execute("SELECT * FROM topics ORDER BY id"):
+            topickey = (topic, typename) = row["name"], canonical(row["type"])
+            self._topics[(topic, typename)] = row
+            self._counts[(topic, typename, None)] = None
+
+
+    def _ensure_counts(self):
+        """Populates local counts values from database, if not already available."""
+        if not self._db or all(v is not None for v in self._counts.values()) \
+        or not self._has_table("messages"): return
+        self._ensure_topics()
+        topickeys = {self._topics[(t, n)]["id"]: (t, n, h) for (t, n, h) in self._counts}
+        self._counts.clear()
+        for row in self._db.execute("SELECT topic_id, COUNT(*) AS count FROM messages "
+                                    "GROUP BY topic_id").fetchall():
+            if row["topic_id"] in topickeys:
+                self._counts[topickeys[row["topic_id"]]] = row["count"]
+
+
+    def _ensure_types(self, topics=None):
+        """
+        Populates local type definitions and classes from database, if not already available.
+
+        @param   topics  selected topics to ensure types for, if not all
+        """
+        if not self._db or (not topics and topics is not None) or not self._has_table("topics") \
+        or not any(h is None for t, _, h in self._counts if topics is None or t in topics):
+            return
+        self._ensure_topics()
+        for countkey, count in list(self._counts.items()):
+            (topic, typename, typehash) = countkey
+            if typehash is None and (topics is None or topic in topics):
+                typehash = get_message_type_hash(typename)
+                self._counts.pop(countkey)
+                self._counts[(topic, typename, typehash)] = count
 
 
     def _has_table(self, name):
         """Returns whether specified table exists in database."""
         sql = "SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?"
         return bool(self._db.execute(sql, ("table", name)).fetchone())
+Bag = ROS2Bag
 
 
 
@@ -466,11 +648,6 @@ def create_subscriber(topic, cls_or_typename, handler, queue_size):
     return sub
 
 
-def deserialize_message(raw, cls):
-    """Returns ROS2 message or service request/response instantiated from serialized binary."""
-    return rclpy.serialization.deserialize_message(raw, cls)
-
-
 def format_message_value(msg, name, value):
     """
     Returns a message attribute value as string.
@@ -489,32 +666,30 @@ def format_message_value(msg, name, value):
 
 @memoize
 def get_message_class(typename):
-    """Returns ROS2 message class."""
-    return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
-
-
-def get_message_data(msg):
-    """Returns ROS2 message as a serialized binary."""
-    with rosapi.TypeMeta.make(msg) as m:
-        if m.data is not None: return m.data
-    return rclpy.serialization.serialize_message(msg)
+    """Returns ROS2 message class, or None if unknown type."""
+    try: return rosidl_runtime_py.utilities.get_message(make_full_typename(typename))
+    except Exception: return None
 
 
 def get_message_definition(msg_or_type):
-    """Returns ROS2 message type definition full text, including subtype definitions."""
+    """
+    Returns ROS2 message type definition full text, including subtype definitions.
+
+    Returns None if unknown type.
+    """
     typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
     return _get_message_definition(canonical(typename))
 
 
 def get_message_type_hash(msg_or_type):
-    """Returns ROS2 message type MD5 hash."""
+    """Returns ROS2 message type MD5 hash, or "" if unknown type."""
     typename = msg_or_type if isinstance(msg_or_type, str) else get_message_type(msg_or_type)
     return _get_message_type_hash(canonical(typename))
 
 
 @memoize
 def _get_message_definition(typename):
-    """Returns ROS2 message type definition full text, or "" on error (internal caching method)."""
+    """Returns ROS2 message type definition full text, or None on error (internal caching method)."""
     try:
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
         try:
@@ -527,7 +702,7 @@ def _get_message_definition(typename):
             if not line or not line[0].isalpha():
                 continue  # for line
             linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))
-            if linetype in rosapi.ROS_BUILTIN_TYPES:
+            if linetype in api.ROS_BUILTIN_TYPES:
                 continue  # for line
             linetype = linetype if "/" in linetype else "std_msgs/Header" \
                        if "Header" == linetype else "%s/%s" % (pkg, linetype)
@@ -539,7 +714,7 @@ def _get_message_definition(typename):
         return basedef + ("\n" if subdefs else "") + "\n".join(subdefs)
     except Exception as e:
         ConsolePrinter.warn("Error collecting type definition of %s: %s", typename, e)
-        return ""
+        return None
 
 
 @memoize
@@ -627,13 +802,13 @@ def get_message_definition_idl(typename):
 def _get_message_type_hash(typename):
     """Returns ROS2 message type MD5 hash (internal caching method)."""
     msgdef = get_message_definition(typename)
-    return rosapi.calculate_definition_hash(typename, msgdef)
+    return "" if msgdef is None else api.calculate_definition_hash(typename, msgdef)
 
 
 def get_message_fields(val):
     """Returns OrderedDict({field name: field type name}) if ROS2 message, else {}."""
     if not is_ros_message(val): return {}
-    fields = {k: canonical(v) for k, v in val.get_fields_and_field_types().items()}
+    fields = ((k, canonical(v)) for k, v in val.get_fields_and_field_types().items())
     return collections.OrderedDict(fields)
 
 
@@ -646,9 +821,9 @@ def get_message_type(msg_or_cls):
 def get_message_value(msg, name, typename):
     """Returns object attribute value, with numeric arrays converted to lists."""
     v, scalartype = getattr(msg, name), scalar(typename)
-    if isinstance(v, (bytes, array.array)) \
-    or "numpy.ndarray" == "%s.%s" % (v.__class__.__module__, v.__class__.__name__):
-        v = list(v)
+    if isinstance(v, (bytes, array.array)): v = list(v)
+    elif numpy and isinstance(v, (numpy.generic, numpy.ndarray)):
+        v = v.tolist()  # Returns value as Python type, either scalar or list
     if v and isinstance(v, (list, tuple)) and scalartype in ("byte", "uint8"):
         if isinstance(v[0], bytes):
             v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
@@ -657,9 +832,16 @@ def get_message_value(msg, name, typename):
     return v
 
 
-def get_rostime():
-    """Returns current ROS2 time, as rclpy.time.Time."""
-    return node.get_clock().now()
+def get_rostime(fallback=False):
+    """
+    Returns current ROS2 time, as rclpy.time.Time.
+
+    @param   fallback  use wall time if node not initialized
+    """
+    try: return node.get_clock().now()
+    except Exception:
+        if fallback: return make_time(time.time())
+        raise
 
 
 def get_topic_types():
@@ -671,8 +853,8 @@ def get_topic_types():
     result = []
     myname, myns = node.get_name(), node.get_namespace()
     mytypes = {}  # {topic: [typename, ]}
-    for topic, typename in node.get_publisher_names_and_types_by_node(myname, myns):
-        mytypes.setdefault(topic, []).append(typename)
+    for topic, typenames in node.get_publisher_names_and_types_by_node(myname, myns):
+        mytypes.setdefault(topic, []).extend(typenames)
     for t in ("/parameter_events", "/rosout"):  # Published by all nodes
         mytypes.pop(t, None)
     for topic, typenames in node.get_topic_names_and_types():  # [(topicname, [typename, ])]
@@ -684,18 +866,18 @@ def get_topic_types():
 
 def is_ros_message(val, ignore_time=False):
     """
-    Returns whether value is a ROS2 message or special like ROS2 time/duration.
+    Returns whether value is a ROS2 message or special like ROS2 time/duration class or instance.
 
     @param  ignore_time  whether to ignore ROS2 time/duration types
     """
     is_message = rosidl_runtime_py.utilities.is_message(val)
-    if is_message and ignore_time:
-        is_message = not isinstance(val, tuple(ROS_TIME_CLASSES))
+    if is_message and ignore_time: is_message = not is_ros_time(val)
     return is_message
 
 
 def is_ros_time(val):
-    """Returns whether value is a ROS2 time/duration."""
+    """Returns whether value is a ROS2 time/duration class or instance."""
+    if inspect.isclass(val): return issubclass(val, tuple(ROS_TIME_CLASSES))
     return isinstance(val, tuple(ROS_TIME_CLASSES))
 
 
@@ -749,6 +931,20 @@ def qos_to_dict(qos):
     return [result]
 
 
+def serialize_message(msg):
+    """Returns ROS2 message as a serialized binary."""
+    with api.TypeMeta.make(msg) as m:
+        if m.data is not None: return m.data
+    return rclpy.serialization.serialize_message(msg)
+
+
+def deserialize_message(raw, cls_or_typename):
+    """Returns ROS2 message or service request/response instantiated from serialized binary."""
+    cls = cls_or_typename
+    if isinstance(cls, str): cls = get_message_class(cls)
+    return rclpy.serialization.deserialize_message(raw, cls)
+
+
 @memoize
 def scalar(typename):
     """
@@ -770,6 +966,25 @@ def set_message_value(obj, name, value):
         if name in fieldmap:
             name = obj.__slots__[list(fieldmap).index(name)]
     setattr(obj, name, value)
+
+
+def time_message(val, to_message=True, clock_type=None):
+    """
+    Converts ROS2 time/duration between `rclpy` and `builtin_interfaces` objects.
+
+    @param   val         ROS2 time/duration object from `rclpy` or `builtin_interfaces`
+    @param   to_message  whether to convert from `rclpy` to `builtin_interfaces` or vice versa
+    @param   clock_type  ClockType for converting to `rclpy.Time`, defaults to `ROS_TIME`
+    @return              value converted to appropriate type, or original value if not convertible
+    """
+    to_message, clock_type = bool(to_message), (clock_type or rclpy.clock.ClockType.ROS_TIME)
+    if isinstance(val, tuple(ROS_TIME_CLASSES)):
+        rcl_cls = next(k for k, v in ROS_TIME_MESSAGES.items() if isinstance(val, (k, v)))
+        is_rcl = isinstance(val, tuple(ROS_TIME_MESSAGES))
+        name = "to_msg" if to_message and is_rcl else "from_msg" if to_message == is_rcl else None
+        args = [val] + ([clock_type] if rcl_cls is rclpy.time.Time and "from_msg" == name else [])
+        return getattr(rcl_cls, name)(*args) if name else val
+    return val
 
 
 def to_nsec(val):
@@ -800,3 +1015,36 @@ def to_sec_nsec(val):
     if hasattr(val, "nanoseconds"):  # rclpy.Duration
         return divmod(val.nanoseconds, 10**9)
     return (val.sec, val.nanosec)  # builtin_interfaces.msg.Time/Duration
+
+
+def to_time(val):
+    """
+    Returns value as ROS2 time if convertible, else value.
+
+    Convertible types: int/float/duration/datetime/decimal/builtin_interfaces.Time.
+    """
+    result = val
+    if isinstance(val, decimal.Decimal):
+        result = make_time(int(val), float(val % 1) * 10**9)
+    elif isinstance(val, datetime.datetime):
+        result = make_time(int(val.timestamp()), 1000 * val.microsecond)
+    elif isinstance(val, (float, int)):
+        result = make_time(val)
+    elif isinstance(val, rclpy.duration.Duration):
+        result = make_time(nsecs=val.nanoseconds)
+    elif isinstance(val, tuple(ROS_TIME_MESSAGES.values())):
+        result = make_time(val.sec, val.nanosec)
+    return result
+
+
+__all__ = [
+    "BAG_EXTENSIONS", "DDS_TYPES", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_MESSAGES",
+    "ROS_TIME_TYPES", "SKIP_EXTENSIONS", "Bag", "ROS2Bag", "context", "executor", "node",
+    "canonical", "create_publisher", "create_subscriber", "deserialize_message",
+    "format_message_value", "get_message_class", "get_message_definition",
+    "get_message_definition_idl", "get_message_fields", "get_message_type",
+    "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
+    "is_ros_message", "is_ros_time", "make_duration", "make_full_typename", "make_subscriber_qos",
+    "make_time", "qos_to_dict", "scalar", "serialize_message", "set_message_value", "shutdown_node",
+    "time_message", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+]

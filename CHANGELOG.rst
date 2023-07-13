@@ -2,17 +2,43 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.6.0 (2023-03-30)
+1.0.0 (2022-07-03)
+-------------------
+* make grepros conveniently usable as a library
+* add --no-highlight option
+* add --stop-on-error option
+* rename options --print-field and --no-print-field to --emit-field and --no-emit-field
+* support --emit-field --no-emit-field in CSV and Parquet exports
+* handle all numpy types in ROS2 messages, not only ndarrays
+* avoid raising errors for unknown message types in ROS2 bags if not reading those topics
+* fix grepping and emitting specific messages fields only
+* fix not skipping live topics published by grepros itself in ROS2
+* fix embag reader
+* verify output targets being writable on startup
+* provide connection header in writing ROS1 bag if topic has multiple types
+* smooth over rosbag bug of ignoring topic and time filters in format v1.2
+* print ROS1 master URI in verbose mode on connecting to live topics
+* raise error on loading Parquet plugin if libraries unavailable
+* support "postgres://" as auto-detected Postgres target in addition to "postgresql://"
+* use bagfile format as last when auto-detecting output format
+* add MCAP bag interface
+* auto-detect MCAP output by file extension
+* add inputs.AppSource and outputs.AppSink
+* add api.deserialize_message() dict_to_message() make_full_typename() time_message() to_time() 
+* rename api.get_message_data() to serialize_message()
+* fix api.message_to_dict() giving invalid names for temporal types in ROS2
+
+0.6.0 (2023-03-27)
 -------------------
 * add nesting=array|all to --write Parquet options
 * add idgenerator=callable to --write Parquet options
-* add rosapi.canonical()
+* add api.canonical()
 * match bounded array fields to configured output types properly 
   in Parquet/Postgres/SQL/SQLite output, like "uint8[10]" for "BYTEA" in Postgres
 * workaround for ROS1 time/duration fields defined as int32 while actually being uint32
 * fix date formatting in HTML output
 
-0.5.0 (2022-10-30)
+0.5.0 (2022-10-18)
 -------------------
 * add --plugin grepros.plugins.mcap (MCAP input and output)
 * refactor internal bag API

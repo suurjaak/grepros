@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-## @namespace grepros.common
 """
 Common utilities.
 
@@ -9,18 +8,23 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    20.10.2022
+@modified    02.07.2023
 ------------------------------------------------------------------------------
 """
+## @namespace grepros.common
 from __future__ import print_function
+import argparse
+import copy
 import datetime
 import functools
 import glob
 import importlib
+import inspect
+import io
 import itertools
+import logging
 import math
 import os
-import random
 import re
 import shutil
 import sys
@@ -29,61 +33,117 @@ import time
 try: import curses
 except ImportError: curses = None
 
+import six
 try: import zstandard
 except ImportError: zstandard = None
+
+
+## Python types for filesystem paths
+PATH_TYPES = (six.binary_type, six.text_type)
+if six.PY34: PATH_TYPES += (importlib.import_module("pathlib").Path, )
+## Python types for both byte strings and text strings
+STRING_TYPES = (six.binary_type, six.text_type)
+## Python types for text strings
+TEXT_TYPES = (six.binary_type, six.text_type) if six.PY2 else (six.text_type, )
 
 
 class MatchMarkers(object):
     """Highlight markers for matches in message values."""
 
-    ID    = "%08x" % random.randint(1, 1E9)  ## Unique marker for match highlight replacements
-    START = "<%s>"  % ID                     ## Temporary placeholder in front of match
-    END   = "</%s>" % ID                     ## Temporary placeholder at end of match
-    EMPTY = START + END                      ## Temporary placeholder for empty string match
-    EMPTY_REPL = "%s''%s" % (START, END)     ## Replacement for empty string match
+    ## Unique marker for match highlight replacements
+    ID    = "matching"
+    ## Placeholder in front of match
+    START = "<%s>"  % ID
+    ## Placeholder at end of match
+    END   = "</%s>" % ID
+    ## Placeholder for empty string match
+    EMPTY = START + END
+    ## Replacement for empty string match
+    EMPTY_REPL = "%s''%s" % (START, END)
+
+    @classmethod
+    def populate(cls, value):
+        """Populates highlight markers with specified value."""
+        cls.ID    = str(value)
+        cls.START = "<%s>"  % cls.ID
+        cls.END   = "</%s>" % cls.ID
+        cls.EMPTY = cls.START + cls.END
+        cls.EMPTY_REPL = "%s''%s" % (cls.START, cls.END)
+
 
 
 class ConsolePrinter(object):
-    """Prints to console, supports color output."""
+    """
+    Prints to console, supports color output.
 
-    STYLE_RESET     = "\x1b(B\x1b[m"            ## Default color+weight
-    STYLE_HIGHLIGHT = "\x1b[31m"                ## Red
-    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  ## Dim gray
-    STYLE_SPECIAL   = "\x1b[35m"                ## Purple
-    STYLE_SPECIAL2  = "\x1b[36m"                ## Cyan
-    STYLE_WARN      = "\x1b[33m"                ## Yellow
-    STYLE_ERROR     = "\x1b[31m\x1b[2m"         ## Dim red
+    If configured with `apimode=True`, logs debugs and warnings to logger and raises errors.
+    """
 
-    DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  ## Metainfo wrappers
-    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  ## Warning message wrappers
-    ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  ## Error message wrappers
+    STYLE_RESET     = "\x1b(B\x1b[m"            # Default color+weight
+    STYLE_HIGHLIGHT = "\x1b[31m"                # Red
+    STYLE_LOWLIGHT  = "\x1b[38;2;105;105;105m"  # Dim gray
+    STYLE_SPECIAL   = "\x1b[35m"                # Purple
+    STYLE_SPECIAL2  = "\x1b[36m"                # Cyan
+    STYLE_WARN      = "\x1b[33m"                # Yellow
+    STYLE_ERROR     = "\x1b[31m\x1b[2m"         # Dim red
 
-    COLOR = None       ## Whether using colors in output
+    DEBUG_START, DEBUG_END = STYLE_LOWLIGHT, STYLE_RESET  # Metainfo wrappers
+    WARN_START,  WARN_END =  STYLE_WARN,     STYLE_RESET  # Warning message wrappers
+    ERROR_START, ERROR_END = STYLE_ERROR,    STYLE_RESET  # Error message wrappers
 
-    WIDTH = 80         ## Console width in characters, updated from shutil and curses
+    ## Whether using colors in output
+    COLOR = None
 
-    PRINTS = {}        ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    ## Console width in characters, updated from shutil and curses
+    WIDTH = 80
+
+    ## {sys.stdout: number of texts printed, sys.stderr: ..}
+    PRINTS = {}
+
+    ## Whether logging debugs and warnings and raising errors, instead of printing
+    APIMODE = False
+
+    _COLORFLAG = None  ## Color flag set in configure()
 
     _LINEOPEN = False  ## Whether last print was without linefeed
 
     _UNIQUES = set()   ## Unique texts printed with `__once=True`
 
     @classmethod
-    def configure(cls, color):
+    def configure(cls, color=True, apimode=False):
         """
-        Initializes terminal for color output, or disables color output if unsupported.
+        Initializes printer, for terminal output or library mode.
 
-        @param   color  True / False / None for auto-detect from TTY support
+        For terminal output, initializes terminal colors, or disables colors if unsupported.
+
+        @param   color    True / False / None for auto-detect from TTY support;
+                          will be disabled if terminal does not support colors
+        @param   apimode  whether to log debugs and warnings to logger and raise errors,
+                          instead of printing
         """
+        cls.APIMODE    = bool(apimode)
+        cls._COLORFLAG = color
+        if apimode:
+            cls.DEBUG_START, cls.DEBUG_END = "", ""
+            cls.WARN_START,  cls.WARN_END  = "", ""
+            cls.ERROR_START, cls.ERROR_END = "", ""
+        else: cls.init_terminal()
+
+
+    @classmethod
+    def init_terminal(cls):
+        """Initializes terminal for color output, or disables color output if unsupported."""
+        if cls.COLOR is not None: return
+
         try: cls.WIDTH = shutil.get_terminal_size().columns  # Py3
         except Exception: pass  # Py2
-        cls.COLOR = (color is not False)
+        cls.COLOR = (cls._COLORFLAG is not False)
         try:
             curses.setupterm()
             if cls.COLOR and not sys.stdout.isatty():
                 raise Exception()
         except Exception:
-            cls.COLOR = bool(color)
+            cls.COLOR = bool(cls._COLORFLAG)
         try:
             if sys.stdout.isatty() or cls.COLOR:
                 cls.WIDTH = curses.initscr().getmaxyx()[1]
@@ -110,29 +170,31 @@ class ConsolePrinter(object):
         @param   __once   whether text should be printed only once
                           and discarded on any further calls (applies to unformatted text)
         """
-        text, fmted = str(text), False
+        text = str(text)
         if kwargs.pop("__once", False):
             if text in cls._UNIQUES: return
             cls._UNIQUES.add(text)
         fileobj, end = kwargs.pop("__file", sys.stdout), kwargs.pop("__end", "\n")
         pref, suff = kwargs.pop("__prefix", ""), kwargs.pop("__suffix", "")
-        try: text, fmted = (text % args if args else text), bool(args)
-        except Exception: pass
-        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
-        except Exception: pass
-        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
-        except Exception: pass
         if cls._LINEOPEN and "\n" in end: pref = "\n" + pref  # Add linefeed to end open line
+        text = cls._format(text, *args, **kwargs)
 
         cls.PRINTS[fileobj] = cls.PRINTS.get(fileobj, 0) + 1
         cls._LINEOPEN = "\n" not in end
+        cls.init_terminal()
         print(pref + text + suff, end=end, file=fileobj)
         not fileobj.isatty() and fileobj.flush()
 
 
     @classmethod
     def error(cls, text="", *args, **kwargs):
-        """Prints error to stderr, formatted with args and kwargs, in error colors if supported."""
+        """
+        Prints error to stderr, formatted with args and kwargs, in error colors if supported.
+
+        Raises exception instead if APIMODE.
+        """
+        if cls.APIMODE:
+            raise Exception(cls._format(text, *args, __once=False, **kwargs))
         KWS = dict(__file=sys.stderr, __prefix=cls.ERROR_START, __suffix=cls.ERROR_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
@@ -140,10 +202,14 @@ class ConsolePrinter(object):
     @classmethod
     def warn(cls, text="", *args, **kwargs):
         """
-        Prints warning to stderr.
+        Prints warning to stderr, or logs to logger if APIMODE.
 
-        Formatted with args and kwargs, in warning colors if supported.
+        Text is formatted with args and kwargs, in warning colors if supported.
         """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).warning(text)
+            return
         KWS = dict(__file=sys.stderr, __prefix=cls.WARN_START, __suffix=cls.WARN_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
 
@@ -151,12 +217,35 @@ class ConsolePrinter(object):
     @classmethod
     def debug(cls, text="", *args, **kwargs):
         """
-        Prints debug text to stderr.
+        Prints debug text to stderr, or logs to logger if APIMODE.
 
-        Formatted with args and kwargs, in lowlight colors if supported.
+        Text is formatted with args and kwargs, in warning colors if supported.
         """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).debug(text)
+            return
         KWS = dict(__file=sys.stderr, __prefix=cls.DEBUG_START, __suffix=cls.DEBUG_END)
         cls.print(text, *args, **dict(kwargs, **KWS))
+
+
+    @classmethod
+    def log(cls, level, text="", *args, **kwargs):
+        """
+        Prints text to stderr, or logs to logger if APIMODE.
+
+        Text is formatted with args and kwargs, in level colors if supported.
+
+        @param   level  logging level like `logging.ERROR` or "ERROR"
+        """
+        if cls.APIMODE:
+            text = cls._format(text, *args, **kwargs)
+            if text: logging.getLogger(__name__).log(level, text)
+            return
+        level = logging.getLevelName(level)
+        if not isinstance(level, TEXT_TYPES): level = logging.getLevelName(level)
+        func = {"DEBUG": cls.debug, "WARNING": cls.warn, "ERROR": cls.error}.get(level, cls.print)
+        func(text, *args, **dict(kwargs, __file=sys.stderr))
 
 
     @classmethod
@@ -164,6 +253,27 @@ class ConsolePrinter(object):
         """Ends current open line, if any."""
         if cls._LINEOPEN: print()
         cls._LINEOPEN = False
+
+
+    @classmethod
+    def _format(cls, text="", *args, **kwargs):
+        """
+        Returns text formatted with printf-style or format() arguments.
+
+        @param  __once  registers text, returns "" if text not unique
+        """
+        text, fmted = str(text), False
+        if kwargs.get("__once"):
+            if text in cls._UNIQUES: return ""
+            cls._UNIQUES.add(text)
+        for k in ("__file", "__end", "__once", "__prefix", "__suffix"): kwargs.pop(k, None)
+        try: text, fmted = (text % args if args else text), bool(args)
+        except Exception: pass
+        try: text, fmted = (text % kwargs if kwargs else text), fmted or bool(kwargs)
+        except Exception: pass
+        try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
+        except Exception: pass
+        return text
 
 
 class Decompressor(object):
@@ -215,7 +325,7 @@ class Decompressor(object):
         """Returns whether file is a recognized archive."""
         result = os.path.isfile(path)
         if result:
-            result = any(path.lower().endswith(x) for x in cls.EXTENSIONS)
+            result = any(str(path).lower().endswith(x) for x in cls.EXTENSIONS)
         if result:
             with open(path, "rb") as f:
                 result = (f.read(len(cls.ZSTD_MAGIC)) == cls.ZSTD_MAGIC)
@@ -261,7 +371,6 @@ class ProgressBar(threading.Thread):
         @param   afterword      text after progress bar
         @param   interval       ticker thread interval, in seconds
         @param   pulse          ignore value-min-max, use constant pulse instead
-        @param   counts         print value and nax afterword
         @param   aftertemplate  afterword format() template, populated with vars(self)
         """
         threading.Thread.__init__(self)
@@ -351,6 +460,25 @@ class ProgressBar(threading.Thread):
 
 
 
+class LenIterable(object):
+    """Wrapper for iterable value with specified fixed length."""
+
+    def __init__(self, iterable, count):
+        """
+        @param   iterable  any iterable value
+        @param   count     value to return for len(self), or callable to return value from
+        """
+        self._iterer = iter(iterable)
+        self._count  = count
+
+    def __iter__(self): return self
+
+    def __next__(self): return next(self._iterer)
+
+    def __len__(self):  return self._count() if callable(self._count) else self._count
+
+
+
 class TextWrapper(object):
     """
     TextWrapper that supports custom substring widths in line width calculation.
@@ -418,7 +546,7 @@ class TextWrapper(object):
 
     def reserve_width(self, reserved=""):
         """Decreases the configured width by given amount (number or string)."""
-        reserved = self.strlen(reserved) if isinstance(reserved, str) else reserved
+        reserved = self.strlen(reserved) if isinstance(reserved, TEXT_TYPES) else reserved
         self.width = max(self.minwidth, self.realwidth - reserved)
 
 
@@ -527,6 +655,31 @@ def ellipsize(text, limit, ellipsis=".."):
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
 
+def ensure_namespace(val, defaults=None, **kwargs):
+    """
+    Returns a copy of value as `argparse.Namespace`, with all keys uppercase.
+
+    Arguments with list/tuple values in defaults are ensured to have list/tuple values.
+
+    @param  val       `argparse.Namespace` or dictionary or `None`
+    @param  defaults  additional arguments to set to namespace if missing
+    @param  kwargs    any and all argument overrides as keyword overrides
+    """
+    if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
+    else: val = structcopy(val)
+    for k, v in vars(val).items():
+        if not k.isupper():
+            delattr(val, k)
+            setattr(val, k.upper(), v)
+    for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
+        if not hasattr(val, k): setattr(val, k, structcopy(v))
+    for k, v in ((k.upper(), v) for k, v in kwargs.items()): setattr(val, k, v)
+    for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
+        if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
+            setattr(val, k, [getattr(val, k)])
+    return val
+
+
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
     Filters string dictionary by keys and values. Dictionary values may be
@@ -553,36 +706,12 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     return result
 
 
-def filter_fields(fieldmap, top=(), include=(), exclude=()):
-    """
-    Returns fieldmap filtered by include and exclude patterns.
-
-    @param   fieldmap  {field name: field type name}
-    @param   top       parent path as (rootattr, ..)
-    @param   include   [((nested, path), re.Pattern())] to require in parent path
-    @param   exclude   [((nested, path), re.Pattern())] to reject in parent path
-    """
-    result = type(fieldmap)() if include or exclude else fieldmap
-    for k, v in fieldmap.items() if not result else ():
-        trail, trailstr = top + (k, ), ".".join(top + (k, ))
-        for is_exclude, patterns in enumerate((include, exclude)):
-            matches = any(p[:len(trail)] == trail[:len(p)] or r.match(trailstr)
-                          for p, r in patterns)  # Match by beginning or wildcard pattern
-            if patterns and (not matches if is_exclude else matches):
-                result[k] = v
-            elif patterns and is_exclude and matches:
-                result.pop(k, None)
-            if include and exclude and k not in result:  # Failing to include takes precedence
-                break  # for is_exclude
-    return result
-
-
 def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
     """
-    Yields filenames from current directory or given paths, .
+    Yields filenames from current directory or given paths.
 
     Seeks only files with given extensions if names not given.
-    Prints errors for names and paths not found.
+    Logs errors for names and paths not found.
 
     @param   names            list of specific files to return (supports * wildcards)
     @param   paths            list of paths to look under, if not using current directory
@@ -594,7 +723,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
     def iter_files(directory):
         """Yields matching filenames from path."""
         if os.path.isfile(directory):
-            ConsolePrinter.error("%s: Is a file", directory)
+            ConsolePrinter.log(logging.ERROR, "%s: Is a file", directory)
             return
         for path in sorted(glob.glob(directory)):  # Expand * wildcards, if any
             pathsfound.add(directory)
@@ -603,7 +732,7 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
                 for f in (f for f in glob.glob(p) if "*" not in n
                           or not any(map(f.endswith, skip_extensions))):
                     if os.path.isdir(f):
-                        ConsolePrinter.error("%s: Is a directory", f)
+                        ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
                         continue  # for n
                     namesfound.add(n)
                     yield f
@@ -624,9 +753,9 @@ def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=Fa
             yield f
 
     for path in (p for p in paths if p not in pathsfound):
-        ConsolePrinter.error("%s: No such directory", path)
+        ConsolePrinter.log(logging.ERROR, "%s: No such directory", path)
     for name in (n for n in names if n not in namesfound):
-        ConsolePrinter.error("%s: No such file", name)
+        ConsolePrinter.log(logging.ERROR, "%s: No such file", name)
 
 
 def format_timedelta(delta):
@@ -658,6 +787,33 @@ def format_stamp(stamp):
     return datetime.datetime.fromtimestamp(stamp).isoformat(sep=" ")
 
 
+def get_name(obj):
+    """
+    Returns the fully namespaced name for a Python module, class, function or object.
+
+    E.g. "my.thing" or "my.module.MyCls" or "my.module.MyCls.my_method"
+    or "my.module.MyCls<0x1234abcd>" or "my.module.MyCls<0x1234abcd>.my_method".
+    """
+    namer = lambda x: getattr(x, "__qualname__", getattr(x, "__name__", ""))
+    if inspect.ismodule(obj): return namer(obj)
+    if inspect.isclass(obj):  return ".".join((obj.__module__, namer(obj)))
+    if inspect.isroutine(obj):
+        parts, self = [], six.get_method_self(obj)
+        if self is not None:           parts.extend((get_name(self), obj.__name__))
+        elif hasattr(obj, "im_class"): parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
+        else:                          parts.extend((obj.__module__, namer(obj)))          # Py3
+        return ".".join(parts)
+    cls = type(obj)
+    return "%s.%s<0x%x>" % (cls.__module__, namer(cls), id(obj))
+
+
+def has_arg(func, name):
+    """Returns whether function supports taking specified argument by name."""
+    spec = getattr(inspect, "getfullargspec", inspect.getargspec)(func)  # Py3/Py2
+    return name in spec.args or name in getattr(spec, "kwonlyargs", ()) or \
+           getattr(spec, "varkw", None) or getattr(spec, "keywords", None)
+
+
 def import_item(name):
     """
     Returns imported module, or identifier from imported namespace; raises on error.
@@ -678,21 +834,51 @@ def import_item(name):
     return result
 
 
+def is_iterable(value):
+    """Returns whether value is iterable."""
+    try: iter(value)
+    except Exception: return False
+    return True
+
+
+def is_stream(value):
+    """Returns whether value is a file-like object."""
+    try: return isinstance(value, (file, io.IOBase))       # Py2
+    except NameError: return isinstance(value, io.IOBase)  # Py3
+
+
 def makedirs(path):
     """Creates directory structure for path if not already existing."""
-    parts, accum = list(filter(bool, path.split(os.sep))), []
+    parts, accum = list(filter(bool, os.path.realpath(path).split(os.sep))), []
     while parts:
         accum.append(parts.pop(0))
-        curpath = (os.sep if path.startswith(os.sep) else "") + os.path.join(*accum)
+        curpath = os.path.join(os.sep, accum[0] + os.sep, *accum[1:])  # Windows drive letter thing
         if not os.path.exists(curpath):
             os.mkdir(curpath)
 
 
+def structcopy(value):
+    """
+    Returns a deep copy of a standard data structure (dict, list, set, tuple),
+    other object types reused instead of copied.
+    """
+    COLLECTIONS = (dict, list, set, tuple)
+    memo = {}
+    def collect(x):  # Walk structure and collect objects to skip copying
+        if isinstance(x, argparse.Namespace): x = vars(x)
+        if not isinstance(x, COLLECTIONS): return memo.update([(id(x), x)])
+        for y in sum(map(list, x.items()), []) if isinstance(x, dict) else x: collect(y)
+    collect(value)
+    return copy.deepcopy(value, memo)
+
+
 def memoize(func):
-    """Returns a results-caching wrapper for the function."""
+    """Returns a results-caching wrapper for the function, cache used if arguments hashable."""
     cache = {}
     def inner(*args, **kwargs):
         key = args + sum(kwargs.items(), ())
+        try: hash(key)
+        except Exception: return func(*args, **kwargs)
         if key not in cache:
             cache[key] = func(*args, **kwargs)
         return cache[key]
@@ -774,11 +960,11 @@ def unique_path(pathname, empty_ok=False):
     @param   empty_ok  whether to ignore existence if file is empty
     """
     result = pathname
-    if "linux2" == sys.platform and sys.version_info < (3, 0) \
-    and isinstance(result, unicode) and "utf-8" != sys.getfilesystemencoding():
+    if "linux2" == sys.platform and six.PY2 and isinstance(result, six.text_type) \
+    and "utf-8" != sys.getfilesystemencoding():
         result = result.encode("utf-8") # Linux has trouble if locale not UTF-8
     if os.path.isfile(result) and empty_ok and not os.path.getsize(result):
-        return result
+        return result if isinstance(result, STRING_TYPES) else str(result)
     path, name = os.path.split(result)
     base, ext = os.path.splitext(name)
     if len(name) > 255: # Filesystem limitation
@@ -795,6 +981,68 @@ def unique_path(pathname, empty_ok=False):
     return result
 
 
+def verify_io(f, mode):
+    """
+    Returns whether stream or file path can be read from and/or written to as binary.
+
+    Prints or raises error if not.
+
+    Tries to open file in append mode if verifying path writability,
+    auto-creating missing directories if any, will delete any file or directory created.
+
+    @param   f     file path, or stream
+    @param   mode  "r" for readable, "w" for writable, "a" for readable and writable
+    """
+    result, op = True, ""
+    if is_stream(f):
+        try:
+            pos = f.tell()
+            if mode in ("r", "a"):
+                op = " reading from"
+                result = isinstance(f.read(1), bytes)
+            if result and mode in ("w", "a"):
+                op = " writing to"
+                result, _ = True, f.write(b"")
+            f.seek(pos)
+            return result
+        except Exception as e:
+            ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", op, type(f).__name__, e)
+            return False
+
+    present, paths_created = os.path.exists(f), []
+    try:
+        if not present and mode in ("w", "a"):
+            op = " writing to"
+            path = os.path.realpath(os.path.dirname(f))
+            parts, accum = [x for x in path.split(os.sep) if x], []
+            while parts:
+                accum.append(parts.pop(0))
+                curpath = os.path.join(os.sep, accum[0] + os.sep, *accum[1:])  # Windows drive letter thing
+                if not os.path.exists(curpath):
+                    os.mkdir(curpath)
+                    paths_created.append(curpath)
+        elif not present and "r" == mode:
+            return False
+        with open(f, {"r": "rb", "w": "ab", "a": "ab+"}[mode]) as g:
+            if mode in ("r", "a"):
+                op = " reading from"
+                result = isinstance(g.read(1), bytes)
+            if result and mode in ("w", "a"):
+                op = " writing to"
+                result, _ = True, g.write(b"")
+            return result
+    except Exception as e:
+        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", f, e)
+        return False
+    finally:
+        if not present:
+            try: os.remove(f)
+            except Exception: pass
+            for path in paths_created[::-1]:
+                try: os.rmdir(path)
+                except Exception: pass
+
+
 def wildcard_to_regex(text, end=False):
     """
     Returns plain wildcard like "foo*bar" as re.Pattern("foo.*bar", re.I).
@@ -803,3 +1051,12 @@ def wildcard_to_regex(text, end=False):
     """
     suff = "$" if end else ""
     return re.compile(".*".join(map(re.escape, text.split("*"))) + suff, re.I)
+
+
+__all__ = [
+    "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
+    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
+    "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
+    "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
+    "parse_datetime", "plural", "unique_path", "verify_io", "wildcard_to_regex",
+]

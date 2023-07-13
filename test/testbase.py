@@ -9,9 +9,10 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    28.12.2021
+@modified    28.12.2022
 ------------------------------------------------------------------------------
 """
+import contextlib
 import logging
 import glob
 import os
@@ -86,7 +87,7 @@ class TestBase(unittest.TestCase):
 
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(TestBase, self).__init__(*args, **kwargs)
         self.maxDiff = None  # Full diff on assert failure
         try: unittest.util._MAX_LENGTH = 100000
         except Exception: pass
@@ -117,6 +118,14 @@ class TestBase(unittest.TestCase):
         except Exception: pass
         try: self._outname and os.unlink(self._outname)
         except Exception: pass
+
+
+    def subTest(self, msg=None, **params):
+        """Shim for TestCase.subTest in Py2."""
+        if callable(getattr(super(TestBase, self), "subTest", None)):  # Py 3.7+
+            return super(TestBase, self).subTest(msg, **params)
+        if callable(getattr(contextlib, "nested", None)):  # Py 2
+            return contextlib.nested()
 
 
     def create_publisher(self, topic, cls):

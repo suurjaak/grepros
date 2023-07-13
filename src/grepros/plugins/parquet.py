@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Parquet output for search results.
+Parquet output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    27.03.2023
+@modified    29.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -24,13 +24,14 @@ try: import pyarrow
 except ImportError: pyarrow = None
 try: import pyarrow.parquet
 except ImportError: pass
+import six
 
+from .. import api, common
 from .. common import ConsolePrinter
-from .. outputs import SinkBase
-from .. import common, rosapi
+from .. outputs import Sink
 
 
-class ParquetSink(SinkBase):
+class ParquetSink(Sink):
     """Writes messages to Apache Parquet files."""
 
     ## Auto-detection file extensions
@@ -83,29 +84,51 @@ class ParquetSink(SinkBase):
     ## Custom arguments for pyarrow.parquet.ParquetWriter
     WRITER_ARGS = {"version": "2.6"}
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={},
+                        VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           base name of Parquet files to write
-        @param   args.WRITE_OPTIONS   {"writer-*":  arguments passed to ParquetWriter,
-                                       "nesting":   "array" to recursively insert arrays
-                                                    of nested types, or "all" for any nesting,
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the base name of Parquet files to write
+        @param   args.emit_field      message fields to emit in output if not all
+        @param   args.noemit_field    message fields to skip in output
+        @param   args.write           base name of Parquet files to write
+        @param   args.write_options   ```
+                                      {"column": additional columns as {name: (rostype, value)},
+                                       "type": {rostype: PyArrow type or typename like "uint8"},
+                                       "writer": dictionary of arguments passed to ParquetWriter,
+                                       "idgenerator": callable or iterable for producing message IDs
+                                                      like uuid.uuid4 or itertools.count();
+                                                      nesting uses UUID values by default,
+                                       "column-k=rostype:v": one "column"-argument
+                                                             in flat string form,
+                                       "type-k=v: one "type"-argument in flat string form,
+                                       "writer-k=v": one "writer"-argument in flat string form,
+                                       "nesting": "array" to recursively insert arrays
+                                                  of nested types, or "all" for any nesting,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+                                      ```
+        @param   args.meta            whether to print metainfo
+        @param   args.verbose         whether to print debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
+        args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
+        args = common.ensure_namespace(args, ParquetSink.DEFAULT_ARGS, **kwargs)
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE
-        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._filenames      = {}  # {(typename, typehash): Parquet file path}
         self._caches         = {}  # {(typename, typehash): [{data}, ]}
         self._schemas        = {}  # {(typename, typehash): pyarrow.Schema}
         self._writers        = {}  # {(typename, typehash): pyarrow.parquet.ParquetWriter}
         self._extra_basecols = []  # [(name, rostype)]
         self._extra_basevals = []  # [(name, value)]
+        self._patterns       = {}  # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._nesting        = args.WRITE_OPTIONS.get("nesting")
         self._idgenerator    = iter(lambda: str(uuid.uuid4()), self) if self._nesting else None
 
@@ -114,10 +137,12 @@ class ParquetSink(SinkBase):
 
     def validate(self):
         """
-        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid.
+        Returns whether required libraries are available (pandas and pyarrow) and overwrite is valid
+        and file base is writable.
         """
+        if self.valid is not None: return self.valid
         ok, pandas_ok, pyarrow_ok = self._configure(), bool(pandas), bool(pyarrow)
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
@@ -131,42 +156,54 @@ class ParquetSink(SinkBase):
             ConsolePrinter.error("pandas not available: cannot write Parquet files.")
         if not pyarrow_ok:
             ConsolePrinter.error("PyArrow not available: cannot write Parquet files.")
-        return ok and pandas_ok and pyarrow_ok
+        if not common.verify_io(self.args.WRITE, "w"):
+            ok = False
+        self.valid = ok and pandas_ok and pyarrow_ok
+        return self.valid
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to a Parquet file."""
+        if not self.validate(): raise Exception("invalid")
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(topic, msg)
         self._process_message(topic, index, stamp, msg, match)
 
 
     def close(self):
         """Writes out any remaining messages, closes writers, clears structures."""
-        for k, vv in list(self._caches.items()):
-            vv and self._write_table(k)
-        for k in list(self._writers):
-            self._writers.pop(k).close()
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            sizes = {n: os.path.getsize(n) for n in self._filenames.values()}
-            ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
-                                 common.plural("message", sum(self._counts.values())),
-                                 common.plural("topic", self._counts),
-                                 common.plural("Parquet file", sizes),
-                                 common.format_bytes(sum(sizes.values())))
-            for (t, h), name in self._filenames.items():
-                count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
-                ConsolePrinter.debug("- %s (%s, %s)", name, common.format_bytes(sizes[name]),
-                                     common.plural("message", count))
-        self._caches.clear()
-        self._schemas.clear()
-        self._filenames.clear()
+        try:
+            for k, vv in list(self._caches.items()):
+                vv and self._write_table(k)
+            for k in list(self._writers):
+                self._writers.pop(k).close()
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                sizes = {n: None for n in self._filenames.values()}
+                for n in self._filenames.values():
+                    try: sizes[n] = os.path.getsize(n)
+                    except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
+                ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
+                                     common.plural("message", sum(self._counts.values())),
+                                     common.plural("topic", self._counts),
+                                     common.plural("Parquet file", sizes),
+                                     common.format_bytes(sum(filter(bool, sizes.values()))))
+                for (t, h), name in self._filenames.items():
+                    count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
+                    ConsolePrinter.debug("- %s (%s, %s)", name,
+                                         "error getting size" if sizes[name] is None else
+                                         common.format_bytes(sizes[name]),
+                                         common.plural("message", count))
+            self._caches.clear()
+            self._schemas.clear()
+            self._filenames.clear()
 
 
     def _process_type(self, topic, msg, rootmsg=None):
         """Prepares Parquet schema and writer if not existing."""
         rootmsg = rootmsg or msg
-        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
         if topic and (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
@@ -180,7 +217,8 @@ class ParquetSink(SinkBase):
 
         cols = []
         scalars = set(x for x in self.COMMON_TYPES if "[" not in x)
-        for path, value, subtype in rosapi.iter_message_fields(msg, scalars=scalars):
+        fltrs = dict(include=self._patterns["print"], exclude=self._patterns["noprint"])
+        for path, value, subtype in api.iter_message_fields(msg, scalars=scalars, **fltrs):
             coltype = self._make_column_type(subtype)
             cols += [(".".join(path), coltype)]
         MSGCOLS = self.MESSAGE_TYPE_BASECOLS + (self.MESSAGE_TYPE_NESTCOLS if self._nesting else [])
@@ -200,9 +238,9 @@ class ParquetSink(SinkBase):
         self._schemas[typekey]   = schema
         self._writers[typekey]   = writer
 
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True, **fltrs) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
             subtypehash = not submsgs and self.source.get_message_type_hash(scalartype)
@@ -223,9 +261,10 @@ class ParquetSink(SinkBase):
         """
         data, myid, rootmsg = {}, None, (rootmsg or None)
         if self._idgenerator: myid = next(self._idgenerator)
-        with rosapi.TypeMeta.make(msg, topic, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, topic, root=rootmsg) as m:
             typename, typekey = m.typename, m.typekey
-        for p, v, t in rosapi.iter_message_fields(msg, scalars=set(self.COMMON_TYPES)):
+        fltrs = dict(include=self._patterns["print"], exclude=self._patterns["noprint"])
+        for p, v, t in api.iter_message_fields(msg, scalars=set(self.COMMON_TYPES), **fltrs):
             data[".".join(p)] = self._make_column_value(v, t)
         data.update(_topic=topic, _timestamp=self._make_column_value(stamp, "time"))
         if self._idgenerator: data.update(_id=myid)
@@ -234,12 +273,12 @@ class ParquetSink(SinkBase):
             data.update(zip(COLS, [parent_type, parent_id]))
         data.update(self._extra_basevals)
         self._caches[typekey].append(data)
-        super(ParquetSink, self).emit(topic, index, stamp, msg, match)
+        super(ParquetSink, self).emit(topic, msg, stamp, match, index)
 
         subids = {}  # {message field path: [ids]}
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True, **fltrs) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
             if isinstance(submsgs, (list, tuple)):
@@ -262,9 +301,9 @@ class ParquetSink(SinkBase):
 
         @param  fallback  fallback typename to use for lookup if typename not found
         """
-        noboundtype = rosapi.canonical(typename, unbounded=True)
-        scalartype  = rosapi.scalar(typename)
-        timetype    = rosapi.get_ros_time_category(scalartype)
+        noboundtype = api.canonical(typename, unbounded=True)
+        scalartype  = api.scalar(typename)
+        timetype    = api.get_ros_time_category(scalartype)
         coltype     = self.COMMON_TYPES.get(typename) or self.COMMON_TYPES.get(noboundtype)
 
         if not coltype and scalartype in self.COMMON_TYPES:
@@ -285,20 +324,20 @@ class ParquetSink(SinkBase):
         """Returns column value suitable for adding to Parquet file."""
         v = value
         if isinstance(v, (list, tuple)):
-            noboundtype = rosapi.canonical(typename, unbounded=True)
-            if v and rosapi.is_ros_time(v[0]):
-                v = [rosapi.to_nsec(x) for x in v]
-            elif rosapi.scalar(typename) not in rosapi.ROS_BUILTIN_TYPES:
-                v = str([rosapi.message_to_dict(m) for m in v])
+            noboundtype = api.canonical(typename, unbounded=True)
+            if v and api.is_ros_time(v[0]):
+                v = [api.to_nsec(x) for x in v]
+            elif api.scalar(typename) not in api.ROS_BUILTIN_TYPES:
+                v = str([api.message_to_dict(m) for m in v])
             elif pyarrow.binary() in (self.COMMON_TYPES.get(typename),
                                       self.COMMON_TYPES.get(noboundtype)):
                 v = bytes(bytearray(v))  # Py2/Py3 compatible
             else:
                 v = list(v)  # Ensure lists not tuples
-        elif rosapi.is_ros_time(v):
-            v = rosapi.to_nsec(v)
-        elif typename and typename not in rosapi.ROS_BUILTIN_TYPES:
-            v = str(rosapi.message_to_dict(v))
+        elif api.is_ros_time(v):
+            v = api.to_nsec(v)
+        elif typename and typename not in api.ROS_BUILTIN_TYPES:
+            v = str(api.message_to_dict(v))
         return v
 
 
@@ -315,62 +354,69 @@ class ParquetSink(SinkBase):
         """Parses args.WRITE_OPTIONS, returns success."""
         ok = self._configure_ids()
 
+        def process_column(name, rostype, value):  # Parse "column-name=rostype:value"
+            v, myok = value, True
+            if "string" not in rostype:
+                v = json.loads(v)
+            if not name:
+                myok = False
+                ConsolePrinter.error("Invalid name option in %s=%s:%s", name, rostype, v)
+            if rostype not in api.ROS_BUILTIN_TYPES:
+                myok = False
+                ConsolePrinter.error("Invalid type option in %s=%s:%s", name, rostype, v)
+            if myok:
+                self._extra_basecols.append((name, rostype))
+                self._extra_basevals.append((name, value))
+
+        def process_type(rostype, arrowtype):  # Eval pyarrow datatype from value like "float64()"
+            if arrowtype not in self.ARROW_TYPES.values():
+                arrowtype = eval(compile(arrowtype, "", "eval"), {"__builtins__": self.ARROW_TYPES})
+            self.COMMON_TYPES[rostype] = arrowtype
+
+        for key, vals in [("print", self.args.EMIT_FIELD), ("noprint", self.args.NOEMIT_FIELD)]:
+            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):
-            alias = rosapi.get_type_alias(rostype)
+            alias = api.get_type_alias(rostype)
             if alias:
                 self.COMMON_TYPES[alias] = self.COMMON_TYPES[rostype]
             if alias and rostype + "[]" in self.COMMON_TYPES:
                 self.COMMON_TYPES[alias + "[]"] = self.COMMON_TYPES[rostype + "[]"]
 
         for k, v in self.args.WRITE_OPTIONS.items():
-            if k.startswith("column-"):
-                # Parse "column-name=rostype:value"
-                try:
-                    name, (rostype, value), myok = k[len("column-"):], v.split(":", 1), True
-                    if "string" not in rostype:
-                        value = json.loads(value)
-                    if not name:
-                        ok = myok = False
-                        ConsolePrinter.error("Invalid name option in %s=%s", k, v)
-                    if rostype not in rosapi.ROS_BUILTIN_TYPES:
-                        ok = myok = False
-                        ConsolePrinter.error("Invalid type option in %s=%s", k, v)
-                    if myok:
-                        self._extra_basecols.append((name, rostype))
-                        self._extra_basevals.append((name, value))
-                except Exception as e:
-                    ok = False
-                    ConsolePrinter.error("Invalid column option in %s=%s: %s", k, v, e)
-            elif k.startswith("type-"):
-                # Eval pyarrow datatype from value like "float64()" or "list(uint8())"
-                if not k[len("type-"):]:
-                    ok = False
-                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v)
+            if "column" == k and v and isinstance(v, dict):
+                for name, (rostype, value) in v.items():
+                    if not process_column(name, rostype, value): ok = False
+            elif "type" == k and v and isinstance(v, dict):
+                for name, value in v.items():
+                    if not process_type(name, value): ok = False
+            elif "writer" == k and v and isinstance(v, dict):
+                self.WRITER_ARGS.update(v)
+            elif isinstance(k, str) and "-" in k:
+                category, name = k.split("-", 1)
+                if category not in ("column", "type", "writer"):
+                    ConsolePrinter.warn("Unknown %r option in %s=%s", category, k, v)
                     continue  # for k, v
                 try:
-                    arrowtype = eval(compile(v, "", "eval"), {"__builtins__": self.ARROW_TYPES})
-                    self.COMMON_TYPES[k[len("type-"):]] = arrowtype
+                    if not name: raise Exception("empty name")
+                    if "column" == category:    # column-name=rostype:value
+                        if not process_column(name, *v.split(":", 1)): ok = False
+                    elif "type" == category:    # type-rostype=arrowtype
+                        process_type(name, v)
+                    elif "writer" == category:  # writer-argname=argvalue
+                        try: v = json.loads(v)
+                        except Exception: pass
+                        self.WRITER_ARGS[name] = v
                 except Exception as e:
                     ok = False
-                    ConsolePrinter.error("Invalid type option in %s=%s: %s", k, v, e)
-            elif k.startswith("writer-"):
-                if not k[len("writer-"):]:
-                    ok = False
-                    ConsolePrinter.error("Invalid name in %s=%s: %s", k, v)
-                    continue  # for k, v
-                try: v = json.loads(v)
-                except Exception: pass
-                self.WRITER_ARGS[k[len("writer-"):]] = v
+                    ConsolePrinter.error("Invalid %s option in %s=%s: %s", category, k, v, e)
         return ok
 
 
     def _configure_ids(self):
         """Configures ID generator from args.WRITE_OPTIONS, returns success."""
         ok = True
-
-        try: integer_types, text_types = (int, long), (str, unicode)         # Py2
-        except Exception: integer_types, text_types = (int, ), (bytes, str)  # Py3
 
         k, v = "idgenerator", self.args.WRITE_OPTIONS.get("idgenerator")
         if k in self.args.WRITE_OPTIONS:
@@ -382,7 +428,7 @@ class ParquetSink(SinkBase):
             except Exception: pass
             try: val = eval(compile(v, "", "eval"), ns)
             except Exception as e: ok, ex = False, e
-            if isinstance(val, text_types): ok = False
+            if isinstance(val, (six.binary_type, six.text_type)): ok = False
 
             if ok:
                 try: self._idgenerator = iter(val)
@@ -396,9 +442,9 @@ class ParquetSink(SinkBase):
 
             if ok and self._idgenerator:  # Detect given ID column type
                 fval, typename, generator = next(self._idgenerator), None, self._idgenerator
-                if rosapi.is_ros_time(fval):
+                if api.is_ros_time(fval):
                     typename = "time" if "time" in str(type(fval)).lower() else "duration"
-                elif isinstance(fval, integer_types):
+                elif isinstance(fval, six.integer_types):
                     typename = "int64"
                 elif isinstance(fval, float):
                     typename = "float64"
@@ -414,12 +460,15 @@ class ParquetSink(SinkBase):
 
 
 def init(*_, **__):
-    """Adds Parquet output format support."""
+    """Adds Parquet output format support. Raises ImportWarning if libraries not available."""
+    if not pandas or not pyarrow:
+        ConsolePrinter.error("pandas or PyArrow not available: cannot write Parquet files.")
+        raise ImportWarning()
     from .. import plugins  # Late import to avoid circular
     plugins.add_write_format("parquet", ParquetSink, "Parquet", [
-        ("column-name=rostype:value",  "additional column to add in Parquet output,\n"
+        ("column-NAME=ROSTYPE:VALUE",  "additional column to add in Parquet output,\n"
                                        "like column-bag_hash=string:26dfba2c"),
-        ("idgenerator=callable",       "callable or iterable for producing message IDs \n"
+        ("idgenerator=CALLABLE",       "callable or iterable for producing message IDs \n"
                                        "in Parquet output, like 'uuid.uuid4' or 'itertools.count()';\n"
                                        "nesting uses UUID values by default"),
         ("nesting=array|all",          "create tables for nested message types\n"
@@ -430,9 +479,13 @@ def init(*_, **__):
                                        " with foreign keys instead of messages as JSON)"),
         ("overwrite=true|false",       "overwrite existing file in Parquet output\n"
                                        "instead of appending unique counter (default false)"),
-        ("type-rostype=arrowtype",     "custom mapping between ROS and pyarrow type\n"
+        ("type-ROSTYPE=ARROWTYPE",     "custom mapping between ROS and pyarrow type\n"
                                        "for Parquet output, like type-time=\"timestamp('ns')\"\n"
                                        "or type-uint8[]=\"list(uint8())\""),
-        ("writer-argname=argvalue",    "additional arguments for Parquet output\n"
+        ("writer-ARGNAME=ARGVALUE",    "additional arguments for Parquet output\n"
                                        "given to pyarrow.parquet.ParquetWriter"),
     ])
+    plugins.add_output_label("Parquet", ["--emit-field", "--no-emit-field"])
+
+
+__all__ = ["ParquetSink", "init"]

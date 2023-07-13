@@ -8,20 +8,20 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    07.01.2022
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
 import atexit
 import collections
 
-from ... import rosapi
-from ... common import ConsolePrinter, plural
-from ... outputs import SinkBase
+from ... import api
+from ... common import PATH_TYPES, ConsolePrinter, ensure_namespace, plural
+from ... outputs import Sink
 from . sqlbase import SqlMixin, quote
 
 
-class DataSinkBase(SinkBase, SqlMixin):
+class BaseDataSink(Sink, SqlMixin):
     """
     Base class for writing messages to a database.
 
@@ -60,21 +60,32 @@ class DataSinkBase(SinkBase, SqlMixin):
     MESSAGE_TYPE_NESTCOLS  = [("_parent_type", "TEXT"),
                               ("_parent_id",   "INTEGER"), ]
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.WRITE           database connection string
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single item as the database connection string
+        @param   args.write           database connection string
+        @param   args.write_options   ```
+                                      {"commit-interval": transaction size (0 is autocommit),
                                       "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting)}
-        @param   args.META            whether to print metainfo
-        @param   args.VERBOSE         whether to print debug information
+                                      ```
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        super(DataSinkBase, self).__init__(args)
+        args = {"WRITE": str(args)} if isinstance(args, PATH_TYPES) else args
+        args = ensure_namespace(args, BaseDataSink.DEFAULT_ARGS, **kwargs)
+        super(BaseDataSink, self).__init__(args)
         SqlMixin.__init__(self, args)
 
-        self._db            = None   # Database connection
+        ## Database connection
+        self.db = None
+
         self._cursor        = None   # Database cursor or connection
         self._dialect       = self.ENGINE.lower()  # Override SqlMixin._dialect
         self._close_printed = False
@@ -94,7 +105,7 @@ class DataSinkBase(SinkBase, SqlMixin):
 
     def validate(self):
         """
-        Returns whether args.WRITE_OPTIONS has valid values, if any.
+        Returns whether args.write_options has valid values, if any.
 
         Checks parameters "commit-interval" and "nesting".
         """
@@ -105,7 +116,7 @@ class DataSinkBase(SinkBase, SqlMixin):
             if not ok:
                 ConsolePrinter.error("Invalid commit-interval option for %s: %r.",
                                      self.ENGINE, self.args.WRITE_OPTIONS["commit-interval"])
-        if self.args.WRITE_OPTIONS.get("nesting") not in (None, "", "array", "all"):
+        if self.args.WRITE_OPTIONS.get("nesting") not in (None, False, "", "array", "all"):
             ConsolePrinter.error("Invalid nesting option for %s: %r. "
                                  "Choose one of {array,all}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["nesting"])
@@ -113,46 +124,51 @@ class DataSinkBase(SinkBase, SqlMixin):
         return ok and sqlconfig_ok
 
 
-    def emit(self, topic, index, stamp, msg, match):
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to database."""
-        if not self._db:
+        if not self.validate(): raise Exception("invalid")
+        if not self.db:
             self._init_db()
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(msg)
         self._process_topic(topic, msg)
         self._process_message(topic, msg, stamp)
-        super(DataSinkBase, self).emit(topic, index, stamp, msg, match)
+        super(BaseDataSink, self).emit(topic, msg, stamp, match, index)
 
 
     def close(self):
         """Closes database connection, if any."""
-        if self._db:
-            for sql in list(self._sql_queue):
-                self._executemany(sql, self._sql_queue.pop(sql))
-            self._db.commit()
-            self._cursor.close()
-            self._cursor = None
-            self._db.close()
-            self._db = None
-        if not self._close_printed and self._counts:
-            self._close_printed = True
-            target = self._make_db_label()
-            ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
-                                 plural("message", sum(self._counts.values())),
-                                 plural("topic", self._counts), self.ENGINE, target)
-            if self._nested_counts:
+        try:
+            if self.db:
+                for sql in list(self._sql_queue):
+                    self._executemany(sql, self._sql_queue.pop(sql))
+                self.db.commit()
+                self._cursor.close()
+                self._cursor = None
+                self.db.close()
+                self.db = None
+        finally:
+            if not self._close_printed and self._counts:
+                self._close_printed = True
+                target = self._make_db_label()
                 ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
-                                     plural("nested message", sum(self._nested_counts.values())),
-                                     plural("nested message type", self._nested_counts),
-                                     self.ENGINE, target)
-        self._checkeds.clear()
-        self._nested_counts.clear()
-        SqlMixin.close(self)
-        super(DataSinkBase, self).close()
+                                     plural("message", sum(self._counts.values())),
+                                     plural("topic", self._counts), self.ENGINE, target)
+                if self._nested_counts:
+                    ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
+                        plural("nested message", sum(self._nested_counts.values())),
+                        plural("nested message type", self._nested_counts),
+                        self.ENGINE, target
+                    )
+            self._checkeds.clear()
+            self._nested_counts.clear()
+            SqlMixin.close(self)
+            super(BaseDataSink, self).close()
 
 
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
-        baseattrs = dir(SinkBase(None))
+        baseattrs = dir(Sink())
         for attr in (getattr(self, k, None) for k in dir(self)
                      if not k.isupper() and k not in baseattrs):
             isinstance(attr, dict) and attr.clear()
@@ -160,10 +176,10 @@ class DataSinkBase(SinkBase, SqlMixin):
 
         if "commit-interval" in self.args.WRITE_OPTIONS:
             self.COMMIT_INTERVAL = int(self.args.WRITE_OPTIONS["commit-interval"])
-        self._db = self._connect()
+        self.db = self._connect()
         self._cursor = self._make_cursor()
         self._executescript(self._get_dialect_option("base_schema"))
-        self._db.commit()
+        self.db.commit()
         self._load_schema()
         TYPECOLS = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
         if self._nesting: TYPECOLS += self.MESSAGE_TYPE_NESTCOLS
@@ -190,7 +206,7 @@ class DataSinkBase(SinkBase, SqlMixin):
         Also creates types-row and pkg/MsgType table for this message if not existing.
         If nesting enabled, creates types recursively.
         """
-        topickey = rosapi.TypeMeta.make(msg, topic).topickey
+        topickey = api.TypeMeta.make(msg, topic).topickey
         if topickey in self._checkeds:
             return
 
@@ -206,7 +222,7 @@ class DataSinkBase(SinkBase, SqlMixin):
                 ConsolePrinter.debug("Adding topic %s in %s output.", topic, self.ENGINE)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
-            if self.COMMIT_INTERVAL: self._db.commit()
+            if self.COMMIT_INTERVAL: self.db.commit()
         self._checkeds[topickey] = True
 
 
@@ -217,10 +233,10 @@ class DataSinkBase(SinkBase, SqlMixin):
         @return   created types-row, or None if already existed
         """
         rootmsg = rootmsg or msg
-        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typekey = (m.typename, m.typekey)
         if typekey in self._checkeds:
-            return
+            return None
 
         if typekey not in self._types:
             if self.args.VERBOSE:
@@ -237,9 +253,9 @@ class DataSinkBase(SinkBase, SqlMixin):
 
 
         nested_tables = self._types[typekey].get("nested_tables") or {}
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for path, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for path
 
@@ -269,7 +285,7 @@ class DataSinkBase(SinkBase, SqlMixin):
             do_commit = sum(len(v) for v in self._sql_queue.values()) >= self.COMMIT_INTERVAL
             for sql in list(self._sql_queue) if do_commit else ():
                 self._executemany(sql, self._sql_queue.pop(sql))
-            do_commit and self._db.commit()
+            do_commit and self.db.commit()
 
 
     def _populate_type(self, topic, msg, stamp,
@@ -281,15 +297,15 @@ class DataSinkBase(SinkBase, SqlMixin):
         and returns inserted ID.
         """
         rootmsg = rootmsg or msg
-        with rosapi.TypeMeta.make(msg, root=rootmsg) as m:
+        with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typekey = m.typename, m.typekey
-        with rosapi.TypeMeta.make(rootmsg) as m:
+        with api.TypeMeta.make(rootmsg) as m:
             topic_id = self._topics[m.topickey]["id"]
         table_name = self._types[typekey]["table_name"]
 
         myid = self._get_next_id(table_name) if self._nesting else None
         coldefs = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS[:-1]
-        colvals = [topic, topic_id, rosapi.to_datetime(stamp), rosapi.to_nsec(stamp)]
+        colvals = [topic, topic_id, api.to_datetime(stamp), api.to_nsec(stamp)]
         if self._nesting:
             coldefs += self.MESSAGE_TYPE_BASECOLS[-1:] + self.MESSAGE_TYPE_NESTCOLS
             colvals += [myid, parent_type, parent_id]
@@ -299,9 +315,9 @@ class DataSinkBase(SinkBase, SqlMixin):
         if parent_type: self._nested_counts[typekey] = self._nested_counts.get(typekey, 0) + 1
 
         subids = {}  # {message field path: [ids]}
-        nesteds = rosapi.iter_message_fields(msg, messages_only=True) if self._nesting else ()
+        nesteds = api.iter_message_fields(msg, messages_only=True) if self._nesting else ()
         for subpath, submsgs, subtype in nesteds:
-            scalartype = rosapi.scalar(subtype)
+            scalartype = api.scalar(subtype)
             if subtype == scalartype and "all" != self._nesting:
                 continue  # for subpath
             if isinstance(submsgs, (list, tuple)):
@@ -328,7 +344,7 @@ class DataSinkBase(SinkBase, SqlMixin):
                 typecols[c] = t
         if sqls:
             self._executescript("\n".join(sqls))
-            self._db.commit()
+            self.db.commit()
 
 
     def _ensure_execute(self, sql, args):
@@ -367,9 +383,12 @@ class DataSinkBase(SinkBase, SqlMixin):
 
     def _make_cursor(self):
         """Returns new database cursor."""
-        return self._db.cursor()
+        return self.db.cursor()
 
 
     def _make_db_label(self):
         """Returns formatted label for database."""
         return self.args.WRITE
+
+
+__all__ = ["BaseDataSink"]

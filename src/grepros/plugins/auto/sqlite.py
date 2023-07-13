@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQLite output for search results.
+SQLite output plugin.
 
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    06.02.2022
+@modified    28.06.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -16,14 +16,15 @@ import collections
 import json
 import os
 import sqlite3
-import sys
 
-from ... common import ConsolePrinter, format_bytes, makedirs
-from ... import rosapi
-from . dbbase import DataSinkBase, quote
+import six
+
+from ... import api
+from ... common import ConsolePrinter, format_bytes, makedirs, verify_io
+from . dbbase import BaseDataSink, quote
 
 
-class SqliteSink(DataSinkBase):
+class SqliteSink(BaseDataSink):
     """
     Writes messages to an SQLite database.
 
@@ -55,53 +56,63 @@ class SqliteSink(DataSinkBase):
     ## Maximum integer size supported in SQLite, higher values inserted as string
     MAX_INT = 2**63 - 1
 
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, VERBOSE=False)
 
-    def __init__(self, args):
+
+    def __init__(self, args=None, **kwargs):
         """
-        @param   args                 arguments object like argparse.Namespace
-        @param   args.META            whether to print metainfo
-        @param   args.WRITE           name of SQLite file to write, will be appended to if exists
-        @param   args.WRITE_OPTIONS   {"commit-interval": transaction size (0 is autocommit),
+        @param   args                 arguments as namespace or dictionary, case-insensitive;
+                                      or a single path as the name of SQLitefile to write
+        @param   args.write           name of SQLite file to write, will be appended to if exists
+        @param   args.write_options   ```
+                                      {"commit-interval": transaction size (0 is autocommit),
                                        "message-yaml": populate messages.yaml (default true),
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting),
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
-        @param   args.VERBOSE         whether to print debug information
+                                      ```
+        @param   args.meta            whether to emit metainfo
+        @param   args.verbose         whether to emit debug information
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        super(SqliteSink, self).__init__(args)
+        super(SqliteSink, self).__init__(args, **kwargs)
 
-        self._filename    = args.WRITE
-        self._do_yaml     = (args.WRITE_OPTIONS.get("message-yaml") != "false")
-        self._overwrite   = (args.WRITE_OPTIONS.get("overwrite") == "true")
+        self._filename    = self.args.WRITE
+        self._do_yaml     = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
+        self._overwrite   = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._id_counters = {}  # {table next: max ID}
 
 
     def validate(self):
         """
-        Returns "commit-interval" and "nesting" in args.WRITE_OPTIONS have valid value, if any;
-        parses "message-yaml" from args.WRITE_OPTIONS.
+        Returns whether "commit-interval" and "nesting" in args.write_options have valid value, if any,
+        and file is writable; parses "message-yaml" and "overwrite" from args.write_options.
         """
-        config_ok = super(SqliteSink, self).validate()
-        if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, "true", "false"):
+        if self.valid is not None: return self.valid
+        ok = super(SqliteSink, self).validate()
+        if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["message-yaml"])
-            config_ok = False
-        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, "true", "false"):
+            ok = False
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for %s: %r. "
                                  "Choose one of {true, false}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["overwrite"])
-            config_ok = False
-        return config_ok
+            ok = False
+        if not verify_io(self.args.WRITE, "w"):
+            ok = False
+        self.valid = ok
+        return self.valid
 
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
-        sqlite3.register_adapter(int, lambda x: str(x) if abs(x) > self.MAX_INT else x)
-        if sys.version_info < (3, ):
-            sqlite3.register_adapter(long, lambda x: str(x) if abs(x) > self.MAX_INT else x)
+        for t in six.integer_types:
+            sqlite3.register_adapter(t, lambda x: str(x) if abs(x) > self.MAX_INT else x)
         sqlite3.register_converter("JSON", json.loads)
         if self.args.VERBOSE:
             sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
@@ -115,9 +126,9 @@ class SqliteSink(DataSinkBase):
     def _load_schema(self):
         """Populates instance attributes with schema metainfo."""
         super(SqliteSink, self)._load_schema()
-        for row in self._db.execute("SELECT name FROM sqlite_master "
+        for row in self.db.execute("SELECT name FROM sqlite_master "
                                     "WHERE type = 'table' AND name LIKE '%/%'"):
-            cols = self._db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
+            cols = self.db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
             typerow = next((x for x in self._types.values()
                             if x["table_name"] == row["name"]), None)
             if not typerow: continue  # for row
@@ -127,11 +138,11 @@ class SqliteSink(DataSinkBase):
 
     def _process_message(self, topic, msg, stamp):
         """Inserts message to messages-table, and to pkg/MsgType tables."""
-        with rosapi.TypeMeta.make(msg, topic) as m:
+        with api.TypeMeta.make(msg, topic) as m:
             topic_id, typename = self._topics[m.topickey]["id"], m.typename
-        margs = dict(dt=rosapi.to_datetime(stamp), timestamp=rosapi.to_nsec(stamp),
+        margs = dict(dt=api.to_datetime(stamp), timestamp=api.to_nsec(stamp),
                      topic=topic, name=topic, topic_id=topic_id, type=typename,
-                     yaml=str(msg) if self._do_yaml else "", data=rosapi.get_message_data(msg))
+                     yaml=str(msg) if self._do_yaml else "", data=api.serialize_message(msg))
         self._ensure_execute(self._get_dialect_option("insert_message"), margs)
         super(SqliteSink, self)._process_message(topic, msg, stamp)
 
@@ -166,9 +177,18 @@ class SqliteSink(DataSinkBase):
         """Returns next ID value for table, using simple auto-increment."""
         if not self._id_counters.get(table):
             sql = "SELECT COALESCE(MAX(_id), 0) AS id FROM %s" % quote(table)
-            self._id_counters[table] = self._db.execute(sql).fetchone()["id"]
+            self._id_counters[table] = self.db.execute(sql).fetchone()["id"]
         self._id_counters[table] += 1
         return self._id_counters[table]
+
+
+    def _make_db_label(self):
+        """Returns formatted label for database, with file path and size."""
+        try: sz = format_bytes(os.path.getsize(self._filename))
+        except Exception as e:
+            ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
+            sz = "error getting size"
+        return "%s (%s)" % (self._filename, sz)
 
 
 
@@ -193,3 +213,6 @@ def init(*_, **__):
         ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
                                      "instead of appending to file (default false)")
     ])
+
+
+__all__ = ["SqliteSink", "init"]
