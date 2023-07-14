@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    02.07.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -209,10 +209,13 @@ class CsvWriter(object):
         """
         def write_columns(cols, inter):
             """Writes columns to file, returns number of bytes written."""
-            count = self._file.write(inter) if inter else 0
-            self._writer.writerow(cols)                         # Hack: use csv.writer to format
-            count += self._file.write(self._buffer.getvalue())  # a slice at a time, as it can get
-            self._buffer.seek(0); self._buffer.truncate()       # very memory-hungry for huge rows
+            count = len(inter) if inter else 0
+            if inter: self._file.write(inter)
+            # Hack: use csv.writer to format a slice at a time; huge rows cause excessive memory use
+            self._writer.writerow(cols)
+            self._file.write(self._buffer.getvalue())
+            count += self._buffer.tell()
+            self._buffer.seek(0); self._buffer.truncate()
             return count
 
         result, chunk, inter, DELIM, STEP = 0, [], "", self.dialect.delimiter, 10000
@@ -223,7 +226,8 @@ class CsvWriter(object):
                 result += write_columns(chunk, inter)
                 chunk, inter = [], DELIM
         if chunk: result += write_columns(chunk, inter)
-        result += self._file.write(self.dialect.lineterminator)
+        self._file.write(self.dialect.lineterminator)
+        result += len(self.dialect.lineterminator)
         return result
 
     def writerows(self, rows):
