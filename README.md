@@ -106,7 +106,8 @@ Installation
 grepros is written in Python, supporting both Python 2 and Python 3.
 
 Developed and tested under ROS1 Noetic and ROS2 Foxy,
-should also work in later ROS2 versions; _may_ work in earlier ROS1 versions.
+works in later ROS2 versions (Galactic, Humble, Iron, and likewise Rolling);
+_may_ work in earlier ROS1 versions.
 
 
 ### Using pip
@@ -130,9 +131,9 @@ packages can also be installed separately with:
 
 If ROS apt repository has been added to system:
 
-    sudo apt install ros-noetic-grepros  # ROS1
+    sudo apt install ros-noetic-grepros  # ROS1 Noetic
 
-    sudo apt install ros-foxy-grepros    # ROS2
+    sudo apt install ros-foxy-grepros    # ROS2 Foxy
 
 This will add the `grepros` command to the global ROS1 / ROS2 environment.
 
