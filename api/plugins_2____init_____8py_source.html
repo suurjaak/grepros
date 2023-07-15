@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.1</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -124,7 +124,7 @@ $(document).ready(function(){initNavTree('plugins_2____init_____8py_source.html'
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
 <div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">@author</span>      Erki Suurjaak</div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">@created</span>     18.12.2021</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">@modified</span>    26.06.2023</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">@modified</span>    14.07.2023</div>
 <div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>------------------------------------------------------------------------------</div>
 <div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="stringliteral">&quot;&quot;&quot;</span></div>
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="stringliteral">## @namespace grepros.plugins</span></div>
@@ -295,7 +295,7 @@ $(document).ready(function(){initNavTree('plugins_2____init_____8py_source.html'
 <div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>            ConsolePrinter.warn(<span class="stringliteral">&quot;Command-line flag %s has no text on output for labels %s.&quot;</span>,</div>
 <div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>                                arg[<span class="stringliteral">&quot;args&quot;</span>], <span class="stringliteral">&quot;, &quot;</span>.join(map(repr, sorted(set(labels)))))</div>
 <div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>            <span class="keywordflow">continue</span>  <span class="comment"># for arg, labels</span></div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>        labels2 = sorted(set(labels + match[2].split(<span class="stringliteral">&quot;/&quot;</span>)), key=<span class="keyword">lambda</span> x: x.lower())</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>        labels2 = sorted(set(labels + match.group(2).split(<span class="stringliteral">&quot;/&quot;</span>)), key=<span class="keyword">lambda</span> x: x.lower())</div>
 <div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>        arg[<span class="stringliteral">&quot;help&quot;</span>] = match.expand(<span class="stringliteral">r&quot;\1%s\3&quot;</span> % <span class="stringliteral">&quot;/&quot;</span>.join(labels2))</div>
 <div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span> </div>
 <div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>    OUTPUT_LABELS.clear()</div>
@@ -396,7 +396,7 @@ $(document).ready(function(){initNavTree('plugins_2____init_____8py_source.html'
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_0d8d2c83378af3dbf8497b689631bb64.html">grepros</a></li><li class="navelem"><a class="el" href="dir_199f83258ee944f6e188e38decdaff0e.html">plugins</a></li><li class="navelem"><a class="el" href="plugins_2____init_____8py.html">__init__.py</a></li>
-    <li class="footer">Generated on Wed Jul 5 2023 16:17:10 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Sat Jul 15 2023 17:05:51 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>
