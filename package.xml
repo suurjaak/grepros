@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>grepros</name>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <description>grep for ROS bag files and live topics: read, filter, export</description>
 
   <maintainer email="erki@lap.ee">Erki Suurjaak</maintainer>

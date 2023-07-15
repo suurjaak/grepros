@@ -8,13 +8,15 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    02.07.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
 import copy
 import collections
 import re
+
+import six
 
 from . import api
 from . import common
@@ -394,6 +396,7 @@ class Scanner(object):
 
         def process_message(obj, top=()):
             """Recursively converts field values to pattern-matched strings; updates `matched`."""
+            LISTIFIABLES = (bytes, tuple) if six.PY3 else (tuple, )
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
             fieldmap = fieldmap0 = api.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
@@ -406,12 +409,12 @@ class Scanner(object):
                 elif v and is_collection and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
                     api.set_message_value(obj, k, [process_message(x, path) for x in v])
                 else:
-                    v1 = str(list(v) if isinstance(v, (bytes, tuple)) else v)
+                    v1 = str(list(v) if isinstance(v, LISTIFIABLES) else v)
                     v2 = wrap_matches(v1, path, is_collection)
                     if len(v1) != len(v2):
                         api.set_message_value(obj, k, v2)
             if not api.is_ros_message(obj):
-                v1 = str(list(obj) if isinstance(obj, bytes) else obj)
+                v1 = str(list(obj) if isinstance(obj, LISTIFIABLES) else obj)
                 v2 = wrap_matches(v1, top)
                 obj = v2 if len(v1) != len(v2) else obj
             if not top and not matched and not selects and not fieldmap0 and not self.args.INVERT \

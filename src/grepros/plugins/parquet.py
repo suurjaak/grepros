@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    29.06.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -19,11 +19,11 @@ import re
 import uuid
 
 try: import pandas
-except ImportError: pandas = None
+except Exception: pandas = None
 try: import pyarrow
-except ImportError: pyarrow = None
+except Exception: pyarrow = None
 try: import pyarrow.parquet
-except ImportError: pass
+except Exception: pass
 import six
 
 from .. import api, common
@@ -57,8 +57,10 @@ class ParquetSink(Sink):
         "utf8":       pyarrow.string,    "large_utf8":   pyarrow.large_utf8,
         "list":       pyarrow.list_,     "list_":        pyarrow.list_,
         "large_list": pyarrow.large_list,
-        "month_day_nano_interval": pyarrow.month_day_nano_interval,
     } if pyarrow else {}
+    if hasattr(pyarrow, "month_day_nano_interval"): ARROW_TYPES.update({  # Py3
+        "month_day_nano_interval": pyarrow.month_day_nano_interval,
+    })
 
     ## Mapping from ROS common type names to pyarrow type constructors
     COMMON_TYPES = {

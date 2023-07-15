@@ -29,7 +29,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     18.12.2021
-@modified    26.06.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins
@@ -200,7 +200,7 @@ def populate_output_arguments():
             ConsolePrinter.warn("Command-line flag %s has no text on output for labels %s.",
                                 arg["args"], ", ".join(map(repr, sorted(set(labels)))))
             continue  # for arg, labels
-        labels2 = sorted(set(labels + match[2].split("/")), key=lambda x: x.lower())
+        labels2 = sorted(set(labels + match.group(2).split("/")), key=lambda x: x.lower())
         arg["help"] = match.expand(r"\1%s\3" % "/".join(labels2))
 
     OUTPUT_LABELS.clear()

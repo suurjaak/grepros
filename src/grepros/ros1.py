@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    03.07.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -110,7 +110,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         kwargs.setdefault("skip_index", True)
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
         getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
-        for n in set(kwargs) - set(getargspec(rosbag.Bag).args): kwargs.pop(n)
+        for n in set(kwargs) - set(getargspec(rosbag.Bag.__init__).args): kwargs.pop(n)
 
         if common.is_stream(f):
             if not common.verify_io(f, mode):
@@ -345,10 +345,10 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
             if not connection_header:
                 connection_header = {"topic": topic, "type": typename, "md5sum": typehash,
                                      "message_definition": typeclass._full_text}
-            conn_id, bagself = len(self._connections), super(ROS1Bag, self)
+            conn_id = len(self._connections)
             connection_info = rosbag.bag._ConnectionInfo(conn_id, topic, connection_header)
-            bagself._write_connection_record(connection_info, encrypt=False)
-            bagself._connections[conn_id] = bagself._topic_connections[topic] = connection_info
+            self._write_connection_record(connection_info, encrypt=False)
+            self._connections[conn_id] = self._topic_connections[topic] = connection_info
 
         self.__TYPES.setdefault(typekey, typeclass)
         self.__TYPEDEFS.setdefault(typekey, typeclass._full_text)
@@ -626,7 +626,11 @@ def get_message_type(msg_or_cls):
 def get_message_value(msg, name, typename):
     """Returns object attribute value, with numeric arrays converted to lists."""
     v = getattr(msg, name)
-    return list(v) if typename.startswith("uint8[") and isinstance(v, bytes) else v
+    listifiable = typename.startswith(("uint8[", "char[")) and isinstance(v, bytes)
+    if six.PY2 and listifiable:  # Ignore already highlighted values from Scanner
+        listifiable = v[:1] != "[" or v[-1:] != "]" or common.MatchMarkers.START not in v
+        return list(bytearray(v)) if listifiable else v
+    return list(v) if listifiable else v
 
 
 def get_rostime(fallback=False):

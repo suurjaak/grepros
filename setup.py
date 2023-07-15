@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.07.2023
+@modified    14.07.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -49,6 +49,7 @@ common_args = dict(
     install_requires = ["pyyaml", "six"],
     package_dir      = {"": "src"},
     packages         = setuptools.find_packages("src"),
+    package_data     = {"": ["plugins/auto/*.tpl"]},
 )
 version_args = dict(
     data_files      = [
