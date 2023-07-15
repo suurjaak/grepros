@@ -48,8 +48,9 @@ grepros is written in Python, supporting both Python 2 and Python 3.
 <p>
 Developed and tested under ROS1 Noetic and ROS2 Foxy,
 <br />
-it should also work in later ROS2 versions;
-it <em>may</em> work in earlier ROS1 versions. 
+works in later ROS2 versions (Galactic, Humble, Iron, and likewise Rolling);
+<br />
+also works in the earlier ROS1 version Melodic (lacking MCAP and Parquet support).
 </p>
 
 <h3 id="using-pip">Using pip</h3>
@@ -78,9 +79,9 @@ pip install rospy rosbag roslib roslz4 \
 <p>If ROS apt repository has been added to system:</p>
 
 <pre>
-sudo apt install ros-noetic-grepros  <code class="comment"># ROS1</code>
+sudo apt install ros-noetic-grepros  <code class="comment"># ROS1 Noetic</code>
 
-sudo apt install ros-foxy-grepros    <code class="comment"># ROS2</code>
+sudo apt install ros-foxy-grepros    <code class="comment"># ROS2 Foxy</code>
 </pre>
 
 <p>This will add the <code>grepros</code> command to the global ROS1 / ROS2 environment.</p>
