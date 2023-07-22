@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.2 (2022-07-22)
+-------------------
+* ensure compatibility with Python 3.12+
+
 1.0.1 (2022-07-14)
 -------------------
 * ensure Python2 compatibility under ROS1 Melodic

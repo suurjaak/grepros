@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    14.07.2023
+@modified    22.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -109,7 +109,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
 
         kwargs.setdefault("skip_index", True)
         reindex, progress = (kwargs.pop(k, False) for k in ("reindex", "progress"))
-        getargspec = getattr(inspect, "getfullargspec", inspect.getargspec)
+        getargspec = getattr(inspect, "getfullargspec", getattr(inspect, "getargspec", None))
         for n in set(kwargs) - set(getargspec(rosbag.Bag.__init__).args): kwargs.pop(n)
 
         if common.is_stream(f):
