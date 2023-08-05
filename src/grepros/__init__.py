@@ -6,13 +6,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     31.10.2021
-@modified    22.07.2023
+@modified    05.08.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros
 __title__        = "grepros"
-__version__      = "1.0.2.dev0"
-__version_info__ = (1, 0, 2, "dev0")
-__version_date__ = "22.07.2023"
+__version__      = "1.0.2.dev1"
+__version_info__ = (1, 0, 2, "dev1")
+__version_date__ = "05.08.2023"
 
 from . library import *

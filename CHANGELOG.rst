@@ -2,15 +2,16 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.2 (2022-07-22)
+1.0.2 (2023-08-05)
 -------------------
+* update step, the vendored template library
 * ensure compatibility with Python 3.12+
 
-1.0.1 (2022-07-14)
+1.0.1 (2023-07-14)
 -------------------
 * ensure Python2 compatibility under ROS1 Melodic
 
-1.0.0 (2022-07-13)
+1.0.0 (2023-07-13)
 -------------------
 * make grepros conveniently usable as a library
 * add --no-highlight option
