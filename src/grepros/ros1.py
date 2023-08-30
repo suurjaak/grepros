@@ -546,7 +546,7 @@ def create_subscriber(topic, typename, handler, queue_size):
         if msg._connection_header["type"] != typename:
             return
         typekey = (typename, msg._connection_header["md5sum"])
-        if typename not in TYPECLASSES:
+        if typekey not in TYPECLASSES:
             typedef = msg._connection_header["message_definition"]
             for name, cls in generate_message_classes(typename, typedef).items():
                 TYPECLASSES.setdefault((name, cls._md5sum), cls)
