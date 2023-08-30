@@ -20,6 +20,7 @@ import logging
 import io
 import os
 import shutil
+import threading
 import time
 
 import genpy
@@ -58,6 +59,9 @@ SLEEP_INTERVAL = 0.5
 
 ## rospy.MasterProxy instance
 master = None
+
+## Mutex for ensuring exclusive access to genpy generator (genpy.dynamic is not thread-safe)
+genpy_mtx = threading.RLock()
 
 
 class ROS1Bag(rosbag.Bag, api.BaseBag):
@@ -153,7 +157,7 @@ class ROS1Bag(rosbag.Bag, api.BaseBag):
         typehash = typehash or next((h for n, h in self.__TYPEDEFS if n == typename), None)
         typekey = (typename, typehash)
         if typekey not in self.__TYPES and typekey in self.__TYPEDEFS:
-            for n, c in genpy.dynamic.generate_dynamic(typename, self.__TYPEDEFS[typekey]).items():
+            for n, c in generate_message_classes(typename, self.__TYPEDEFS[typekey]).items():
                 self.__TYPES[(n, c._md5sum)] = c
         return self.__TYPES.get(typekey)
 
@@ -544,7 +548,7 @@ def create_subscriber(topic, typename, handler, queue_size):
         typekey = (typename, msg._connection_header["md5sum"])
         if typename not in TYPECLASSES:
             typedef = msg._connection_header["message_definition"]
-            for name, cls in genpy.dynamic.generate_dynamic(typename, typedef).items():
+            for name, cls in generate_message_classes(typename, typedef).items():
                 TYPECLASSES.setdefault((name, cls._md5sum), cls)
         handler(TYPECLASSES[typekey]().deserialize(msg._buff))
 
@@ -572,6 +576,20 @@ def format_message_value(msg, name, value):
 
     EXTRA = sum(v.count(x) * len(x) for x in (common.MatchMarkers.START, common.MatchMarkers.END))
     return ("%%%ds" % (LENS[name] + EXTRA)) % v  # Default %10s/%9s for secs/nsecs
+
+
+@memoize
+def generate_message_classes(typename, typedef):
+    """
+    Generates ROS message classes dynamically from given name and definition.
+
+    Modifies `sys.path` to include the generated Python module.
+
+    @param typename  message type name like "std_msgs/String"
+    @param typedef   message type definition full text, including all subtype definitions
+    @return          dictionary of {typename: typeclass} for message type and all subtypes
+    """
+    with genpy_mtx: return genpy.dynamic.generate_dynamic(typename, typedef)
 
 
 @memoize
@@ -749,9 +767,9 @@ __all__ = [
     "BAG_EXTENSIONS", "ROS_ALIAS_TYPES", "ROS_TIME_CLASSES", "ROS_TIME_TYPES", "SKIP_EXTENSIONS",
     "SLEEP_INTERVAL", "TYPECLASSES", "Bag", "ROS1Bag", "master",
     "canonical", "create_publisher", "create_subscriber", "deserialize_message",
-    "format_message_value", "get_message_class", "get_message_definition", "get_message_fields",
-    "get_message_type", "get_message_type_hash", "get_message_value", "get_rostime",
-    "get_topic_types", "init_node", "is_ros_message", "is_ros_time", "make_duration", "make_time",
-    "scalar", "serialize_message", "set_message_value", "shutdown_node", "to_nsec", "to_sec",
-    "to_sec_nsec", "to_time", "validate",
+    "format_message_value", "generate_message_classes", "get_message_class",
+    "get_message_definition", "get_message_fields", "get_message_type", "get_message_type_hash",
+    "get_message_value", "get_rostime", "get_topic_types", "init_node", "is_ros_message",
+    "is_ros_time", "make_duration", "make_time", "scalar", "serialize_message", "set_message_value",
+    "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]

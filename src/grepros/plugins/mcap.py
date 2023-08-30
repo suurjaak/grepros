@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    29.06.2023
+@modified    30.08.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -25,7 +25,6 @@ from .. import api
 try: import mcap, mcap.reader
 except ImportError: mcap = None
 if "1" == os.getenv("ROS_VERSION"):
-    import genpy.dynamic
     try: import mcap_ros1 as mcap_ros, mcap_ros1.decoder, mcap_ros1.writer
     except ImportError: mcap_ros = None
 elif "2" == os.getenv("ROS_VERSION"):
@@ -142,7 +141,7 @@ class McapBag(api.BaseBag):
                 })
                 self._types[typekey] = self._patch_message_class(cls, typename, typehash)
             else:
-                typeclses = genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey])
+                typeclses = api.realapi.generate_message_classes(typename, self._typedefs[typekey])
                 self._types[typekey] = typeclses[typename]
 
         return self._types.get(typekey)
@@ -399,7 +398,7 @@ class McapBag(api.BaseBag):
                 msg = self._decoder.decode(schema=schema, message=message)
                 self._types[typekey] = self._patch_message_class(type(msg), typename, typehash)
             else:
-                typeclses = genpy.dynamic.generate_dynamic(typename, schema.data.decode())
+                typeclses = api.realapi.generate_message_classes(typename, schema.data.decode())
                 self._types[typekey] = typeclses[typename]
         return self._types.get(typekey)
 

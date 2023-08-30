@@ -5,6 +5,7 @@ Changelog for package grepros
 1.0.2 (2023-08-30)
 -------------------
 * fix raising error in ROS1 live topics if message class not locally available
+* fix generating ROS1 message classes dynamically in multi-threaded environment
 * update step, the vendored template library
 * ensure compatibility with Python 3.12+
 
