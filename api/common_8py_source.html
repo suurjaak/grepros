@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.1</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.2</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -103,7 +103,7 @@ $(document).ready(function(){initNavTree('common_8py_source.html',''); initResiz
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="stringliteral"></span> </div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="stringliteral">@author      Erki Suurjaak</span></div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="stringliteral"></span><span class="preprocessor">@created</span>     23.10.2021</div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">@modified</span>    02.07.2023</div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">@modified</span>    22.07.2023</div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>------------------------------------------------------------------------------</div>
 <div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="stringliteral">&quot;&quot;&quot;</span></div>
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="stringliteral">## @namespace grepros.common</span></div>
@@ -904,7 +904,7 @@ $(document).ready(function(){initNavTree('common_8py_source.html',''); initResiz
 <div class="line"><a id="l00809" name="l00809"></a><span class="lineno">  809</span> </div>
 <div class="line"><a id="l00810" name="l00810"></a><span class="lineno">  810</span><span class="keyword">def </span><a class="code hl_function" href="namespacegrepros_1_1common.html#aba660430d1140332d72be50f6faae9fc">has_arg</a>(func, name):</div>
 <div class="line"><a id="l00811" name="l00811"></a><span class="lineno"><a class="line" href="namespacegrepros_1_1common.html#a95b9db6f6a398a02bdc2d0f310725152">  811</a></span>    <span class="stringliteral">&quot;&quot;&quot;Returns whether function supports taking specified argument by name.&quot;&quot;&quot;</span></div>
-<div class="line"><a id="l00812" name="l00812"></a><span class="lineno">  812</span>    spec = getattr(inspect, <span class="stringliteral">&quot;getfullargspec&quot;</span>, inspect.getargspec)(func)  <span class="comment"># Py3/Py2</span></div>
+<div class="line"><a id="l00812" name="l00812"></a><span class="lineno">  812</span>    spec = getattr(inspect, <span class="stringliteral">&quot;getfullargspec&quot;</span>, getattr(inspect, <span class="stringliteral">&quot;getargspec&quot;</span>, <span class="keywordtype">None</span>))(func)  <span class="comment"># Py3/Py2</span></div>
 <div class="line"><a id="l00813" name="l00813"></a><span class="lineno">  813</span>    <span class="keywordflow">return</span> name <span class="keywordflow">in</span> spec.args <span class="keywordflow">or</span> name <span class="keywordflow">in</span> getattr(spec, <span class="stringliteral">&quot;kwonlyargs&quot;</span>, ()) <span class="keywordflow">or</span> \</div>
 <div class="line"><a id="l00814" name="l00814"></a><span class="lineno">  814</span>           getattr(spec, <span class="stringliteral">&quot;varkw&quot;</span>, <span class="keywordtype">None</span>) <span class="keywordflow">or</span> getattr(spec, <span class="stringliteral">&quot;keywords&quot;</span>, <span class="keywordtype">None</span>)</div>
 <div class="line"><a id="l00815" name="l00815"></a><span class="lineno">  815</span> </div>
@@ -1257,7 +1257,7 @@ $(document).ready(function(){initNavTree('common_8py_source.html',''); initResiz
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_0d8d2c83378af3dbf8497b689631bb64.html">grepros</a></li><li class="navelem"><a class="el" href="common_8py.html">common.py</a></li>
-    <li class="footer">Generated on Sat Jul 15 2023 17:05:51 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Aug 30 2023 20:55:16 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.1</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.2</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -103,7 +103,7 @@ $(document).ready(function(){initNavTree('inputs_8py_source.html',''); initResiz
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="stringliteral"></span> </div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="stringliteral">@author      Erki Suurjaak</span></div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="stringliteral"></span><span class="preprocessor">@created</span>     23.10.2021</div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">@modified</span>    29.06.2023</div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">@modified</span>    30.08.2023</div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span>------------------------------------------------------------------------------</div>
 <div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="stringliteral">&quot;&quot;&quot;</span></div>
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="stringliteral">## @namespace grepros.inputs</span></div>
@@ -1020,7 +1020,7 @@ $(document).ready(function(){initNavTree('inputs_8py_source.html',''); initResiz
 <div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>            dct = common.filter_dict({topic: [typename]}, self.<a class="code hl_variable" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>.TOPIC, self.<a class="code hl_variable" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>.TYPE)</div>
 <div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span>            <span class="keywordflow">if</span> <span class="keywordflow">not</span> common.filter_dict(dct, self.<a class="code hl_variable" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>.SKIP_TOPIC, self.<a class="code hl_variable" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>.SKIP_TYPE, reverse=<span class="keyword">True</span>):</div>
 <div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span>                <span class="keywordflow">continue</span>  <span class="comment"># for topic, typename</span></div>
-<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span>            <span class="keywordflow">if</span> api.get_message_class(typename) <span class="keywordflow">is</span> <span class="keywordtype">None</span>:</div>
+<div class="line"><a id="l00928" name="l00928"></a><span class="lineno">  928</span>            <span class="keywordflow">if</span> api.ROS2 <span class="keywordflow">and</span> api.get_message_class(typename) <span class="keywordflow">is</span> <span class="keywordtype">None</span>:</div>
 <div class="line"><a id="l00929" name="l00929"></a><span class="lineno">  929</span>                msg = <span class="stringliteral">&quot;Error loading type %s in topic %s.&quot;</span> % (typename, topic)</div>
 <div class="line"><a id="l00930" name="l00930"></a><span class="lineno"><a class="line" href="classgrepros_1_1inputs_1_1_topic_source.html#a699a29f18aa15b83d9cacf335722a3ce">  930</a></span>                <span class="keywordflow">if</span> self.<a class="code hl_variable" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>.STOP_ON_ERROR: <span class="keywordflow">raise</span> <a class="code hl_class" href="class_exception.html">Exception</a>(msg)</div>
 <div class="line"><a id="l00931" name="l00931"></a><span class="lineno">  931</span>                ConsolePrinter.warn(msg, __once=<span class="keyword">True</span>)</div>
@@ -1316,7 +1316,7 @@ $(document).ready(function(){initNavTree('inputs_8py_source.html',''); initResiz
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_0d8d2c83378af3dbf8497b689631bb64.html">grepros</a></li><li class="navelem"><a class="el" href="inputs_8py.html">inputs.py</a></li>
-    <li class="footer">Generated on Sat Jul 15 2023 17:05:51 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Aug 30 2023 20:55:16 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

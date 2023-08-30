@@ -68,8 +68,8 @@ var NAVTREEINDEX =
 "classgrepros_1_1outputs_1_1_text_sink_mixin.html#a4ad9961b1515c01ce6c4c84eda7caa2e",
 "classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html#a86d09a3848f32b751d714062a5e930eb",
 "embag_8py.html#a9c895904b73fc5a3ad1227c41e661f01",
-"namespacegrepros_1_1plugins.html#ae7d297022e41d07afc00296b1f0e339d",
-"sqlbase_8py.html#a7527b6702db9ca6ed5a8c53fb421a110"
+"namespacegrepros_1_1plugins.html#ae5532bbc712adc7c1b9cd5e2fdd44492",
+"search_8py.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
