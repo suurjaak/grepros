@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.07.2023
+@modified    22.07.2023
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -79,7 +79,7 @@ setup_args = generate_distutils_setup(  # fetch values from package.xml
 
     include_package_data = True, # Use MANIFEST.in for data files
     classifiers  = [
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Environment :: Console :: Curses",
         "License :: OSI Approved :: BSD License",

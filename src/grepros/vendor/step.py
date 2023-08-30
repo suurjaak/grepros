@@ -29,90 +29,73 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ------------------------------------------------------------------------------
 
-Supplemented with escape and collapse and newline and unbuffered options,
-and caching compiled code objects,
-by Erki Suurjaak.
+Supplemented with escape and postprocess and buffer size options, 
+code object caching, get(), fixes and other tweaks, by Erki Suurjaak.
 """
 
 import re
-import sys
 
 
-PY3 = (sys.version_info > (3, 0))
-text_types = (str, ) if PY3 else (str, unicode)
+try: text_type, string_types = unicode, (bytes, unicode)  # Py2
+except Exception: text_type, string_types = str, (str, )  # Py3
 
 
 class Template(object):
 
     TRANSPILED_TEMPLATES = {} # {(template string, compile options): compilable code string}
     COMPILED_TEMPLATES   = {} # {compilable code string: code object}
-    # Regex for stripping all leading, trailing and interleaving whitespace (line-based).
-    RE_STRIP = re.compile("(^[ \t]+|[ \t]+$|(?<=[ \t])[ \t]+|\A[\r\n]+|[ \t\r\n]+\Z)", re.M)
+    # Regexes for stripping all leading and interleaving, and all or rest of trailing whitespace.
+    RE_STRIP = re.compile("(^[ \t]+|[ \t]+$|(?<=[ \t])[ \t]+|\\A[\r\n]+|[ \t\r\n]+\\Z)", re.M)
+    RE_STRIP_STREAM = re.compile("(^[ \t]+|[ \t]+$|(?<=[ \t])[ \t]+|\\A[\r\n]+|"
+                                 "((?<=(\r\n))|(?<=[ \t\r\n]))[ \t\r\n]+\\Z)", re.M)
 
-    def __init__(self, template, strip=True, escape=False, collapse=False):
+    def __init__(self, template, strip=True, escape=False, postprocess=None):
         """Initialize class"""
         super(Template, self).__init__()
+        pp = list([postprocess] if callable(postprocess) else postprocess or [])
         self.template = template
-        self.options  = {"strip": strip, "escape": escape, "collapse": collapse}
-        self.builtins = {"escape": escape_html,
-                         "setopt": lambda k, v: self.options.update({k: v}), }
-        cache_key = (template, bool(escape))
-        if cache_key in Template.TRANSPILED_TEMPLATES:
-            source = Template.TRANSPILED_TEMPLATES[cache_key]
-        else:
-            source = self._process(self._preprocess(self.template))
-            Template.TRANSPILED_TEMPLATES[cache_key] = source
-        if source in Template.COMPILED_TEMPLATES:
-            self.code = Template.COMPILED_TEMPLATES[source]
-        else:
-            self.code = compile(source, "<string>", "exec")
-            Template.COMPILED_TEMPLATES[source] = self.code
+        self.options  = {"strip": strip, "escape": escape, "postprocess": pp}
+        self.builtins = {"escape": escape_html, "setopt": self.options.__setitem__}
+        key = (template, bool(escape))
+        TPLS, CODES = Template.TRANSPILED_TEMPLATES, Template.COMPILED_TEMPLATES
+        src = TPLS.setdefault(key, TPLS.get(key) or self._process(self._preprocess(self.template)))
+        self.code = CODES.setdefault(src, CODES.get(src) or compile(src, "<string>", "exec"))
 
-    def expand(self, namespace={}, **kw):
+    def expand(self, namespace=None, **kw):
         """Return the expanded template string"""
         output = []
-        namespace.update(kw, **self.builtins)
-        namespace["echo"]  = lambda s: output.append(s)
-        namespace["isdef"] = lambda v: v in namespace
-
-        eval(self.code, namespace)
+        eval(self.code, self._make_namespace(namespace, output.append, **kw))
         return self._postprocess("".join(map(to_unicode, output)))
 
-    def stream(self, buffer, namespace={}, encoding="utf-8", newline="\r\n",
-               unbuffered=False, **kw):
-        """
-        Expand the template and stream it to a file-like buffer.
-
-        @param   newline     if specified, converts \r \n \r\n linefeeds to this
-        @param   unbuffered  whether stream is written immediately
-        """
+    def stream(self, buffer, namespace=None, encoding="utf-8", buffer_size=65536, **kw):
+        """Expand the template and stream it to a file-like buffer."""
 
         def write_buffer(s, flush=False, cache=[""]):
             # Cache output as a single string and write to buffer.
-            s = to_unicode(s)
-            if newline is not None:
-                s = re.sub("(\r(?!\n))|((?<!\r)\n)|(\r\n)", newline, s)
-            cache[0] += s
-            if (flush or unbuffered) and cache[0] or len(cache[0]) > 65536:
-                buffer.write(self._postprocess(cache[0]).encode(encoding))
+            cache[0] += to_unicode(s)
+            if cache[0] and (flush or buffer_size < 1 or len(cache[0]) > buffer_size):
+                v = self._postprocess(cache[0], stream=not flush)
+                v and buffer.write(v.encode(encoding) if encoding else v)
                 cache[0] = ""
 
-        namespace.update(kw, **self.builtins)
-        namespace["echo"]  = write_buffer
-        namespace["isdef"] = lambda v: v in namespace
-
-        eval(self.code, namespace)
+        eval(self.code, self._make_namespace(namespace, write_buffer, **kw))
         write_buffer("", flush=True) # Flush any last cached bytes
+
+    def _make_namespace(self, namespace, echo, **kw):
+        """Return template namespace dictionary, containing given values and template functions."""
+        namespace = dict(namespace or {}, **dict(kw, **self.builtins))
+        namespace.update(echo=echo, get=namespace.get, isdef=namespace.__contains__)
+        return namespace
 
     def _preprocess(self, template):
         """Modify template string before code conversion"""
-        # Replace inline '%' blocks for easier parsing
-        o = re.compile(r"(?m)^[ \t]*%((if|for|while|try).+:)")
-        c = re.compile(r"(?m)^[ \t]*%(((else|elif|except|finally).*:)|(end\w+))")
+        # Replace inline ('%') blocks for easier parsing
+        o = re.compile("(?m)^[ \t]*%((if|for|while|try).+:)")
+        c = re.compile("(?m)^[ \t]*%(((else|elif|except|finally).*:)|(end\\w+))")
         template = c.sub(r"<%:\g<1>%>", o.sub(r"<%\g<1>%>", template))
 
         # Replace {{!x}} and {{x}} variables with '<%echo(x)%>'.
-        # If auto-escaping is enabled, uses echo(escape(x)) for the second.
+        # If auto-escaping is enabled, use echo(escape(x)) for the second.
         vars = r"\{\{\s*\!(.*?)\}\}", r"\{\{(.*?)\}\}"
         subs = [r"<%echo(\g<1>)%>\n"] * 2
         if self.options["escape"]: subs[1] = r"<%echo(escape(\g<1>))%>\n"
@@ -123,18 +106,20 @@ class Template(object):
     def _process(self, template):
         """Return the code generated from the template string"""
         code_blk = re.compile(r"<%(.*?)%>\n?", re.DOTALL)
-        indent = 0
+        indent, n = 0, 0
         code = []
         for n, blk in enumerate(code_blk.split(template)):
             # Replace '<\%' and '%\>' escapes
             blk = re.sub(r"<\\%", "<%", re.sub(r"%\\>", "%>", blk))
             # Unescape '%{}' characters
-            blk = re.sub(r"\\(%|{|})", "\g<1>", blk)
+            blk = re.sub(r"\\(%|{|})", r"\g<1>", blk)
 
             if not (n % 2):
-                if not blk: continue # for n, blk
+                if not blk: continue
+                # Escape backslash characters
+                blk = re.sub(r'\\', r'\\\\', blk)
                 # Escape double-quote characters
-                blk = re.sub(r"\"", "\\\"", blk)
+                blk = re.sub(r'"', r'\\"', blk)
                 blk = (" " * (indent*4)) + 'echo("""{0}""")'.format(blk)
             else:
                 blk = blk.rstrip()
@@ -159,37 +144,27 @@ class Template(object):
 
         return "\n".join(code)
 
-    def _postprocess(self, output):
+    def _postprocess(self, output, stream=False):
         """Modify output string after variables and code evaluation"""
         if self.options["strip"]:
-            output = Template.RE_STRIP.sub("", output)
-        if self.options["collapse"]:
-            output = collapse_whitespace(output)
+            output = (Template.RE_STRIP_STREAM if stream else Template.RE_STRIP).sub("", output)
+        for process in self.options["postprocess"]:
+            output = process(output)
         return output
 
 
 def escape_html(x):
     """Escape HTML special characters &<> and quotes "'."""
     CHARS, ENTITIES = "&<>\"'", ["&amp;", "&lt;", "&gt;", "&quot;", "&#39;"]
-    string = x if isinstance(x, text_types) else str(x)
+    string = x if isinstance(x, string_types) else str(x)
     for c, e in zip(CHARS, ENTITIES): string = string.replace(c, e)
     return string
 
 
 def to_unicode(x, encoding="utf-8"):
     """Convert anything to Unicode."""
-    if PY3:
-        return str(x)
-    if not isinstance(x, unicode):
-        x = unicode(str(x), encoding, errors="replace")
-    return x
-
-
-def collapse_whitespace(x):
-    """
-    Collapse whitespace into a single space globally,
-    and into nothing if between non-alphanumerics.
-    """
-    x = re.sub(r"\s+", " ", x)
-    x = re.sub(r"(\W)\s+(\W)", r"\1\2",  x, re.U)
+    if isinstance(x, (bytes, bytearray)):
+        x = text_type(x, encoding, errors="replace")
+    elif not isinstance(x, string_types):
+        x = text_type(str(x))
     return x

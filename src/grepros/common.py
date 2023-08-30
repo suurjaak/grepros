@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.07.2023
+@modified    22.07.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -809,7 +809,7 @@ def get_name(obj):
 
 def has_arg(func, name):
     """Returns whether function supports taking specified argument by name."""
-    spec = getattr(inspect, "getfullargspec", inspect.getargspec)(func)  # Py3/Py2
+    spec = getattr(inspect, "getfullargspec", getattr(inspect, "getargspec", None))(func)  # Py3/Py2
     return name in spec.args or name in getattr(spec, "kwonlyargs", ()) or \
            getattr(spec, "varkw", None) or getattr(spec, "keywords", None)
 

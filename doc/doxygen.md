@@ -50,6 +50,8 @@ Supports loading custom plugins, mainly for additional output formats.
 | generate_msgs                 | Test script, generating and publishing random ROS messages
 | grepros                       | Main command-line tool
 
+{@link grepros.api}: a simple unified interface for working with ROS1/ROS2 types and messages.
+
 
 ## Example usage
 

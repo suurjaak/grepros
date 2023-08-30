@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.06.2023
+@modified    30.08.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -925,7 +925,7 @@ class TopicSource(Source, ConditionMixin):
             dct = common.filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
             if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
-            if api.get_message_class(typename) is None:
+            if api.ROS2 and api.get_message_class(typename) is None:
                 msg = "Error loading type %s in topic %s." % (typename, topic)
                 if self.args.STOP_ON_ERROR: raise Exception(msg)
                 ConsolePrinter.warn(msg, __once=True)

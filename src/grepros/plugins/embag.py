@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     19.11.2021
-@modified    26.06.2023
+@modified    30.08.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.embag
@@ -17,8 +17,6 @@ import os
 
 try: import embag
 except ImportError: embag = None
-try: import genpy
-except ImportError: genpy = None
 
 from .. import api
 from .. common import PATH_TYPES, ConsolePrinter
@@ -89,7 +87,7 @@ class EmbagReader(api.BaseBag):
         """
         typekey = (typename, typehash or next((h for n, h in self._types if n == typename), None))
         if typekey not in self._types and typekey in self._typedefs:
-            for n, c in genpy.dynamic.generate_dynamic(typename, self._typedefs[typekey]).items():
+            for n, c in api.realapi.generate_message_classes(typename, self._typedefs[typekey]).items():
                 self._types[(n, c._md5sum)] = c
         return self._types.get(typekey)
 

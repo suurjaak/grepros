@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    04.07.2023
+@modified    05.08.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -174,7 +174,7 @@ class HtmlSink(Sink, TextSinkMixin):
 
         try:
             with open(self._template_path, "r") as f: tpl = f.read()
-            template = step.Template(tpl, escape=True, strip=False)
+            template = step.Template(tpl, escape=True, strip=False, postprocess=convert_lf)
             ns = dict(source=self.source, sink=self, messages=self._produce(),
                       args=None, timeline=not self.args.ORDERBY)
             if main.CLI_ARGS: ns.update(args=main.CLI_ARGS)
@@ -186,7 +186,7 @@ class HtmlSink(Sink, TextSinkMixin):
                 action = "Overwriting" if sz and self._overwrite else "Creating"
                 ConsolePrinter.debug("%s %s.", action, self._filename)
             with open(self._filename, "wb") as f:
-                template.stream(f, ns, unbuffered=True)
+                template.stream(f, ns, buffer_size=0)
         except Exception as e:
             self.thread_excepthook("Error writing HTML output %r: %r" % (self._filename, e), e)
         finally:
@@ -209,6 +209,11 @@ class HtmlSink(Sink, TextSinkMixin):
         try:
             while self._queue.get_nowait() or True: self._queue.task_done()
         except queue.Empty: pass
+
+
+def convert_lf(s, newline=os.linesep):
+    r"""Returns string with \r \n \r\n linefeeds replaced with given."""
+    return re.sub("(\r(?!\n))|((?<!\r)\n)|(\r\n)", newline, s)
 
 
 

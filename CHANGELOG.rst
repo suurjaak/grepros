@@ -2,11 +2,19 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.1 (2022-07-14)
+1.0.2 (2023-08-30)
+-------------------
+* fix raising error in ROS1 live topics if message class not locally available
+* fix generating ROS1 message classes dynamically in multi-threaded environment
+* fix caching generated message classes in ROS1
+* update step, the vendored template library
+* ensure compatibility with Python 3.12+
+
+1.0.1 (2023-07-14)
 -------------------
 * ensure Python2 compatibility under ROS1 Melodic
 
-1.0.0 (2022-07-13)
+1.0.0 (2023-07-13)
 -------------------
 * make grepros conveniently usable as a library
 * add --no-highlight option
