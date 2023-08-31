@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.3 (2023-08-31)
+-------------------
+* fix Unicode characters in HTML output template
+
 1.0.2 (2023-08-30)
 -------------------
 * fix raising error in ROS1 live topics if message class not locally available
