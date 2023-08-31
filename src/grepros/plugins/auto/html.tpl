@@ -14,13 +14,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    03.07.2023
+@modified    31.08.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
 from grepros import __title__, __version__, api
 
-dt =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 sourcemeta = source.get_meta()
 subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "live"
 %>
@@ -127,10 +127,10 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       top:                    -1px;
     }
     th .sort.asc::after {
-      content:                "\\2193";  /** Downwards arrow ↓. */
+      content:                "\2193";  /** Downwards arrow ↓. */
     }
     th .sort.desc::after {
-      content:                "\\2191";  /** Upwards arrow ↓. */
+      content:                "\2191";  /** Upwards arrow ↓. */
     }
     table#messages td, table#messages th {
       padding:                5px 10px;
@@ -161,11 +161,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       width:                  15px;
     }
     table#messages span.prev::after {
-      content:                "\\21E1";  /* Upwards dashed arrow ⇡. */
+      content:                "\21E1";  /* Upwards dashed arrow ⇡. */
       right:                  20px;
     }
     table#messages span.next::after {
-      content:                "\\21E3";  /* Downwards dashed arrow ⇣. */
+      content:                "\21E3";  /* Downwards dashed arrow ⇣. */
       right:                  5px;
     }
     table#messages span.disabled::after {
