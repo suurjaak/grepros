@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    14.07.2023
+@modified    28.09.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -369,6 +369,7 @@ class ParquetSink(Sink):
             if myok:
                 self._extra_basecols.append((name, rostype))
                 self._extra_basevals.append((name, value))
+            return myok
 
         def process_type(rostype, arrowtype):  # Eval pyarrow datatype from value like "float64()"
             if arrowtype not in self.ARROW_TYPES.values():

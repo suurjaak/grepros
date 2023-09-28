@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.4 (2023-09-28)
+-------------------
+* fix Parquet sink validation resulting in silent failure if additional columns specified
+
 1.0.3 (2023-08-31)
 -------------------
 * fix Unicode characters in HTML output template
