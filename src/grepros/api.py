@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.07.2023
+@modified    05.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -995,7 +995,7 @@ def dict_to_message(dct, msg):
         v, msgv = dct[name], realapi.get_message_value(msg, name, typename)
 
         if realapi.is_ros_message(msgv):
-            v = dict_to_message(v, msgv)
+            v = v if is_ros_time(v) and is_ros_time(msgv) else dict_to_message(v, msgv)
         elif isinstance(msgv, (list, tuple)):
             scalarname = realapi.scalar(typename)
             if scalarname in ROS_BUILTIN_TYPES:
