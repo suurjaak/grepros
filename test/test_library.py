@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    13.07.2023
+@modified    08.12.2023
 ------------------------------------------------------------------------------
 """
 import inspect
@@ -175,8 +175,8 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_read(self, bagcls, filename):
         """Tests parameters to read functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(str, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(str, a)))
+        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
+        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
 
         logger.info("Verifying invoking Bag %r read methods with parameters.", bagcls)
 
@@ -301,8 +301,8 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_write(self, bagcls, filename):
         """Tests parameters to write functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(str, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(str, a)))
+        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
+        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
 
         logger.info("Verifying invoking Bag %r write methods with parameters.", bagcls)
 
