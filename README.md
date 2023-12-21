@@ -370,7 +370,7 @@ Matching and filtering
 Any number of patterns can be specified, message matches if all patterns find a match.
 If no patterns are given, any message matches.
 
-Match messages containing any of the words:
+Match messages containing all of the words:
 
     cpu memory speed
 
