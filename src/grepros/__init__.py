@@ -12,7 +12,7 @@ Released under the BSD License.
 ## @namespace grepros
 __title__        = "grepros"
 __version__      = "1.0.5.dev0"
-__version_info__ = (1, 0, 5, "dev0")
+__version_info__ = (1, 0, 5, "dev1")
 __version_date__ = "21.12.2023"
 
 from . library import *

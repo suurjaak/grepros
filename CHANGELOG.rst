@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.5 (2023-12-21)
+-------------------
+* fix ISO datetime support in earliest and latest timestamp arguments
+
 1.0.4 (2023-09-28)
 -------------------
 * fix Parquet sink validation resulting in silent failure if additional columns specified

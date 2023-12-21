@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.07.2023
+@modified    21.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -474,7 +474,7 @@ def validate_args(args):
         if v is None: continue  # for v, n
         try: v = float(v)
         except Exception: pass
-        try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+        try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
