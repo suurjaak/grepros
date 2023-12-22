@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.07.2023
+@modified    22.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -682,15 +682,15 @@ def ensure_namespace(val, defaults=None, **kwargs):
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
-    Filters string dictionary by keys and values. Dictionary values may be
-    additional lists; keys with emptied lists are dropped.
+    Filters string dictionary by keys and values, supporting * wildcards.
+    Dictionary values may be additional lists; keys with emptied lists are dropped.
 
     Retains only entries that find a match (supports * wildcards);
     if reverse, retains only entries that do not find a match.
     """
     result = type(dct)()
-    kpatterns = [wildcard_to_regex(x) for x in keys]
-    vpatterns = [wildcard_to_regex(x) for x in values]
+    kpatterns = [wildcard_to_regex(x, end=True) for x in keys]
+    vpatterns = [wildcard_to_regex(x, end=True) for x in values]
     for k, vv in dct.items() if not reverse else ():
         is_array = isinstance(vv, (list, tuple))
         for v in (vv if is_array else [vv]):

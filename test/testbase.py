@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    28.12.2022
+@modified    22.12.2023
 ------------------------------------------------------------------------------
 """
 import contextlib
@@ -69,8 +69,8 @@ class TestBase(unittest.TestCase):
 
     ## Base command for running grepros
     CMD_BASE = ["grepros"] + SEARCH_WORDS + \
-               ["--topic",    "/match/this", "--type",    "std_msgs/*",
-                "--no-topic", "/not/this",   "--no-type", "std_msgs/Bool",
+               ["--topic",    "/match/this*", "--type",    "std_msgs/*",
+                "--no-topic", "/not/this*",   "--no-type", "std_msgs/Bool",
                 "--match-wrapper", "--color", "never", "--path", DATA_DIR]
 
     ## Words expected in matched messages, bag name appended

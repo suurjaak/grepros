@@ -67,7 +67,8 @@ class TestLibrary(testbase.TestBase):
     def test_bag_rw_grep(self):
         """Tests reading and writing bags and matching messages."""
         logger.info("Verifying reading and writing bags, and grepping messages.")
-        grep = grepros.Scanner(pattern=self.SEARCH_WORDS, topic="/match/this", no_topic="/not/this",
+        grep = grepros.Scanner(pattern=self.SEARCH_WORDS,
+                               topic="/match/this*", no_topic="/not/this*",
                                type="std_msgs/*", no_type="std_msgs/Bool")
         logger.debug("Writing to bag %r.", self._outname)
         with grepros.Bag(self._outname, mode="w") as outbag:
@@ -346,7 +347,7 @@ class TestLibrary(testbase.TestBase):
         ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
         logger.info("Verifying reading bags and grepping messages, via grepros.grep().")
         messages = {}  # {topic: [msg, ]}
-        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this", no_topic="/not/this",
+        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this*", no_topic="/not/this*",
                     file=self._bags, type="std_msgs/*", no_type="std_msgs/Bool")
         for topic, msg, stamp, match, index in grepros.grep(**args):
             self.assertIn("/match/this", topic, ERR(grepros.grep, **args))

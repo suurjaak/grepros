@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.5 (2023-12-21)
+1.1.0 (2023-12-22)
 -------------------
+* do not use partial match for topic and typename filters without wildcards
 * fix ISO datetime support in earliest and latest timestamp arguments
 * fix api.dict_to_message() erroring on temporal types in dict
 
