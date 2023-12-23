@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.12.2023
+@modified    23.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -894,9 +894,24 @@ def merge_dicts(d1, d2):
             d1[k] = v
 
 
-def merge_spans(spans):
-    """Returns a sorted list of (start, end) spans with overlapping spans merged."""
+def merge_spans(spans, join_blanks=False):
+    """
+    Returns a sorted list of (start, end) spans with overlapping spans merged.
+
+    @param   join_blanks  whether to merge consecutive zero-length spans,
+                          e.g. [(0, 0), (1, 1)] -> [(0, 1)]
+    """
     result = sorted(spans)
+    if result and join_blanks:
+        blanks = [(a, b) for a, b in result if a == b]
+        others = [(a, b) for a, b in result if a != b]
+        others.extend(blanks[:1])
+        for span in blanks[1:]:
+            if span[0] == others[-1][1] + 1:
+                others[-1] = (others[-1][0], span[1])
+            else:
+                others.append(span)
+        result = sorted(others)
     result, rest = result[:1], result[1:]
     for span in rest:
         if span[0] <= result[-1][1]:

@@ -4,11 +4,12 @@ Changelog for package grepros
 
 1.1.0 (2023-12-23)
 -------------------
-* ensure api.get_message_value() returning collections as lists not tuples
 * do not use partial match for topic and typename filters without wildcards
+* support patterns yielding zero-length matches like "(?!not_this)"
 * fix matching nested message values for patterns using start or end flags
 * fix ISO datetime support in earliest and latest timestamp arguments
 * fix api.dict_to_message() erroring on temporal types in dict
+* ensure api.get_message_value() returning collections as lists not tuples
 
 1.0.4 (2023-09-28)
 -------------------

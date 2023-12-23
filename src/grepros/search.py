@@ -381,12 +381,14 @@ class Scanner(object):
             v1 = v2 = v[1:-1] if is_collection and v != "[]" else v
             topstr = ".".join(top)
             for i, (path, p) in enumerate(self._patterns["content"]):
-                if not path or path.search(topstr):
-                    for match in (m for m in p.finditer(v1) if not v1 or m.start() != m.end()):
-                        matched[i] = True
-                        spans.append(match.span())
-                        if self.args.INVERT:
-                            break  # for match
+                if path and not path.search(topstr): continue  # for
+                matches = [next(p.finditer(v1), None)] if self.args.INVERT else list(p.finditer(v1))
+                # Join consecutive zero-length matches, extend remaining zero-lengths to end of value
+                matchspans = common.merge_spans([x.span() for x in matches if x], join_blanks=True)
+                matchspans = [(a, b if a != b else len(v1)) for a, b in matchspans]
+                if matchspans:
+                    matched[i] = True
+                    spans.extend(matchspans)
             if any(WRAPS):
                 spans = common.merge_spans(spans) if not self.args.INVERT else \
                         [] if spans else [(0, len(v1))] if v1 or not is_collection else []
