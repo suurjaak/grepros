@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.12.2023
+@modified    23.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -51,7 +51,7 @@ Find first message containing "future" (case-sensitive) in my.bag:
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory, reindexing any unindexed bags:
-    %(title)s frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
+    %(title)s frame_id=map --type geometry_msgs/* --max-count 10 --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
     %(title)s "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
@@ -66,7 +66,7 @@ print only header stamp and values:
     %(title)s --type diagnostic_msgs/* --select-field name message \\
             --emit-field header.stamp status.values -- navigation
 
-Print first message from each lidar topic on host 1.2.3.4, without highlight:
+Print first message from each lidar topic on ROS1 host 1.2.3.4, without highlight:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
     %(title)s --live --topic *lidar* --max-per-topic 1 --no-highlight
 
