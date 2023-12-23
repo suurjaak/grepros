@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    14.07.2023
+@modified    23.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -425,7 +425,7 @@ class Scanner(object):
         if self._passthrough: return msg
 
         if self._brute_prechecks:
-            text  = "\n".join("%r" % (v, ) for _, v, _ in api.iter_message_fields(msg))
+            text  = "\n".join("%r" % (v, ) for _, v, _ in api.iter_message_fields(msg, flat=True))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 
