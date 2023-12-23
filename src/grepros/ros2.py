@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    03.07.2023
+@modified    23.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -829,7 +829,7 @@ def get_message_value(msg, name, typename):
             v = list(map(ord, v))  # In ROS2, a byte array like [0, 1] is [b"\0", b"\1"]
         elif scalartype == typename:
             v = v[0]  # In ROS2, single byte values are given as bytes()
-    return v
+    return list(v) if isinstance(v, tuple) else v
 
 
 def get_rostime(fallback=False):

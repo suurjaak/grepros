@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.07.2023
+@modified    23.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -648,7 +648,7 @@ def get_message_value(msg, name, typename):
     if six.PY2 and listifiable:  # Ignore already highlighted values from Scanner
         listifiable = v[:1] != "[" or v[-1:] != "]" or common.MatchMarkers.START not in v
         return list(bytearray(v)) if listifiable else v
-    return list(v) if listifiable else v
+    return list(v) if listifiable or isinstance(v, tuple) else v
 
 
 def get_rostime(fallback=False):

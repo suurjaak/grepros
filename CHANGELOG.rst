@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-22)
+1.1.0 (2023-12-23)
 -------------------
+* ensure api.get_message_value() returning collections as lists not tuples
 * do not use partial match for topic and typename filters without wildcards
 * fix ISO datetime support in earliest and latest timestamp arguments
 * fix api.dict_to_message() erroring on temporal types in dict
