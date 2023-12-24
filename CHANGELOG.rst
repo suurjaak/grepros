@@ -2,11 +2,11 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-23)
+1.1.0 (2023-12-24)
 -------------------
 * do not use partial match for topic and typename filters without wildcards
 * support patterns yielding zero-length matches like "(?!not_this)"
-* disallow unknown command-line flags
+* disallow unknown command-line flags and partial abbreviations
 * fix matching nested message values for patterns using start or end flags
 * fix ISO datetime support in earliest and latest timestamp arguments
 * fix api.dict_to_message() erroring on temporal types in dict

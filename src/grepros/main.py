@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2023
+@modified    24.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -399,6 +399,7 @@ def make_parser():
     """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
                formatter_class=HelpFormatter, add_help=False)
+    if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
     argparser = argparse.ArgumentParser(**kws)
     for arg in map(dict, ARGUMENTS["arguments"]):
         argparser.add_argument(*arg.pop("args"), **arg)
