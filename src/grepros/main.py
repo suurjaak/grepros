@@ -536,7 +536,7 @@ def run():
         return
 
     atexit.register(flush_stdout)
-    args, _ = argparser.parse_known_args(CLI_ARGS)
+    args = argparser.parse_args(CLI_ARGS)
     if args.HELP:
         argparser.print_help()
         return
