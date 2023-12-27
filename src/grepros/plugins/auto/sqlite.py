@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.06.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -21,10 +21,11 @@ import six
 
 from ... import api
 from ... common import ConsolePrinter, format_bytes, makedirs, verify_io
+from ... outputs import RolloverSinkMixin
 from . dbbase import BaseDataSink, quote
 
 
-class SqliteSink(BaseDataSink):
+class SqliteSink(BaseDataSink, RolloverSinkMixin):
     """
     Writes messages to an SQLite database.
 
@@ -71,15 +72,22 @@ class SqliteSink(BaseDataSink):
                                        "nesting": "array" to recursively insert arrays
                                                   of nested types, or "all" for any nesting),
                                        "overwrite": whether to overwrite existing file
-                                                    (default false)}
+                                                    (default false),
+                                       "rollover-size": bytes limit for individual output files,
+                                       "rollover-count": message limit for individual output files,
+                                       "rollover-duration": time span limit for individual output files,
+                                                            as ROS duration or convertible seconds,
+                                       "rollover-template": output filename template, supporting
+                                                            strftime format codes like "%H-%M-%S"
+                                                            and "%(index)s" as output file index}
                                       ```
         @param   args.meta            whether to emit metainfo
         @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         super(SqliteSink, self).__init__(args, **kwargs)
+        RolloverSinkMixin.__init__(self, args)
 
-        self._filename    = self.args.WRITE
         self._do_yaml     = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
         self._overwrite   = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._id_counters = {}  # {table next: max ID}
@@ -91,7 +99,7 @@ class SqliteSink(BaseDataSink):
         and file is writable; parses "message-yaml" and "overwrite" from args.write_options.
         """
         if self.valid is not None: return self.valid
-        ok = super(SqliteSink, self).validate()
+        ok = all([super(SqliteSink, self).validate(), RolloverSinkMixin.validate(self)])
         if self.args.WRITE_OPTIONS.get("message-yaml") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid message-yaml option for %s: %r. "
                                  "Choose one of {true, false}.",
@@ -108,17 +116,35 @@ class SqliteSink(BaseDataSink):
         return self.valid
 
 
+    def emit(self, topic, msg, stamp=None, match=None, index=None):
+        """Writes message to database."""
+        stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
+        RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
+        super(SqliteSink, self).emit(topic, msg, stamp, match, index)
+
+
+    @property
+    def size(self):
+        """Returns current file size in bytes, including journals, or None if size lookup failed."""
+        sizes = []
+        for f in ("%s%s" % (self.filename, x) for x in ("", "-journal", "-wal")):
+            try: os.path.isfile(f) and sizes.append(os.path.getsize(f))
+            except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", f, e)
+        return sum(sizes) if sizes else None
+
+
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
         for t in six.integer_types:
             sqlite3.register_adapter(t, lambda x: str(x) if abs(x) > self.MAX_INT else x)
         sqlite3.register_converter("JSON", json.loads)
+        self.filename = self.filename or self.make_filename()
         if self.args.VERBOSE:
-            sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
+            sz = self.size
             action = "Overwriting" if sz and self._overwrite else \
                      "Appending to" if sz else "Creating"
-            ConsolePrinter.debug("%s %s%s.", action, self._filename,
+            ConsolePrinter.debug("%s SQLite output %s%s.", action, self.filename,
                                  (" (%s)" % format_bytes(sz)) if sz else "")
         super(SqliteSink, self)._init_db()
 
@@ -127,7 +153,7 @@ class SqliteSink(BaseDataSink):
         """Populates instance attributes with schema metainfo."""
         super(SqliteSink, self)._load_schema()
         for row in self.db.execute("SELECT name FROM sqlite_master "
-                                    "WHERE type = 'table' AND name LIKE '%/%'"):
+                                   "WHERE type = 'table' AND name LIKE '%/%'"):
             cols = self.db.execute("PRAGMA table_info(%s)" % quote(row["name"])).fetchall()
             typerow = next((x for x in self._types.values()
                             if x["table_name"] == row["name"]), None)
@@ -149,9 +175,9 @@ class SqliteSink(BaseDataSink):
 
     def _connect(self):
         """Returns new database connection."""
-        makedirs(os.path.dirname(self._filename))
-        if self._overwrite: open(self._filename, "w").close()
-        db = sqlite3.connect(self._filename, check_same_thread=False,
+        makedirs(os.path.dirname(self.filename))
+        if self._overwrite: open(self.filename, "w").close()
+        db = sqlite3.connect(self.filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None
         db.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
@@ -184,11 +210,8 @@ class SqliteSink(BaseDataSink):
 
     def _make_db_label(self):
         """Returns formatted label for database, with file path and size."""
-        try: sz = format_bytes(os.path.getsize(self._filename))
-        except Exception as e:
-            ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
-            sz = "error getting size"
-        return "%s (%s)" % (self._filename, sz)
+        sz = self.size
+        return "%s (%s)" % (self.filename, "error getting size" if sz is None else sz)
 
 
 
@@ -212,7 +235,7 @@ def init(*_, **__):
                                      " with foreign keys instead of messages as JSON)"),
         ("overwrite=true|false",     "overwrite existing file in SQLite output\n"
                                      "instead of appending to file (default false)")
-    ])
+    ] + RolloverSinkMixin.get_write_options("SQLite"))
 
 
 __all__ = ["SqliteSink", "init"]

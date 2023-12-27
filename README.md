@@ -248,6 +248,8 @@ accept raw control characters (`more -f` or `less -R`).
 ### bag
 
     --write path/to/my.bag [format=bag] [overwrite=true|false]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1,
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists,
@@ -257,6 +259,8 @@ Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 For writing bags in MCAP format, see the [MCAP plugin](doc/DETAIL.md#mcap).
+
+More on [rollover](doc/DETAIL.md#rollover).
 
 
 ### live
@@ -290,11 +294,15 @@ Write messages to CSV files, each topic to a separate file, named
 
     --write path/to/my.html [format=html] [overwrite=true|false]
             [template=/path/to/html.template]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/screen_html.png)
+
+More on [rollover](doc/DETAIL.md#rollover).
 
 
 ### postgres
@@ -314,6 +322,8 @@ and views `/full/topic/name` for each topic.
     --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
             [commit-interval=NUM] [message-yaml=true|false] [nesting=array|all]
             [dialect-file=path/to/dialects.yaml]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic.
@@ -673,6 +683,20 @@ optional arguments:
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
+                          rollover-count=NUM       message limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   (supports abbreviations like 1K or 2M or 3G)
+                          rollover-duration=INTERVAL
+                                                   message time span limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-template=STR    output filename template for individual files
+                                                   in bag/HTML/MCAP/SQLite output,
+                                                   supporting strftime format codes like "%H-%M-%S"
+                                                   and "%(index)s" as output file index
                           template=/my/path.tpl    custom template to use for HTML output
                           type-ROSTYPE=ARROWTYPE   custom mapping between ROS and pyarrow type
                                                    for Parquet output, like type-time="timestamp('ns')"

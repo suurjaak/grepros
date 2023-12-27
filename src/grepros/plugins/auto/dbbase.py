@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    28.06.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -137,28 +137,23 @@ class BaseDataSink(Sink, SqlMixin):
 
 
     def close(self):
-        """Closes database connection, if any."""
-        try:
-            if self.db:
-                for sql in list(self._sql_queue):
-                    self._executemany(sql, self._sql_queue.pop(sql))
-                self.db.commit()
-                self._cursor.close()
-                self._cursor = None
-                self.db.close()
-                self.db = None
+        """Closes database connection, if any, emits metainfo."""
+        try: self.close_output()
         finally:
             if not self._close_printed and self._counts:
                 self._close_printed = True
-                target = self._make_db_label()
-                ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
-                                     plural("message", sum(self._counts.values())),
-                                     plural("topic", self._counts), self.ENGINE, target)
-                if self._nested_counts:
+                if hasattr(self, "format_output_meta"):
+                    ConsolePrinter.debug("Wrote %s database for %s",
+                                         self.ENGINE, self.format_output_meta())
+                else:
+                    target = self._make_db_label()
                     ConsolePrinter.debug("Wrote %s in %s to %s database %s.",
+                                         plural("message", sum(self._counts.values())),
+                                         plural("topic", self._counts), self.ENGINE, target)
+                if self._nested_counts:
+                    ConsolePrinter.debug("Wrote %s in %s to %s.",
                         plural("nested message", sum(self._nested_counts.values())),
-                        plural("nested message type", self._nested_counts),
-                        self.ENGINE, target
+                        plural("nested message type", self._nested_counts), self.ENGINE
                     )
             self._checkeds.clear()
             self._nested_counts.clear()
@@ -166,12 +161,21 @@ class BaseDataSink(Sink, SqlMixin):
             super(BaseDataSink, self).close()
 
 
+    def close_output(self):
+        """Closes database connection, if any, executing any pending statements."""
+        if self.db:
+            for sql in list(self._sql_queue):
+                self._executemany(sql, self._sql_queue.pop(sql))
+            self.db.commit()
+            self._cursor.close()
+            self._cursor = None
+            self.db.close()
+            self.db = None
+
+
     def _init_db(self):
         """Opens database connection, and populates schema if not already existing."""
-        baseattrs = dir(Sink())
-        for attr in (getattr(self, k, None) for k in dir(self)
-                     if not k.isupper() and k not in baseattrs):
-            isinstance(attr, dict) and attr.clear()
+        for d in (self._checkeds, self._topics, self._types): d.clear()
         self._close_printed = False
 
         if "commit-interval" in self.args.WRITE_OPTIONS:
@@ -218,7 +222,7 @@ class BaseDataSink(Sink, SqlMixin):
             self._executescript(tdata["sql"])
 
             sql, args = self._make_topic_insert_sql(topic, msg)
-            if self.args.VERBOSE:
+            if self.args.VERBOSE and topickey not in self._counts:
                 ConsolePrinter.debug("Adding topic %s in %s output.", topic, self.ENGINE)
             self._topics[topickey]["id"] = self._execute_insert(sql, args)
 
@@ -239,7 +243,7 @@ class BaseDataSink(Sink, SqlMixin):
             return None
 
         if typekey not in self._types:
-            if self.args.VERBOSE:
+            if self.args.VERBOSE and typekey not in self._schema:
                 ConsolePrinter.debug("Adding type %s in %s output.", typename, self.ENGINE)
             extra_cols = self.MESSAGE_TYPE_TOPICCOLS + self.MESSAGE_TYPE_BASECOLS
             if self._nesting: extra_cols += self.MESSAGE_TYPE_NESTCOLS
@@ -336,7 +340,7 @@ class BaseDataSink(Sink, SqlMixin):
     def _ensure_columns(self, cols):
         """Adds specified columns to any type tables lacking them."""
         sqls = []
-        for typekey, typecols in self._schema.items():
+        for typekey, typecols in ((k, v) for k, v in self._schema.items() if k in self._types):
             table_name = self._types[typekey]["table_name"]
             for c, t in ((c, t) for c, t in cols if c not in typecols):
                 sql = "ALTER TABLE %s ADD COLUMN %s %s;" % (quote(table_name), c, t)

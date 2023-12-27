@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.12.2023
+@modified    25.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -930,6 +930,20 @@ def parse_datetime(text):
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
 
 
+def parse_number(value, suffixes=None):
+    """
+    Returns an integer parsed from text, raises on error.
+
+    @param   value     text or binary string to parse, may contain abbrevations like "12K"
+    @param   suffixes  a dictionary of multipliers like {"K": 1024}, case-insensitive
+    """
+    value, suffix = value.decode() if isinstance(value, six.binary_type) else value, None
+    if suffixes:
+        suffix = next((k for k, v in suffixes.items() if value.lower().endswith(k.lower())), None)
+        value = value[:-len(suffix)] if suffix else value
+    return int(float(value) * (suffixes[suffix] if suffix else 1))
+
+
 def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
     """
     Returns the word as 'count words', or '1 word' if count is 1,
@@ -1073,5 +1087,5 @@ __all__ = [
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
     "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
-    "parse_datetime", "plural", "unique_path", "verify_io", "wildcard_to_regex",
+    "parse_datetime", "parse_number", "plural", "unique_path", "verify_io", "wildcard_to_regex",
 ]

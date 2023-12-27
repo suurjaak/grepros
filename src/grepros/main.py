@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.12.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -519,7 +519,7 @@ def preload_plugins():
                                    "or appending unique counter to file name\n"
                                    "(default false)")
 
-    ])
+    ] + outputs.RolloverSinkMixin.get_write_options("bag"))
     args = make_parser().parse_known_args(CLI_ARGS)[0] if "--plugin" in CLI_ARGS else None
     try: plugins.init(process_args(args) if args else None)
     except ImportWarning: sys.exit(1)
