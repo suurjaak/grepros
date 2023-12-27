@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.08.2023
+@modified    25.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -395,9 +395,9 @@ class BagSource(Source, ConditionMixin):
     MESSAGE_META_TEMPLATE = "{topic} {index}/{total} ({type}  {dt}  {stamp})"
 
     ## Template for bag metainfo header
-    META_TEMPLATE         = "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n" \
-                            "File period {startdt} - {enddt}\n" \
-                            "File span {delta} ({start} - {end})"
+    META_TEMPLATE = "\nFile {file} ({size}), {tcount} topics, {mcount:,d} messages\n" \
+                    "File period {startdt} - {enddt}\n" \
+                    "File span {delta} ({start} - {end})"
 
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(BAG=(), FILE=(), PATH=(), RECURSE=False, TOPIC=(), TYPE=(),
