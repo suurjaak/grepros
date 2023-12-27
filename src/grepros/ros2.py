@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    23.12.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -987,6 +987,26 @@ def time_message(val, to_message=True, clock_type=None):
     return val
 
 
+def to_duration(val):
+    """
+    Returns value as ROS2 duration if convertible (int/float/time/datetime/decimal), else value.
+
+    Convertible types: int/float/time/datetime/decimal/builtin_interfaces.Time.
+    """
+    result = val
+    if isinstance(val, decimal.Decimal):
+        result = make_duration(int(val), float(val % 1) * 10**9)
+    elif isinstance(val, datetime.datetime):
+        result = make_duration(int(val.timestamp()), 1000 * val.microsecond)
+    elif isinstance(val, (float, int)):
+        result = make_duration(val)
+    elif isinstance(val, rclpy.time.Time):
+        result = make_duration(nsecs=val.nanoseconds)
+    elif isinstance(val, tuple(ROS_TIME_MESSAGES.values())):
+        result = make_duration(val.sec, val.nanosec)
+    return result
+
+
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS2 time/duration, else value."""
     if not isinstance(val, tuple(ROS_TIME_CLASSES)):
@@ -1046,5 +1066,5 @@ __all__ = [
     "get_message_type_hash", "get_message_value", "get_rostime", "get_topic_types", "init_node",
     "is_ros_message", "is_ros_time", "make_duration", "make_full_typename", "make_subscriber_qos",
     "make_time", "qos_to_dict", "scalar", "serialize_message", "set_message_value", "shutdown_node",
-    "time_message", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "time_message", "to_duration", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]

@@ -2,8 +2,9 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-24)
+1.1.0 (2023-12-27)
 -------------------
+* add api.to_duration()
 * do not use partial match for topic and typename filters without wildcards
 * support patterns yielding zero-length matches like "(?!not_this)"
 * disallow unknown command-line flags and partial abbreviations

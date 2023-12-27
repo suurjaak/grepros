@@ -340,6 +340,10 @@ class TestAPI(testbase.TestBase):
             self.assertEqual(func(dval), expected, ERR(func))
             self.assertEqual(func(666),       666, ERR(func))
 
+        func = api.to_duration
+        with self.subTest(NAME(func)):
+            logger.info("Testing %s.", NAME(func))
+
         func = api.to_nsec
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
@@ -375,27 +379,27 @@ class TestAPI(testbase.TestBase):
             logger.info("Testing %s.", NAME(func))
 
             val = datetime.datetime.now()
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_datetime(tval), val, ERR(func))
 
             val = decimal.Decimal("123456789.987654321")
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_decimal(tval), val, ERR(func))
 
             val = api.make_duration(123456789, 987654321)
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.make_duration(*api.to_sec_nsec(tval)), val, ERR(func))
 
             val = 123321123.456
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_sec(tval), val, ERR(func))
 
-            self.assertEqual(api.to_time(None), None, ERR(func))
-            self.assertEqual(api.to_time(self), self, ERR(func))
+            self.assertEqual(func(None), None, ERR(func))
+            self.assertEqual(func(self), self, ERR(func))
 
 
 

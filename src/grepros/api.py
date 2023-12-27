@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    23.12.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -1153,6 +1153,11 @@ def to_decimal(val):
     return val
 
 
+def to_duration(val):
+    """Returns value as ROS duration if convertible (int/float/time/datetime/decimal), else value."""
+    return realapi.to_duration(val)
+
+
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS time/duration, else value."""
     return realapi.to_nsec(val)
@@ -1185,6 +1190,6 @@ __all___ = [
     "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration", "make_live_time",
     "make_message_hash", "make_time", "message_to_dict", "parse_definition_fields",
     "parse_definition_subtypes", "scalar", "deserialize_message", "set_message_value",
-    "shutdown_node", "time_message", "to_datetime", "to_decimal", "to_nsec", "to_sec",
-    "to_sec_nsec", "to_time", "validate",
+    "shutdown_node", "time_message", "to_datetime", "to_decimal", "to_duration", "to_nsec",
+    "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
