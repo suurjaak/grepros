@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    27.12.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -674,6 +674,7 @@ class McapSink(Sink, RolloverSinkMixin):
             ConsolePrinter.debug("%s MCAP output %s.", action, self.filename)
         self._file = open(self.filename, "wb")
         self._writer = mcap_ros.writer.Writer(self._file)
+        self._close_printed = False
 
 
 def init(*_, **__):

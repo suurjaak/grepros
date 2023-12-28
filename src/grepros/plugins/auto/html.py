@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    27.12.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -119,6 +119,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)
             self._writer.start()
+            self._close_printed = False
         if "size" in self._rollover_limits or self._queue.qsize() > 100: self._queue.join()
 
     def validate(self):

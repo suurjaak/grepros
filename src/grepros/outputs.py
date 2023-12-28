@@ -691,8 +691,11 @@ class BagSink(Sink, RolloverSinkMixin):
     def _ensure_open(self):
         """Opens output file if not already open."""
         if self._bag is not None:
-            self._bag.open()
+            if self._bag.closed:
+                self._bag.open()
+                self._close_printed = False
             return
+        self._close_printed = False
         if common.is_stream(self.args.WRITE):
             self._bag = api.Bag(self.args.WRITE, mode=getattr(self.args.WRITE, "mode", "w"))
             self.filename = "<stream>"
@@ -766,6 +769,7 @@ class TopicSink(Sink):
             self._pubs[topickey] = pub
 
         self._pubs[topickey].publish(msg)
+        self._close_printed = False
         super(TopicSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):

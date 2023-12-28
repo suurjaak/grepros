@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    14.07.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -72,6 +72,7 @@ class CsvSink(Sink):
         data = (v for _, v in self._iter_fields(msg))
         metadata = [api.to_sec(stamp), api.to_datetime(stamp), api.get_message_type(msg)]
         self._make_writer(topic, msg).writerow(itertools.chain(metadata, data))
+        self._close_printed = False
         super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):

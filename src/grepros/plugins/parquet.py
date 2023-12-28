@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    28.09.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -170,6 +170,7 @@ class ParquetSink(Sink):
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         self._process_type(topic, msg)
         self._process_message(topic, index, stamp, msg, match)
+        self._close_printed = False
 
 
     def close(self):
