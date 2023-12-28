@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.12.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -655,7 +655,7 @@ def ellipsize(text, limit, ellipsis=".."):
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
 
-def ensure_namespace(val, defaults=None, **kwargs):
+def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     """
     Returns a copy of value as `argparse.Namespace`, with all keys uppercase.
 
@@ -663,6 +663,8 @@ def ensure_namespace(val, defaults=None, **kwargs):
 
     @param  val       `argparse.Namespace` or dictionary or `None`
     @param  defaults  additional arguments to set to namespace if missing
+    @param  dashify   names of dictionary arguments where to replace
+                      the first underscore in string keys with a dash
     @param  kwargs    any and all argument overrides as keyword overrides
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
@@ -677,6 +679,10 @@ def ensure_namespace(val, defaults=None, **kwargs):
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
         if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
             setattr(val, k, [getattr(val, k)])
+    for arg in (getattr(val, n, None) for n in dashify or ()):
+        for k in (list(arg) if isinstance(arg, dict) else []):
+            if isinstance(k, six.text_type) and "_" in k and 0 < k.index("_") < len(k) - 1:
+                arg[k.replace("_", "-", 1)] = arg.pop(k)
     return val
 
 
