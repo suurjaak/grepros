@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.12.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -171,7 +171,10 @@ class TextSinkMixin(object):
             if self.args.START_LINE or self.args.END_LINE or self.args.MAX_MESSAGE_LINES:
                 start = self.args.START_LINE or 0
                 start = max(start, -len(lines)) - (start > 0)  # <0 to sanity, >0 to 0-base
-                lines = lines[start:start + (self.args.MAX_MESSAGE_LINES or len(lines))]
+                end = self.args.END_LINE or len(lines)
+                end = max(end, -len(lines)) - (end > 0)  # <0 to sanity, >0 to 0-base
+                if self.args.MAX_MESSAGE_LINES: end = min(end, start + self.args.MAX_MESSAGE_LINES)
+                lines = lines[start:end + 1]
                 lines = lines and (lines[:-1] + [lines[-1] + self._styles["rst"]])
 
             if self.args.LINES_AROUND_MATCH and highlight:

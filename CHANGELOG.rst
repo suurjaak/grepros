@@ -13,6 +13,7 @@ Changelog for package grepros
 * disallow unknown command-line flags and partial abbreviations
 * fix matching nested message values for patterns using start or end flags
 * fix ISO datetime support in earliest and latest timestamp arguments
+* fix --end-line not being used
 * fix api.dict_to_message() erroring on temporal types in dict
 * ensure api.get_message_value() returning collections as lists not tuples
 
