@@ -9,13 +9,15 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    08.12.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
+import glob
 import inspect
 import logging
 import os
 import random
+import re
 import sys
 import tempfile
 
@@ -339,6 +341,52 @@ class TestLibrary(testbase.TestBase):
         grepros.init()  # Should not raise if called twice
         self.verify_grep()
         self.verify_sources_sinks()
+
+
+    def test_rollover(self):
+        """Tests rollover settings for sinks."""
+        NAME = lambda f: "%s.%s" % (f.__module__, f.__name__)
+        logger.debug("Verifying sink rollover.")
+        SINKS = [grepros.BagSink, grepros.HtmlSink, grepros.SqliteSink] + \
+                ([grepros.McapSink] if ".mcap" in api.BAG_EXTENSIONS else [])
+        TEMPLATE = "test_%Y_%m_%d__%(index)s__%(index)s"
+        OPTS = [  # [({..rollover opts..}, (min files, max files or None for undetermined))]
+            (dict(rollover_size=2000),    (2, None)),
+            (dict(rollover_count=40),     (2, 3)),
+            (dict(rollover_duration=40),  (2, 3)),
+        ]
+        OPT_OVERRIDES = {grepros.McapSink: dict(rollover_size=None)}  # MCAP has 1MB cache
+
+        START = api.to_time(12345)
+        for cls in SINKS:
+            EXT = api.BAG_EXTENSIONS[0] if cls is grepros.BagSink else cls.FILE_EXTENSIONS[0]
+            WRITE, OUTDIR = next((x, os.path.dirname(x)) for x in [self.mkfile(EXT)])
+            with self.subTest(NAME(cls)):
+                logger.info("Testing %s rollover.", NAME(cls))
+                for ropts, output_range in OPTS:
+                    if cls in OPT_OVERRIDES and any(k in ropts for k in OPT_OVERRIDES[cls]):
+                        ropts.update(OPT_OVERRIDES[cls])
+                    if not any(ropts.values()): continue  # for ropts
+                    logger.info("Testing %s rollover with %s.", NAME(cls), ropts)
+                    SUFF = "".join("%s=%s" % x for x in ropts.items())
+                    template = os.path.join(OUTDIR, TEMPLATE + SUFF + EXT)
+
+                    with cls(WRITE, write_options=dict(ropts, rollover_template=template)) as sink:
+                        for i in range(100):
+                            msg = std_msgs.msg.Bool(data=not i % 2)
+                            sink.emit("my/topic%s" % (i % 2), msg, START + api.make_duration(i))
+
+                    outputs = sorted(glob.glob(os.path.join(OUTDIR, "test_*" + SUFF + EXT)))
+                    self._tempnames.extend(outputs)
+                    self.assertGreaterEqual(len(outputs), output_range[0],
+                                            "Unexpected output files from %s." % NAME(cls))
+                    if output_range[1] is not None:
+                        self.assertLessEqual(len(outputs), output_range[1],
+                                             "Unexpected output files from %s." % NAME(cls))
+                    self.assertFalse(os.path.exists(WRITE), "Unexpected output from %s." % NAME(cls))
+                    for name in map(os.path.basename, outputs):
+                        self.assertTrue(re.search(r"^test_\d+_\d+_\d+__\d+__\d+", name),
+                                        "Unexpected output file from %s." % NAME(cls))
 
 
     def verify_grep(self):
