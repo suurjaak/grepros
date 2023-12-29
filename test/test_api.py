@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    29.05.2023
+@modified    29.12.2023
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -278,8 +278,9 @@ class TestAPI(testbase.TestBase):
                 self.assertEqual(func(typename), expected, ERR(func))
             for cls in api.ROS_TIME_CLASSES:
                 expected = "duration" if "duration" in cls.__name__.lower() else "time"
+                self.assertEqual(func(cls),                         expected, ERR(func))
+                self.assertEqual(func(cls()),                       expected, ERR(func))
                 self.assertEqual(func(api.get_message_type(cls)),   expected, ERR(func))
-                self.assertEqual(func(api.get_message_type(cls())), expected, ERR(func))
             self.assertEqual(func(self), self, ERR(func))
 
         func = api.time_message

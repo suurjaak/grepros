@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-28)
+1.1.0 (2023-12-29)
 -------------------
 * add support for splitting files in bag/HTML/MCAP/SQLite output
 * add api.to_duration()
@@ -15,6 +15,7 @@ Changelog for package grepros
 * fix ISO datetime support in earliest and latest timestamp arguments
 * fix --end-line not being used
 * fix api.dict_to_message() erroring on temporal types in dict
+* fix api.get_ros_time_category() erroring on time/duration instances in ROS2
 * ensure api.get_message_value() returning collections as lists not tuples
 
 1.0.4 (2023-09-28)

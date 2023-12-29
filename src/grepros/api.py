@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.12.2023
+@modified    29.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -774,8 +774,8 @@ def get_rostime(fallback=False):
 def get_ros_time_category(msg_or_type):
     """Returns "time" or "duration" for time/duration type or instance, else original argument."""
     cls = msg_or_type if inspect.isclass(msg_or_type) else \
-          type(msg_or_type) if is_ros_message(msg_or_type) else None
-    if cls is None:
+          type(msg_or_type) if is_ros_time(msg_or_type) else None
+    if cls is None and isinstance(msg_or_type, (six.binary_type, six.text_type)):
         cls = next((x for x in ROS_TIME_CLASSES if get_message_type(x) == msg_or_type), None)
     if cls in ROS_TIME_CLASSES:
         return "duration" if "duration" in ROS_TIME_CLASSES[cls].lower() else "time"
