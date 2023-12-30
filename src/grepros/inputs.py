@@ -789,8 +789,8 @@ class BagSource(Source, ConditionMixin):
             matches = [t for p in [common.wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
             for topic in matches:
-                dct.setdefault(topic, fulldct[topic])
                 self.conditions_set_topic_state(topic, topic not in dct)
+                dct.setdefault(topic, fulldct[topic])
         self._topics = dct
         self._meta   = self.get_meta()
 
