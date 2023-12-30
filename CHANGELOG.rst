@@ -2,12 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-29)
+1.1.0 (2023-12-30)
 -------------------
 * add support for splitting files in bag/HTML/MCAP/SQLite output
 * add api.to_duration()
 * do not use partial match for topic and typename filters without wildcards
 * support patterns yielding zero-length matches like "(?!not_this)"
+* support search over message fields in conditions as `--condition "value in msg"`
 * support giving dashed names like "rollover-size" in format-specific write options
   as underscored "rollover_size" instead
 * disallow unknown command-line flags and partial abbreviations

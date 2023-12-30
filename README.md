@@ -522,18 +522,23 @@ and refer to message fields directly.
 
 Condition namespace:
 
-| Name                    | Description
-| ----------------------- | ----------------------------------------------------------------
-|                         |
-| `msg`                   |  current message from data source
-| `topic`                 |  full name of current message topic
-| `<topic /my/topic>`     |  topic by full name or * wildcard
-| `len(<topic ..>)`       |  number of messages encountered in topic
-| `bool(<topic ..>)`      |  whether any message encountered in topic
-| `<topic ..>.xyz`        |  attribute `xyz` of last message in topic
-| `<topic ..>[index]`     |  topic message at position
-|                         |  (from first encountered if index >= 0, last encountered if < 0)
-| `<topic ..>[index].xyz` |  attribute `xyz` of topic message at position
+| Name                         | Description
+| ---------------------------- | ---------------------------------------------------------------
+|                              |
+| `msg`                        | current message from data source
+| `topic`                      | full name of current message topic
+| `<topic /my/topic>`          | topic by full name or * wildcard
+| `len(<topic ..>)`            | number of messages encountered in topic
+| `bool(<topic ..>)`           | whether any message encountered in topic
+| `<topic ..>.xyz`             | attribute `xyz` of last message in topic
+| `<topic ..>[index]`          | topic message at position
+|                              | (from first encountered if index >= 0, last encountered if < 0)
+| `<topic ..>[index].xyz`      | attribute `xyz` of topic message at position
+| |
+| `value in msg`               | whether any field in current message contains value
+| `value in <topic ..>`        | whether any field in last topic message contains value
+| `value in <topic ..>[index]` | whether any field in topic message at position contains value
+
 
 Condition is automatically false if trying to access attributes of a message not yet received.
 

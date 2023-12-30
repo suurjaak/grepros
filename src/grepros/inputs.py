@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    25.12.2023
+@modified    30.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -23,6 +23,8 @@ except ImportError: import Queue as queue  # Py2
 import re
 import threading
 import time
+
+import six
 
 from . import api
 from . import common
@@ -229,10 +231,12 @@ class ConditionMixin(object):
         """
         Object for <topic x> replacements in condition expressions.
 
-        - len(topic)  -> number of messages processed in topic
-        - bool(topic) -> whether there are any messages in topic
-        - topic[x]    -> history at -1 -2 for last and but one, or 0 1 for first and second
-        - topic.x     -> attribute x of last message
+        - len(topic)        -> number of messages processed in topic
+        - bool(topic)       -> whether there are any messages in topic
+        - topic[x]          -> history at -1 -2 for last and but one, or 0 1 for first and second
+        - topic.x           -> attribute x of last message
+        - value in topic    -> whether any field of last message contains value
+        - value in topic[x] -> whether any field of topic history at position contains value
         """
 
         def __init__(self, count, firsts, lasts):
@@ -244,9 +248,14 @@ class ConditionMixin(object):
         def __nonzero__(self): return bool(self._count)
         def __len__(self):     return self._count
 
+        def __contains__(self, item):
+            """Returns whether value exists in last message, or raises NoMessageException."""
+            if not self._lasts: raise ConditionMixin.NoMessageException()
+            return item in ConditionMixin.Message(self._lasts[-1])
+
         def __getitem__(self, key):
             """Returns message from history at key, or Empty() if no such message."""
-            try: return (self._lasts if key < 0 else self._firsts)[key]
+            try: return ConditionMixin.Message((self._lasts if key < 0 else self._firsts)[key])
             except IndexError: return ConditionMixin.Empty()
 
         def __getattr__(self, name):
@@ -255,11 +264,38 @@ class ConditionMixin(object):
             return getattr(self._lasts[-1], name)
 
 
+    class Message(object):
+        """
+        Object for current topic message in condition expressions.
+
+        - value in msg -> whether any message field contains value
+        - msg.x        -> attribute x of message
+        """
+
+        def __init__(self, msg):
+            self._msg = msg
+            self._fulltext = None
+
+        def __contains__(self, item):
+            """Returns whether value exists in any message field."""
+            if not self._fulltext:
+                self._fulltext = "\n".join("%s" % (v, ) for _, v, _ in
+                                           api.iter_message_fields(self._msg, flat=True))
+            value = item if isinstance(item, six.text_type) else \
+                    item.decode() if isinstance(item, six.binary_type) else str(item)
+            return re.search(re.escape(value), self._fulltext, re.I)
+
+        def __getattr__(self, name):
+            """Returns attribute value of message."""
+            return getattr(self._msg, name)
+
+
     class Empty(object):
         """Placeholder falsy object that raises NoMessageException on attribute access."""
-        def __getattr__(self, name): raise ConditionMixin.NoMessageException()
-        def __bool__(self):          return False
-        def __nonzero__(self):       return False
+        def __getattr__(self, name):  raise ConditionMixin.NoMessageException()
+        def __bool__(self):           return False
+        def __nonzero__(self):        return False
+        def __contains__(self, item): return False
 
 
     def __init__(self, args=None, **kwargs):
@@ -301,7 +337,7 @@ class ConditionMixin(object):
             for remaps in itertools.product(*variants):  # [(wildcard1, realname1), (wildcard2, ..]
                 if remaps == (None, ): remaps = ()
                 getter = functools.partial(self._get_topic_instance, remap=dict(remaps))
-                ns = {"topic": topic, "msg": msg, "get_topic": getter}
+                ns = {"topic": topic, "msg": ConditionMixin.Message(msg), "get_topic": getter}
                 try:   result = eval(code, ns)
                 except self.NoMessageException: pass
                 except Exception as e:
