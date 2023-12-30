@@ -296,6 +296,7 @@ class ConditionMixin(object):
         def __bool__(self):           return False
         def __nonzero__(self):        return False
         def __contains__(self, item): return False
+        def __len__(self):            return 0
 
 
     def __init__(self, args=None, **kwargs):

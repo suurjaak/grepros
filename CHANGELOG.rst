@@ -18,6 +18,7 @@ Changelog for package grepros
 * fix api.dict_to_message() erroring on temporal types in dict
 * fix api.get_ros_time_category() erroring on time/duration instances in ROS2
 * fix including topics in match only used for conditions not matching
+* fix using len() in conditions on topics not reached yet
 * ensure api.get_message_value() returning collections as lists not tuples
 
 1.0.4 (2023-09-28)
