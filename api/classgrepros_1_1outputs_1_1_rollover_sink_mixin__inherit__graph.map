@@ -1,0 +1,11 @@
+<map id="RolloverSinkMixin" name="RolloverSinkMixin">
+<area shape="rect" id="Node000001" title="Provides output file rollover by size, duration, or message count." alt="" coords="130,5,270,31"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_bag_sink.html" title="Writes messages to bagfile." alt="" coords="5,79,80,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="163,39,69,81,67,76,161,34"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html" title="Writes messages to an HTML file." alt="" coords="104,79,187,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="185,43,156,80,152,77,181,40"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html" title="Writes messages to an SQLite database." alt="" coords="211,79,298,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="219,40,248,77,244,80,215,43"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html" title="Writes messages to MCAP file." alt="" coords="323,79,408,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="240,34,339,76,337,81,238,38"/>
+</map>

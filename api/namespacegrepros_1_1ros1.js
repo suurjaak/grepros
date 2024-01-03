@@ -24,6 +24,7 @@ var namespacegrepros_1_1ros1 =
     [ "serialize_message", "namespacegrepros_1_1ros1.html#a1f9c5a60f1e0913214b6c2b7312e00cd", null ],
     [ "set_message_value", "namespacegrepros_1_1ros1.html#ab11fbd32fd378121c3ed45e43e4f675b", null ],
     [ "shutdown_node", "namespacegrepros_1_1ros1.html#aadb7ddcdbcf9b96e0349a9d2fa9e4c61", null ],
+    [ "to_duration", "namespacegrepros_1_1ros1.html#a5cb0e2968e8a9f907ad93dc11d79d509", null ],
     [ "to_nsec", "namespacegrepros_1_1ros1.html#a9eac6ae82516c03b40cff070b0ec1cbe", null ],
     [ "to_sec", "namespacegrepros_1_1ros1.html#a24d81080ea9a47b30c0d36a2cf35b80b", null ],
     [ "to_sec_nsec", "namespacegrepros_1_1ros1.html#ae23f94ca013d5d6ac6d1d80e311e0006", null ],

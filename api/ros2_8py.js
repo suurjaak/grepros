@@ -28,6 +28,7 @@ var ros2_8py =
     [ "set_message_value", "ros2_8py.html#ab11fbd32fd378121c3ed45e43e4f675b", null ],
     [ "shutdown_node", "ros2_8py.html#aadb7ddcdbcf9b96e0349a9d2fa9e4c61", null ],
     [ "time_message", "ros2_8py.html#a024ed77dcdbf2c3b770458cdc0a3352a", null ],
+    [ "to_duration", "ros2_8py.html#a5cb0e2968e8a9f907ad93dc11d79d509", null ],
     [ "to_nsec", "ros2_8py.html#a9eac6ae82516c03b40cff070b0ec1cbe", null ],
     [ "to_sec", "ros2_8py.html#a24d81080ea9a47b30c0d36a2cf35b80b", null ],
     [ "to_sec_nsec", "ros2_8py.html#ae23f94ca013d5d6ac6d1d80e311e0006", null ],

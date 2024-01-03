@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -138,11 +138,11 @@ Functions</h2></td></tr>
 <tr class="memitem:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a73470c1dc6e4f9d2063ab2ce0efedd0b">ellipsize</a> (text, limit, ellipsis=&quot;..&quot;)</td></tr>
 <tr class="memdesc:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns text ellipsized if beyond limit.  <br /></td></tr>
 <tr class="separator:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a238ba17d6a41e4b7f3c1a3c129fc6ea3">ensure_namespace</a> (val, defaults=None, **kwargs)</td></tr>
-<tr class="memdesc:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a copy of value as <code>argparse.Namespace</code>, with all keys uppercase.  <br /></td></tr>
-<tr class="separator:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac0c43844ace8afe318b24d23bd51a6bc"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ac0c43844ace8afe318b24d23bd51a6bc">ensure_namespace</a> (val, defaults=None, dashify=(&quot;WRITE_OPTIONS&quot;,), **kwargs)</td></tr>
+<tr class="memdesc:ac0c43844ace8afe318b24d23bd51a6bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a copy of value as <code>argparse.Namespace</code>, with all keys uppercase.  <br /></td></tr>
+<tr class="separator:ac0c43844ace8afe318b24d23bd51a6bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac3c0d706b2076ef82e2f264a8152a986"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ac3c0d706b2076ef82e2f264a8152a986">filter_dict</a> (dct, keys=(), values=(), reverse=False)</td></tr>
-<tr class="memdesc:ac3c0d706b2076ef82e2f264a8152a986"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filters string dictionary by keys and values.  <br /></td></tr>
+<tr class="memdesc:ac3c0d706b2076ef82e2f264a8152a986"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filters string dictionary by keys and values, supporting * wildcards.  <br /></td></tr>
 <tr class="separator:ac3c0d706b2076ef82e2f264a8152a986"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae332d1619b0f13555033ede3949a543d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ae332d1619b0f13555033ede3949a543d">find_files</a> (names=(), paths=(), extensions=(), skip_extensions=(), recurse=False)</td></tr>
 <tr class="memdesc:ae332d1619b0f13555033ede3949a543d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Yields filenames from current directory or given paths.  <br /></td></tr>
@@ -180,12 +180,15 @@ Functions</h2></td></tr>
 <tr class="memitem:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a7768e2ab3545567aef8fe4b74e7a6b16">merge_dicts</a> (d1, d2)</td></tr>
 <tr class="memdesc:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="mdescLeft">&#160;</td><td class="mdescRight">Merges d2 into d1, recursively for nested dicts.  <br /></td></tr>
 <tr class="separator:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a2cbaf2733821ee5d38583c2c45e6b48d">merge_spans</a> (spans)</td></tr>
-<tr class="memdesc:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a sorted list of (start, end) spans with overlapping spans merged.  <br /></td></tr>
-<tr class="separator:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73267537ca6dba825de9bde0bd9d8c3a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a73267537ca6dba825de9bde0bd9d8c3a">merge_spans</a> (spans, join_blanks=False)</td></tr>
+<tr class="memdesc:a73267537ca6dba825de9bde0bd9d8c3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a sorted list of (start, end) spans with overlapping spans merged.  <br /></td></tr>
+<tr class="separator:a73267537ca6dba825de9bde0bd9d8c3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a3cb2a749bcd4fd2e2cdcdd8c95209ab3">parse_datetime</a> (text)</td></tr>
 <tr class="memdesc:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns datetime object from ISO datetime string (may be partial).  <br /></td></tr>
 <tr class="separator:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe2e5b13a029be617ff18fd00319a532"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#afe2e5b13a029be617ff18fd00319a532">parse_number</a> (value, suffixes=None)</td></tr>
+<tr class="memdesc:afe2e5b13a029be617ff18fd00319a532"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns an integer parsed from text, raises on error.  <br /></td></tr>
+<tr class="separator:afe2e5b13a029be617ff18fd00319a532"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aceda51d00ae2a27eadde5922158e831a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#aceda51d00ae2a27eadde5922158e831a">plural</a> (word, items=None, numbers=True, single=&quot;1&quot;, sep=&quot;,&quot;, pref=&quot;&quot;, suf=&quot;&quot;)</td></tr>
 <tr class="memdesc:aceda51d00ae2a27eadde5922158e831a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the word as 'count words', or '1 word' if count is 1, or 'words' if count omitted.  <br /></td></tr>
 <tr class="separator:aceda51d00ae2a27eadde5922158e831a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -220,7 +223,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_0d8d2c83378af3dbf8497b689631bb64.html">grepros</a></li><li class="navelem"><a class="el" href="common_8py.html">common.py</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:44 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

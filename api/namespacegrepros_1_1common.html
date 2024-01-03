@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -130,11 +130,11 @@ Functions</h2></td></tr>
 <tr class="memitem:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a73470c1dc6e4f9d2063ab2ce0efedd0b">ellipsize</a> (text, limit, ellipsis=&quot;..&quot;)</td></tr>
 <tr class="memdesc:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns text ellipsized if beyond limit.  <br /></td></tr>
 <tr class="separator:a73470c1dc6e4f9d2063ab2ce0efedd0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a238ba17d6a41e4b7f3c1a3c129fc6ea3">ensure_namespace</a> (val, defaults=None, **kwargs)</td></tr>
-<tr class="memdesc:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a copy of value as <code>argparse.Namespace</code>, with all keys uppercase.  <br /></td></tr>
-<tr class="separator:a238ba17d6a41e4b7f3c1a3c129fc6ea3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac0c43844ace8afe318b24d23bd51a6bc"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ac0c43844ace8afe318b24d23bd51a6bc">ensure_namespace</a> (val, defaults=None, dashify=(&quot;WRITE_OPTIONS&quot;,), **kwargs)</td></tr>
+<tr class="memdesc:ac0c43844ace8afe318b24d23bd51a6bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a copy of value as <code>argparse.Namespace</code>, with all keys uppercase.  <br /></td></tr>
+<tr class="separator:ac0c43844ace8afe318b24d23bd51a6bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac3c0d706b2076ef82e2f264a8152a986"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ac3c0d706b2076ef82e2f264a8152a986">filter_dict</a> (dct, keys=(), values=(), reverse=False)</td></tr>
-<tr class="memdesc:ac3c0d706b2076ef82e2f264a8152a986"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filters string dictionary by keys and values.  <br /></td></tr>
+<tr class="memdesc:ac3c0d706b2076ef82e2f264a8152a986"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filters string dictionary by keys and values, supporting * wildcards.  <br /></td></tr>
 <tr class="separator:ac3c0d706b2076ef82e2f264a8152a986"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae332d1619b0f13555033ede3949a543d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#ae332d1619b0f13555033ede3949a543d">find_files</a> (names=(), paths=(), extensions=(), skip_extensions=(), recurse=False)</td></tr>
 <tr class="memdesc:ae332d1619b0f13555033ede3949a543d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Yields filenames from current directory or given paths.  <br /></td></tr>
@@ -172,12 +172,15 @@ Functions</h2></td></tr>
 <tr class="memitem:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a7768e2ab3545567aef8fe4b74e7a6b16">merge_dicts</a> (d1, d2)</td></tr>
 <tr class="memdesc:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="mdescLeft">&#160;</td><td class="mdescRight">Merges d2 into d1, recursively for nested dicts.  <br /></td></tr>
 <tr class="separator:a7768e2ab3545567aef8fe4b74e7a6b16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a2cbaf2733821ee5d38583c2c45e6b48d">merge_spans</a> (spans)</td></tr>
-<tr class="memdesc:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a sorted list of (start, end) spans with overlapping spans merged.  <br /></td></tr>
-<tr class="separator:a2cbaf2733821ee5d38583c2c45e6b48d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73267537ca6dba825de9bde0bd9d8c3a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a73267537ca6dba825de9bde0bd9d8c3a">merge_spans</a> (spans, join_blanks=False)</td></tr>
+<tr class="memdesc:a73267537ca6dba825de9bde0bd9d8c3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a sorted list of (start, end) spans with overlapping spans merged.  <br /></td></tr>
+<tr class="separator:a73267537ca6dba825de9bde0bd9d8c3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#a3cb2a749bcd4fd2e2cdcdd8c95209ab3">parse_datetime</a> (text)</td></tr>
 <tr class="memdesc:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns datetime object from ISO datetime string (may be partial).  <br /></td></tr>
 <tr class="separator:a3cb2a749bcd4fd2e2cdcdd8c95209ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe2e5b13a029be617ff18fd00319a532"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#afe2e5b13a029be617ff18fd00319a532">parse_number</a> (value, suffixes=None)</td></tr>
+<tr class="memdesc:afe2e5b13a029be617ff18fd00319a532"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns an integer parsed from text, raises on error.  <br /></td></tr>
+<tr class="separator:afe2e5b13a029be617ff18fd00319a532"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aceda51d00ae2a27eadde5922158e831a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1common.html#aceda51d00ae2a27eadde5922158e831a">plural</a> (word, items=None, numbers=True, single=&quot;1&quot;, sep=&quot;,&quot;, pref=&quot;&quot;, suf=&quot;&quot;)</td></tr>
 <tr class="memdesc:aceda51d00ae2a27eadde5922158e831a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the word as 'count words', or '1 word' if count is 1, or 'words' if count omitted.  <br /></td></tr>
 <tr class="separator:aceda51d00ae2a27eadde5922158e831a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -279,8 +282,8 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="a238ba17d6a41e4b7f3c1a3c129fc6ea3" name="a238ba17d6a41e4b7f3c1a3c129fc6ea3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a238ba17d6a41e4b7f3c1a3c129fc6ea3">&#9670;&#160;</a></span>ensure_namespace()</h2>
+<a id="ac0c43844ace8afe318b24d23bd51a6bc" name="ac0c43844ace8afe318b24d23bd51a6bc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac0c43844ace8afe318b24d23bd51a6bc">&#9670;&#160;</a></span>ensure_namespace()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -296,6 +299,12 @@ Variables</h2></td></tr>
           <td></td>
           <td class="paramtype">&#160;</td>
           <td class="paramname"><em>defaults</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>dashify</em> = <code>(&quot;WRITE_OPTIONS&quot;,&#160;)</code>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -316,12 +325,13 @@ Variables</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">val</td><td><code>argparse.Namespace</code> or dictionary or <code>None</code> </td></tr>
     <tr><td class="paramname">defaults</td><td>additional arguments to set to namespace if missing </td></tr>
+    <tr><td class="paramname">dashify</td><td>names of dictionary arguments where to replace the first underscore in string keys with a dash </td></tr>
     <tr><td class="paramname">kwargs</td><td>any and all argument overrides as keyword overrides </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00682">682</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00684">684</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -363,11 +373,11 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Filters string dictionary by keys and values. </p>
+<p>Filters string dictionary by keys and values, supporting * wildcards. </p>
 <p>Dictionary values may be additional lists; keys with emptied lists are dropped.</p>
 <p>Retains only entries that find a match (supports * wildcards); if reverse, retains only entries that do not find a match. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00705">705</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00711">711</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -427,7 +437,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00736">736</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00742">742</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -471,7 +481,7 @@ Variables</h2></td></tr>
 
 <p>Returns a formatted byte size (like 421.40 MB), trailing zeros optionally removed. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00788">788</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00794">794</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -493,7 +503,7 @@ Variables</h2></td></tr>
 
 <p>Returns ISO datetime from UNIX timestamp. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00800">800</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00806">806</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -515,7 +525,7 @@ Variables</h2></td></tr>
 
 <p>Formats the datetime.timedelta as "3d 40h 23min 23.1sec". </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00776">776</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00782">782</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -538,7 +548,7 @@ Variables</h2></td></tr>
 <p>Returns the fully namespaced name for a Python module, class, function or object. </p>
 <p>E.g. "my.thing" or "my.module.MyCls" or "my.module.MyCls.my_method" or "my.module.MyCls&lt;0x1234abcd&gt;" or "my.module.MyCls&lt;0x1234abcd&gt;.my_method". </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00811">811</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00817">817</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -570,7 +580,7 @@ Variables</h2></td></tr>
 
 <p>Returns whether function supports taking specified argument by name. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00825">825</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00831">831</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -598,7 +608,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00837">837</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00843">843</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -620,7 +630,7 @@ Variables</h2></td></tr>
 
 <p>Returns whether value is iterable. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00851">851</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00857">857</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -642,7 +652,7 @@ Variables</h2></td></tr>
 
 <p>Returns whether value is a file-like object. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00858">858</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00864">864</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -664,7 +674,7 @@ Variables</h2></td></tr>
 
 <p>Creates directory structure for path if not already existing. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00864">864</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00870">870</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -686,7 +696,7 @@ Variables</h2></td></tr>
 
 <p>Returns a results-caching wrapper for the function, cache used if arguments hashable. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00889">889</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00895">895</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -718,12 +728,12 @@ Variables</h2></td></tr>
 
 <p>Merges d2 into d1, recursively for nested dicts. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00902">902</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00908">908</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
-<a id="a2cbaf2733821ee5d38583c2c45e6b48d" name="a2cbaf2733821ee5d38583c2c45e6b48d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2cbaf2733821ee5d38583c2c45e6b48d">&#9670;&#160;</a></span>merge_spans()</h2>
+<a id="a73267537ca6dba825de9bde0bd9d8c3a" name="a73267537ca6dba825de9bde0bd9d8c3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a73267537ca6dba825de9bde0bd9d8c3a">&#9670;&#160;</a></span>merge_spans()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -732,15 +742,31 @@ Variables</h2></td></tr>
           <td class="memname">merge_spans </td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>spans</em></td><td>)</td>
+          <td class="paramname"><em>spans</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>join_blanks</em> = <code>False</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 <p>Returns a sorted list of (start, end) spans with overlapping spans merged. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">join_blanks</td><td>whether to merge consecutive zero-length spans, e.g. [(0, 0), (1, 1)] -&gt; [(0, 1)] </td></tr>
+  </table>
+  </dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00911">911</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00922">922</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -763,7 +789,46 @@ Variables</h2></td></tr>
 <p>Returns datetime object from ISO datetime string (may be partial). </p>
 <p>Raises if invalid. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00923">923</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00943">943</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+
+</div>
+</div>
+<a id="afe2e5b13a029be617ff18fd00319a532" name="afe2e5b13a029be617ff18fd00319a532"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afe2e5b13a029be617ff18fd00319a532">&#9670;&#160;</a></span>parse_number()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">parse_number </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>suffixes</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns an integer parsed from text, raises on error. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">value</td><td>text or binary string to parse, may contain abbrevations like "12K" </td></tr>
+    <tr><td class="paramname">suffixes</td><td>a dictionary of multipliers like {"K": 1024}, case-insensitive </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00958">958</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -836,7 +901,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00944">944</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00978">978</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -858,7 +923,7 @@ Variables</h2></td></tr>
 
 <p>Returns a deep copy of a standard data structure (dict, list, set, tuple), other object types reused instead of copied. </p>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00878">878</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00884">884</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -896,7 +961,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l00975">975</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l01009">1009</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -936,7 +1001,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l01009">1009</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l01043">1043</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -974,7 +1039,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l01065">1065</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="common_8py_source.html#l01099">1099</a> of file <a class="el" href="common_8py_source.html">common.py</a>.</p>
 
 </div>
 </div>
@@ -1039,7 +1104,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1common.html">common</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:44 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

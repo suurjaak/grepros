@@ -16,5 +16,6 @@ var searchData=
   ['meta_5ftemplate_13',['META_TEMPLATE',['../classgrepros_1_1inputs_1_1_bag_source.html#aefe04e03fb45d10970a91c67e4597948',1,'grepros::inputs::BagSource']]],
   ['minwidth_14',['minwidth',['../classgrepros_1_1common_1_1_text_wrapper.html#a84685ed0862a8dcda5f320f131464797',1,'grepros::common::TextWrapper']]],
   ['mode_15',['mode',['../classgrepros_1_1ros1_1_1_r_o_s1_bag.html#a1a6b6fb557d8d37d59700faf4e4c9167',1,'grepros::ros1::ROS1Bag']]],
-  ['modes_16',['MODES',['../classgrepros_1_1api_1_1_base_bag.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.api.BaseBag.MODES'],['../classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.plugins.embag.EmbagReader.MODES'],['../classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.plugins.mcap.McapBag.MODES']]]
+  ['modes_16',['MODES',['../classgrepros_1_1api_1_1_base_bag.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.api.BaseBag.MODES'],['../classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.plugins.embag.EmbagReader.MODES'],['../classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html#a1108c15b0d75fd069ef8224fdf89775d',1,'grepros.plugins.mcap.McapBag.MODES']]],
+  ['multi_5fmeta_5ftemplate_17',['MULTI_META_TEMPLATE',['../classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a9fd88d17be80f2c44c2e4874e030f2f4',1,'grepros::outputs::RolloverSinkMixin']]]
 ];

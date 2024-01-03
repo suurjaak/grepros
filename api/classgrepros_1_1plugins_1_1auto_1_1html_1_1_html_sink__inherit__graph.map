@@ -1,7 +1,9 @@
 <map id="HtmlSink" name="HtmlSink">
-<area shape="rect" id="Node000001" title="Writes messages to an HTML file." alt="" coords="43,79,125,104"/>
+<area shape="rect" id="Node000001" title="Writes messages to an HTML file." alt="" coords="109,79,192,104"/>
 <area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="50,40,77,77,73,80,45,43"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="81,5,194,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="123,43,95,80,91,77,118,40"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,35,132,76,130,81,61,40"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="81,5,221,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="153,44,153,79,148,79,148,44"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="245,5,358,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="266,39,176,81,174,76,264,34"/>
 </map>

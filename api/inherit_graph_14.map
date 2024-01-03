@@ -1,3 +1,40 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="Node000000" href="$classgrepros_1_1search_1_1_scanner.html" title="ROS message grepper." alt="" coords="5,5,80,31"/>
+<area shape="rect" id="Node000000" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="5,59,145,85"/>
+<area shape="rect" id="Node000001" href="$classgrepros_1_1outputs_1_1_bag_sink.html" title="Writes messages to bagfile." alt="" coords="213,34,287,59"/>
+<area shape="poly" id="edge16_Node000000_Node000001" title=" " alt="" coords="159,57,212,49,213,55,160,63"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html" title="Writes messages to an HTML file." alt="" coords="209,83,291,109"/>
+<area shape="poly" id="edge17_Node000000_Node000006" title=" " alt="" coords="160,81,209,88,208,93,159,86"/>
+<area shape="rect" id="Node000012" href="$classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html" title="Writes messages to an SQLite database." alt="" coords="365,206,451,231"/>
+<area shape="poly" id="edge18_Node000000_Node000012" title=" " alt="" coords="106,50,148,28,200,9,228,4,256,3,283,8,308,19,332,38,352,61,382,115,399,167,407,205,402,207,394,168,377,117,348,64,329,42,305,24,281,13,255,9,228,9,201,14,150,33,109,54"/>
+<area shape="rect" id="Node000015" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html" title="Writes messages to MCAP file." alt="" coords="207,133,293,158"/>
+<area shape="poly" id="edge19_Node000000_Node000015" title=" " alt="" coords="120,88,220,130,217,135,118,93"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="50,281,101,306"/>
+<area shape="poly" id="edge21_Node000002_Node000001" title=" " alt="" coords="91,268,143,182,155,150,162,122,171,96,191,69,211,56,214,60,195,73,176,99,167,124,161,151,148,184,96,270"/>
+<area shape="poly" id="edge29_Node000002_Node000006" title=" " alt="" coords="90,268,146,180,192,118,210,107,213,111,195,122,151,183,94,270"/>
+<area shape="poly" id="edge30_Node000002_Node000015" title=" " alt="" coords="92,268,134,218,162,191,192,167,212,156,214,161,195,172,165,195,138,222,96,271"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_app_sink.html" title="Provides messages to callback function." alt="" coords="213,281,287,306"/>
+<area shape="poly" id="edge20_Node000002_Node000003" title=" " alt="" coords="114,291,213,291,213,296,114,296"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_console_sink.html" title="Prints messages to console." alt="" coords="199,182,301,207"/>
+<area shape="poly" id="edge22_Node000002_Node000004" title=" " alt="" coords="104,271,192,216,216,205,218,210,195,221,107,275"/>
+<area shape="rect" id="Node000007" href="$classgrepros_1_1outputs_1_1_multi_sink.html" title="Combines any number of sinks." alt="" coords="209,330,291,355"/>
+<area shape="poly" id="edge23_Node000002_Node000007" title=" " alt="" coords="115,302,209,329,208,334,113,307"/>
+<area shape="rect" id="Node000008" href="$classgrepros_1_1outputs_1_1_topic_sink.html" title="Publishes messages to ROS topics." alt="" coords="209,379,291,405"/>
+<area shape="poly" id="edge24_Node000002_Node000008" title=" " alt="" coords="108,311,195,364,220,377,218,382,192,369,105,316"/>
+<area shape="rect" id="Node000009" href="$classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html" title="Writes messages to CSV files, each topic to a separate file." alt="" coords="213,429,287,454"/>
+<area shape="poly" id="edge25_Node000002_Node000009" title=" " alt="" coords="97,315,139,364,195,414,217,426,214,431,192,418,135,368,93,319"/>
+<area shape="rect" id="Node000010" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html" title="Base class for writing messages to a database." alt="" coords="193,478,307,503"/>
+<area shape="poly" id="edge26_Node000002_Node000010" title=" " alt="" coords="90,317,131,389,160,429,195,465,213,476,210,480,192,469,156,433,126,392,86,320"/>
+<area shape="rect" id="Node000016" href="$classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html" title="Writes messages to Apache Parquet files." alt="" coords="200,231,300,257"/>
+<area shape="poly" id="edge31_Node000002_Node000016" title=" " alt="" coords="113,280,204,254,205,259,115,285"/>
+<area shape="rect" id="Node000014" href="$classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html" title="Writes SQL schema file for message type tables and topic views." alt="" coords="215,527,285,553"/>
+<area shape="poly" id="edge32_Node000002_Node000014" title=" " alt="" coords="86,318,101,360,124,412,155,466,195,514,216,527,213,532,192,518,150,470,119,415,96,362,81,320"/>
+<area shape="poly" id="edge28_Node000010_Node000012" title=" " alt="" coords="301,468,305,465,328,437,348,405,377,337,394,275,402,231,408,232,399,276,382,339,353,407,333,440,309,469,305,472"/>
+<area shape="rect" id="Node000011" href="$classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html" title="Writes messages to a Postgres database." alt="" coords="355,478,461,503"/>
+<area shape="poly" id="edge27_Node000010_Node000011" title=" " alt="" coords="321,488,355,488,355,493,321,493"/>
+<area shape="rect" id="Node000013" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title="Base class for producing SQL for topics and messages." alt="" coords="36,502,115,527"/>
+<area shape="poly" id="edge33_Node000013_Node000010" title=" " alt="" coords="128,505,193,496,193,501,129,510"/>
+<area shape="poly" id="edge34_Node000013_Node000014" title=" " alt="" coords="129,520,214,532,214,538,128,525"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="19,146,132,171"/>
+<area shape="poly" id="edge36_Node000005_Node000006" title=" " alt="" coords="123,139,212,106,214,111,125,144"/>
+<area shape="poly" id="edge35_Node000005_Node000004" title=" " alt="" coords="146,171,199,182,198,187,145,176"/>
 </map>

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -178,6 +178,9 @@ Functions</h2></td></tr>
 <tr class="memitem:aadb7ddcdbcf9b96e0349a9d2fa9e4c61"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#aadb7ddcdbcf9b96e0349a9d2fa9e4c61">shutdown_node</a> ()</td></tr>
 <tr class="memdesc:aadb7ddcdbcf9b96e0349a9d2fa9e4c61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down live ROS1 node.  <br /></td></tr>
 <tr class="separator:aadb7ddcdbcf9b96e0349a9d2fa9e4c61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#a5cb0e2968e8a9f907ad93dc11d79d509">to_duration</a> (val)</td></tr>
+<tr class="memdesc:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value as ROS1 duration if convertible (int/float/time/datetime/decimal), else value.  <br /></td></tr>
+<tr class="separator:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#a9eac6ae82516c03b40cff070b0ec1cbe">to_nsec</a> (val)</td></tr>
 <tr class="memdesc:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value in nanoseconds if value is ROS time/duration, else value.  <br /></td></tr>
 <tr class="separator:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -919,6 +922,28 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="a5cb0e2968e8a9f907ad93dc11d79d509" name="a5cb0e2968e8a9f907ad93dc11d79d509"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5cb0e2968e8a9f907ad93dc11d79d509">&#9670;&#160;</a></span>to_duration()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">to_duration </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>val</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns value as ROS1 duration if convertible (int/float/time/datetime/decimal), else value. </p>
+
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00762">762</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+
+</div>
+</div>
 <a id="a9eac6ae82516c03b40cff070b0ec1cbe" name="a9eac6ae82516c03b40cff070b0ec1cbe"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9eac6ae82516c03b40cff070b0ec1cbe">&#9670;&#160;</a></span>to_nsec()</h2>
 
@@ -937,7 +962,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in nanoseconds if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00762">762</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00776">776</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -959,7 +984,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in seconds if value is ROS1 time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00767">767</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00781">781</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -981,7 +1006,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as (seconds, nanoseconds) if value is ROS1 time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00772">772</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00786">786</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -1003,7 +1028,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as ROS1 time if convertible (int/float/duration/datetime/decimal), else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00777">777</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00791">791</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -1220,7 +1245,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1ros1.html">ros1</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -189,9 +189,9 @@ Functions</h2></td></tr>
 <tr class="memitem:abcd0cd2419e6d66761ca8ec3abc14946"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#abcd0cd2419e6d66761ca8ec3abc14946">is_ros_time</a> (val)</td></tr>
 <tr class="memdesc:abcd0cd2419e6d66761ca8ec3abc14946"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether value is a ROS time/duration class or instance.  <br /></td></tr>
 <tr class="separator:abcd0cd2419e6d66761ca8ec3abc14946"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4cb0b5097fc53df028de9361d17e5cbb"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a4cb0b5097fc53df028de9361d17e5cbb">iter_message_fields</a> (msg, messages_only=False, scalars=(), include=(), exclude=(), top=())</td></tr>
-<tr class="memdesc:a4cb0b5097fc53df028de9361d17e5cbb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Yields ((nested, path), value, typename) from ROS message.  <br /></td></tr>
-<tr class="separator:a4cb0b5097fc53df028de9361d17e5cbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46b81128ad9f27bf4eb85ca044aa7e70"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a46b81128ad9f27bf4eb85ca044aa7e70">iter_message_fields</a> (msg, messages_only=False, flat=False, scalars=(), include=(), exclude=(), top=())</td></tr>
+<tr class="memdesc:a46b81128ad9f27bf4eb85ca044aa7e70"><td class="mdescLeft">&#160;</td><td class="mdescRight">Yields ((nested, path), value, typename) from ROS message.  <br /></td></tr>
+<tr class="separator:a46b81128ad9f27bf4eb85ca044aa7e70"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61178724220eb0ee3b335b957573f957"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a61178724220eb0ee3b335b957573f957">make_bag_time</a> (stamp, bag)</td></tr>
 <tr class="memdesc:a61178724220eb0ee3b335b957573f957"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value as ROS timestamp, conditionally as relative to bag start/end time.  <br /></td></tr>
 <tr class="separator:a61178724220eb0ee3b335b957573f957"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -240,6 +240,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a4af8dae5d030060e5eed504305d5f81e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a4af8dae5d030060e5eed504305d5f81e">to_decimal</a> (val)</td></tr>
 <tr class="memdesc:a4af8dae5d030060e5eed504305d5f81e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value as decimal.Decimal if value is ROS time/duration, else value.  <br /></td></tr>
 <tr class="separator:a4af8dae5d030060e5eed504305d5f81e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a5cb0e2968e8a9f907ad93dc11d79d509">to_duration</a> (val)</td></tr>
+<tr class="memdesc:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value as ROS duration if convertible (int/float/time/datetime/decimal), else value.  <br /></td></tr>
+<tr class="separator:a5cb0e2968e8a9f907ad93dc11d79d509"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1api.html#a9eac6ae82516c03b40cff070b0ec1cbe">to_nsec</a> (val)</td></tr>
 <tr class="memdesc:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns value in nanoseconds if value is ROS time/duration, else value.  <br /></td></tr>
 <tr class="separator:a9eac6ae82516c03b40cff070b0ec1cbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -313,7 +316,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="dir_0d8d2c83378af3dbf8497b689631bb64.html">grepros</a></li><li class="navelem"><a class="el" href="api_8py.html">api.py</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:44 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

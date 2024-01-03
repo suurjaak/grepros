@@ -2,6 +2,7 @@ var classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink =
 [
     [ "__init__", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a250d8f02920667a07450a78c04cc6c68", null ],
     [ "close", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c", null ],
+    [ "close_output", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a4fd663486e785970b7c4dc09f08b9649", null ],
     [ "emit", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a520532788b9ddd6f698ddf31076d6320", null ],
     [ "validate", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a82bf0578fc8d502e231e8121b6574300", null ],
     [ "close", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a12e1f53c847d07ce9e58df470087c0fa", null ],

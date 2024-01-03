@@ -24,6 +24,7 @@ var ros1_8py =
     [ "serialize_message", "ros1_8py.html#a1f9c5a60f1e0913214b6c2b7312e00cd", null ],
     [ "set_message_value", "ros1_8py.html#ab11fbd32fd378121c3ed45e43e4f675b", null ],
     [ "shutdown_node", "ros1_8py.html#aadb7ddcdbcf9b96e0349a9d2fa9e4c61", null ],
+    [ "to_duration", "ros1_8py.html#a5cb0e2968e8a9f907ad93dc11d79d509", null ],
     [ "to_nsec", "ros1_8py.html#a9eac6ae82516c03b40cff070b0ec1cbe", null ],
     [ "to_sec", "ros1_8py.html#a24d81080ea9a47b30c0d36a2cf35b80b", null ],
     [ "to_sec_nsec", "ros1_8py.html#ae23f94ca013d5d6ac6d1d80e311e0006", null ],

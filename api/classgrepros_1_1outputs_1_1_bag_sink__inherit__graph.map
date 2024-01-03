@@ -1,5 +1,7 @@
 <map id="BagSink" name="BagSink">
-<area shape="rect" id="Node000001" title="Writes messages to bagfile." alt="" coords="5,79,80,104"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="17,5,68,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="45,44,45,79,40,79,40,44"/>
+<area shape="rect" id="Node000001" title="Writes messages to bagfile." alt="" coords="53,79,128,104"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="51,40,83,77,79,80,47,43"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="81,5,221,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="134,43,102,80,98,77,130,40"/>
 </map>

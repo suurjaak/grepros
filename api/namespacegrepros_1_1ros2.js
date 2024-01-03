@@ -28,6 +28,7 @@ var namespacegrepros_1_1ros2 =
     [ "set_message_value", "namespacegrepros_1_1ros2.html#ab11fbd32fd378121c3ed45e43e4f675b", null ],
     [ "shutdown_node", "namespacegrepros_1_1ros2.html#aadb7ddcdbcf9b96e0349a9d2fa9e4c61", null ],
     [ "time_message", "namespacegrepros_1_1ros2.html#a024ed77dcdbf2c3b770458cdc0a3352a", null ],
+    [ "to_duration", "namespacegrepros_1_1ros2.html#a5cb0e2968e8a9f907ad93dc11d79d509", null ],
     [ "to_nsec", "namespacegrepros_1_1ros2.html#a9eac6ae82516c03b40cff070b0ec1cbe", null ],
     [ "to_sec", "namespacegrepros_1_1ros2.html#a24d81080ea9a47b30c0d36a2cf35b80b", null ],
     [ "to_sec_nsec", "namespacegrepros_1_1ros2.html#ae23f94ca013d5d6ac6d1d80e311e0006", null ],

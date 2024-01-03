@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -121,6 +121,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_empty.html">Empty</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Placeholder falsy object that raises NoMessageException on attribute access.  <a href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_empty.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_message.html">Message</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Object for current topic message in condition expressions.  <a href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_message.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_no_message_exception.html">NoMessageException</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin_1_1_topic.html">Topic</a></td></tr>
@@ -178,7 +181,7 @@ Static Public Attributes</h2></td></tr>
 <p>If a condition topic matches more than one real topic (by wildcard or by different types in one topic), evaluation is done for each set of topics separately, condition passing if any set passes.</p>
 <p>Example <code>&lt;topic */control_enable&gt;.data and &lt;topic */cmd_vel&gt;.linear.x &gt; 0</code> <code>and &lt;topic */cmd_vel&gt;.angular.z &lt; 0.02</code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00221">221</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00223">223</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a250d8f02920667a07450a78c04cc6c68" name="a250d8f02920667a07450a78c04cc6c68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a250d8f02920667a07450a78c04cc6c68">&#9670;&#160;</a></span>__init__()</h2>
@@ -222,7 +225,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a250d8f02920667a07450a78c04cc6c68">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a250d8f02920667a07450a78c04cc6c68">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a250d8f02920667a07450a78c04cc6c68">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00275">275</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00312">312</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -247,7 +250,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a0c0eeccd1c5e2fad4df80498995fa415">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00318">318</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00355">355</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -269,7 +272,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns a list of all topics used in conditions (may contain wildcards). </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00327">327</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00364">364</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -307,7 +310,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Retains message for condition evaluation if in condition topic. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00349">349</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00386">386</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -345,7 +348,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Sets whether topic is purely used for conditions not matching. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00344">344</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00381">381</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -367,7 +370,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns whether there are any conditions configured. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00323">323</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00360">360</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -411,7 +414,7 @@ Static Public Attributes</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00336">336</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00373">373</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -463,7 +466,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a699a29f18aa15b83d9cacf335722a3ce">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a699a29f18aa15b83d9cacf335722a3ce">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00290">290</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00327">327</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -490,7 +493,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Constructor argument defaults. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00226">226</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00228">228</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -514,7 +517,7 @@ Static Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00223">223</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00225">225</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -527,7 +530,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:44 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

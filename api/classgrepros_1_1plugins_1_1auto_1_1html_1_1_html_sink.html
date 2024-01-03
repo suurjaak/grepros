@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.0.4</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -106,11 +106,13 @@ Inheritance diagram for HtmlSink:</div>
 <div class="dyncontent">
 <div class="center"><img src="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink__inherit__graph.png" border="0" usemap="#a_html_sink_inherit__map" alt="Inheritance graph"/></div>
 <map name="a_html_sink_inherit__map" id="a_html_sink_inherit__map">
-<area shape="rect" title="Writes messages to an HTML file." alt="" coords="43,79,125,104"/>
+<area shape="rect" title="Writes messages to an HTML file." alt="" coords="109,79,192,104"/>
 <area shape="rect" href="classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" title=" " alt="" coords="50,40,77,77,73,80,45,43"/>
-<area shape="rect" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="81,5,194,31"/>
-<area shape="poly" title=" " alt="" coords="123,43,95,80,91,77,118,40"/>
+<area shape="poly" title=" " alt="" coords="63,35,132,76,130,81,61,40"/>
+<area shape="rect" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="81,5,221,31"/>
+<area shape="poly" title=" " alt="" coords="153,44,153,79,148,79,148,44"/>
+<area shape="rect" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="245,5,358,31"/>
+<area shape="poly" title=" " alt="" coords="266,39,176,81,174,76,264,34"/>
 </map>
 </div>
 <table class="memberdecls">
@@ -119,8 +121,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a250d8f02920667a07450a78c04cc6c68"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
-<tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes output file, if any.  <br /></td></tr>
+<tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes output file, if any, emits metainfo.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4fd663486e785970b7c4dc09f08b9649"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a4fd663486e785970b7c4dc09f08b9649">close_output</a> (self)</td></tr>
+<tr class="memdesc:a4fd663486e785970b7c4dc09f08b9649"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes output file, if any.  <br /></td></tr>
+<tr class="separator:a4fd663486e785970b7c4dc09f08b9649"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a520532788b9ddd6f698ddf31076d6320"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a520532788b9ddd6f698ddf31076d6320">emit</a> (self, topic, msg, stamp=None, match=None, index=None)</td></tr>
 <tr class="memdesc:a520532788b9ddd6f698ddf31076d6320"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes message to output file.  <br /></td></tr>
 <tr class="separator:a520532788b9ddd6f698ddf31076d6320"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -172,6 +177,27 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
 <tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether sink prerequisites are met (like ROS environment set if TopicSink).  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html">RolloverSinkMixin</a></td></tr>
+<tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, args=None, **kwargs)</td></tr>
+<tr class="separator:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4fd663486e785970b7c4dc09f08b9649 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a4fd663486e785970b7c4dc09f08b9649">close_output</a> (self)</td></tr>
+<tr class="memdesc:a4fd663486e785970b7c4dc09f08b9649 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes output file, if any.  <br /></td></tr>
+<tr class="separator:a4fd663486e785970b7c4dc09f08b9649 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab3c7462dd90b9581b770e0795c0767a2 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#ab3c7462dd90b9581b770e0795c0767a2">ensure_rollover</a> (self, topic, msg, stamp)</td></tr>
+<tr class="memdesc:ab3c7462dd90b9581b770e0795c0767a2 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes current output file and prepares new filename if rollover limit reached.  <br /></td></tr>
+<tr class="separator:ab3c7462dd90b9581b770e0795c0767a2 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abbed90aa4d1b475afea91af556a9538f inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#abbed90aa4d1b475afea91af556a9538f">format_output_meta</a> (self)</td></tr>
+<tr class="memdesc:abbed90aa4d1b475afea91af556a9538f inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns output file metainfo string, with names and sizes and message/topic counts.  <br /></td></tr>
+<tr class="separator:abbed90aa4d1b475afea91af556a9538f inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add859679d5e5b2db6e8392ee97f7c40c inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#add859679d5e5b2db6e8392ee97f7c40c">get_write_options</a> (cls, label)</td></tr>
+<tr class="memdesc:add859679d5e5b2db6e8392ee97f7c40c inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns command-line help texts for rollover options, as [(name, help)].  <br /></td></tr>
+<tr class="separator:add859679d5e5b2db6e8392ee97f7c40c inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff0538c2722538a92492180623b480f6 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#aff0538c2722538a92492180623b480f6">make_filename</a> (self)</td></tr>
+<tr class="memdesc:aff0538c2722538a92492180623b480f6 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns new filename for output, accounting for rollover template and overwrite.  <br /></td></tr>
+<tr class="separator:aff0538c2722538a92492180623b480f6 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether write options are valid, emits error if not, else populates options.  <br /></td></tr>
+<tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classgrepros_1_1outputs_1_1_text_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1outputs_1_1_text_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html">TextSinkMixin</a></td></tr>
 <tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, args=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -186,6 +212,8 @@ Public Member Functions</h2></td></tr>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a12e1f53c847d07ce9e58df470087c0fa"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a12e1f53c847d07ce9e58df470087c0fa">close</a></td></tr>
 <tr class="separator:a12e1f53c847d07ce9e58df470087c0fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ff994e16bf9521154de4cf659a3b689"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a2ff994e16bf9521154de4cf659a3b689">filename</a></td></tr>
+<tr class="separator:a2ff994e16bf9521154de4cf659a3b689"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
 <tr class="separator:a51646327ac0a3287c4b08e4d28b66f35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_classgrepros_1_1outputs_1_1_sink"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1outputs_1_1_sink')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html">Sink</a></td></tr>
@@ -197,6 +225,10 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
 <tr class="memdesc:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Result of validate()  <br /></td></tr>
 <tr class="separator:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html">RolloverSinkMixin</a></td></tr>
+<tr class="memitem:a2ff994e16bf9521154de4cf659a3b689 inherit pub_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a2ff994e16bf9521154de4cf659a3b689">filename</a></td></tr>
+<tr class="memdesc:a2ff994e16bf9521154de4cf659a3b689 inherit pub_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current output file path.  <br /></td></tr>
+<tr class="separator:a2ff994e16bf9521154de4cf659a3b689 inherit pub_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -219,6 +251,19 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:a4d70154a1f1a95c91c32523e4e6ea66b inherit pub_static_attribs_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">tuple&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a4d70154a1f1a95c91c32523e4e6ea66b">FILE_EXTENSIONS</a> = ()</td></tr>
 <tr class="memdesc:a4d70154a1f1a95c91c32523e4e6ea66b inherit pub_static_attribs_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auto-detection file extensions for subclasses, as (".ext", )  <br /></td></tr>
 <tr class="separator:a4d70154a1f1a95c91c32523e4e6ea66b inherit pub_static_attribs_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html">RolloverSinkMixin</a></td></tr>
+<tr class="memitem:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#ad0d00892c1440deb68f2bca93d7b8789">DEFAULT_ARGS</a> = dict(VERBOSE=False, WRITE=None, WRITE_OPTIONS={})</td></tr>
+<tr class="memdesc:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor argument defaults.  <br /></td></tr>
+<tr class="separator:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a15c5df396791ee4aea32af042a386282 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a15c5df396791ee4aea32af042a386282">FILE_META_TEMPLATE</a> = &quot;{name} ({<a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a>})&quot;</td></tr>
+<tr class="separator:a15c5df396791ee4aea32af042a386282 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9fd88d17be80f2c44c2e4874e030f2f4 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a9fd88d17be80f2c44c2e4874e030f2f4">MULTI_META_TEMPLATE</a> = &quot;\n- {name} ({<a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a>}, {mcount}, {tcount})&quot;</td></tr>
+<tr class="separator:a9fd88d17be80f2c44c2e4874e030f2f4 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af38a15655cbaaea96733f740af864f42 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">list&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#af38a15655cbaaea96733f740af864f42">OPTIONS_TEMPLATES</a></td></tr>
+<tr class="memdesc:af38a15655cbaaea96733f740af864f42 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Command-line help templates for rollover options, as [(name, text with s label placeholder)].  <br /></td></tr>
+<tr class="separator:af38a15655cbaaea96733f740af864f42 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab43a4d546652ec30417ddaf86274ca6b inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#ab43a4d546652ec30417ddaf86274ca6b">START_META_TEMPLATE</a> = &quot;{mcount} in {tcount} to &quot;</td></tr>
+<tr class="separator:ab43a4d546652ec30417ddaf86274ca6b inherit pub_static_attribs_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html">TextSinkMixin</a></td></tr>
 <tr class="memitem:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html#ad0d00892c1440deb68f2bca93d7b8789">DEFAULT_ARGS</a></td></tr>
 <tr class="memdesc:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor argument defaults.  <br /></td></tr>
@@ -226,6 +271,13 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:a535ee2fef6e5a3ca578902fc2ba81482 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html#a535ee2fef6e5a3ca578902fc2ba81482">NOCOLOR_HIGHLIGHT_WRAPPERS</a> = &quot;**&quot;, &quot;**&quot;</td></tr>
 <tr class="memdesc:a535ee2fef6e5a3ca578902fc2ba81482 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default highlight wrappers if not color output.  <br /></td></tr>
 <tr class="separator:a535ee2fef6e5a3ca578902fc2ba81482 inherit pub_static_attribs_classgrepros_1_1outputs_1_1_text_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
+Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header properties_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td colspan="2" onclick="javascript:toggleInherit('properties_classgrepros_1_1outputs_1_1_rollover_sink_mixin')"><img src="closed.png" alt="-"/>&#160;Properties inherited from <a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html">RolloverSinkMixin</a></td></tr>
+<tr class="memitem:aa3d6656320f1a7278c0c2c7fdf07617c inherit properties_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#aa3d6656320f1a7278c0c2c7fdf07617c">size</a> = property</td></tr>
+<tr class="memdesc:aa3d6656320f1a7278c0c2c7fdf07617c inherit properties_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns current file size in bytes, or None if size lookup failed.  <br /></td></tr>
+<tr class="separator:aa3d6656320f1a7278c0c2c7fdf07617c inherit properties_classgrepros_1_1outputs_1_1_rollover_sink_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Writes messages to an HTML file. </p>
@@ -270,7 +322,14 @@ Static Public Attributes</h2></td></tr>
     <tr><td class="paramname">args.write_options</td><td><pre>
 {"template": path to custom HTML template, if any,
  "overwrite": whether to overwrite existing file
-              (default false)}
+              (default false),
+ "rollover-size": bytes limit for individual output files,
+ "rollover-count": message limit for individual output files,
+ "rollover-duration": time span limit for individual output files,
+                      as ROS duration or convertible seconds,
+ "rollover-template": output filename template, supporting
+                      strftime format codes like "%H-%M-%S"
+                      and "%(index)s" as output file index}
 </pre> </td></tr>
     <tr><td class="paramname">args.highlight</td><td>highlight matched values (default true) </td></tr>
     <tr><td class="paramname">args.orderby</td><td>"topic" or "type" if any to group results by </td></tr>
@@ -295,7 +354,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a250d8f02920667a07450a78c04cc6c68">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00081">81</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00088">88</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -316,11 +375,35 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Closes output file, if any. </p>
+<p>Closes output file, if any, emits metainfo. </p>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00138">138</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00147">147</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+
+</div>
+</div>
+<a id="a4fd663486e785970b7c4dc09f08b9649" name="a4fd663486e785970b7c4dc09f08b9649"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4fd663486e785970b7c4dc09f08b9649">&#9670;&#160;</a></span>close_output()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">close_output </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Closes output file, if any. </p>
+
+<p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_rollover_sink_mixin.html#a4fd663486e785970b7c4dc09f08b9649">RolloverSinkMixin</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00156">156</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -378,7 +461,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a520532788b9ddd6f698ddf31076d6320">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00108">108</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00115">115</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -402,7 +485,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a80fc36f6ac807f2a33915ec2a59409ef">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00157">157</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00163">163</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -442,7 +525,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_text_sink_mixin.html#a4ad9961b1515c01ce6c4c84eda7caa2e">TextSinkMixin</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00161">161</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00167">167</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -466,7 +549,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00168">168</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00174">174</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -490,7 +573,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a82bf0578fc8d502e231e8121b6574300">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00122">122</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00131">131</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -507,7 +590,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00106">106</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00113">113</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -568,6 +651,22 @@ Static Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a2ff994e16bf9521154de4cf659a3b689" name="a2ff994e16bf9521154de4cf659a3b689"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ff994e16bf9521154de4cf659a3b689">&#9670;&#160;</a></span>filename</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">filename</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00191">191</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+
+</div>
+</div>
 <a id="ad62bdb21ba69608ccdb6dcbde9a765ef" name="ad62bdb21ba69608ccdb6dcbde9a765ef"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad62bdb21ba69608ccdb6dcbde9a765ef">&#9670;&#160;</a></span>TEMPLATE_PATH</h2>
 
@@ -606,7 +705,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00135">135</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="html_8py_source.html#l00144">144</a> of file <a class="el" href="html_8py_source.html">html.py</a>.</p>
 
 </div>
 </div>
@@ -645,7 +744,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1plugins.html">plugins</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1plugins_1_1auto.html">auto</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1plugins_1_1auto_1_1html.html">html</a></li><li class="navelem"><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html">HtmlSink</a></li>
-    <li class="footer">Generated on Thu Sep 28 2023 13:01:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>
