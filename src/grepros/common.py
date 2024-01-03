@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.07.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -655,7 +655,7 @@ def ellipsize(text, limit, ellipsis=".."):
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
 
-def ensure_namespace(val, defaults=None, **kwargs):
+def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     """
     Returns a copy of value as `argparse.Namespace`, with all keys uppercase.
 
@@ -663,6 +663,8 @@ def ensure_namespace(val, defaults=None, **kwargs):
 
     @param  val       `argparse.Namespace` or dictionary or `None`
     @param  defaults  additional arguments to set to namespace if missing
+    @param  dashify   names of dictionary arguments where to replace
+                      the first underscore in string keys with a dash
     @param  kwargs    any and all argument overrides as keyword overrides
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
@@ -677,20 +679,24 @@ def ensure_namespace(val, defaults=None, **kwargs):
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
         if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
             setattr(val, k, [getattr(val, k)])
+    for arg in (getattr(val, n, None) for n in dashify or ()):
+        for k in (list(arg) if isinstance(arg, dict) else []):
+            if isinstance(k, six.text_type) and "_" in k and 0 < k.index("_") < len(k) - 1:
+                arg[k.replace("_", "-", 1)] = arg.pop(k)
     return val
 
 
 def filter_dict(dct, keys=(), values=(), reverse=False):
     """
-    Filters string dictionary by keys and values. Dictionary values may be
-    additional lists; keys with emptied lists are dropped.
+    Filters string dictionary by keys and values, supporting * wildcards.
+    Dictionary values may be additional lists; keys with emptied lists are dropped.
 
     Retains only entries that find a match (supports * wildcards);
     if reverse, retains only entries that do not find a match.
     """
     result = type(dct)()
-    kpatterns = [wildcard_to_regex(x) for x in keys]
-    vpatterns = [wildcard_to_regex(x) for x in values]
+    kpatterns = [wildcard_to_regex(x, end=True) for x in keys]
+    vpatterns = [wildcard_to_regex(x, end=True) for x in values]
     for k, vv in dct.items() if not reverse else ():
         is_array = isinstance(vv, (list, tuple))
         for v in (vv if is_array else [vv]):
@@ -894,9 +900,24 @@ def merge_dicts(d1, d2):
             d1[k] = v
 
 
-def merge_spans(spans):
-    """Returns a sorted list of (start, end) spans with overlapping spans merged."""
+def merge_spans(spans, join_blanks=False):
+    """
+    Returns a sorted list of (start, end) spans with overlapping spans merged.
+
+    @param   join_blanks  whether to merge consecutive zero-length spans,
+                          e.g. [(0, 0), (1, 1)] -> [(0, 1)]
+    """
     result = sorted(spans)
+    if result and join_blanks:
+        blanks = [(a, b) for a, b in result if a == b]
+        others = [(a, b) for a, b in result if a != b]
+        others.extend(blanks[:1])
+        for span in blanks[1:]:
+            if span[0] == others[-1][1] + 1:
+                others[-1] = (others[-1][0], span[1])
+            else:
+                others.append(span)
+        result = sorted(others)
     result, rest = result[:1], result[1:]
     for span in rest:
         if span[0] <= result[-1][1]:
@@ -913,6 +934,20 @@ def parse_datetime(text):
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
     return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+
+
+def parse_number(value, suffixes=None):
+    """
+    Returns an integer parsed from text, raises on error.
+
+    @param   value     text or binary string to parse, may contain abbrevations like "12K"
+    @param   suffixes  a dictionary of multipliers like {"K": 1024}, case-insensitive
+    """
+    value, suffix = value.decode() if isinstance(value, six.binary_type) else value, None
+    if suffixes:
+        suffix = next((k for k, v in suffixes.items() if value.lower().endswith(k.lower())), None)
+        value = value[:-len(suffix)] if suffix else value
+    return int(float(value) * (suffixes[suffix] if suffix else 1))
 
 
 def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
@@ -1058,5 +1093,5 @@ __all__ = [
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
     "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
-    "parse_datetime", "plural", "unique_path", "verify_io", "wildcard_to_regex",
+    "parse_datetime", "parse_number", "plural", "unique_path", "verify_io", "wildcard_to_regex",
 ]

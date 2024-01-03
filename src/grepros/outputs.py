@@ -8,13 +8,14 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    03.07.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
 from __future__ import print_function
 import atexit
 import collections
+import datetime
 import os
 import re
 import sys
@@ -170,7 +171,10 @@ class TextSinkMixin(object):
             if self.args.START_LINE or self.args.END_LINE or self.args.MAX_MESSAGE_LINES:
                 start = self.args.START_LINE or 0
                 start = max(start, -len(lines)) - (start > 0)  # <0 to sanity, >0 to 0-base
-                lines = lines[start:start + (self.args.MAX_MESSAGE_LINES or len(lines))]
+                end = self.args.END_LINE or len(lines)
+                end = max(end, -len(lines)) - (end > 0)  # <0 to sanity, >0 to 0-base
+                if self.args.MAX_MESSAGE_LINES: end = min(end, start + self.args.MAX_MESSAGE_LINES)
+                lines = lines[start:end + 1]
                 lines = lines and (lines[:-1] + [lines[-1] + self._styles["rst"]])
 
             if self.args.LINES_AROUND_MATCH and highlight:
@@ -316,6 +320,189 @@ class TextSinkMixin(object):
 
 
 
+class RolloverSinkMixin(object):
+    """Provides output file rollover by size, duration, or message count."""
+
+    ## Constructor argument defaults
+    DEFAULT_ARGS = dict(VERBOSE=False, WRITE=None, WRITE_OPTIONS={})
+
+    ## Command-line help templates for rollover options, as [(name, text with %s label placeholder)]
+    OPTIONS_TEMPLATES = [
+        ("rollover-size=NUM",           "size limit for individual files\nin {label} output\n"
+                                        "as bytes (supports abbreviations like 1K or 2M or 3G)"),
+        ("rollover-count=NUM",          "message limit for individual files\nin {label} output\n"
+                                        "(supports abbreviations like 1K or 2M or 3G)"),
+        ("rollover-duration=INTERVAL",  "message time span limit for individual files\n"
+                                        "in {label} output\n"
+                                        "as seconds (supports abbreviations like 60m or 2h or 1d)"),
+        ("rollover-template=STR",       "output filename template for individual files\n"
+                                        "in {label} output,\n"
+                                        'supporting strftime format codes like "%%H-%%M-%%S"\n'
+                                        'and "%%(index)s" as output file index'),
+    ]
+
+    START_META_TEMPLATE = "{mcount} in {tcount} to "
+
+    FILE_META_TEMPLATE = "{name} ({size})"
+
+    MULTI_META_TEMPLATE = "\n- {name} ({size}, {mcount}, {tcount})"
+
+
+    def __init__(self, args=None, **kwargs):
+        """
+        @param   args                 arguments as namespace or dictionary, case-insensitive
+        @param   args.write           base name of output file to write if not using rollover-template
+        @param   args.write_options   {"rollover-size": bytes limit for individual output files,
+                                       "rollover-count": message limit for individual output files,
+                                       "rollover-duration": time span limit for individual output files,
+                                                            as ROS duration or convertible seconds,
+                                       "rollover-template": output filename template, supporting
+                                                            strftime format codes like "%H-%M-%S"
+                                                            and "%(index)s" as output file index,
+                                       "overwrite": whether to overwrite existing file
+                                                    (default false)}
+        @param   kwargs               any and all arguments as keyword overrides, case-insensitive
+        """
+        self._rollover_limits = {}  # {?"size": int, ?"count": int, ?"duration": ROS duration}
+        self._rollover_template = None
+        self._rollover_files = collections.OrderedDict()  # {path: {"counts", "start", "size"}}
+
+        ## Current output file path
+        self.filename = None
+
+
+    def validate(self):
+        """Returns whether write options are valid, emits error if not, else populates options."""
+        ok = True
+        for k in ("size", "count", "duration"):
+            value = value0 = self.args.WRITE_OPTIONS.get("rollover-%s" % k)
+            if value is None: continue  # for k
+            SUFFIXES = dict(zip("smhd", [1, 60, 3600, 24*3600])) if "duration" == k else \
+                       dict(zip("KMGT", [2**10, 2**20, 2**30, 2**40])) if "size" == k else \
+                       dict(zip("KMGT", [10**3, 10**6, 10**9, 10**12]))
+            try:
+                if isinstance(value, (six.binary_type, six.text_type)):
+                    value = common.parse_number(value, SUFFIXES)
+                value = (api.to_duration if "duration" == k else int)(value)
+            except Exception: pass
+            if (value is None or value < 0) if "duration" != k \
+            else (k != api.get_ros_time_category(value) or api.to_sec(value) < 0):
+                ConsolePrinter.error("Invalid rollover %s option: %r. "
+                                     "Value must be a non-negative %s.", k, value0, k)
+                ok = False
+            elif value:
+                self._rollover_limits[k] = value
+        if self.args.WRITE_OPTIONS.get("rollover-template"):
+            value = self.args.WRITE_OPTIONS["rollover-template"]
+            value = re.sub(r"(^|[^%])%\(index\)", r"\1%%(index)", value)
+            try: datetime.datetime.now().strftime(value)
+            except Exception:
+                ConsolePrinter.error("Invalid rollover template option: %r. "
+                                     "Value must contain valid strftime codes.", value)
+                ok = False
+            else:
+                self._rollover_template = value
+                if ok and not self._rollover_limits:
+                    ConsolePrinter.warn("Ignoring rollover template option: "
+                                        "no rollover limits given.")
+        return ok
+
+
+    def ensure_rollover(self, topic, msg, stamp):
+        """
+        Closes current output file and prepares new filename if rollover limit reached.
+        """
+        if not self._rollover_limits: return
+
+        self.filename = self.filename or self.make_filename()
+        do_rollover, props = False, self._rollover_files.setdefault(self.filename, {})
+        stamp = api.time_message(stamp, to_message=False)  # Ensure rclpy stamp in ROS2
+
+        if self._rollover_limits.get("size") and props:
+            props["size"] = self.size
+            do_rollover = (props["size"] or 0) >= self._rollover_limits["size"]
+        if not do_rollover and self._rollover_limits.get("count") and props:
+            do_rollover = (sum(props["counts"].values()) >= self._rollover_limits["count"])
+        if not do_rollover and self._rollover_limits.get("duration") and props:
+            stamps = [stamp, props["start"]]
+            do_rollover = (max(stamps) - min(stamps) >= self._rollover_limits["duration"])
+        if do_rollover:
+            self.close_output()
+            props["size"] = self.size
+            self.filename = self.make_filename()
+            props = self._rollover_files[self.filename] = {}
+
+        topickey = api.TypeMeta.make(msg, topic).topickey
+        if not props: props.update({"counts": {}, "start": stamp, "size": None})
+        props["start"] = min((props["start"], stamp))
+        props["counts"][topickey] = props["counts"].get(topickey, 0) + 1
+
+
+    def close_output(self):
+        """Closes output file, if any."""
+        raise NotImplementedError
+
+
+    def make_filename(self):
+        """Returns new filename for output, accounting for rollover template and overwrite."""
+        result = self.args.WRITE
+        if self._rollover_template and self._rollover_limits:
+            result = datetime.datetime.now().strftime(self._rollover_template)
+            try: result %= {"index": len(self._rollover_files)}
+            except Exception: pass
+        if self.args.WRITE_OPTIONS.get("overwrite") not in (True, "true"):
+            result = common.unique_path(result, empty_ok=True)
+        return result
+
+
+    def format_output_meta(self):
+        """Returns output file metainfo string, with names and sizes and message/topic counts."""
+        if not self._counts: return ""
+        SIZE_ERROR = "error getting size"
+        result = self.START_META_TEMPLATE.format(
+            mcount=common.plural("message", sum(self._counts.values())),
+            tcount=common.plural("topic", self._counts)
+        )
+        if len(self._rollover_files) < 2:
+            sz = self.size
+            sizestr = SIZE_ERROR if sz is None else common.format_bytes(sz)
+            result += self.FILE_META_TEMPLATE.format(name=self.filename, size=sizestr) + "."
+        else:
+            for path, props in self._rollover_files.items():
+                if props["size"] is None:
+                    try: props["size"] = os.path.getsize(path)
+                    except Exception as e:
+                        ConsolePrinter.warn("Error getting size of %s: %s", path, e)
+            sizesum = sum(x["size"] for x in self._rollover_files.values() if x["size"] is not None)
+            result += self.FILE_META_TEMPLATE.format(
+                name=common.plural("file", self._rollover_files),
+                size=common.format_bytes(sizesum)
+            ) + ":"
+            for path, props in self._rollover_files.items():
+                sizestr = SIZE_ERROR if props["size"] is None else common.format_bytes(props["size"])
+                result += self.MULTI_META_TEMPLATE.format(name=path, size=sizestr,
+                    mcount=common.plural("message", sum(props["counts"].values())),
+                    tcount=common.plural("topic", props["counts"])
+                )
+        return result
+
+
+    @property
+    def size(self):
+        """Returns current file size in bytes, or None if size lookup failed."""
+        try: return os.path.getsize(self.filename)
+        except Exception as e:
+            ConsolePrinter.warn("Error getting size of %s: %s", self.filename, e)
+            return None
+
+
+    @classmethod
+    def get_write_options(cls, label):
+        """Returns command-line help texts for rollover options, as [(name, help)]."""
+        return [(k, v.format(label=label)) for k, v in cls.OPTIONS_TEMPLATES]
+
+
+
 class ConsoleSink(Sink, TextSinkMixin):
     """Prints messages to console."""
 
@@ -401,7 +588,7 @@ class ConsoleSink(Sink, TextSinkMixin):
 
 
 
-class BagSink(Sink):
+class BagSink(Sink, RolloverSinkMixin):
     """Writes messages to bagfile."""
 
     ## Constructor argument defaults
@@ -415,7 +602,14 @@ class BagSink(Sink):
         @param   args.write           name of ROS bagfile to create or append to,
                                       or a stream to write to
         @param   args.write_options   {"overwrite": whether to overwrite existing file
-                                                    (default false)}
+                                                    (default false),
+                                       "rollover-size": bytes limit for individual output files,
+                                       "rollover-count": message limit for individual output files,
+                                       "rollover-duration": time span limit for individual output files,
+                                                            as ROS duration or convertible seconds,
+                                       "rollover-template": output filename template, supporting
+                                                            strftime format codes like "%H-%M-%S"
+                                                            and "%(index)s" as output file index}
         @param   args.meta            whether to emit metainfo
         @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
@@ -427,17 +621,20 @@ class BagSink(Sink):
                {} if isinstance(args, api.Bag) else args
         args = common.ensure_namespace(args, BagSink.DEFAULT_ARGS, **kwargs)
         super(BagSink, self).__init__(args)
+        RolloverSinkMixin.__init__(self, args)
         self._bag = args0 if isinstance(args0, api.Bag) else None
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in ("true", True))
         self._close_printed = False
+        self._is_pathed = self._bag is None and not common.is_stream(self.args.WRITE)
 
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to output bagfile."""
         if not self.validate(): raise Exception("invalid")
-        self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
+        if self._is_pathed: RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
+        self._ensure_open()
         topickey = api.TypeMeta.make(msg, topic).topickey
         if topickey not in self._counts and self.args.VERBOSE:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
@@ -449,13 +646,14 @@ class BagSink(Sink):
     def validate(self):
         """Returns whether write options are valid and ROS environment set, emits error if not."""
         if self.valid is not None: return self.valid
-        result = True
+        result = RolloverSinkMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for bag: %r. "
                                  "Choose one of {true, false}.",
                                  self.args.WRITE_OPTIONS["overwrite"])
             result = False
-        if not self._bag and not common.verify_io(self.args.WRITE, "w"):
+        if not self._bag \
+        and not common.verify_io(self.make_filename() if self._is_pathed else self.args.WRITE, "w"):
             ConsolePrinter.error("File not writable.")
             result = False
         if not self._bag and common.is_stream(self.args.WRITE) \
@@ -469,41 +667,51 @@ class BagSink(Sink):
         return self.valid
 
     def close(self):
-        """Closes output bag, if any."""
+        """Closes output bag, if any, emits metainfo."""
+        self._bag and self._bag.close()
         if not self._close_printed and self._counts and self._bag:
             self._close_printed = True
-            self._bag.close()
-            try: sz = common.format_bytes(os.path.getsize(self._bag.filename)
-                                          if self._bag.filename else self._bag.size or 0)
-            except Exception as e:
-                ConsolePrinter.warn("Error getting size of %s: %s", self._bag.filename, e)
-                sz = "error getting size"
-            ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                 common.plural("message", sum(self._counts.values())),
-                                 common.plural("topic", self._counts),
-                                 self._bag.filename or "<stream>", sz)
-        self._bag  and self._bag.close()
+            ConsolePrinter.debug("Wrote bag output for %s", self.format_output_meta())
         super(BagSink, self).close()
+
+    def close_output(self):
+        """Closes output bag, if any."""
+        self._bag and self._bag.close()
+        self._bag = None
+
+    @property
+    def size(self):
+        """Returns current file size in bytes, or None if size lookup failed."""
+        try: return os.path.getsize(self._bag.filename if self._bag else self.filename) \
+                    if not self._bag or (self._bag.filename and api.ROS1) else self._bag.size
+        except Exception as e:
+            ConsolePrinter.warn("Error getting size of %s: %s", self.filename, e)
+            return None
 
     def _ensure_open(self):
         """Opens output file if not already open."""
         if self._bag is not None:
-            self._bag.open()
+            if self._bag.closed:
+                self._bag.open()
+                self._close_printed = False
             return
+        self._close_printed = False
         if common.is_stream(self.args.WRITE):
             self._bag = api.Bag(self.args.WRITE, mode=getattr(self.args.WRITE, "mode", "w"))
+            self.filename = "<stream>"
             return
-        filename = self.args.WRITE
+
+        filename = self.filename = self.filename or self.make_filename()
         if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
             cls = api.Bag.autodetect(filename)
             if cls and "a" not in getattr(cls, "MODES", ("a", )):
-                filename = common.unique_path(filename)
+                filename = self.filename = common.unique_path(filename)
                 if self.args.VERBOSE:
                     ConsolePrinter.debug("Making unique filename %r, as %s does not support "
                                          "appending.", filename, cls.__name___)
         if self.args.VERBOSE:
             sz = os.path.isfile(filename) and os.path.getsize(filename)
-            ConsolePrinter.debug("%s %s%s.",
+            ConsolePrinter.debug("%s bag output %s%s.",
                                  "Overwriting" if sz and self._overwrite else
                                  "Appending to" if sz else "Creating",
                                  filename, (" (%s)" % common.format_bytes(sz)) if sz else "")
@@ -561,6 +769,7 @@ class TopicSink(Sink):
             self._pubs[topickey] = pub
 
         self._pubs[topickey].publish(msg)
+        self._close_printed = False
         super(TopicSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
@@ -727,5 +936,6 @@ class MultiSink(Sink):
 
 
 __all__ = [
-    "AppSink", "BagSink", "ConsoleSink", "MultiSink", "Sink", "TextSinkMixin", "TopicSink"
+    "AppSink", "BagSink", "ConsoleSink", "MultiSink", "RolloverSinkMixin", "Sink", "TextSinkMixin",
+    "TopicSink"
 ]

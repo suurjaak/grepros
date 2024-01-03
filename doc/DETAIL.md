@@ -13,6 +13,7 @@
   - [parquet](#parquet)
   - [sql](#sql)
   - [Custom plugins](#custom-plugins)
+- [Rollover](#rollover)
 - [SQL dialects](#sql-dialects)
 
 
@@ -43,6 +44,8 @@ accept raw control characters (`more -f` or `less -R`).
 ### bag
 
     --write path/to/my.bag [format=bag] [overwrite=true|false]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists,
@@ -50,6 +53,8 @@ it is appended to, unless specified to overwrite.
 
 Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
+
+More on [rollover](#rollover).
 
 
 ### live
@@ -91,6 +96,8 @@ Specifying `format=csv` is not required if the filename ends with `.csv`.
 
     --write path/to/my.html [format=html] [overwrite=true|false]
             [template=/path/to/html.template]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
@@ -107,6 +114,8 @@ Specifying `format=html` is not required if the filename ends with `.htm` or `.h
 A custom template file can be specified, in [step](https://github.com/dotpy/step) syntax:
 
     --write path/to/my.html template=/my/html.template
+
+More on [rollover](#rollover).
 
 
 ### postgres
@@ -227,6 +236,8 @@ CREATE TABLE "std_msgs/Header" (
     --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
             [commit-interval=NUM] [message-yaml=true|false] [nesting=array|all]
             [dialect-file=path/to/dialects.yaml]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic.
@@ -255,6 +266,8 @@ Updates to SQLite SQL dialect can be loaded from a YAML or JSON file:
     --write path/to/my.sqlite dialect-file=path/to/dialects.yaml
 
 More on [SQL dialects](#sql-dialects).
+
+More on [rollover](#rollover).
 
 
 #### Nested messages
@@ -410,11 +423,15 @@ Write bags in MCAP format:
 
     --plugin grepros.plugins.mcap \
     --write path/to/my.mcap [format=mcap] [overwrite=true|false]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 If the file already exists, a unique counter is appended to the name of the new file,
 e.g. `my.2.mcap`, unless specified to overwrite.
 
 Specifying write `format=mcap` is not required if the filename ends with `.mcap`.
+
+More on [rollover](#rollover).
 
 
 ### parquet
@@ -591,6 +608,29 @@ Convenience method for hooking an output sink plugin:
 - `plugins.add_write_format(name, cls, label=None, options=())`:
    adds an output sink plugin to defaults
 
+
+Rollover
+--------
+
+Writing messages to bag/HTML/MCAP/SQLite supports splitting output files by size,
+message count, or duration.
+
+    rollover-size=NUM           size limit for individual files
+                                as bytes (supports abbreviations like 1K or 2M or 3G)
+    rollover-count=NUM          message limit for individual files
+                                (supports abbreviations like 1K or 2M or 3G)
+    rollover-duration=INTERVAL  message time span limit for individual files
+                                as seconds (supports abbreviations like 60m or 2h or 1d)
+    rollover-template=STR       output filename template for individual files,
+                                supporting strftime format codes like "%H-%M-%S"
+                                and "%(index)s" as output file index
+
+Output filename template overrides the original given output filename,
+and can contain subdirectories.
+
+Recording all live topics to bagfiles of 1 gigabyte, with timestamped filenames:
+
+    --live --no-console-output --write my.bag rollover-size=1G rollover-template="%Y-%m-%d-%H-%M-%S.bag"
 
 
 SQL dialects

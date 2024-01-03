@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    05.07.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -51,7 +51,7 @@ Find first message containing "future" (case-sensitive) in my.bag:
 
 Find 10 messages, from geometry_msgs package, in "map" frame,
 from bags in current directory, reindexing any unindexed bags:
-    %(title)s frame_id=map --type geometry_msgs/* --max-count 10  --reindex-if-unindexed
+    %(title)s frame_id=map --type geometry_msgs/* --max-count 10 --reindex-if-unindexed
 
 Pipe all diagnostics messages with "CPU usage" from live ROS topics to my.bag:
     %(title)s "CPU usage" --type *DiagnosticArray --no-console-output --write my.bag
@@ -66,7 +66,7 @@ print only header stamp and values:
     %(title)s --type diagnostic_msgs/* --select-field name message \\
             --emit-field header.stamp status.values -- navigation
 
-Print first message from each lidar topic on host 1.2.3.4, without highlight:
+Print first message from each lidar topic on ROS1 host 1.2.3.4, without highlight:
     ROS_MASTER_URI=http://1.2.3.4::11311 \\
     %(title)s --live --topic *lidar* --max-per-topic 1 --no-highlight
 
@@ -399,6 +399,7 @@ def make_parser():
     """Returns a configured ArgumentParser instance."""
     kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
                formatter_class=HelpFormatter, add_help=False)
+    if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
     argparser = argparse.ArgumentParser(**kws)
     for arg in map(dict, ARGUMENTS["arguments"]):
         argparser.add_argument(*arg.pop("args"), **arg)
@@ -474,7 +475,7 @@ def validate_args(args):
         if v is None: continue  # for v, n
         try: v = float(v)
         except Exception: pass
-        try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+        try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
@@ -518,7 +519,7 @@ def preload_plugins():
                                    "or appending unique counter to file name\n"
                                    "(default false)")
 
-    ])
+    ] + outputs.RolloverSinkMixin.get_write_options("bag"))
     args = make_parser().parse_known_args(CLI_ARGS)[0] if "--plugin" in CLI_ARGS else None
     try: plugins.init(process_args(args) if args else None)
     except ImportWarning: sys.exit(1)
@@ -536,7 +537,7 @@ def run():
         return
 
     atexit.register(flush_stdout)
-    args, _ = argparser.parse_known_args(CLI_ARGS)
+    args = argparser.parse_args(CLI_ARGS)
     if args.HELP:
         argparser.print_help()
         return

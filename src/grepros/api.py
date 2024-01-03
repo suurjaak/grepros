@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.07.2023
+@modified    29.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -774,8 +774,8 @@ def get_rostime(fallback=False):
 def get_ros_time_category(msg_or_type):
     """Returns "time" or "duration" for time/duration type or instance, else original argument."""
     cls = msg_or_type if inspect.isclass(msg_or_type) else \
-          type(msg_or_type) if is_ros_message(msg_or_type) else None
-    if cls is None:
+          type(msg_or_type) if is_ros_time(msg_or_type) else None
+    if cls is None and isinstance(msg_or_type, (six.binary_type, six.text_type)):
         cls = next((x for x in ROS_TIME_CLASSES if get_message_type(x) == msg_or_type), None)
     if cls in ROS_TIME_CLASSES:
         return "duration" if "duration" in ROS_TIME_CLASSES[cls].lower() else "time"
@@ -823,12 +823,14 @@ def is_ros_time(val):
     return realapi.is_ros_time(val)
 
 
-def iter_message_fields(msg, messages_only=False, scalars=(), include=(), exclude=(), top=()):
+def iter_message_fields(msg, messages_only=False, flat=False, scalars=(), include=(), exclude=(),
+                        top=()):
     """
     Yields ((nested, path), value, typename) from ROS message.
 
     @param   messages_only  whether to yield only values that are ROS messages themselves
                             or lists of ROS messages, else will yield scalar and list values
+    @param   flat           recurse into lists of nested messages, ignored if `messages_only`
     @param   scalars        sequence of ROS types to consider as scalars, like ("time", duration")
     @param   include        [((nested, path), re.Pattern())] to require in field path, if any
     @param   exclude        [((nested, path), re.Pattern())] to reject in field path, if any
@@ -843,17 +845,21 @@ def iter_message_fields(msg, messages_only=False, scalars=(), include=(), exclud
             is_sublist = isinstance(v, (list, tuple)) and scalart not in ROS_COMMON_TYPES
             is_forced_scalar = get_ros_time_category(scalart) in scalars
             if not is_forced_scalar and realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, True, scalars, top=top + (k, )):
+                for p2, v2, t2 in iter_message_fields(v, True, scalars=scalars, top=top + (k, )):
                     yield p2, v2, t2
             if is_forced_scalar or is_sublist or realapi.is_ros_message(v, ignore_time=True):
                 yield top + (k, ), v, t
     else:
         for k, t in fieldmap.items():
-            v = realapi.get_message_value(msg, k, t)
-            is_forced_scalar = get_ros_time_category(realapi.scalar(t)) in scalars
+            v, scalart = realapi.get_message_value(msg, k, t), realapi.scalar(t)
+            is_forced_scalar = get_ros_time_category(scalart) in scalars
             if not is_forced_scalar and realapi.is_ros_message(v):
-                for p2, v2, t2 in iter_message_fields(v, False, scalars, top=top + (k, )):
+                for p2, v2, t2 in iter_message_fields(v, False, flat, scalars, top=top + (k, )):
                     yield p2, v2, t2
+            elif flat and v and isinstance(v, (list, tuple)) and scalart not in ROS_BUILTIN_TYPES:
+                for i, m in enumerate(v):
+                    for p2, v2, t2 in iter_message_fields(m, False, True, scalars, top=top + (k, i)):
+                        yield p2, v2, t2
             else:
                 yield top + (k, ), v, t
 
@@ -995,7 +1001,7 @@ def dict_to_message(dct, msg):
         v, msgv = dct[name], realapi.get_message_value(msg, name, typename)
 
         if realapi.is_ros_message(msgv):
-            v = dict_to_message(v, msgv)
+            v = v if is_ros_time(v) and is_ros_time(msgv) else dict_to_message(v, msgv)
         elif isinstance(msgv, (list, tuple)):
             scalarname = realapi.scalar(typename)
             if scalarname in ROS_BUILTIN_TYPES:
@@ -1147,6 +1153,11 @@ def to_decimal(val):
     return val
 
 
+def to_duration(val):
+    """Returns value as ROS duration if convertible (int/float/time/datetime/decimal), else value."""
+    return realapi.to_duration(val)
+
+
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS time/duration, else value."""
     return realapi.to_nsec(val)
@@ -1179,6 +1190,6 @@ __all___ = [
     "is_ros_time", "iter_message_fields", "make_bag_time", "make_duration", "make_live_time",
     "make_message_hash", "make_time", "message_to_dict", "parse_definition_fields",
     "parse_definition_subtypes", "scalar", "deserialize_message", "set_message_value",
-    "shutdown_node", "time_message", "to_datetime", "to_decimal", "to_nsec", "to_sec",
-    "to_sec_nsec", "to_time", "validate",
+    "shutdown_node", "time_message", "to_datetime", "to_decimal", "to_duration", "to_nsec",
+    "to_sec", "to_sec_nsec", "to_time", "validate",
 ]

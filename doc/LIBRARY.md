@@ -91,6 +91,9 @@ with grepros.BagSource(path="/tmp/bags") as source, \
     print("Messages written: %s" % total)
 ```
 
+Output sink `write_options` arguments can be given with underscores
+instead of dashes, e.g. `"rollover_size"` instead of `"rollover-size"`.
+
 ### Main classes
 
 Source classes:

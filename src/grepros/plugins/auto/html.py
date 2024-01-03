@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    05.08.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -23,11 +23,11 @@ from ... import api
 from ... import common
 from ... import main
 from ... common import ConsolePrinter, MatchMarkers, plural
-from ... outputs import Sink, TextSinkMixin
+from ... outputs import RolloverSinkMixin, Sink, TextSinkMixin
 from ... vendor import step
 
 
-class HtmlSink(Sink, TextSinkMixin):
+class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
     """Writes messages to an HTML file."""
 
     ## Auto-detection file extensions
@@ -55,7 +55,14 @@ class HtmlSink(Sink, TextSinkMixin):
         @param   args.write_options         ```
                                             {"template": path to custom HTML template, if any,
                                              "overwrite": whether to overwrite existing file
-                                                          (default false)}
+                                                          (default false),
+                                             "rollover-size": bytes limit for individual output files,
+                                             "rollover-count": message limit for individual output files,
+                                             "rollover-duration": time span limit for individual output files,
+                                                                  as ROS duration or convertible seconds,
+                                             "rollover-template": output filename template, supporting
+                                                                  strftime format codes like "%H-%M-%S"
+                                                                  and "%(index)s" as output file index}
                                             ```
         @param   args.highlight             highlight matched values (default true)
         @param   args.orderby               "topic" or "type" if any to group results by
@@ -83,10 +90,10 @@ class HtmlSink(Sink, TextSinkMixin):
         args.COLOR = bool(args.HIGHLIGHT)
 
         super(HtmlSink, self).__init__(args)
+        RolloverSinkMixin.__init__(self, args)
         TextSinkMixin.__init__(self, args)
         self._queue     = queue.Queue()
         self._writer    = None        # threading.Thread running _stream()
-        self._filename  = args.WRITE  # Filename base, will be made unique
         self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
         self._close_printed = False
@@ -107,11 +114,13 @@ class HtmlSink(Sink, TextSinkMixin):
         """Writes message to output file."""
         if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
+        RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
         self._queue.put((topic, msg, stamp, match, index))
         if not self._writer:
             self._writer = threading.Thread(target=self._stream)
             self._writer.start()
-        if self._queue.qsize() > 100: self._queue.join()
+            self._close_printed = False
+        if "size" in self._rollover_limits or self._queue.qsize() > 100: self._queue.join()
 
     def validate(self):
         """
@@ -119,7 +128,7 @@ class HtmlSink(Sink, TextSinkMixin):
         emits error if not.
         """
         if self.valid is not None: return self.valid
-        result = True
+        result = RolloverSinkMixin.validate(self)
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
@@ -134,23 +143,20 @@ class HtmlSink(Sink, TextSinkMixin):
         return self.valid
 
     def close(self):
-        """Closes output file, if any."""
-        try:
-            if self._writer:
-                writer, self._writer = self._writer, None
-                self._queue.put(None)
-                writer.is_alive() and writer.join()
+        """Closes output file, if any, emits metainfo."""
+        try: self.close_output()
         finally:
             if not self._close_printed and self._counts:
                 self._close_printed = True
-                try: sz = common.format_bytes(os.path.getsize(self._filename))
-                except Exception as e:
-                    ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
-                    sz = "error getting size"
-                ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                     plural("message", sum(self._counts.values())),
-                                     plural("topic", self._counts), self._filename, sz)
+                ConsolePrinter.debug("Wrote HTML for %s", self.format_output_meta())
             super(HtmlSink, self).close()
+
+    def close_output(self):
+        """Closes output file, if any."""
+        if self._writer:
+            writer, self._writer = self._writer, None
+            self._queue.put(None)
+            writer.is_alive() and writer.join()
 
     def flush(self):
         """Writes out any pending data to disk."""
@@ -178,17 +184,16 @@ class HtmlSink(Sink, TextSinkMixin):
             ns = dict(source=self.source, sink=self, messages=self._produce(),
                       args=None, timeline=not self.args.ORDERBY)
             if main.CLI_ARGS: ns.update(args=main.CLI_ARGS)
-            common.makedirs(os.path.dirname(self.args.WRITE))
-            if not self._overwrite:
-                self._filename = common.unique_path(self.args.WRITE, empty_ok=True)
+            self.filename = self.filename or RolloverSinkMixin.make_filename(self)
             if self.args.VERBOSE:
-                sz = os.path.isfile(self._filename) and os.path.getsize(self._filename)
+                sz = os.path.isfile(self.filename) and os.path.getsize(self.filename)
                 action = "Overwriting" if sz and self._overwrite else "Creating"
-                ConsolePrinter.debug("%s %s.", action, self._filename)
-            with open(self._filename, "wb") as f:
+                ConsolePrinter.debug("%s HTML output %s.", action, self.filename)
+            common.makedirs(os.path.dirname(self.filename))
+            with open(self.filename, "wb") as f:
                 template.stream(f, ns, buffer_size=0)
         except Exception as e:
-            self.thread_excepthook("Error writing HTML output %r: %r" % (self._filename, e), e)
+            self.thread_excepthook("Error writing HTML output %r: %r" % (self.filename, e), e)
         finally:
             self._writer = None
 
@@ -224,7 +229,7 @@ def init(*_, **__):
         ("template=/my/path.tpl",  "custom template to use for HTML output"),
         ("overwrite=true|false",   "overwrite existing file in HTML output\n"
                                    "instead of appending unique counter (default false)")
-    ])
+    ] + RolloverSinkMixin.get_write_options("HTML"))
     plugins.add_output_label("HTML", ["--emit-field", "--no-emit-field", "--matched-fields-only",
                                       "--lines-around-match", "--lines-per-field", "--start-line",
                                       "--end-line", "--lines-per-message", "--match-wrapper"])

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    30.08.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -35,7 +35,7 @@ import yaml
 
 from .. import common
 from .. common import ConsolePrinter
-from .. outputs import Sink
+from .. outputs import RolloverSinkMixin, Sink
 
 
 class McapBag(api.BaseBag):
@@ -559,7 +559,7 @@ def message_repr(self):
 
 
 
-class McapSink(Sink):
+class McapSink(Sink, RolloverSinkMixin):
     """Writes messages to MCAP file."""
 
     ## Auto-detection file extensions
@@ -575,7 +575,14 @@ class McapSink(Sink):
                                       or a single path as the file to write
         @param   args.write           base name of MCAP files to write
         @param   args.write_options   {"overwrite": whether to overwrite existing file
-                                                    (default false)}
+                                                    (default false),
+                                       "rollover-size": bytes limit for individual output files,
+                                       "rollover-count": message limit for individual output files,
+                                       "rollover-duration": time span limit for individual output files,
+                                                            as ROS duration or convertible seconds,
+                                       "rollover-template": output filename template, supporting
+                                                            strftime format codes like "%H-%M-%S"
+                                                            and "%(index)s" as output file index}
         @param   args.meta            whether to print metainfo
         @param   args.verbose         whether to print debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
@@ -583,8 +590,8 @@ class McapSink(Sink):
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
         args = common.ensure_namespace(args, McapSink.DEFAULT_ARGS, **kwargs)
         super(McapSink, self).__init__(args)
+        RolloverSinkMixin.__init__(self, args)
 
-        self._filename      = None  # Output filename
         self._file          = None  # Open file() object
         self._writer        = None  # mcap_ros.writer.Writer object
         self._schemas       = {}    # {(typename, typehash): mcap.records.Schema}
@@ -600,7 +607,7 @@ class McapSink(Sink):
         and overwrite is valid and file is writable.
         """
         if self.valid is not None: return self.valid
-        ok, mcap_ok, mcap_ros_ok = True, bool(mcap), bool(mcap_ros)
+        ok, mcap_ok, mcap_ros_ok = RolloverSinkMixin.validate(self), bool(mcap), bool(mcap_ros)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for MCAP: %r. "
                                  "Choose one of {true, false}.",
@@ -620,8 +627,9 @@ class McapSink(Sink):
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes out message to MCAP file."""
         if not self.validate(): raise Exception("invalid")
-        self._ensure_open()
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
+        RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
+        self._ensure_open()
         kwargs = dict(publish_time=api.to_nsec(stamp), sequence=index)
         if api.ROS2:
             with api.TypeMeta.make(msg, topic) as m:
@@ -637,43 +645,36 @@ class McapSink(Sink):
 
 
     def close(self):
-        """Closes output file if open."""
-        try:
-            if self._writer:
-                self._writer.finish()
-                self._file.close()
-                self._file, self._writer = None, None
+        """Closes output file if open, emits metainfo."""
+        try: self.close_output()
         finally:
             if not self._close_printed and self._counts:
                 self._close_printed = True
-                try: sz = common.format_bytes(os.path.getsize(self._filename))
-                except Exception as e:
-                    ConsolePrinter.warn("Error getting size of %s: %s", self._filename, e)
-                    sz = "error getting size"
-                ConsolePrinter.debug("Wrote %s in %s to %s (%s).",
-                                     common.plural("message", sum(self._counts.values())),
-                                     common.plural("topic", self._counts), self._filename, sz)
+                ConsolePrinter.debug("Wrote MCAP for %s", self.format_output_meta())
             super(McapSink, self).close()
+
+
+    def close_output(self):
+        """Closes output file, if any."""
+        if self._writer:
+            self._writer.finish()
+            self._file.close()
+            self._file, self._writer = None, None
 
 
     def _ensure_open(self):
         """Opens output file if not already open."""
         if self._file: return
 
-        filename = self.args.WRITE
-        if not self._overwrite and os.path.isfile(filename) and os.path.getsize(filename):
-            filename = common.unique_path(filename)
-            if self.args.VERBOSE:
-                ConsolePrinter.debug("Making unique filename %r, as %s does not support "
-                                     "appending.", filename, type(self).__name___)
-        self._filename = filename
-        common.makedirs(os.path.dirname(self._filename))
+        self.filename = self.filename or RolloverSinkMixin.make_filename(self)
+        common.makedirs(os.path.dirname(self.filename))
         if self.args.VERBOSE:
-            sz = os.path.exists(self._filename) and os.path.getsize(self._filename)
+            sz = os.path.exists(self.filename) and os.path.getsize(self.filename)
             action = "Overwriting" if sz and self._overwrite else "Creating"
-            ConsolePrinter.debug("%s %s.", action, self._filename)
-        self._file = open(self._filename, "wb")
+            ConsolePrinter.debug("%s MCAP output %s.", action, self.filename)
+        self._file = open(self.filename, "wb")
         self._writer = mcap_ros.writer.Writer(self._file)
+        self._close_printed = False
 
 
 def init(*_, **__):
@@ -685,7 +686,7 @@ def init(*_, **__):
     plugins.add_write_format("mcap", McapSink, "MCAP", [
         ("overwrite=true|false",  "overwrite existing file in MCAP output\n"
                                   "instead of appending unique counter (default false)"),
-    ])
+    ] + RolloverSinkMixin.get_write_options("MCAP"))
     api.BAG_EXTENSIONS += McapSink.FILE_EXTENSIONS
     api.Bag.READER_CLASSES.add(McapBag)
     api.Bag.WRITER_CLASSES.add(McapBag)

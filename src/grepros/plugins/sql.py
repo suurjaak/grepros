@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    04.07.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -169,6 +169,7 @@ class SqlSink(Sink, SqlMixin):
             ConsolePrinter.debug("%s %s.", action, self._filename)
         self._file = open(self._filename, "wb")
         self._write_header()
+        self._close_printed = False
 
 
     def _process_topic(self, topic, msg):

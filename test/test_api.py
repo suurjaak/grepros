@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    29.05.2023
+@modified    29.12.2023
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -278,8 +278,9 @@ class TestAPI(testbase.TestBase):
                 self.assertEqual(func(typename), expected, ERR(func))
             for cls in api.ROS_TIME_CLASSES:
                 expected = "duration" if "duration" in cls.__name__.lower() else "time"
+                self.assertEqual(func(cls),                         expected, ERR(func))
+                self.assertEqual(func(cls()),                       expected, ERR(func))
                 self.assertEqual(func(api.get_message_type(cls)),   expected, ERR(func))
-                self.assertEqual(func(api.get_message_type(cls())), expected, ERR(func))
             self.assertEqual(func(self), self, ERR(func))
 
         func = api.time_message
@@ -340,6 +341,10 @@ class TestAPI(testbase.TestBase):
             self.assertEqual(func(dval), expected, ERR(func))
             self.assertEqual(func(666),       666, ERR(func))
 
+        func = api.to_duration
+        with self.subTest(NAME(func)):
+            logger.info("Testing %s.", NAME(func))
+
         func = api.to_nsec
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
@@ -375,27 +380,27 @@ class TestAPI(testbase.TestBase):
             logger.info("Testing %s.", NAME(func))
 
             val = datetime.datetime.now()
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_datetime(tval), val, ERR(func))
 
             val = decimal.Decimal("123456789.987654321")
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_decimal(tval), val, ERR(func))
 
             val = api.make_duration(123456789, 987654321)
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.make_duration(*api.to_sec_nsec(tval)), val, ERR(func))
 
             val = 123321123.456
-            tval = api.to_time(val)
+            tval = func(val)
             self.assertTrue(api.is_ros_time(tval), ERR(func))
             self.assertEqual(api.to_sec(tval), val, ERR(func))
 
-            self.assertEqual(api.to_time(None), None, ERR(func))
-            self.assertEqual(api.to_time(self), self, ERR(func))
+            self.assertEqual(func(None), None, ERR(func))
+            self.assertEqual(func(self), self, ERR(func))
 
 
 

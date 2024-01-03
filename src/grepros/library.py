@@ -34,13 +34,16 @@ Format-specific bag classes:
   using the <a href="https://github.com/embarktrucks/embag">embag</a> library
 - {@link grepros.plugins.mcap.McapBag McapBag}: ROS1/ROS2 bag reader and writer in MCAP format
 
+Output sink `write_options` arguments can be given with underscores
+instead of dashes, e.g. `"rollover_size"` instead of `"rollover-size"`.
+
 ------------------------------------------------------------------------------
 This file is part of grepros - grep for ROS bag files and live topics.
 Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    29.06.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library

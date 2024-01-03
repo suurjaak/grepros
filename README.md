@@ -76,7 +76,7 @@ print only header stamp and values:
     grepros --type diagnostic_msgs/* --select-field name message \
             --emit-field header.stamp status.values -- navigation
 
-Print first message from each lidar topic on host 1.2.3.4, without highlight:
+Print first message from each lidar topic on ROS1 host 1.2.3.4, without highlight:
 
     ROS_MASTER_URI=http://1.2.3.4::11311 \
     grepros --live --topic *lidar* --max-per-topic 1 --no-highlight
@@ -248,6 +248,8 @@ accept raw control characters (`more -f` or `less -R`).
 ### bag
 
     --write path/to/my.bag [format=bag] [overwrite=true|false]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to a ROS bag file, the custom `.bag` format in ROS1,
 or the `.db3` SQLite database format in ROS2. If the bagfile already exists,
@@ -257,6 +259,8 @@ Specifying `format=bag` is not required
 if the filename ends with `.bag` in ROS1 or `.db3` in ROS2.
 
 For writing bags in MCAP format, see the [MCAP plugin](doc/DETAIL.md#mcap).
+
+More on [rollover](doc/DETAIL.md#rollover).
 
 
 ### live
@@ -290,11 +294,15 @@ Write messages to CSV files, each topic to a separate file, named
 
     --write path/to/my.html [format=html] [overwrite=true|false]
             [template=/path/to/html.template]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write messages to an HTML file, with a linked table of contents,
 message timeline, message type definitions, and a topically traversable message list.
 
 [![Screenshot](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/th_screen_html.png)](https://raw.githubusercontent.com/suurjaak/grepros/gh-pages/img/screen_html.png)
+
+More on [rollover](doc/DETAIL.md#rollover).
 
 
 ### postgres
@@ -314,6 +322,8 @@ and views `/full/topic/name` for each topic.
     --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
             [commit-interval=NUM] [message-yaml=true|false] [nesting=array|all]
             [dialect-file=path/to/dialects.yaml]
+            [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+            [rollover-template=STR]
 
 Write an SQLite database with tables `pkg/MsgType` for each ROS message type
 and nested type, and views `/full/topic/name` for each topic.
@@ -370,7 +380,7 @@ Matching and filtering
 Any number of patterns can be specified, message matches if all patterns find a match.
 If no patterns are given, any message matches.
 
-Match messages containing any of the words:
+Match messages containing all of the words:
 
     cpu memory speed
 
@@ -512,18 +522,23 @@ and refer to message fields directly.
 
 Condition namespace:
 
-| Name                    | Description
-| ----------------------- | ----------------------------------------------------------------
-|                         |
-| `msg`                   |  current message from data source
-| `topic`                 |  full name of current message topic
-| `<topic /my/topic>`     |  topic by full name or * wildcard
-| `len(<topic ..>)`       |  number of messages encountered in topic
-| `bool(<topic ..>)`      |  whether any message encountered in topic
-| `<topic ..>.xyz`        |  attribute `xyz` of last message in topic
-| `<topic ..>[index]`     |  topic message at position
-|                         |  (from first encountered if index >= 0, last encountered if < 0)
-| `<topic ..>[index].xyz` |  attribute `xyz` of topic message at position
+| Name                         | Description
+| ---------------------------- | ---------------------------------------------------------------
+|                              |
+| `msg`                        | current message from data source
+| `topic`                      | full name of current message topic
+| `<topic /my/topic>`          | topic by full name or * wildcard
+| `len(<topic ..>)`            | number of messages encountered in topic
+| `bool(<topic ..>)`           | whether any message encountered in topic
+| `<topic ..>.xyz`             | attribute `xyz` of last message in topic
+| `<topic ..>[index]`          | topic message at position
+|                              | (from first encountered if index >= 0, last encountered if < 0)
+| `<topic ..>[index].xyz`      | attribute `xyz` of topic message at position
+| |
+| `value in msg`               | whether any field in current message contains value
+| `value in <topic ..>`        | whether any field in last topic message contains value
+| `value in <topic ..>[index]` | whether any field in topic message at position contains value
+
 
 Condition is automatically false if trying to access attributes of a message not yet received.
 
@@ -673,6 +688,20 @@ optional arguments:
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
+                          rollover-count=NUM       message limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   (supports abbreviations like 1K or 2M or 3G)
+                          rollover-duration=INTERVAL
+                                                   message time span limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-template=STR    output filename template for individual files
+                                                   in bag/HTML/MCAP/SQLite output,
+                                                   supporting strftime format codes like "%H-%M-%S"
+                                                   and "%(index)s" as output file index
                           template=/my/path.tpl    custom template to use for HTML output
                           type-ROSTYPE=ARROWTYPE   custom mapping between ROS and pyarrow type
                                                    for Parquet output, like type-time="timestamp('ns')"

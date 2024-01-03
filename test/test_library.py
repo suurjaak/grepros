@@ -9,13 +9,15 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    13.07.2023
+@modified    28.12.2023
 ------------------------------------------------------------------------------
 """
+import glob
 import inspect
 import logging
 import os
 import random
+import re
 import sys
 import tempfile
 
@@ -67,7 +69,8 @@ class TestLibrary(testbase.TestBase):
     def test_bag_rw_grep(self):
         """Tests reading and writing bags and matching messages."""
         logger.info("Verifying reading and writing bags, and grepping messages.")
-        grep = grepros.Scanner(pattern=self.SEARCH_WORDS, topic="/match/this", no_topic="/not/this",
+        grep = grepros.Scanner(pattern=self.SEARCH_WORDS,
+                               topic="/match/this*", no_topic="/not/this*",
                                type="std_msgs/*", no_type="std_msgs/Bool")
         logger.debug("Writing to bag %r.", self._outname)
         with grepros.Bag(self._outname, mode="w") as outbag:
@@ -175,8 +178,8 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_read(self, bagcls, filename):
         """Tests parameters to read functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(str, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(str, a)))
+        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
+        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
 
         logger.info("Verifying invoking Bag %r read methods with parameters.", bagcls)
 
@@ -301,8 +304,8 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_write(self, bagcls, filename):
         """Tests parameters to write functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(str, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(str, a)))
+        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
+        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
 
         logger.info("Verifying invoking Bag %r write methods with parameters.", bagcls)
 
@@ -340,13 +343,59 @@ class TestLibrary(testbase.TestBase):
         self.verify_sources_sinks()
 
 
+    def test_rollover(self):
+        """Tests rollover settings for sinks."""
+        NAME = lambda f: "%s.%s" % (f.__module__, f.__name__)
+        logger.debug("Verifying sink rollover.")
+        SINKS = [grepros.BagSink, grepros.HtmlSink, grepros.SqliteSink] + \
+                ([grepros.McapSink] if ".mcap" in api.BAG_EXTENSIONS else [])
+        TEMPLATE = "test_%Y_%m_%d__%(index)s__%(index)s"
+        OPTS = [  # [({..rollover opts..}, (min files, max files or None for undetermined))]
+            (dict(rollover_size=2000),    (2, None)),
+            (dict(rollover_count=40),     (2, 3)),
+            (dict(rollover_duration=40),  (2, 3)),
+        ]
+        OPT_OVERRIDES = {grepros.McapSink: dict(rollover_size=None)}  # MCAP has 1MB cache
+
+        START = api.to_time(12345)
+        for cls in SINKS:
+            EXT = api.BAG_EXTENSIONS[0] if cls is grepros.BagSink else cls.FILE_EXTENSIONS[0]
+            WRITE, OUTDIR = next((x, os.path.dirname(x)) for x in [self.mkfile(EXT)])
+            with self.subTest(NAME(cls)):
+                logger.info("Testing %s rollover.", NAME(cls))
+                for ropts, output_range in OPTS:
+                    if cls in OPT_OVERRIDES and any(k in ropts for k in OPT_OVERRIDES[cls]):
+                        ropts.update(OPT_OVERRIDES[cls])
+                    if not any(ropts.values()): continue  # for ropts
+                    logger.info("Testing %s rollover with %s.", NAME(cls), ropts)
+                    SUFF = "".join("%s=%s" % x for x in ropts.items())
+                    template = os.path.join(OUTDIR, TEMPLATE + SUFF + EXT)
+
+                    with cls(WRITE, write_options=dict(ropts, rollover_template=template)) as sink:
+                        for i in range(100):
+                            msg = std_msgs.msg.Bool(data=not i % 2)
+                            sink.emit("my/topic%s" % (i % 2), msg, START + api.make_duration(i))
+
+                    outputs = sorted(glob.glob(os.path.join(OUTDIR, "test_*" + SUFF + EXT)))
+                    self._tempnames.extend(outputs)
+                    self.assertGreaterEqual(len(outputs), output_range[0],
+                                            "Unexpected output files from %s." % NAME(cls))
+                    if output_range[1] is not None:
+                        self.assertLessEqual(len(outputs), output_range[1],
+                                             "Unexpected output files from %s." % NAME(cls))
+                    self.assertFalse(os.path.exists(WRITE), "Unexpected output from %s." % NAME(cls))
+                    for name in map(os.path.basename, outputs):
+                        self.assertTrue(re.search(r"^test_\d+_\d+_\d+__\d+__\d+", name),
+                                        "Unexpected output file from %s." % NAME(cls))
+
+
     def verify_grep(self):
         """Tests grepros.grep()."""
         NAME = lambda f, **w: "%s.%s(%s)" % (f.__module__, f.__name__, "**%s" % w if w else "")
         ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
         logger.info("Verifying reading bags and grepping messages, via grepros.grep().")
         messages = {}  # {topic: [msg, ]}
-        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this", no_topic="/not/this",
+        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this*", no_topic="/not/this*",
                     file=self._bags, type="std_msgs/*", no_type="std_msgs/Bool")
         for topic, msg, stamp, match, index in grepros.grep(**args):
             self.assertIn("/match/this", topic, ERR(grepros.grep, **args))

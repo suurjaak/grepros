@@ -2,6 +2,25 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2023-12-30)
+-------------------
+* add support for splitting files in bag/HTML/MCAP/SQLite output
+* add api.to_duration()
+* do not use partial match for topic and typename filters without wildcards
+* support patterns yielding zero-length matches like "(?!not_this)"
+* support search over message fields in conditions as `--condition "value in msg"`
+* support giving dashed names like "rollover-size" in format-specific write options
+  as underscored "rollover_size" instead
+* disallow unknown command-line flags and partial abbreviations
+* fix matching nested message values for patterns using start or end flags
+* fix ISO datetime support in earliest and latest timestamp arguments
+* fix --end-line not being used
+* fix api.dict_to_message() erroring on temporal types in dict
+* fix api.get_ros_time_category() erroring on time/duration instances in ROS2
+* fix including topics in match only used for conditions not matching
+* fix using len() in conditions on topics not reached yet
+* ensure api.get_message_value() returning collections as lists not tuples
+
 1.0.4 (2023-09-28)
 -------------------
 * fix Parquet sink validation resulting in silent failure if additional columns specified

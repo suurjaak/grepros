@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.07.2023
+@modified    27.12.2023
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -648,7 +648,7 @@ def get_message_value(msg, name, typename):
     if six.PY2 and listifiable:  # Ignore already highlighted values from Scanner
         listifiable = v[:1] != "[" or v[-1:] != "]" or common.MatchMarkers.START not in v
         return list(bytearray(v)) if listifiable else v
-    return list(v) if listifiable else v
+    return list(v) if listifiable or isinstance(v, tuple) else v
 
 
 def get_rostime(fallback=False):
@@ -734,6 +734,20 @@ def set_message_value(obj, name, value):
     setattr(obj, name, value)
 
 
+def to_duration(val):
+    """Returns value as ROS1 duration if convertible (int/float/time/datetime/decimal), else value."""
+    result = val
+    if isinstance(val, decimal.Decimal):
+        result = rospy.Duration(int(val), float(val % 1) * 10**9)
+    elif isinstance(val, datetime.datetime):
+        result = rospy.Duration(int(val.timestamp()), 1000 * val.microsecond)
+    elif isinstance(val, (float, int)):
+        result = rospy.Duration(val)
+    elif isinstance(val, rospy.Time):
+        result = rospy.Duration(val.secs, val.nsecs)
+    return result
+
+
 def to_nsec(val):
     """Returns value in nanoseconds if value is ROS time/duration, else value."""
     return val.to_nsec() if isinstance(val, genpy.TVal) else val
@@ -771,5 +785,5 @@ __all__ = [
     "get_message_definition", "get_message_fields", "get_message_type", "get_message_type_hash",
     "get_message_value", "get_rostime", "get_topic_types", "init_node", "is_ros_message",
     "is_ros_time", "make_duration", "make_time", "scalar", "serialize_message", "set_message_value",
-    "shutdown_node", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
+    "shutdown_node", "to_duration", "to_nsec", "to_sec", "to_sec_nsec", "to_time", "validate",
 ]
