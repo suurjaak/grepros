@@ -86,6 +86,20 @@ optional arguments:
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
+                          rollover-count=NUM       message limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   (supports abbreviations like 1K or 2M or 3G)
+                          rollover-duration=INTERVAL
+                                                   message time span limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-template=STR    output filename template for individual files
+                                                   in bag/HTML/MCAP/SQLite output,
+                                                   supporting strftime format codes like "%H-%M-%S"
+                                                   and "%(index)s" as output file index
                           template=/my/path.tpl    custom template to use for HTML output
                           type-ROSTYPE=ARROWTYPE   custom mapping between ROS and pyarrow type
                                                    for Parquet output, like type-time="timestamp('ns')"

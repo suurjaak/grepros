@@ -262,16 +262,21 @@ and refer to message fields directly.
 Condition namespace:
 
 <table>
-<tr><th>Item                                </th><th>Description</th></tr>
-<tr><td><code>msg</code>                    </td><td>current message from data source</td></tr>
-<tr><td><code>topic</code>                  </td><td>full name of current message topic</td></tr>
-<tr><td><code><topic /my/topic></code>      </td><td>topic by full name or * wildcard</td></tr>
-<tr><td><code>len(<topic ..>)</code>        </td><td>number of messages encountered in topic</td></tr>
-<tr><td><code>bool(<topic ..>)</code>       </td><td>whether any message encountered in topic</td></tr>
-<tr><td><code><topic ..>.xyz</code>         </td><td>attribute <code>xyz</code> of last message in topic</td></tr>
-<tr><td><code><topic ..>[index]</code>      </td><td>topic message at position
-                                                      (from first encountered if index >= 0, last encountered if < 0)</td></tr>
-<tr><td><code><topic ..>[index].xyz</code>  </td><td>attribute <code>xyz</code> of topic message at position</td></tr>
+<tr><th>Item                                     </th><th>Description</th></tr>
+<tr><td><code>msg</code>                         </td><td>current message from data source</td></tr>
+<tr><td><code>topic</code>                       </td><td>full name of current message topic</td></tr>
+<tr><td><code><topic /my/topic></code>           </td><td>topic by full name or * wildcard</td></tr>
+<tr><td><code>len(<topic ..>)</code>             </td><td>number of messages encountered in topic</td></tr>
+<tr><td><code>bool(<topic ..>)</code>            </td><td>whether any message encountered in topic</td></tr>
+<tr><td><code><topic ..>.xyz</code>              </td><td>attribute <code>xyz</code> of last message in topic</td></tr>
+<tr><td><code><topic ..>[index]</code>           </td><td>topic message at position
+                                                           (from first encountered if index >= 0, last encountered if < 0)</td></tr>
+<tr><td><code><topic ..>[index].xyz</code>       </td><td>attribute <code>xyz</code> of topic message at position</td></tr>
+<tr><td colspan="2"></td></tr>
+<tr><td><code>value in msg</code>                </td><td>whether any field in current message contains value</td></tr>
+<tr><td><code>value in <topic ..></code>         </td><td>whether any field in last topic message contains value</td></tr>
+<tr><td><code>value in <topic ..>[index]</code>  </td><td>whether any field in topic message at position contains value</td></tr>
+
 </table>
 
 Condition is automatically false if trying to access attributes of a message not yet received.

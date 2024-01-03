@@ -33,6 +33,7 @@
             <a href="#sqlite">sqlite</a><br />
             <a href="#formatting">Message formatting in console / html</a><br />
             <a href="#nested">Nested messages in postgres / sqlite</a><br />
+            <a href="#rollover">Rollover</a><br />
             <a href="#sql-dialects">SQL dialects</a><br />
           </span>
           <a href="cli.html">Command-line options</a><br />
@@ -88,6 +89,8 @@ the pager needs to accept raw control characters (<code>more -f</code> or <code>
 
 <pre>
 --write path/to/my.bag [format=bag] [overwrite=true|false]
+        [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+        [rollover-template=STR]
 </pre>
 
 <p>
@@ -100,6 +103,10 @@ it is appended to, unless specified to overwrite.
 Specifying <code>format=bag</code> is not required
 if the filename ends with <code>.bag</code> in ROS1 or <code>.db3</code> in ROS2.
 </p>
+
+<p>
+<a href="#rollover">More on rollover</a>.
+<p>
 
 <p>
 For writing bags in MCAP format, see the <a href="plugins.html#mcap">MCAP plugin</a>.
@@ -167,6 +174,8 @@ Specifying <code>format=csv</code> is not required if the filename ends with <co
 <pre>
 --write path/to/my.html [format=html] [overwrite=true|false]
         [template=/path/to/html.template]
+        [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+        [rollover-template=STR]
 </pre>
 
 <p>
@@ -197,6 +206,10 @@ A custom template file can be specified, in <a href="https://github.com/dotpy/st
 <pre>
 --write path/to/my.html template=/my/html.template
 </pre>
+
+<p>
+<a href="#rollover">More on rollover</a>.
+<p>
 
 
 <h3 id="postgres">postgres</h3>
@@ -291,6 +304,8 @@ Updates to Postgres SQL dialect can be loaded from a YAML or JSON file:
 --write path/to/my.sqlite [format=sqlite] [overwrite=true|false]
         [commit-interval=NUM] [message-yaml=true|false] [nesting=array|all]
         [dialect-file=path/to/dialects.yaml]
+        [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+        [rollover-template=STR]
 </pre>
 
 <p>
@@ -353,6 +368,10 @@ Updates to SQLite SQL dialect can be loaded from a YAML or JSON file:
 <p>
 <a href="#sql-dialects">More on SQL dialects</a>.
 </p>
+
+<p>
+<a href="#rollover">More on rollover</a>.
+<p>
 
 
 <h3 id="formatting">Message formatting in console / html</h3>
@@ -568,6 +587,39 @@ CREATE TABLE "std_msgs/Header" (
   _parent_type          TEXT,       <code class="comment">-- "diagnostic_msgs/DiagnosticArray"</code>
   _parent_id            INTEGER     <code class="comment">-- _id from "diagnostic_msgs/DiagnosticArray"</code>
 );<a class="toggle"></a>
+</pre>
+
+
+<h3 id="rollover">Rollover</h3>
+
+<p>
+Writing messages to bag/HTML/MCAP/SQLite supports splitting output files by size,
+message count, or duration.
+</p>
+
+<pre>
+rollover-size=NUM           size limit for individual files
+                            as bytes (supports abbreviations like 1K or 2M or 3G)
+rollover-count=NUM          message limit for individual files
+                            (supports abbreviations like 1K or 2M or 3G)
+rollover-duration=INTERVAL  message time span limit for individual files
+                            as seconds (supports abbreviations like 60m or 2h or 1d)
+rollover-template=STR       output filename template for individual files,
+                            supporting strftime format codes like "%H-%M-%S"
+                            and "%(index)s" as output file index
+</pre>
+
+<p>
+Output filename template overrides the original given output filename,
+and can contain subdirectories.
+</p>
+
+<p>
+Recording all live topics to bagfiles of 1 gigabyte, with timestamped filenames:
+</p>
+
+<pre>
+--live --no-console-output --write my.bag rollover-size=1G rollover-template="%Y-%m-%d-%H-%M-%S.bag"
 </pre>
 
 

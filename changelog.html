@@ -35,6 +35,26 @@
 <h2>Changelog</h2>
 
 
+<h4>1.1.0 (2024-01-03)</h4>
+<ul>
+  <li>add support for splitting files in bag/HTML/MCAP/SQLite output</li>
+  <li>add api.to_duration()</li>
+  <li>do not use partial match for topic and typename filters without wildcards</li>
+  <li>support patterns yielding zero-length matches like "(?!not_this)"</li>
+  <li>support search over message fields in conditions as `--condition "value in msg"`</li>
+  <li>support giving dashed names like "rollover-size" in format-specific write options
+      as underscored "rollover_size" instead</li>
+  <li>disallow unknown command-line flags and partial abbreviations</li>
+  <li>fix matching nested message values for patterns using start or end flags</li>
+  <li>fix ISO datetime support in earliest and latest timestamp arguments</li>
+  <li>fix --end-line not being used</li>
+  <li>fix api.dict_to_message() erroring on temporal types in dict</li>
+  <li>fix api.get_ros_time_category() erroring on time/duration instances in ROS2</li>
+  <li>fix including topics in match only used for conditions not matching</li>
+  <li>fix using len() in conditions on topics not reached yet</li>
+  <li>ensure api.get_message_value() returning collections as lists not tuples</li>
+</ul>
+
 <h4>1.0.4 (2023-09-28)</h4>
 <ul>
   <li>fix Parquet sink validation resulting in silent failure if additional columns specified</li>

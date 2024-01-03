@@ -104,6 +104,8 @@ Write bags in MCAP format:
 <pre>
 --plugin grepros.plugins.mcap \
 --write path/to/my.mcap [format=mcap] [overwrite=true|false]
+        [rollover-size=NUM] [rollover-count=NUM] [rollover-duration=NUM]
+        [rollover-template=STR]
 </pre>
 
 <p>
@@ -115,6 +117,10 @@ e.g. <code>my.2.mcap</code>, unless specified to overwrite.
 Specifying write <code>format=mcap</code> is not required
 if the filename ends with <code>.mcap</code>.
 </p>
+
+<p>
+<a href="outputs.html#rollover">More on rollover</a>.
+<p>
 
 
 <h3 id="parquet">parquet</h3>
