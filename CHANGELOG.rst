@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2023-12-30)
+1.1.0 (2024-01-03)
 -------------------
 * add support for splitting files in bag/HTML/MCAP/SQLite output
 * add api.to_duration()
