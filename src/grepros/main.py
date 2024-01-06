@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.12.2023
+@modified    13.01.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -20,6 +20,7 @@ import os
 import random
 import re
 import sys
+import traceback
 
 import six
 
@@ -98,7 +99,13 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-v", "--invert-match"],
              dest="INVERT", action="store_true",
-             help="select messages not matching PATTERN"),
+             help="select messages not matching PATTERNs"),
+
+        dict(args=["-e", "--expression"],
+             dest="EXPRESSION", action="store_true",
+             help="PATTERNs are a logical expression\n"
+                  "like 'this AND (this2 OR NOT \"skip this\")',\n"
+                  "with elements as patterns to find in message fields"),
 
         dict(args=["--version"],
              dest="VERSION", action="version",
@@ -438,7 +445,7 @@ def process_args(args):
                                              or args.PATH or any("*" in x for x in args.FILE))
 
     for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
-        if k != "WRITE" and isinstance(v, list):
+        if isinstance(v, list) and "WRITE" != k and not ("PATTERN" == k and args.EXPRESSION):
             here = set()
             setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
                               if not (x in here or here.add(x))])
@@ -479,7 +486,7 @@ def validate_args(args):
         except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
                                             (n.lower().replace("_", " "), v))
 
-    for v in args.PATTERN if not args.FIXED_STRING else ():
+    for v in args.PATTERN if not args.FIXED_STRING and not args.EXPRESSION else ():
         split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
         v = v[split + 1:] if split > 0 else v
         try: re.compile(re.escape(v) if args.FIXED_STRING else v)

@@ -407,6 +407,15 @@ Use case-sensitive matching in patterns (default is insensitive):
     -I
     --no-ignore-case
 
+Give pattern as a logical expression like `this AND (this2 OR NOT "skip this")`,
+with elements as patterns to find in message fields:
+
+    -e
+    --expression
+
+    # Example: match live messages containing `cpu` or `memory`:
+    cpu OR memory --expression --live
+
 
 ### Limits
 

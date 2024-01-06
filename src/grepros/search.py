@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    23.12.2023
+@modified    13.01.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -39,8 +39,8 @@ class Scanner(object):
     ANY_MATCHES = [((), re.compile("(.*)", re.DOTALL)), (), re.compile("(.?)", re.DOTALL)]
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, FIXED_STRING=False, INVERT=False, HIGHLIGHT=False,
-                        NTH_MATCH=1, BEFORE=0, AFTER=0, CONTEXT=0, MAX_COUNT=0,
+    DEFAULT_ARGS = dict(PATTERN=(), CASE=False, FIXED_STRING=False, INVERT=False, EXPRESSION=False,
+                        HIGHLIGHT=False, NTH_MATCH=1, BEFORE=0, AFTER=0, CONTEXT=0, MAX_COUNT=0,
                         MAX_PER_TOPIC=0, MAX_TOPICS=0, SELECT_FIELD=(), NOSELECT_FIELD=(),
                         MATCH_WRAPPER="**")
 
@@ -52,6 +52,9 @@ class Scanner(object):
         @param   args.fixed_string        pattern contains ordinary strings, not regular expressions
         @param   args.case                use case-sensitive matching in pattern
         @param   args.invert              select messages not matching pattern
+        @param   args.expression          pattern(s) are a logical expression
+                                          like 'this AND (this2 OR NOT "skip this")',
+                                          with elements as patterns to find in message fields
         @param   args.highlight           highlight matched values
         @param   args.before              number of messages of leading context to emit before match
         @param   args.after               number of messages of trailing context to emit after match
@@ -89,6 +92,7 @@ class Scanner(object):
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
+        self._expression = None # Nested [op, val] like ["NOT", ["VAL", "skip this"]]
         # {(topic, typename, typehash): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
         # {(topic, typename, typehash): {message ID: ROS time}}
@@ -298,20 +302,30 @@ class Scanner(object):
 
 
     def _parse_patterns(self):
-        """Parses pattern arguments into re.Patterns."""
+        """Parses pattern arguments into re.Patterns. Raises on invalid pattern."""
         NOBRUTE_SIGILS = r"\A", r"\Z", "?("  # Regex specials ruling out brute precheck
         BRUTE, FLAGS = not self.args.INVERT, re.DOTALL | (0 if self.args.CASE else re.I)
         self._patterns.clear()
+        self._expression = None
         del self._brute_prechecks[:]
         contents = []
-        for v in self.args.PATTERN:
+
+        def make_pattern(v):
+            """Returns (path Pattern or (), value Pattern)."""
             split = v.find("=", 1, -1)
             v, path = (v[split + 1:], v[:split]) if split > 0 else (v, ())
             # Special case if '' or "": add pattern for matching empty string
             v = "|^$" if v in ("''", '""') else (re.escape(v) if self.args.FIXED_STRING else v)
             path = re.compile(r"(^|\.)%s($|\.)" % ".*".join(map(re.escape, path.split("*")))) \
                    if path else ()
-            contents.append((path, re.compile("(%s)" % v, FLAGS)))
+            try: return (path, re.compile("(%s)" % v, FLAGS))
+            except Exception as e:
+                raise ValueError("Invalid regular expression\n  '%s': %s" % (v, e))
+
+        if self.args.EXPRESSION and self.args.PATTERN:
+            self._expression = self._parse_expression(" ".join(self.args.PATTERN), make_pattern)
+        for v in self.args.PATTERN if not self._expression else ():
+            contents.append(make_pattern(v))
             if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
         if not self.args.PATTERN:  # Add match-all pattern
@@ -321,6 +335,87 @@ class Scanner(object):
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+
+
+    def _parse_expression(self, text, parse_text=None):
+        """
+        Returns a logical expression like "a AND (b OR NOT c)" parsed into a binary tree.
+
+        Binary tree like ["AND", [["VAL", "a"], ["OR", [["VAL", "b"], ["NOT", [["VAL", "c"]]]]]]].
+        Operators AND OR NOT are case-insensitive. Raises on invalid expression.
+
+        @param   parse_text  callback(text) returning tree value for text nodes
+        """
+        QUOTES, ESCAPE, LPAREN, RPAREN, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
+        AND, OR, NOT, VAL, ERRLABEL = "AND", "OR", "NOT", "VAL", "Invalid logical expression: "
+        RANK = {OR: 4, AND: 3, NOT: 2, VAL: 1}
+
+        def mark(i): return "\n%s\n%s^" % (text, " " * i)  # Return expression text marked at pos
+
+        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
+            pos = "" if NOT == op else "1st " if first else "2nd "
+            return ERRLABEL + "missing %selement for %s-operator" % (pos, op)
+
+        def add_node(op, val):
+            """Adds new node to tree, updates root, returns (node to use as last, root)."""
+            node0, (op0, val0), myroot, reparent = node, (node or [None, None]), root, None
+
+            if op in (AND, OR):  # Attach last child or root to new if needed
+                if stacki is None and (RANK[op] <= RANK[op0] and val0[-1] is not None):
+                    reparent = node0  # Chain of AND/OR, last is full, new ranks equal or lower
+                    val = [val0[-1], None]  # Take last child of last node into new
+                elif RANK[op] >= RANK[root[0]]:  # Root has equal or lower rank
+                    reparent = root
+                    val = [root, None]  # Take root into new
+            newnode = [op, parse_text(val) if parse_text and VAL == op else val]
+            if reparent or node0: parents[id(reparent or newnode)] = newnode if reparent else node0
+
+            if node0 and stacki is None and (val0[-1] is None  # Last is unfinished
+            or op0 in (AND, OR) and RANK[op0] >= RANK[op]):  # Last AND/OR ranks higher or same
+                val0[-1] = newnode  # Attach new node to last
+            elif not root or (RANK[op] > RANK[root[0]]) if stacki is None else (root == node0):
+                myroot = newnode  # Replace root if new outranks it, or expression so far was braced
+            latest = node0 if node0 and op == VAL else newnode
+            while NOT == latest[0] and latest[1][-1] is not None and id(latest) in parents:
+                latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
+            return latest, myroot
+
+        root, node, stack, buf, quote, nodei, stacki, parents = [], [], [], "", "", None, None, {}
+        for i, char in enumerate(text + " "):  # Ensure terminating whitespace
+            # First pass: start/end quotes, or handle explicit/implicit word ends and operators
+            if quote:
+                if char == quote and buf[-1:] != ESCAPE:  # End quote
+                    (node, root), buf, quote, char = add_node(VAL, buf), "", "", ""
+            elif char in QUOTES:
+                quote, char = char, ""  # Start quoted string, consume quotemark
+            elif char in WHITESPACE + LPAREN + RPAREN:
+                op = buf.upper() if len(buf) in (2, 3) and buf.upper() in (AND, OR, NOT) else None
+                if op:  # Explicit AND OR NOT
+                    if op in (AND, OR) and (not node or node[1][-1] is None):
+                        raise ValueError(missing(node[0] if node else op, first=not node) + mark(i))
+                    (node, root), nodei = add_node(op, [None] if op == NOT else [node, None]), i
+                else:
+                    if (buf or char == LPAREN) and node and node[1][-1] is not None:
+                        (node, root), nodei = add_node(AND, [node, None]), i  # Insert implicit AND
+                    if buf: node, root = add_node(VAL, buf)  # Operand
+                buf, stacki = "", (None if op or buf else stacki)
+            # Second pass: enter/exit bracket groups, or accumulate text buffer
+            if quote or char not in WHITESPACE + LPAREN + RPAREN:
+                buf += char  # Accumulate text while not consumable
+            elif char == LPAREN:  # Enter (..), stack current nodes
+                root, node, _, _ = [], [], i, stack.append((root, node, i))
+            elif char == RPAREN:  # Exit (..), unstack previous nodes, bind nested to previous
+                if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
+                if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
+                if node[0] in (AND, OR, NOT) and node[1][-1] is None:
+                    raise ValueError(missing(node[0]) + mark(nodei))
+                (root, node, stacki), root2, node2 = stack.pop(), root, node
+                if node: node[1][-1], node, parents[id(root2)], stacki = root2, root, node, None
+                elif not root: root, node = root2, node2  # Replace empty root with nested
+        if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
+        if node and node[0] != VAL and node[1][-1] is None:
+            raise ValueError(missing(node[0]) + mark(nodei))
+        return root
 
 
     def _register_message(self, topickey, msgid, msg, stamp):
@@ -336,7 +431,8 @@ class Scanner(object):
         self._highlight = bool(highlight if highlight is not None else
                                False if self.sink and not self.sink.is_highlighting() else
                                self.args.HIGHLIGHT)
-        self._passthrough = not self._highlight and not self._patterns["select"] \
+        self._passthrough = not self._highlight and not self._expression \
+                            and not self._patterns["select"] \
                             and not self._patterns["noselect"] and not self.args.INVERT \
                             and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
 
@@ -374,55 +470,80 @@ class Scanner(object):
         Returns original message if any-match and sink does not require highlighting.
         """
 
-        def wrap_matches(v, top, is_collection=False):
-            """Returns string with matching parts wrapped in marker tags; updates `matched`."""
-            spans = []
-            # Omit collection brackets from match unless empty: allow matching "[]"
-            v1 = v2 = v[1:-1] if is_collection and v != "[]" else v
-            topstr = ".".join(top)
-            for i, (path, p) in enumerate(self._patterns["content"]):
-                if path and not path.search(topstr): continue  # for
-                matches = [next(p.finditer(v1), None)] if self.args.INVERT else list(p.finditer(v1))
+        def process_value(v, parent, top, patterns):
+            """
+            Populates `field_matches` for patterns matching given string value.
+            Returns set of pattern indexes that found a match.
+            """
+            indexes, spans, topstr = set(), [], ".".join(map(str, top))
+            topstrn = ".".join(x for x in top if not isinstance(x, int))  # Without array indexes
+            v2 = str(list(v) if isinstance(v, LISTIFIABLES) else v)
+            if v and isinstance(v, (list, tuple)): v2 = v2[1:-1]  # Omit collection braces leave []
+            for i, (path, p) in enumerate(patterns):
+                if path and not path.search(topstr) and not path.search(topstrn): continue  # for
+                matches = [next(p.finditer(v2), None)] if PLAIN_INVERT else list(p.finditer(v2))
                 # Join consecutive zero-length matches, extend remaining zero-lengths to end of value
                 matchspans = common.merge_spans([x.span() for x in matches if x], join_blanks=True)
-                matchspans = [(a, b if a != b else len(v1)) for a, b in matchspans]
-                if matchspans:
-                    matched[i] = True
-                    spans.extend(matchspans)
-            if any(WRAPS):
-                spans = common.merge_spans(spans) if not self.args.INVERT else \
-                        [] if spans else [(0, len(v1))] if v1 or not is_collection else []
-                for a, b in reversed(spans):  # Work from last to first, indices stay the same
-                    v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
-            return "[%s]" % v2 if is_collection and v != "[]" else v2
+                matchspans = [(a, b if a != b else len(v2)) for a, b in matchspans]
+                if matchspans: indexes.add(i), spans.extend(matchspans)
+            if PLAIN_INVERT: spans = [(0, len(v2))] if v2 and not spans else []
+            if spans: field_matches.setdefault(top, (parent, v, v2, []))[-1].extend(spans)
+            return indexes
 
-        def process_message(obj, top=()):
-            """Recursively converts field values to pattern-matched strings; updates `matched`."""
-            LISTIFIABLES = (bytes, tuple) if six.PY3 else (tuple, )
+        def populate_matches(obj, patterns, top=()):
+            """
+            Recursively populates `field_matches` for message fields matching patterns.
+            Returns set of pattern indexes that found a match.
+            """
+            indexes = set()
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
-            fieldmap = fieldmap0 = api.get_message_fields(obj)  # Returns obj if not ROS message
+            fieldmap = api.get_message_fields(obj)  # Returns obj if not ROS message
             if fieldmap != obj:
                 fieldmap = api.filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
                 v, path = api.get_message_value(obj, k, t), top + (k, )
-                is_collection = isinstance(v, (list, tuple))
                 if api.is_ros_message(v):
-                    process_message(v, path)
-                elif v and is_collection and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
-                    api.set_message_value(obj, k, [process_message(x, path) for x in v])
+                    indexes |= populate_matches(v, patterns, path)
+                elif v and isinstance(v, (list, tuple)) and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
+                    for i, x in enumerate(v): indexes |= populate_matches(x, patterns, path + (i, ))
                 else:
-                    v1 = str(list(v) if isinstance(v, LISTIFIABLES) else v)
-                    v2 = wrap_matches(v1, path, is_collection)
-                    if len(v1) != len(v2):
-                        api.set_message_value(obj, k, v2)
+                    indexes |= process_value(v, obj, path, patterns)
             if not api.is_ros_message(obj):
-                v1 = str(list(obj) if isinstance(obj, LISTIFIABLES) else obj)
-                v2 = wrap_matches(v1, top)
-                obj = v2 if len(v1) != len(v2) else obj
-            if not top and not matched and not selects and not fieldmap0 and not self.args.INVERT \
-            and set(self._patterns["content"]) <= set(self.ANY_MATCHES):  # Ensure Empty any-match
-                matched.update({i: True for i, _ in enumerate(self._patterns["content"])})
-            return obj
+                indexes |= process_value(v, obj, top, patterns)
+            return indexes
+
+        def wrap_matches(matches):
+            """Replaces result-message field values with matched parts wrapped in marker tags."""
+            for path, (parent, v1, v2, spans) in matches.items() if any(WRAPS) else ():
+                is_collection = isinstance(v1, (list, tuple))
+                for a, b in reversed(common.merge_spans(spans)):  # Backwards for stable indexes
+                    v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
+                if v1 and is_collection: v2 = "[%s]" % v2  # Readd collection braces
+                if isinstance(parent, list) and isinstance(path[-1], int): parent[path[-1]] = v2
+                else: api.set_message_value(parent, path[-1], v2)
+
+        def process_message(obj, patterns):
+            """Returns whether message matches patterns, wraps matches in marker tags if so."""
+            indexes = populate_matches(obj, patterns)
+            is_match = not indexes if self.args.INVERT else len(indexes) == len(patterns)
+            if is_match:
+                wrap_matches(field_matches)
+            if not self.args.INVERT and not indexes and not self._patterns["select"] \
+            and set(self._patterns["content"]) <= set(self.ANY_MATCHES) \
+            and not api.get_message_fields(obj):  # Ensure any-match for messages with no fields
+                is_match = True
+            return is_match
+
+        def eval_expression(tree):
+            """Returns whether expression tree matches result-message, populates `field_matches`."""
+            op, val = tree
+            if   "AND" == op: return eval_expression(val[0]) and eval_expression(val[1])
+            elif "OR"  == op:
+                first = eval_expression(val[0])
+                return first and not WRAPS or eval_expression(val[1]) or first
+            elif "NOT" == op: return not eval_expression(val[0])
+            else:             return bool(populate_matches(result, [val]))
+
 
         if self._passthrough: return msg
 
@@ -436,10 +557,17 @@ class Scanner(object):
         WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
         WRAPS = ((WRAPS or [""]) * 2)[:2]
 
-        result, matched = copy.deepcopy(msg), {}  # {pattern index: True}
-        process_message(result)
-        yes = not matched if self.args.INVERT else len(matched) == len(self._patterns["content"])
-        return (result if self._highlight else msg) if yes else None
+        LISTIFIABLES = (bytes, tuple) if six.PY3 else (tuple, )
+        PLAIN_INVERT = self.args.INVERT and not self._expression
+        field_matches = {}  # {field path: (parent, original value, stringified value, [(span), ])}
+
+        result, is_match = copy.deepcopy(msg) if self._highlight else msg, False
+        if self._expression:
+            if eval_expression(self._expression) != self.args.INVERT:
+                is_match, _ = True, wrap_matches(field_matches)
+        else:
+            is_match = process_message(result, self._patterns["content"])
+        return (result if self._highlight else msg) if is_match else None
 
 
 __all__ = ["Scanner"]

@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    28.12.2023
+@modified    03.01.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -133,6 +133,9 @@ def grep(args=None, **kwargs):
     @param   args.fixed_string        pattern contains ordinary strings, not regular expressions
     @param   args.case                use case-sensitive matching in pattern
     @param   args.invert              select messages not matching pattern
+    @param   args.expression          pattern(s) are a logical expression
+                                      like 'this AND (this2 OR NOT "skip this")',
+                                      with elements as patterns to find in message fields
 
     @param   args.nth_match           emit every Nth match in topic
     @param   args.max_count           number of matched messages to emit (per file if bag input)

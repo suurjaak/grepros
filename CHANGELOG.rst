@@ -2,6 +2,11 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.0 (2024-01-13)
+-------------------
+* add --expression option to give pattern as a logical expression
+  like `this AND (this2 OR NOT "skip this")`
+
 1.1.0 (2023-12-30)
 -------------------
 * add support for splitting files in bag/HTML/MCAP/SQLite output
