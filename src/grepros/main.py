@@ -323,7 +323,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
-                  "for publishing and writing"),
+                  "for publishing and writing, and error stacktraces"),
 
         dict(args=["--no-verbose"], dest="SKIP_VERBOSE", action="store_true",
              help="do not print status messages during console output\n"
@@ -581,6 +581,9 @@ def run():
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except (Exception, KeyboardInterrupt): pass
         sys.exit()
+    except Exception as e:
+        ConsolePrinter.error(e)
+        if args.VERBOSE: traceback.print_exc()
     finally:
         sink and sink.close()
         source and source.close()

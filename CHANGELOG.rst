@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
+* print error stacktraces when --verbose
 
 1.1.0 (2023-12-30)
 -------------------
