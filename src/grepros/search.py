@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    13.01.2024
+@modified    16.01.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -323,7 +323,7 @@ class Scanner(object):
                 raise ValueError("Invalid regular expression\n  '%s': %s" % (v, e))
 
         if self.args.EXPRESSION and self.args.PATTERN:
-            self._expression = self._parse_expression(" ".join(self.args.PATTERN), make_pattern)
+            self._expression = BoolExpression.parse(" ".join(self.args.PATTERN), make_pattern)
         for v in self.args.PATTERN if not self._expression else ():
             contents.append(make_pattern(v))
             if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
@@ -335,87 +335,6 @@ class Scanner(object):
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
             self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
-
-
-    def _parse_expression(self, text, parse_text=None):
-        """
-        Returns a logical expression like "a AND (b OR NOT c)" parsed into a binary tree.
-
-        Binary tree like ["AND", [["VAL", "a"], ["OR", [["VAL", "b"], ["NOT", [["VAL", "c"]]]]]]].
-        Operators AND OR NOT are case-insensitive. Raises on invalid expression.
-
-        @param   parse_text  callback(text) returning tree value for text nodes
-        """
-        QUOTES, ESCAPE, LPAREN, RPAREN, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
-        AND, OR, NOT, VAL, ERRLABEL = "AND", "OR", "NOT", "VAL", "Invalid logical expression: "
-        RANK = {OR: 4, AND: 3, NOT: 2, VAL: 1}
-
-        def mark(i): return "\n%s\n%s^" % (text, " " * i)  # Return expression text marked at pos
-
-        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
-            pos = "" if NOT == op else "1st " if first else "2nd "
-            return ERRLABEL + "missing %selement for %s-operator" % (pos, op)
-
-        def add_node(op, val):
-            """Adds new node to tree, updates root, returns (node to use as last, root)."""
-            node0, (op0, val0), myroot, reparent = node, (node or [None, None]), root, None
-
-            if op in (AND, OR):  # Attach last child or root to new if needed
-                if stacki is None and (RANK[op] <= RANK[op0] and val0[-1] is not None):
-                    reparent = node0  # Chain of AND/OR, last is full, new ranks equal or lower
-                    val = [val0[-1], None]  # Take last child of last node into new
-                elif RANK[op] >= RANK[root[0]]:  # Root has equal or lower rank
-                    reparent = root
-                    val = [root, None]  # Take root into new
-            newnode = [op, parse_text(val) if parse_text and VAL == op else val]
-            if reparent or node0: parents[id(reparent or newnode)] = newnode if reparent else node0
-
-            if node0 and stacki is None and (val0[-1] is None  # Last is unfinished
-            or op0 in (AND, OR) and RANK[op0] >= RANK[op]):  # Last AND/OR ranks higher or same
-                val0[-1] = newnode  # Attach new node to last
-            elif not root or (RANK[op] > RANK[root[0]]) if stacki is None else (root == node0):
-                myroot = newnode  # Replace root if new outranks it, or expression so far was braced
-            latest = node0 if node0 and op == VAL else newnode
-            while NOT == latest[0] and latest[1][-1] is not None and id(latest) in parents:
-                latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
-            return latest, myroot
-
-        root, node, stack, buf, quote, nodei, stacki, parents = [], [], [], "", "", None, None, {}
-        for i, char in enumerate(text + " "):  # Ensure terminating whitespace
-            # First pass: start/end quotes, or handle explicit/implicit word ends and operators
-            if quote:
-                if char == quote and buf[-1:] != ESCAPE:  # End quote
-                    (node, root), buf, quote, char = add_node(VAL, buf), "", "", ""
-            elif char in QUOTES:
-                quote, char = char, ""  # Start quoted string, consume quotemark
-            elif char in WHITESPACE + LPAREN + RPAREN:
-                op = buf.upper() if len(buf) in (2, 3) and buf.upper() in (AND, OR, NOT) else None
-                if op:  # Explicit AND OR NOT
-                    if op in (AND, OR) and (not node or node[1][-1] is None):
-                        raise ValueError(missing(node[0] if node else op, first=not node) + mark(i))
-                    (node, root), nodei = add_node(op, [None] if op == NOT else [node, None]), i
-                else:
-                    if (buf or char == LPAREN) and node and node[1][-1] is not None:
-                        (node, root), nodei = add_node(AND, [node, None]), i  # Insert implicit AND
-                    if buf: node, root = add_node(VAL, buf)  # Operand
-                buf, stacki = "", (None if op or buf else stacki)
-            # Second pass: enter/exit bracket groups, or accumulate text buffer
-            if quote or char not in WHITESPACE + LPAREN + RPAREN:
-                buf += char  # Accumulate text while not consumable
-            elif char == LPAREN:  # Enter (..), stack current nodes
-                root, node, _, _ = [], [], i, stack.append((root, node, i))
-            elif char == RPAREN:  # Exit (..), unstack previous nodes, bind nested to previous
-                if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
-                if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
-                if node[0] in (AND, OR, NOT) and node[1][-1] is None:
-                    raise ValueError(missing(node[0]) + mark(nodei))
-                (root, node, stacki), root2, node2 = stack.pop(), root, node
-                if node: node[1][-1], node, parents[id(root2)], stacki = root2, root, node, None
-                elif not root: root, node = root2, node2  # Replace empty root with nested
-        if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
-        if node and node[0] != VAL and node[1][-1] is None:
-            raise ValueError(missing(node[0]) + mark(nodei))
-        return root
 
 
     def _register_message(self, topickey, msgid, msg, stamp):
@@ -534,16 +453,6 @@ class Scanner(object):
                 is_match = True
             return is_match
 
-        def eval_expression(tree):
-            """Returns whether expression tree matches result-message, populates `field_matches`."""
-            op, val = tree
-            if   "AND" == op: return eval_expression(val[0]) and eval_expression(val[1])
-            elif "OR"  == op:
-                first = eval_expression(val[0])
-                return first and not WRAPS or eval_expression(val[1]) or first
-            elif "NOT" == op: return not eval_expression(val[0])
-            else:             return bool(populate_matches(result, [val]))
-
 
         if self._passthrough: return msg
 
@@ -563,11 +472,123 @@ class Scanner(object):
 
         result, is_match = copy.deepcopy(msg) if self._highlight else msg, False
         if self._expression:
-            if eval_expression(self._expression) != self.args.INVERT:
+            terminal = lambda x: bool(populate_matches(result, [x]))
+            evalresult = BoolExpression.evaluate(self._expression, terminal, lazy=not WRAPS)
+            if not evalresult if self.args.INVERT else evalresult:
                 is_match, _ = True, wrap_matches(field_matches)
         else:
             is_match = process_message(result, self._patterns["content"])
         return (result if self._highlight else msg) if is_match else None
 
 
-__all__ = ["Scanner"]
+
+class BoolExpression(object):
+    """
+    Parses and evaluates logical expressions like "a AND (b OR NOT c)".
+
+    Operands can be quoted strings, "\" can be used to escape quotes within the string.
+    Operators AND OR NOT are case-insensitive.
+    """
+
+    @classmethod
+    def parse(cls, text, terminal=None):
+        """
+        Returns a logical expression like "a AND (b OR NOT c)" parsed into a binary tree.
+
+        Binary tree like ["AND", [["VAL", "a"], ["OR", [["VAL", "b"], ["NOT", [["VAL", "c"]]]]]]].
+        Raises on invalid expression.
+
+        @param   terminal  callback(text) returning node value for operands
+        """
+        QUOTES, ESCAPE, LPAREN, RPAREN, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
+        AND, OR, NOT, VAL, ERRLABEL = "AND", "OR", "NOT", "VAL", "Invalid logical expression: "
+        RANK = {OR: 4, AND: 3, NOT: 2, VAL: 1}
+
+        def mark(i): return "\n%s\n%s^" % (text, " " * i)  # Return expression text marked at pos
+
+        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
+            pos = "" if NOT == op else "1st " if first else "2nd "
+            return ERRLABEL + "missing %selement for %s-operator" % (pos, op)
+
+        def add_node(op, val):
+            """Adds new node to tree, updates root, returns (node to use as last, root)."""
+            node0, (op0, val0), myroot, reparent = node, (node or [None, None]), root, None
+
+            if op in (AND, OR):  # Attach last child or root to new if needed
+                if stacki is None and (RANK[op] <= RANK[op0] and val0[-1] is not None):
+                    reparent = node0  # Chain of AND/OR, last is full, new ranks equal or lower
+                    val = [val0[-1], None]  # Take last child of last node into new
+                elif RANK[op] >= RANK[root[0]]:  # Root has equal or lower rank
+                    reparent = root
+                    val = [root, None]  # Take root into new
+            newnode = [op, terminal(val) if terminal and VAL == op else val]
+            if reparent or node0: parents[id(reparent or newnode)] = newnode if reparent else node0
+
+            if node0 and stacki is None and (val0[-1] is None  # Last is unfinished
+            or op0 in (AND, OR) and RANK[op0] >= RANK[op]):  # Last AND/OR ranks higher or same
+                val0[-1] = newnode  # Attach new node to last
+            elif not root or (RANK[op] > RANK[root[0]]) if stacki is None else (root == node0):
+                myroot = newnode  # Replace root if new outranks it, or expression so far was braced
+            latest = node0 if node0 and op == VAL else newnode
+            while NOT == latest[0] and latest[1][-1] is not None and id(latest) in parents:
+                latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
+            return latest, myroot
+
+        root, node, stack, buf, quote, nodei, stacki, parents = [], [], [], "", "", None, None, {}
+        for i, char in enumerate(text + " "):  # Ensure terminating whitespace
+            # First pass: start/end quotes, or handle explicit/implicit word ends and operators
+            if quote:
+                if char == quote and buf[-1:] != ESCAPE:  # End quote
+                    (node, root), buf, quote, char = add_node(VAL, buf), "", "", ""
+            elif char in QUOTES:
+                quote, char = char, ""  # Start quoted string, consume quotemark
+            elif char in WHITESPACE + LPAREN + RPAREN:
+                op = buf.upper() if len(buf) in (2, 3) and buf.upper() in (AND, OR, NOT) else None
+                if op:  # Explicit AND OR NOT
+                    if op in (AND, OR) and (not node or node[1][-1] is None):
+                        raise ValueError(missing(node[0] if node else op, first=not node) + mark(i))
+                    (node, root), nodei = add_node(op, [None] if op == NOT else [node, None]), i
+                else:
+                    if (buf or char == LPAREN) and node and node[1][-1] is not None:
+                        (node, root), nodei = add_node(AND, [node, None]), i  # Insert implicit AND
+                    if buf: node, root = add_node(VAL, buf)  # Operand
+                buf, stacki = "", (None if op or buf else stacki)
+            # Second pass: enter/exit bracket groups, or accumulate text buffer
+            if quote or char not in WHITESPACE + LPAREN + RPAREN:
+                buf += char  # Accumulate text while not consumable
+            elif char == LPAREN:  # Enter (..), stack current nodes
+                root, node, _, _ = [], [], i, stack.append((root, node, i))
+            elif char == RPAREN:  # Exit (..), unstack previous nodes, bind nested to previous
+                if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
+                if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
+                if node[0] in (AND, OR, NOT) and node[1][-1] is None:
+                    raise ValueError(missing(node[0]) + mark(nodei))
+                (root, node, stacki), root2, node2 = stack.pop(), root, node
+                if node: node[1][-1], node, parents[id(root2)], stacki = root2, root, node, None
+                elif not root: root, node = root2, node2  # Replace empty root with nested
+        if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
+        if node and node[0] != VAL and node[1][-1] is None:
+            raise ValueError(missing(node[0]) + mark(nodei))
+        return root
+
+
+    @classmethod
+    def evaluate(cls, tree, terminal=None, lazy=True):
+        """
+        Returns result of evaluating logical expression tree.
+
+        @param   tree      expression tree structure as given by parse()
+        @param   terminal  callback(value) to evaluate value nodes with, if not using value directly
+        @param   lazy      whether OR should short-circuit, or evaluate both operands
+        """
+        (op, val), subeval = tree, lambda x: cls.evaluate(x, terminal, lazy)
+        if   "AND" == op: return subeval(val[0]) and subeval(val[1])
+        elif "OR"  == op:
+            first = subeval(val[0])
+            second = None if first and lazy else subeval(val[1])
+            return (first or second) if lazy else (second or first or second)
+        elif "NOT" == op: return not subeval(val[0])
+        else: return val if terminal is None else terminal(val)
+
+
+__all__ = ["BoolExpression", "Scanner"]
