@@ -323,7 +323,7 @@ class Scanner(object):
                 raise ValueError("Invalid regular expression\n  '%s': %s" % (v, e))
 
         if self.args.EXPRESSION and self.args.PATTERN:
-            self._expression = BoolExpression.parse(" ".join(self.args.PATTERN), make_pattern)
+            self._expression = ExpressionTree.parse(" ".join(self.args.PATTERN), make_pattern)
         for v in self.args.PATTERN if not self._expression else ():
             contents.append(make_pattern(v))
             if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
@@ -472,8 +472,8 @@ class Scanner(object):
 
         result, is_match = copy.deepcopy(msg) if self._highlight else msg, False
         if self._expression:
-            terminal = lambda x: bool(populate_matches(result, [x]))
-            evalresult = BoolExpression.evaluate(self._expression, terminal, lazy=not WRAPS)
+            terminal, eager = lambda x: bool(populate_matches(result, [x])), [ExpressionTree.OR]
+            evalresult = ExpressionTree.evaluate(self._expression, terminal, eager)
             if not evalresult if self.args.INVERT else evalresult:
                 is_match, _ = True, wrap_matches(field_matches)
         else:
@@ -482,113 +482,151 @@ class Scanner(object):
 
 
 
-class BoolExpression(object):
+class ExpressionTree(object):
     """
-    Parses and evaluates logical expressions like "a AND (b OR NOT c)".
+    Parses and evaluates operator expressions like "a AND (b OR NOT c)".
 
-    Operands can be quoted strings, "\" can be used to escape quotes within the string.
+    Operands can be quoted strings, `\` can be used to escape quotes within the string.
     Operators AND OR NOT are case-insensitive.
     """
+
+    QUOTES, ESCAPE, LBRACE, RBRACE, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
+    SEPARATORS = WHITESPACE + LBRACE + RBRACE
+    AND, OR, NOT, VAL = "AND", "OR", "NOT", "VAL"
+
+    CASED     = False
+    IMPLICIT  = AND
+    UNARIES   = (NOT, )
+    BINARIES  = (AND, OR)
+    OPERATORS = {AND: (lambda a, b: a and b), OR: (lambda a, b: a or b), NOT: lambda a: not a}
+    RANKS     = {OR: 4, AND: 3, NOT: 2, VAL: 1}
+
+    SHORTCIRCUITS    = {AND: False, OR: True}  # Values for binary operators to short-circuit on
+    FORMAT_TEMPLATES = {AND: "%s and %s", OR: "%s or %s", NOT: "not %s"}
+
 
     @classmethod
     def parse(cls, text, terminal=None):
         """
-        Returns a logical expression like "a AND (b OR NOT c)" parsed into a binary tree.
+        Returns an operator expression like "a AND (b OR NOT c)" parsed into a binary tree.
 
         Binary tree like ["AND", [["VAL", "a"], ["OR", [["VAL", "b"], ["NOT", [["VAL", "c"]]]]]]].
         Raises on invalid expression.
 
         @param   terminal  callback(text) returning node value for operands
         """
-        QUOTES, ESCAPE, LPAREN, RPAREN, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
-        AND, OR, NOT, VAL, ERRLABEL = "AND", "OR", "NOT", "VAL", "Invalid logical expression: "
-        RANK = {OR: 4, AND: 3, NOT: 2, VAL: 1}
+        ERRLABEL, OP_MAXLEN = "Invalid expression: ", max(map(len, cls.OPERATORS))
+        OPERATORS = {x if cls.CASED else x.upper(): x for x in cls.OPERATORS}
 
-        def mark(i): return "\n%s\n%s^" % (text, " " * i)  # Return expression text marked at pos
+        outranks  = lambda a, b:  cls.RANKS[a] > cls.RANKS[b]      # whether operator a ranks over b
+        finished  = lambda n:     not (n[1] and n[1][-1] is None)  # whether node has all operands
+        postbrace = lambda:       stacki is not None               # whether brackets just ended
+        mark      = lambda i:     "\n%s\n%s^" % (text, " " * i)    # expression text marked at pos
+        oper      = lambda n:     n[0]                             # node type
+        parse_op  = lambda b:     OPERATORS.get(b if cls.CASED else b.upper()) \
+                                  if len(b) <= OP_MAXLEN else None
+        makenode  = lambda o, v:  [o, terminal(v) if terminal and cls.VAL == o else v]
+        compose   = lambda o, *a: list(a) + [None] * (1 + (o in cls.BINARIES) - len(a))
+        add_child = lambda a, b:  (a[1].__setitem__(-1, b), parents.update({id(b): a}))
+        get_child = lambda n, i:  n[1][i] if n[0] in cls.OPERATORS else None
 
-        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
-            pos = "" if NOT == op else "1st " if first else "2nd "
-            return ERRLABEL + "missing %selement for %s-operator" % (pos, op)
+        def missing(op, first=False):  # Error text for missing operand in AND OR NOT
+            label = ("1st " if first else "2nd ") if op in cls.BINARIES else ""
+            return ERRLABEL + "missing %selement for %s-operator" % (label, op)
 
         def add_node(op, val):
             """Adds new node to tree, updates root, returns (node to use as last, root)."""
-            node0, (op0, val0), myroot, reparent = node, (node or [None, None]), root, None
+            node0, newroot = node, root
+            if op in cls.BINARIES:  # Attach last child or root to new if needed
+                if not postbrace() and finished(node0) and not outranks(op, oper(node0)):
+                    val = compose(op, get_child(node0, -1), None)  # Last child into new
+                elif not outranks(oper(root), op):
+                    val = compose(op, root, None)  # Root into new
+            newnode = makenode(op, val)
 
-            if op in (AND, OR):  # Attach last child or root to new if needed
-                if stacki is None and (RANK[op] <= RANK[op0] and val0[-1] is not None):
-                    reparent = node0  # Chain of AND/OR, last is full, new ranks equal or lower
-                    val = [val0[-1], None]  # Take last child of last node into new
-                elif RANK[op] >= RANK[root[0]]:  # Root has equal or lower rank
-                    reparent = root
-                    val = [root, None]  # Take root into new
-            newnode = [op, terminal(val) if terminal and VAL == op else val]
-            if reparent or node0: parents[id(reparent or newnode)] = newnode if reparent else node0
-
-            if node0 and stacki is None and (val0[-1] is None  # Last is unfinished
-            or op0 in (AND, OR) and RANK[op0] >= RANK[op]):  # Last AND/OR ranks higher or same
-                val0[-1] = newnode  # Attach new node to last
-            elif not root or (RANK[op] > RANK[root[0]]) if stacki is None else (root == node0):
-                myroot = newnode  # Replace root if new outranks it, or expression so far was braced
-            latest = node0 if node0 and op == VAL else newnode
-            while NOT == latest[0] and latest[1][-1] is not None and id(latest) in parents:
+            if node0 and not postbrace() and (not finished(node0)  # Last is unfinished
+            or oper(node0) in cls.BINARIES and not outranks(op, oper(node0))):  # op <= last AND/OR
+                add_child(node0, newnode)  # Attach new node to last
+            elif not root or (root is node0 if postbrace() else not outranks(oper(root), op)):
+                newroot = newnode  # Replace root if rank not less, or expression so far was braced
+            latest = node0 if node0 and op == cls.VAL else newnode
+            while oper(latest) in cls.UNARIES and finished(latest) and id(latest) in parents:
                 latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
-            return latest, myroot
+            return latest, newroot
 
         root, node, stack, buf, quote, nodei, stacki, parents = [], [], [], "", "", None, None, {}
         for i, char in enumerate(text + " "):  # Ensure terminating whitespace
             # First pass: start/end quotes, or handle explicit/implicit word ends and operators
             if quote:
-                if char == quote and buf[-1:] != ESCAPE:  # End quote
-                    (node, root), buf, quote, char = add_node(VAL, buf), "", "", ""
-            elif char in QUOTES:
+                if char == quote and not buf.endswith(cls.ESCAPE):  # End quote
+                    (node, root), buf, quote, char = add_node(cls.VAL, buf), "", "", ""
+            elif char in cls.QUOTES:
                 quote, char = char, ""  # Start quoted string, consume quotemark
-            elif char in WHITESPACE + LPAREN + RPAREN:
-                op = buf.upper() if len(buf) in (2, 3) and buf.upper() in (AND, OR, NOT) else None
-                if op:  # Explicit AND OR NOT
-                    if op in (AND, OR) and (not node or node[1][-1] is None):
-                        raise ValueError(missing(node[0] if node else op, first=not node) + mark(i))
-                    (node, root), nodei = add_node(op, [None] if op == NOT else [node, None]), i
+            elif char in cls.SEPARATORS:
+                op = parse_op(buf)
+                if op:  # Explicit operator
+                    if op in cls.BINARIES and (not node or not finished(node)):
+                        raise ValueError(missing(oper(node) if node else op, not node) + mark(i))
+                    val = compose(op, None if op in cls.UNARIES else node)
+                    (node, root), nodei = add_node(op, val), i
                 else:
-                    if (buf or char == LPAREN) and node and node[1][-1] is not None:
-                        (node, root), nodei = add_node(AND, [node, None]), i  # Insert implicit AND
-                    if buf: node, root = add_node(VAL, buf)  # Operand
+                    if (buf or char == cls.LBRACE) and node and finished(node):
+                        op = cls.IMPLICIT  # Insert implicit operator
+                        if op: (node, root), nodei = add_node(op, compose(op, node)), i
+                        else: raise ValueError("missing operator" + mark(i))
+                    if buf: node, root = add_node(cls.VAL, buf)  # Finished operand
                 buf, stacki = "", (None if op or buf else stacki)
             # Second pass: enter/exit bracket groups, or accumulate text buffer
-            if quote or char not in WHITESPACE + LPAREN + RPAREN:
+            if quote or char not in cls.SEPARATORS:
                 buf += char  # Accumulate text while not consumable
-            elif char == LPAREN:  # Enter (..), stack current nodes
+            elif char == cls.LBRACE:  # Enter (..), stack current nodes
                 root, node, _, _ = [], [], i, stack.append((root, node, i))
-            elif char == RPAREN:  # Exit (..), unstack previous nodes, bind nested to previous
+            elif char == cls.RBRACE:  # Exit (..), unstack previous nodes, bind nested to previous
                 if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
                 if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
-                if node[0] in (AND, OR, NOT) and node[1][-1] is None:
-                    raise ValueError(missing(node[0]) + mark(nodei))
+                if not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
                 (root, node, stacki), root2, node2 = stack.pop(), root, node
-                if node: node[1][-1], node, parents[id(root2)], stacki = root2, root, node, None
+                if node: node, stacki, _ = root, None, add_child(node, root2)  # Nest into last
                 elif not root: root, node = root2, node2  # Replace empty root with nested
         if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
-        if node and node[0] != VAL and node[1][-1] is None:
-            raise ValueError(missing(node[0]) + mark(nodei))
+        if node and not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
         return root
 
 
     @classmethod
-    def evaluate(cls, tree, terminal=None, lazy=True):
+    def evaluate(cls, tree, terminal=None, eager=()):
         """
-        Returns result of evaluating logical expression tree.
+        Returns result of evaluating expression tree.
 
         @param   tree      expression tree structure as given by parse()
         @param   terminal  callback(value) to evaluate value nodes with, if not using value directly
-        @param   lazy      whether OR should short-circuit, or evaluate both operands
+        @param   eager     operators where to evaluate both operands in full, despite short-circuit
         """
-        (op, val), subeval = tree, lambda x: cls.evaluate(x, terminal, lazy)
-        if   "AND" == op: return subeval(val[0]) and subeval(val[1])
-        elif "OR"  == op:
-            first = subeval(val[0])
-            second = None if first and lazy else subeval(val[1])
-            return (first or second) if lazy else (second or first or second)
-        elif "NOT" == op: return not subeval(val[0])
+        (op, val), subeval = tree, lambda x: cls.evaluate(x, terminal, eager)
+        if op in cls.SHORTCIRCUITS:
+            first, do_eager = subeval(val[0]), (eager and op in eager)
+            second = subeval(val[1]) if do_eager or bool(first) != cls.SHORTCIRCUITS[op] else None
+            return cls.OPERATORS[op](first, second)
+        elif op in cls.OPERATORS:
+            return cls.OPERATORS[op](*map(subeval, val))
         else: return val if terminal is None else terminal(val)
 
 
-__all__ = ["BoolExpression", "Scanner"]
+    @classmethod
+    def format(cls, tree, terminal=None):
+        """
+        Returns expression tree formatted as string.
+
+        @param   tree      expression tree structure as given by parse()
+        @param   terminal  callback(value) to format value nodes with, if not using value directly
+        """
+        TPL = lambda op: ("%%s %s %%s" if op in cls.BINARIES else "%s %%s") % op
+        BRACE = "%s".join(cls.FORMAT_TEMPLATES.get(x, x) for x in [cls.LBRACE, cls.RBRACE])
+        (op, val), subformat = tree, lambda x: cls.format(x, terminal)
+        if op in cls.OPERATORS:
+            vv = ((BRACE if cls.RANKS[n[0]] > cls.RANKS[op] else "%s") % subformat(n) for n in val)
+            return (cls.FORMAT_TEMPLATES.get(op) or TPL(op)) % tuple(vv)
+        else: return val if terminal is None else terminal(val)
+
+
+__all__ = ["ExpressionTree", "Scanner"]
