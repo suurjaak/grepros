@@ -12,6 +12,7 @@ Released under the BSD License.
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
+from argparse import Namespace
 import copy
 import collections
 import re
@@ -92,6 +93,7 @@ class Scanner(object):
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
         self._patterns = {}
+        self._expressor = ExpressionTree()
         self._expression = None # Nested [op, val] like ["NOT", ["VAL", "skip this"]]
         # {(topic, typename, typehash): {message ID: message}}
         self._messages = collections.defaultdict(collections.OrderedDict)
@@ -323,7 +325,7 @@ class Scanner(object):
                 raise ValueError("Invalid regular expression\n  '%s': %s" % (v, e))
 
         if self.args.EXPRESSION and self.args.PATTERN:
-            self._expression = ExpressionTree.parse(" ".join(self.args.PATTERN), make_pattern)
+            self._expression = self._expressor.parse(" ".join(self.args.PATTERN), make_pattern)
         for v in self.args.PATTERN if not self._expression else ():
             contents.append(make_pattern(v))
             if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
@@ -473,7 +475,7 @@ class Scanner(object):
         result, is_match = copy.deepcopy(msg) if self._highlight else msg, False
         if self._expression:
             terminal, eager = lambda x: bool(populate_matches(result, [x])), [ExpressionTree.OR]
-            evalresult = ExpressionTree.evaluate(self._expression, terminal, eager)
+            evalresult = self._expressor.evaluate(self._expression, terminal, eager)
             if not evalresult if self.args.INVERT else evalresult:
                 is_match, _ = True, wrap_matches(field_matches)
         else:
@@ -487,123 +489,158 @@ class ExpressionTree(object):
     Parses and evaluates operator expressions like "a AND (b OR NOT c)".
 
     Operands can be quoted strings, `\` can be used to escape quotes within the string.
-    Operators AND OR NOT are case-insensitive.
+    Operators are case-insensitive.
     """
 
     QUOTES, ESCAPE, LBRACE, RBRACE, WHITESPACE = "'\"", "\\", "(", ")", " \n\r\t"
     SEPARATORS = WHITESPACE + LBRACE + RBRACE
     AND, OR, NOT, VAL = "AND", "OR", "NOT", "VAL"
 
-    CASED     = False
-    IMPLICIT  = AND
-    UNARIES   = (NOT, )
-    BINARIES  = (AND, OR)
+    CASED     = False      # Whether operators are case-sensitive
+    IMPLICIT  = AND        # Implicit operator inserted between operands lacking one
+    UNARIES   = (NOT, )    # Unary operators, expecting operand after operator
+    BINARIES  = (AND, OR)  # Binary operators, expecting operands before and after operator
     OPERATORS = {AND: (lambda a, b: a and b), OR: (lambda a, b: a or b), NOT: lambda a: not a}
-    RANKS     = {OR: 4, AND: 3, NOT: 2, VAL: 1}
+    RANKS     = {VAL: 1, NOT: 2, AND: 3, OR: 4}
 
     SHORTCIRCUITS    = {AND: False, OR: True}  # Values for binary operators to short-circuit on
     FORMAT_TEMPLATES = {AND: "%s and %s", OR: "%s or %s", NOT: "not %s"}
 
 
-    @classmethod
-    def parse(cls, text, terminal=None):
+    def __init__(self, **props):
+        """
+        @param   props  class property overrides, case-insensitive, e.g. `cased=False`
+        """
+        self._state = None  # Temporary state namespace dictionary during parse
+        for k, v in props.items():
+            k0, v0 = k.upper(), getattr(self, k.upper())
+            allowed = (type(v0), type(None)) if "IMPLICIT" == k0 else type(v0)
+            if not isinstance(v, allowed) and set(map(type, (v, v0))) - set([list, tuple]):
+                raise ValueError("Invalid value for %s=%s: expected %s" % (k, v, type(v0).__name__))
+            setattr(self, k0, v)
+
+
+    def parse(self, text, terminal=None):
         """
         Returns an operator expression like "a AND (b OR NOT c)" parsed into a binary tree.
 
         Binary tree like ["AND", [["VAL", "a"], ["OR", [["VAL", "b"], ["NOT", [["VAL", "c"]]]]]]].
         Raises on invalid expression.
 
-        @param   terminal  callback(text) returning node value for operands
+        @param   terminal  callback(text) returning node value for operands, if not using plain text
         """
-        ERRLABEL, OP_MAXLEN = "Invalid expression: ", max(map(len, cls.OPERATORS))
-        OPERATORS = {x if cls.CASED else x.upper(): x for x in cls.OPERATORS}
+        root, node, stack, stacki, buf, quote, escape, i = [], [], [], None, "", "", "", None
+        self._state = locals()
+        h = self._make_helpers(self._state, text, terminal)
 
-        outranks  = lambda a, b:  cls.RANKS[a] > cls.RANKS[b]      # whether operator a ranks over b
-        finished  = lambda n:     not (n[1] and n[1][-1] is None)  # whether node has all operands
-        postbrace = lambda:       stacki is not None               # whether brackets just ended
-        mark      = lambda i:     "\n%s\n%s^" % (text, " " * i)    # expression text marked at pos
-        oper      = lambda n:     n[0]                             # node type
-        parse_op  = lambda b:     OPERATORS.get(b if cls.CASED else b.upper()) \
-                                  if len(b) <= OP_MAXLEN else None
-        make_node = lambda o, v:  [o, terminal(v) if terminal and cls.VAL == o else v]
-        compose   = lambda o, *a: list(a) + [None] * (1 + (o in cls.BINARIES) - len(a))
-        add_child = lambda a, b:  (a[1].__setitem__(-1, b), parents.update({id(b): a}))
-        get_child = lambda n, i:  n[1][i] if n[0] in cls.OPERATORS else None
-
-        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
-            label = ("1st " if first else "2nd ") if op in cls.BINARIES else ""
-            return ERRLABEL + "missing %selement for %s-operator" % (label, op)
-
-        def add_node(op, val):  # Add new node to tree, return (node to use as last, root)
-            node0, newroot = node, root
-            if op in cls.BINARIES:  # Attach last child or root to new if needed
-                if not postbrace() and finished(node0) and not outranks(op, oper(node0)):
-                    val = compose(op, get_child(node0, -1), None)  # Last child into new
-                elif not outranks(oper(root), op):
-                    val = compose(op, root, None)  # Root into new
-            newnode = make_node(op, val)
-
-            if node0 and not postbrace() and (not finished(node0)  # Last is unfinished
-            or oper(node0) in cls.BINARIES and not outranks(op, oper(node0))):  # op <= last AND/OR
-                add_child(node0, newnode)  # Attach new node to last
-            elif not root or (root is node0 if postbrace() else not outranks(oper(root), op)):
-                newroot = newnode  # Replace root if new outranks, or expression so far was braced
-            latest = node0 if node0 and op == cls.VAL else newnode
-            while oper(latest) in cls.UNARIES and finished(latest) and id(latest) in parents:
-                latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
-            return latest, newroot
-
-        def add_implicit(node):  # Add implicit AND, return (node to use as last, root)
-            if not cls.IMPLICIT: raise ValueError(ERRLABEL + "missing operator" + mark(i))
-            return add_node(cls.IMPLICIT, compose(cls.IMPLICIT, node))
-
-        root, node, stack, nodei, stacki, parents = [], [], [], None, None, {}
-        buf, quote, escape = "", "", ""  # Accumulating buffer, in-quote flag, in-escape flag
-        for i, char in enumerate(text + " "):  # Ensure terminating whitespace
+        for i, char in enumerate(text + " "):  # Append space to simplify termination
             # First pass: handle quotes, or explicit/implicit word ends and operators
             if quote:
                 if escape:
-                    if   char == cls.ESCAPE: char = ""  # Double escape: retain single
-                    elif char in cls.QUOTES: buf = buf[:-1]  # Drop escape char before quote
+                    if   char == self.ESCAPE: char = ""  # Double escape: retain single
+                    elif char in self.QUOTES: buf = buf[:-1]  # Drop escape char from before quote
                 elif char == quote:  # End quote
-                    (node, root), buf, quote, char = add_node(cls.VAL, buf), "", "", ""
-                escape = char if cls.ESCAPE == char else ""
-            elif char in cls.QUOTES:
-                if buf: raise ValueError(ERRLABEL + "invalid syntax" + mark(i))
-                if node and finished(node): (node, root), nodei = add_implicit(node), i
+                    (node, root), buf, quote, char = h.add_node(self.VAL, buf, i), "", "", ""
+                escape = char if self.ESCAPE == char else ""
+            elif char in self.QUOTES:
+                h.validate(i, "quotes", buf=buf)
+                if node and h.finished(node): node, root = h.add_implicit(node, i)
                 quote, char = char, ""  # Start quoted string, consume quotemark
-            elif char in cls.SEPARATORS:
-                op = parse_op(buf)
+            elif char in self.SEPARATORS:
+                op = h.parse_op(buf)
                 if op:  # Explicit operator
-                    if op in cls.BINARIES and (not node or not finished(node)):
-                        raise ValueError(missing(oper(node) if node else op, not node) + mark(i))
-                    if op in cls.UNARIES and node and finished(node):
-                        (node, root), nodei = add_implicit(node), i
-                    val = compose(op, None if op in cls.UNARIES else node)
-                    (node, root), nodei = add_node(op, val), i
+                    h.validate(i, "op", op=op)
+                    if op in self.UNARIES and node and h.finished(node):
+                        node, root = h.add_implicit(node, i)
+                    val = h.compose(op, None if op in self.UNARIES else node)
+                    node, root = h.add_node(op, val, i)
                 else:  # Consume accumulated buffer if any, handle implicit operators
-                    if (buf or char == cls.LBRACE) and node and finished(node):
-                        (node, root), nodei = add_implicit(node), i
-                    if buf: node, root = add_node(cls.VAL, buf)  # Completed operand
+                    if (buf or char == self.LBRACE) and node and h.finished(node):
+                        node, root = h.add_implicit(node, i)
+                    if buf: node, root = h.add_node(self.VAL, buf, i)  # Completed operand
                 buf, stacki = "", (None if op or buf else stacki)
-            # Second pass: enter/exit bracket groups, or accumulate text buffer
-            if quote or char not in cls.SEPARATORS: buf += char
-            elif char == cls.LBRACE: root, node, _ = [], [], stack.append((root, node, i))
-            elif char == cls.RBRACE:  # Exit (..), unstack previous nodes, bind nested to previous
-                if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
-                if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
-                if not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
-                (root, node, stacki), root2, node2 = stack.pop(), root, node
-                if node: node, stacki, _ = root, None, add_child(node, root2)  # Nest into last
-                elif not root: root, node = root2, node2  # Replace empty root with nested
-        if quote: raise ValueError(ERRLABEL + "unfinished quote" + mark(i - 1))
-        if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
-        if node and not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
+            # Second pass: accumulate text buffer, or enter/exit bracket groups
+            if quote or char not in self.SEPARATORS: buf += char
+            elif char == self.LBRACE: node, root, _ = [], [], stack.append((node, root, i))
+            elif char == self.RBRACE:  # Exit (..), unstack previous nodes, bind nested to previous
+                h.validate(i, "rbrace")
+                (node, root, stacki), node2, root2 = stack.pop(), node, root
+                if node: node, stacki, _ = root, None, h.add_child(node, root2)  # Nest into last
+                elif not root: node, root = node2, root2  # Replace empty root with nested
+            self._state.update(locals())
+        h.validate(i)
         return root
 
 
-    @classmethod
-    def evaluate(cls, tree, terminal=None, eager=()):
+    def _make_helpers(self, state, text, terminal=None):
+        """Returns namespace object with parsing helper functions."""
+        ERRLABEL, OP_MAXLEN = "Invalid expression: ", max(map(len, self.OPERATORS))
+        OPERATORS = {x if self.CASED else x.upper(): x for x in self.OPERATORS}
+        parents = {}
+
+        outranks  = lambda a, b:  self.RANKS[a] > self.RANKS[b]    # whether operator a ranks over b
+        finished  = lambda n:     not (n[1] and n[1][-1] is None)  # whether node has all operands
+        postbrace = lambda:       state["stacki"] is not None      # whether brackets just ended
+        mark      = lambda i:     "\n%s\n%s^" % (text, " " * i)    # expression text marked at pos
+        oper      = lambda n:     n[0]                             # node type
+        parse_op  = lambda b:     OPERATORS.get(b if self.CASED else b.upper()) \
+                                  if len(b) <= OP_MAXLEN else None
+        make_node = lambda o, v:  [o, terminal(v) if terminal and self.VAL == o else v]
+        compose   = lambda o, *a: list(a) + [None] * (1 + (o in self.BINARIES) - len(a))
+        add_child = lambda a, b:  (a[1].__setitem__(-1, b), parents.update({id(b): a}))
+        get_child = lambda n, i:  n[1][i] if n[0] in self.OPERATORS else None
+
+        def missing(op, first=False):  # Return error text for missing operand in operator
+            label = ("1st " if first else "2nd ") if op in self.BINARIES else ""
+            return ERRLABEL + "missing %selement for %s-operator" % (label, op)
+
+        def add_node(op, val, i):  # Add new node to tree, return (node to use as last, root)
+            node0, root0 = _, newroot = state["node"], state["root"]
+            if op in self.BINARIES:  # Attach last child or root to new if needed
+                if not postbrace() and finished(node0) and not outranks(op, oper(node0)):
+                    val = compose(op, get_child(node0, -1), None)  # Last child into new
+                elif not outranks(oper(root0), op):
+                    val = compose(op, root0, None)  # Root into new
+            newnode = make_node(op, val)
+
+            if node0 and not postbrace() and (not finished(node0)  # Last is unfinished
+            or oper(node0) in self.BINARIES and not outranks(op, oper(node0))):  # op <= last binop
+                add_child(node0, newnode)  # Attach new node to last
+            elif not root0 or (root0 is node0 if postbrace() else not outranks(oper(root0), op)):
+                newroot = newnode  # Replace root if new outranks, or expression so far was braced
+            latest = node0 if node0 and op == self.VAL else newnode
+            while oper(latest) in self.UNARIES and finished(latest) and id(latest) in parents:
+                latest = parents[id(latest)]  # Walk up filled unary nodes until binop/root
+            state.update(node=latest, root=newroot, nodei=i)
+            return latest, newroot
+
+        def add_implicit(node, i):  # Add implicit operator, return (node to use as last, root)
+            if not self.IMPLICIT: raise ValueError(ERRLABEL + "missing operator" + mark(i))
+            return add_node(self.IMPLICIT, compose(self.IMPLICIT, node), i)
+
+        def validate(i, ctx=None, **kws):
+            if "quotes" == ctx:
+                if kws["buf"]: raise ValueError(ERRLABEL + "invalid syntax" + mark(i))
+            elif "op" == ctx:
+                op, node = kws["op"], state["node"]
+                if op in self.BINARIES and (not node or not finished(node)):
+                    raise ValueError(missing(oper(node) if node else op, first=not node) + mark(i))
+            elif "rbrace" == ctx:
+                stack, node, nodei = state["stack"], state["node"], state["nodei"]
+                if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
+                if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
+                if not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
+            else:
+                quote, stack, node, nodei = (state[k] for k in ("quote", "stack", "node", "nodei"))
+                if quote: raise ValueError(ERRLABEL + "unfinished quote" + mark(i - 1))
+                if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
+                if node and not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
+
+        return Namespace(add_child=add_child, add_implicit=add_implicit, add_node=add_node,
+                         compose=compose, finished=finished, parse_op=parse_op, validate=validate)
+
+
+    def evaluate(self, tree, terminal=None, eager=()):
         """
         Returns result of evaluating expression tree.
 
@@ -614,34 +651,33 @@ class ExpressionTree(object):
         stack = [(tree, [], [], None)] if tree else []
         while stack:  # [(node, evaled vals, parent evaled vals, parent op)]
             ((op, val), nvals, pvals, parentop), done = stack.pop(), set()
-            if nvals: done.add(pvals.append(cls.OPERATORS[op](*nvals)))  # Backtracking: fill parent
-            elif pvals and parentop in cls.SHORTCIRCUITS and not (eager and parentop in eager):
-                ctor = type(cls.SHORTCIRCUITS[parentop])  # Skip if first sibling short-circuits op
-                if ctor(pvals[0]) == cls.SHORTCIRCUITS[parentop]: done.add(pvals.append(None))
+            if nvals: done.add(pvals.append(self.OPERATORS[op](*nvals)))  # Backtracking: fill parent
+            elif pvals and parentop in self.SHORTCIRCUITS and not (eager and parentop in eager):
+                ctor = type(self.SHORTCIRCUITS[parentop])  # Skip if first sibling short-circuits op
+                if ctor(pvals[0]) == self.SHORTCIRCUITS[parentop]: done.add(pvals.append(None))
             if done: continue  # while
-            if op not in cls.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            if op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
             else: stack.extend([((op, val), nvals, pvals, parentop)] +
                                [(v, [], nvals, op) for v in val[::-1]])  # Queue in processing order
         return pvals.pop() if tree else None
 
 
-    @classmethod
-    def format(cls, tree, terminal=None):
+    def format(self, tree, terminal=None):
         """
         Returns expression tree formatted as string.
 
         @param   tree      expression tree structure as given by parse()
         @param   terminal  callback(value) to format value nodes with, if not using value directly
         """
-        BRACED = "%s".join(cls.FORMAT_TEMPLATES.get(x, x) for x in [cls.LBRACE, cls.RBRACE])
-        TPL = lambda op: ("%s {0} %s" if op in cls.BINARIES else "{0} %s").format(op)
-        WRP = lambda op, parentop: BRACED if cls.RANKS[op] > cls.RANKS[parentop] else "%s"
+        BRACED = "%s".join(self.FORMAT_TEMPLATES.get(x, x) for x in [self.LBRACE, self.RBRACE])
+        TPL = lambda op: ("%s {0} %s" if op in self.BINARIES else "{0} %s").format(op)
+        WRP = lambda op, parentop: BRACED if self.RANKS[op] > self.RANKS[parentop] else "%s"
         FMT = lambda vv, op, nodes: tuple(WRP(nop, op) % v for (nop, _), v in zip(nodes, vv))
         stack = [(tree, [], [])] if tree else [] # [(node, formatted vals, parent formatted vals)]
         while stack:  # Add to parent if all processed or terminal node, else queue for processing
             (op, val), nvals, pvals = stack.pop()
-            if nvals: pvals.append((cls.FORMAT_TEMPLATES.get(op) or TPL(op)) % FMT(nvals, op, val))
-            elif op not in cls.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            if nvals: pvals.append((self.FORMAT_TEMPLATES.get(op) or TPL(op)) % FMT(nvals, op, val))
+            elif op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
             else: stack.extend([((op, val), nvals, pvals)] + [(v, [], nvals) for v in val[::-1]])
         return pvals.pop() if tree else ""
 
