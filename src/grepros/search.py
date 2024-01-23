@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    16.01.2024
+@modified    23.01.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -525,62 +525,70 @@ class ExpressionTree(object):
         oper      = lambda n:     n[0]                             # node type
         parse_op  = lambda b:     OPERATORS.get(b if cls.CASED else b.upper()) \
                                   if len(b) <= OP_MAXLEN else None
-        makenode  = lambda o, v:  [o, terminal(v) if terminal and cls.VAL == o else v]
+        make_node = lambda o, v:  [o, terminal(v) if terminal and cls.VAL == o else v]
         compose   = lambda o, *a: list(a) + [None] * (1 + (o in cls.BINARIES) - len(a))
         add_child = lambda a, b:  (a[1].__setitem__(-1, b), parents.update({id(b): a}))
         get_child = lambda n, i:  n[1][i] if n[0] in cls.OPERATORS else None
 
-        def missing(op, first=False):  # Error text for missing operand in AND OR NOT
+        def missing(op, first=False):  # Return error text for missing operand in AND OR NOT
             label = ("1st " if first else "2nd ") if op in cls.BINARIES else ""
             return ERRLABEL + "missing %selement for %s-operator" % (label, op)
 
-        def add_node(op, val):
-            """Adds new node to tree, updates root, returns (node to use as last, root)."""
+        def add_node(op, val):  # Add new node to tree, return (node to use as last, root)
             node0, newroot = node, root
             if op in cls.BINARIES:  # Attach last child or root to new if needed
                 if not postbrace() and finished(node0) and not outranks(op, oper(node0)):
                     val = compose(op, get_child(node0, -1), None)  # Last child into new
                 elif not outranks(oper(root), op):
                     val = compose(op, root, None)  # Root into new
-            newnode = makenode(op, val)
+            newnode = make_node(op, val)
 
             if node0 and not postbrace() and (not finished(node0)  # Last is unfinished
             or oper(node0) in cls.BINARIES and not outranks(op, oper(node0))):  # op <= last AND/OR
                 add_child(node0, newnode)  # Attach new node to last
             elif not root or (root is node0 if postbrace() else not outranks(oper(root), op)):
-                newroot = newnode  # Replace root if rank not less, or expression so far was braced
+                newroot = newnode  # Replace root if new outranks, or expression so far was braced
             latest = node0 if node0 and op == cls.VAL else newnode
             while oper(latest) in cls.UNARIES and finished(latest) and id(latest) in parents:
                 latest = parents[id(latest)]  # Walk up filled NOT-nodes until AND/OR/root
             return latest, newroot
 
-        root, node, stack, buf, quote, nodei, stacki, parents = [], [], [], "", "", None, None, {}
+        def add_implicit(node):  # Add implicit AND, return (node to use as last, root)
+            if not cls.IMPLICIT: raise ValueError(ERRLABEL + "missing operator" + mark(i))
+            return add_node(cls.IMPLICIT, compose(cls.IMPLICIT, node))
+
+        root, node, stack, nodei, stacki, parents = [], [], [], None, None, {}
+        buf, quote, escape = "", "", ""  # Accumulating buffer, in-quote flag, in-escape flag
         for i, char in enumerate(text + " "):  # Ensure terminating whitespace
-            # First pass: start/end quotes, or handle explicit/implicit word ends and operators
+            # First pass: handle quotes, or explicit/implicit word ends and operators
             if quote:
-                if char == quote and not buf.endswith(cls.ESCAPE):  # End quote
+                if escape:
+                    if   char == cls.ESCAPE: char = ""  # Double escape: retain single
+                    elif char in cls.QUOTES: buf = buf[:-1]  # Drop escape char before quote
+                elif char == quote:  # End quote
                     (node, root), buf, quote, char = add_node(cls.VAL, buf), "", "", ""
+                escape = char if cls.ESCAPE == char else ""
             elif char in cls.QUOTES:
+                if buf: raise ValueError(ERRLABEL + "invalid syntax" + mark(i))
+                if node and finished(node): (node, root), nodei = add_implicit(node), i
                 quote, char = char, ""  # Start quoted string, consume quotemark
             elif char in cls.SEPARATORS:
                 op = parse_op(buf)
                 if op:  # Explicit operator
                     if op in cls.BINARIES and (not node or not finished(node)):
                         raise ValueError(missing(oper(node) if node else op, not node) + mark(i))
+                    if op in cls.UNARIES and node and finished(node):
+                        (node, root), nodei = add_implicit(node), i
                     val = compose(op, None if op in cls.UNARIES else node)
                     (node, root), nodei = add_node(op, val), i
-                else:
+                else:  # Consume accumulated buffer if any, handle implicit operators
                     if (buf or char == cls.LBRACE) and node and finished(node):
-                        op = cls.IMPLICIT  # Insert implicit operator
-                        if op: (node, root), nodei = add_node(op, compose(op, node)), i
-                        else: raise ValueError("missing operator" + mark(i))
-                    if buf: node, root = add_node(cls.VAL, buf)  # Finished operand
+                        (node, root), nodei = add_implicit(node), i
+                    if buf: node, root = add_node(cls.VAL, buf)  # Completed operand
                 buf, stacki = "", (None if op or buf else stacki)
             # Second pass: enter/exit bracket groups, or accumulate text buffer
-            if quote or char not in cls.SEPARATORS:
-                buf += char  # Accumulate text while not consumable
-            elif char == cls.LBRACE:  # Enter (..), stack current nodes
-                root, node, _, _ = [], [], i, stack.append((root, node, i))
+            if quote or char not in cls.SEPARATORS: buf += char
+            elif char == cls.LBRACE: root, node, _ = [], [], stack.append((root, node, i))
             elif char == cls.RBRACE:  # Exit (..), unstack previous nodes, bind nested to previous
                 if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
                 if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
@@ -588,6 +596,7 @@ class ExpressionTree(object):
                 (root, node, stacki), root2, node2 = stack.pop(), root, node
                 if node: node, stacki, _ = root, None, add_child(node, root2)  # Nest into last
                 elif not root: root, node = root2, node2  # Replace empty root with nested
+        if quote: raise ValueError(ERRLABEL + "unfinished quote" + mark(i - 1))
         if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
         if node and not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
         return root
