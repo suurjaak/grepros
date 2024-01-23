@@ -611,14 +611,18 @@ class ExpressionTree(object):
         @param   terminal  callback(value) to evaluate value nodes with, if not using value directly
         @param   eager     operators where to evaluate both operands in full, despite short-circuit
         """
-        (op, val), subeval = tree, lambda x: cls.evaluate(x, terminal, eager)
-        if op in cls.SHORTCIRCUITS:
-            first, do_eager = subeval(val[0]), (eager and op in eager)
-            second = subeval(val[1]) if do_eager or bool(first) != cls.SHORTCIRCUITS[op] else None
-            return cls.OPERATORS[op](first, second)
-        elif op in cls.OPERATORS:
-            return cls.OPERATORS[op](*map(subeval, val))
-        else: return val if terminal is None else terminal(val)
+        stack = [(tree, [], [], None)] if tree else []
+        while stack:  # [(node, evaled vals, parent evaled vals, parent op)]
+            ((op, val), nvals, pvals, parentop), done = stack.pop(), set()
+            if nvals: done.add(pvals.append(cls.OPERATORS[op](*nvals)))  # Backtracking: fill parent
+            elif pvals and parentop in cls.SHORTCIRCUITS and not (eager and parentop in eager):
+                ctor = type(cls.SHORTCIRCUITS[parentop])  # Skip if first sibling short-circuits op
+                if ctor(pvals[0]) == cls.SHORTCIRCUITS[parentop]: done.add(pvals.append(None))
+            if done: continue  # while
+            if op not in cls.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            else: stack.extend([((op, val), nvals, pvals, parentop)] +
+                               [(v, [], nvals, op) for v in val[::-1]])  # Queue in processing order
+        return pvals.pop() if tree else None
 
 
     @classmethod
@@ -629,13 +633,17 @@ class ExpressionTree(object):
         @param   tree      expression tree structure as given by parse()
         @param   terminal  callback(value) to format value nodes with, if not using value directly
         """
-        TPL = lambda op: ("%%s %s %%s" if op in cls.BINARIES else "%s %%s") % op
-        BRACE = "%s".join(cls.FORMAT_TEMPLATES.get(x, x) for x in [cls.LBRACE, cls.RBRACE])
-        (op, val), subformat = tree, lambda x: cls.format(x, terminal)
-        if op in cls.OPERATORS:
-            vv = ((BRACE if cls.RANKS[n[0]] > cls.RANKS[op] else "%s") % subformat(n) for n in val)
-            return (cls.FORMAT_TEMPLATES.get(op) or TPL(op)) % tuple(vv)
-        else: return val if terminal is None else terminal(val)
+        BRACED = "%s".join(cls.FORMAT_TEMPLATES.get(x, x) for x in [cls.LBRACE, cls.RBRACE])
+        TPL = lambda op: ("%s {0} %s" if op in cls.BINARIES else "{0} %s").format(op)
+        WRP = lambda op, parentop: BRACED if cls.RANKS[op] > cls.RANKS[parentop] else "%s"
+        FMT = lambda vv, op, nodes: tuple(WRP(nop, op) % v for (nop, _), v in zip(nodes, vv))
+        stack = [(tree, [], [])] if tree else [] # [(node, formatted vals, parent formatted vals)]
+        while stack:  # Add to parent if all processed or terminal node, else queue for processing
+            (op, val), nvals, pvals = stack.pop()
+            if nvals: pvals.append((cls.FORMAT_TEMPLATES.get(op) or TPL(op)) % FMT(nvals, op, val))
+            elif op not in cls.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            else: stack.extend([((op, val), nvals, pvals)] + [(v, [], nvals) for v in val[::-1]])
+        return pvals.pop() if tree else ""
 
 
 __all__ = ["ExpressionTree", "Scanner"]
