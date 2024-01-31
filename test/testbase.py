@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    22.12.2023
+@modified    31.01.2024
 ------------------------------------------------------------------------------
 """
 import contextlib
@@ -161,7 +161,7 @@ class TestBase(unittest.TestCase):
 
 
     def spin_once(self, timeout):
-        """"""
+        """Spins once if ROS2 else sleeps until timeout."""
         if self._node: rclpy.spin_once(self._node, timeout_sec=timeout)
         else: time.sleep(timeout)
 
