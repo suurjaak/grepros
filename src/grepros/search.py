@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    23.01.2024
+@modified    01.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -529,7 +529,7 @@ class ExpressionTree(object):
 
         @param   terminal  callback(text) returning node value for operands, if not using plain text
         """
-        root, node, stack, stacki, buf, quote, escape, i = [], [], [], None, "", "", "", None
+        root, node, buf, quote, escape, i = [], [], "", "", "", -1
         self._state = locals()
         h = self._make_helpers(self._state, text, terminal)
 
@@ -552,21 +552,17 @@ class ExpressionTree(object):
                     h.validate(i, "op", op=op)
                     if op in self.UNARIES and node and h.finished(node):
                         node, root = h.add_implicit(node, i)
-                    val = h.compose(op, None if op in self.UNARIES else node)
+                    val = h.make_val(op, None if op in self.UNARIES else node)
                     node, root = h.add_node(op, val, i)
                 else:  # Consume accumulated buffer if any, handle implicit operators
                     if (buf or char == self.LBRACE) and node and h.finished(node):
                         node, root = h.add_implicit(node, i)
                     if buf: node, root = h.add_node(self.VAL, buf, i)  # Completed operand
-                buf, stacki = "", (None if op or buf else stacki)
+                buf = ""
             # Second pass: accumulate text buffer, or enter/exit bracket groups
             if quote or char not in self.SEPARATORS: buf += char
-            elif char == self.LBRACE: node, root, _ = [], [], stack.append((node, root, i))
-            elif char == self.RBRACE:  # Exit (..), unstack previous nodes, bind nested to previous
-                h.validate(i, "rbrace")
-                (node, root, stacki), node2, root2 = stack.pop(), node, root
-                if node: node, stacki, _ = root, None, h.add_child(node, root2)  # Nest into last
-                elif not root: node, root = node2, root2  # Replace empty root with nested
+            elif char == self.LBRACE: _, (node, root) = h.stack_push((node, root, i)), ([], [])
+            elif char == self.RBRACE: _, (node, root) = h.validate(i, "rbrace"), h.stack_pop()
             self._state.update(locals())
         h.validate(i)
         return root
@@ -576,17 +572,17 @@ class ExpressionTree(object):
         """Returns namespace object with parsing helper functions."""
         ERRLABEL, OP_MAXLEN = "Invalid expression: ", max(map(len, self.OPERATORS))
         OPERATORS = {x if self.CASED else x.upper(): x for x in self.OPERATORS}
-        parents = {}
+        stack, parents = [], {}
 
+        finished  = lambda n:     not (isinstance(n[1], list) and n[1] and n[1][-1] is None)
         outranks  = lambda a, b:  self.RANKS[a] > self.RANKS[b]    # whether operator a ranks over b
-        finished  = lambda n:     not (n[1] and n[1][-1] is None)  # whether node has all operands
-        postbrace = lambda:       state["stacki"] is not None      # whether brackets just ended
+        postbrace = lambda:       state.get("stacki") is not None  # whether brackets just ended
         mark      = lambda i:     "\n%s\n%s^" % (text, " " * i)    # expression text marked at pos
         oper      = lambda n:     n[0]                             # node type
         parse_op  = lambda b:     OPERATORS.get(b if self.CASED else b.upper()) \
                                   if len(b) <= OP_MAXLEN else None
         make_node = lambda o, v:  [o, terminal(v) if terminal and self.VAL == o else v]
-        compose   = lambda o, *a: list(a) + [None] * (1 + (o in self.BINARIES) - len(a))
+        make_val  = lambda o, *a: list(a) + [None] * (1 + (o in self.BINARIES) - len(a))
         add_child = lambda a, b:  (a[1].__setitem__(-1, b), parents.update({id(b): a}))
         get_child = lambda n, i:  n[1][i] if n[0] in self.OPERATORS else None
 
@@ -598,9 +594,9 @@ class ExpressionTree(object):
             node0, root0 = _, newroot = state["node"], state["root"]
             if op in self.BINARIES:  # Attach last child or root to new if needed
                 if not postbrace() and finished(node0) and not outranks(op, oper(node0)):
-                    val = compose(op, get_child(node0, -1), None)  # Last child into new
+                    val = make_val(op, get_child(node0, -1), None)  # Last child into new
                 elif not outranks(oper(root0), op):
-                    val = compose(op, root0, None)  # Root into new
+                    val = make_val(op, root0, None)  # Root into new
             newnode = make_node(op, val)
 
             if node0 and not postbrace() and (not finished(node0)  # Last is unfinished
@@ -611,14 +607,21 @@ class ExpressionTree(object):
             latest = node0 if node0 and op == self.VAL else newnode
             while oper(latest) in self.UNARIES and finished(latest) and id(latest) in parents:
                 latest = parents[id(latest)]  # Walk up filled unary nodes until binop/root
-            state.update(node=latest, root=newroot, nodei=i)
+            state.update(node=latest, root=newroot, nodei=i, stacki=None)
             return latest, newroot
 
         def add_implicit(node, i):  # Add implicit operator, return (node to use as last, root)
             if not self.IMPLICIT: raise ValueError(ERRLABEL + "missing operator" + mark(i))
-            return add_node(self.IMPLICIT, compose(self.IMPLICIT, node), i)
+            return add_node(self.IMPLICIT, make_val(self.IMPLICIT, node), i)
 
-        def validate(i, ctx=None, **kws):
+        def stack_pop():  # Unstack previous and add current, return (node to use as last, root)
+            (node, root, stacki), nodex, rootx = stack.pop(), state["node"], state["root"]
+            if node: node, stacki, _ = root, None, add_child(node, rootx)  # Nest into last
+            elif not root: node, root = nodex, rootx  # Replace empty root with nested
+            state.update(node=node, root=root, stacki=stacki)
+            return node, root
+
+        def validate(i, ctx=None, **kws):  # Raise ValueError if parse state invalid
             if "quotes" == ctx:
                 if kws["buf"]: raise ValueError(ERRLABEL + "invalid syntax" + mark(i))
             elif "op" == ctx:
@@ -626,18 +629,19 @@ class ExpressionTree(object):
                 if op in self.BINARIES and (not node or not finished(node)):
                     raise ValueError(missing(oper(node) if node else op, first=not node) + mark(i))
             elif "rbrace" == ctx:
-                stack, node, nodei = state["stack"], state["node"], state["nodei"]
+                node, nodei = (state.get(k) for k in ("node", "nodei"))
                 if not stack: raise ValueError(ERRLABEL + "bracket end has no start" + mark(i))
                 if not node: raise ValueError(ERRLABEL + "empty bracket" + mark(i))
                 if not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
-            else:
-                quote, stack, node, nodei = (state[k] for k in ("quote", "stack", "node", "nodei"))
+            else:  # All parsing done, tree in final state
+                quote, node, nodei = (state.get(k) for k in ("quote", "node", "nodei"))
                 if quote: raise ValueError(ERRLABEL + "unfinished quote" + mark(i - 1))
                 if stack: raise ValueError(ERRLABEL + "unterminated bracket" + mark(stack[-1][-1]))
                 if node and not finished(node): raise ValueError(missing(oper(node)) + mark(nodei))
 
         return Namespace(add_child=add_child, add_implicit=add_implicit, add_node=add_node,
-                         compose=compose, finished=finished, parse_op=parse_op, validate=validate)
+                         make_val=make_val, finished=finished, parse_op=parse_op,
+                         stack_push=stack.append, stack_pop=stack_pop, validate=validate)
 
 
     def evaluate(self, tree, terminal=None, eager=()):
