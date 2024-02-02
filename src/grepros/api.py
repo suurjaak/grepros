@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    30.01.2024
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -757,9 +757,15 @@ def get_message_type(msg_or_cls):
     return realapi.get_message_type(msg_or_cls)
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, with numeric arrays converted to lists."""
-    return realapi.get_message_value(msg, name, typename)
+def get_message_value(msg, name, typename=None, default=Ellipsis):
+    """
+    Returns object attribute value, with numeric arrays converted to lists.
+
+    @param   name      message attribute name
+    @param   typename  value ROS type name, for identifying byte arrays
+    @param   default   value to return if attribute does not exist; raises exception otherwise
+    """
+    return realapi.get_message_value(msg, name, typename, default)
 
 
 def get_rostime(fallback=False):

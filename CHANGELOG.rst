@@ -2,12 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-01-30)
+1.2.0 (2024-02-02)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
 * print error stacktraces when --verbose
 * make api.dict_to_message() support nested ROS messages in dictionary
+* make api.get_message_value() accept a default
 
 1.1.0 (2023-12-30)
 -------------------

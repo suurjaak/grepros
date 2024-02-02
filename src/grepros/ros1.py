@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    27.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -641,10 +641,17 @@ def get_message_type(msg_or_cls):
     return msg_or_cls._type
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, with numeric arrays converted to lists."""
+def get_message_value(msg, name, typename=None, default=Ellipsis):
+    """
+    Returns object attribute value, with numeric arrays converted to lists.
+
+    @param   name      message attribute name
+    @param   typename  value ROS type name, for identifying byte arrays
+    @param   default   value to return if attribute does not exist; raises exception otherwise
+    """
+    if default is not Ellipsis and not hasattr(msg, name): return default
     v = getattr(msg, name)
-    listifiable = typename.startswith(("uint8[", "char[")) and isinstance(v, bytes)
+    listifiable = typename and typename.startswith(("uint8[", "char[")) and isinstance(v, bytes)
     if six.PY2 and listifiable:  # Ignore already highlighted values from Scanner
         listifiable = v[:1] != "[" or v[-1:] != "]" or common.MatchMarkers.START not in v
         return list(bytearray(v)) if listifiable else v

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    27.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -818,8 +818,15 @@ def get_message_type(msg_or_cls):
     return canonical("%s/%s" % (cls.__module__.split(".")[0], cls.__name__))
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, with numeric arrays converted to lists."""
+def get_message_value(msg, name, typename=None, default=Ellipsis):
+    """
+    Returns object attribute value, with numeric arrays converted to lists.
+
+    @param   name      message attribute name
+    @param   typename  value ROS type name, for identifying byte arrays
+    @param   default   value to return if attribute does not exist; raises exception otherwise
+    """
+    if default is not Ellipsis and not hasattr(msg, name): return default
     v, scalartype = getattr(msg, name), scalar(typename)
     if isinstance(v, (bytes, array.array)): v = list(v)
     elif numpy and isinstance(v, (numpy.generic, numpy.ndarray)):

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    29.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -100,8 +100,10 @@ class TestAPI(testbase.TestBase):
             msg2 = std_msgs.msg.UInt8MultiArray(data=b"123")
             timename = next(x for x in api.ROS_TIME_TYPES if "time" in x.lower())
             self.assertEqual(func(msg1, "frame_id", "string"), msg1.frame_id,   ERR(func))
-            self.assertEqual(func(msg1, "stamp", timename), msg1.stamp, ERR(func))
-            self.assertEqual(func(msg2, "data", "uint8[]"), list(msg2.data), ERR(func))
+            self.assertEqual(func(msg1, "frame_id"),           msg1.frame_id,   ERR(func))
+            self.assertEqual(func(msg1, "stamp", timename),    msg1.stamp,      ERR(func))
+            self.assertEqual(func(msg2, "data", "uint8[]"),    list(msg2.data), ERR(func))
+            self.assertEqual(func(msg1, "nope", default=123),  123,             ERR(func))
             with self.assertRaises(Exception, msg=ERR(func)):
                 func(msg1, "nosuchfield", "whatever")
 
