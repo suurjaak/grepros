@@ -835,7 +835,7 @@ def iter_message_fields(msg, messages_only=False, flat=False, scalars=(), includ
     Yields ((nested, path), value, typename) from ROS message.
 
     @param   messages_only  whether to yield only values that are ROS messages themselves
-                            or lists of ROS messages, else will yield scalar and list values
+                            or lists of ROS messages, else will yield scalar and scalar list values
     @param   flat           recurse into lists of nested messages, ignored if `messages_only`
     @param   scalars        sequence of ROS types to consider as scalars, like ("time", duration")
     @param   include        [((nested, path), re.Pattern())] to require in field path, if any
