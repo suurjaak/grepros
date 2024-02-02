@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -257,10 +257,11 @@ class TextSinkMixin(object):
             if api.scalar(typename) in api.ROS_STRING_TYPES:
                 yaml_str = yaml.safe_dump(truncate(val)).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
-            vals = [x for v in truncate(val) for x in [self.message_to_yaml(v, top, typename)] if x]
+            vals = [x for i, v in enumerate(truncate(val))
+                    for x in [self.message_to_yaml(v, top + (i, ), typename)] if x]
             if api.scalar(typename) in api.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
-            return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
+            return ("\n" + "\n".join(indent + "-   " + v for v in vals)) if vals else ""
         if api.is_ros_message(val):
             MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
             vals, fieldmap = [], api.get_message_fields(val)

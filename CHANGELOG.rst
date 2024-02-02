@@ -9,6 +9,7 @@ Changelog for package grepros
 * print error stacktraces when --verbose
 * make api.dict_to_message() support nested ROS messages in dictionary
 * make api.get_message_value() accept a default
+* fix emitting invalid YAML for nested message arrays
 
 1.1.0 (2023-12-30)
 -------------------
