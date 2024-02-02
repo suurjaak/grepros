@@ -336,7 +336,7 @@ class Scanner(object):
 
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
 
     def _register_message(self, topickey, msgid, msg, stamp):
@@ -397,11 +397,10 @@ class Scanner(object):
             Returns set of pattern indexes that found a match.
             """
             indexes, spans, topstr = set(), [], ".".join(map(str, top))
-            topstrn = ".".join(x for x in top if not isinstance(x, int))  # Without array indexes
             v2 = str(list(v) if isinstance(v, LISTIFIABLES) else v)
             if v and isinstance(v, (list, tuple)): v2 = v2[1:-1]  # Omit collection braces leave []
             for i, (path, p) in enumerate(patterns):
-                if path and not path.search(topstr) and not path.search(topstrn): continue  # for
+                if path and not path.search(topstr): continue  # for
                 matches = [next(p.finditer(v2), None)] if PLAIN_INVERT else list(p.finditer(v2))
                 # Join consecutive zero-length matches, extend remaining zero-lengths to end of value
                 matchspans = common.merge_spans([x.span() for x in matches if x], join_blanks=True)

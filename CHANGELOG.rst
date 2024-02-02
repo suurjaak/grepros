@@ -6,6 +6,7 @@ Changelog for package grepros
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
+* support explicit integer indexes in filtering message fields
 * print error stacktraces when --verbose
 * make api.dict_to_message() support nested ROS messages in dictionary
 * make api.get_message_value() accept a default

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    28.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -378,7 +378,7 @@ class ParquetSink(Sink):
             self.COMMON_TYPES[rostype] = arrowtype
 
         for key, vals in [("print", self.args.EMIT_FIELD), ("noprint", self.args.NOEMIT_FIELD)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):

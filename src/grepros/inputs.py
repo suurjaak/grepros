@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -189,7 +189,7 @@ class Source(object):
         """Parses pattern arguments into re.Patterns."""
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
 
 class ConditionMixin(object):

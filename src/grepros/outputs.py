@@ -292,7 +292,7 @@ class TextSinkMixin(object):
         """Initializes output settings."""
         prints, noprints = args.EMIT_FIELD, args.NOEMIT_FIELD
         for key, vals in [("print", prints), ("noprint", noprints)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
         if args.COLOR not in ("never", False):
             self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT if self.args.HIGHLIGHT

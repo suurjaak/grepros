@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2023
+@modified    02.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -950,6 +950,24 @@ def parse_number(value, suffixes=None):
     return int(float(value) * (suffixes[suffix] if suffix else 1))
 
 
+def path_to_regex(text, sep=".", wildcard="*", end=False, intify=False):
+    """
+    Returns re.Pattern for matching path strings with optional integer indexes.
+
+    @param   text      separated wildcarded path pattern like "foo*.bar"
+    @param   sep       path parts separator, optional
+    @param   wildcard  simple wildcard to convert to Python wildcard pattern, optional
+    @param   end       whether pattern should match until end (terminates with $)
+    @param   intify    whether path should match optional integer index between parts,
+                       like "foo.bar" as "foo(\.\d+)?\.bar"
+    """
+    pattern, split_wild = "", lambda x: x.split(wildcard) if wildcard else [x]
+    for i, part in enumerate(text.split(sep) if sep else [text]):
+        pattern += r"(\.\d+)?" if i and intify else ""
+        pattern += (r"\." if i else "") + ".*".join(map(re.escape, split_wild(part)))
+    return re.compile(pattern + ("$" if end else ""), re.I)
+
+
 def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
     """
     Returns the word as 'count words', or '1 word' if count is 1,
@@ -1093,5 +1111,6 @@ __all__ = [
     "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
     "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
-    "parse_datetime", "parse_number", "plural", "unique_path", "verify_io", "wildcard_to_regex",
+    "parse_datetime", "parse_number", "path_to_regex", "plural", "unique_path", "verify_io",
+    "wildcard_to_regex",
 ]
