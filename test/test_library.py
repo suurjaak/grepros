@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    28.12.2023
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -47,13 +47,13 @@ class TestLibrary(testbase.TestBase):
 
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(TestLibrary, self).__init__(*args, **kwargs)
         self._tempnames = []  # Names of temporary files for write output
 
 
     def setUp(self):
         """Collects and verifies bags in data directory."""
-        super().setUp()
+        super(TestLibrary, self).setUp()
         grepros.init()
         self.verify_bags()
 
@@ -63,7 +63,7 @@ class TestLibrary(testbase.TestBase):
         while self._tempnames:
             try: os.unlink(self._tempnames.pop())
             except Exception: pass
-        super().tearDown()
+        super(TestLibrary, self).tearDown()
 
 
     def test_bag_rw_grep(self):

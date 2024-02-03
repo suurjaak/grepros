@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2021
-@modified    25.12.2021
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import logging
@@ -33,7 +33,7 @@ class TestBagInputConsoleOutput(testbase.TestBase):
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
-        super().setUp()
+        super(TestBagInputConsoleOutput, self).setUp()
         self._cmd = list(self.CMD_BASE)
 
     def test_grepros(self):
@@ -44,7 +44,7 @@ class TestBagInputConsoleOutput(testbase.TestBase):
 
         for bag in self._bags:
             self.assertIn(os.path.basename(bag), fulltext, "Expected bag not in output.")
-        super().verify_topics(fulltext, fulltext)
+        self.verify_topics(fulltext, fulltext)
 
 
 if "__main__" == __name__:

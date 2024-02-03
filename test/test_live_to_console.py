@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    24.12.2021
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import logging
@@ -35,17 +35,17 @@ class TestLiveInputConsoleOutput(testbase.TestBase):
     OUTPUT_LABEL = "console"
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(TestLiveInputConsoleOutput, self).__init__(*args, **kwargs)
         self.init_node()
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
-        super().setUp()
+        super(TestLiveInputConsoleOutput, self).setUp()
         self._cmd = self.CMD_BASE + ["--live"]
 
     def tearDown(self):
         """Terminates subprocess and shuts down ROS2 node, if any."""
-        super().tearDown()
+        super(TestLiveInputConsoleOutput, self).tearDown()
         self.shutdown_node()
 
     def test_grepros(self):

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    24.12.2021
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import logging
@@ -32,13 +32,13 @@ class TestBagInputLiveOutput(testbase.TestBase):
     OUTPUT_LABEL = "live topics"
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(TestBagInputLiveOutput, self).__init__(*args, **kwargs)
         self._msgs = {}  # {topic: [msg, ]}
         self.init_node()
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
-        super().setUp()
+        super(TestBagInputLiveOutput, self).setUp()
         self._cmd = self.CMD_BASE + ["--publish", "--no-console-output"]
 
     def test_grepros(self):

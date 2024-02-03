@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    31.01.2024
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import contextlib
@@ -206,7 +206,7 @@ class Ros1LogHandler(logging.Handler):
     """Logging handler that forwards logging messages to rospy.logwarn."""
 
     def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(Ros1LogHandler, self).__init__(*args, **kwargs)
         self.__name = name
 
     def emit(self, record):
