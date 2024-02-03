@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    01.02.2024
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -104,7 +104,7 @@ class Scanner(object):
         # {(topic, typename, typehash): {message ID: True if matched else False if emitted else None}}
         self._statuses = collections.defaultdict(collections.OrderedDict)
         # Patterns to check in message plaintext and skip full matching if not found
-        self._brute_prechecks = []
+        self._brute_prechecks = []     # [re.Pattern to match against message fulltext for early skip]
         self._idcounter       = 0      # Counter for unique message IDs
         self._highlight       = None   # Highlight matched values in message fields
         self._passthrough     = False  # Emit messages without pattern-matching and highlighting
@@ -329,6 +329,7 @@ class Scanner(object):
         for v in self.args.PATTERN if not self._expression else ():
             contents.append(make_pattern(v))
             if BRUTE and (self.args.FIXED_STRING or not any(x in v for x in NOBRUTE_SIGILS)):
+                if self.args.FIXED_STRING: v = re.escape(v)
                 self._brute_prechecks.append(re.compile(v, re.I | re.M))
         if not self.args.PATTERN:  # Add match-all pattern
             contents.append(self.ANY_MATCHES[0])
