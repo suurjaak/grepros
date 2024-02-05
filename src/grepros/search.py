@@ -15,6 +15,7 @@ Released under the BSD License.
 from argparse import Namespace
 import copy
 import collections
+import functools
 import re
 
 import six
@@ -363,6 +364,12 @@ class Scanner(object):
                 (common.MatchMarkers.START, common.MatchMarkers.END)
         wraps = wraps if isinstance(wraps, (list, tuple)) else [] if wraps is None else [wraps]
         wraps = ((wraps or [""]) * 2)[:2]
+        if wraps:  # Track pattern contribution to wrapping
+            ops = {ExpressionTree.AND: BooleanResult.and_, ExpressionTree.NOT: BooleanResult.not_,
+                   ExpressionTree.OR: functools.partial(BooleanResult.or_, eager=True)}
+            self._expressor.configure(operators=ops, void=BooleanResult(None))
+        else: self._expressor.configure(operators=ExpressionTree.OPERATORS,
+                                        void=ExpressionTree.VOID)  # Ensure defaults
         self._settings.update(highlight=highlight, passthrough=passthrough,
                               pure_anymatch=pure_anymatch, wraps=wraps)
 
@@ -403,7 +410,7 @@ class Scanner(object):
         def process_value(v, parent, top, patterns):
             """
             Populates `field_matches` for patterns matching given string value.
-            Returns set of pattern indexes that found a match.
+            Populates `field_values`. Returns set of pattern indexes that found a match.
             """
             indexes, spans, topstr = set(), [], ".".join(map(str, top))
             v2 = str(list(v) if isinstance(v, LISTIFIABLES) else v)
@@ -414,15 +421,18 @@ class Scanner(object):
                 # Join consecutive zero-length matches, extend remaining zero-lengths to end of value
                 matchspans = common.merge_spans([x.span() for x in matches if x], join_blanks=True)
                 matchspans = [(a, b if a != b else len(v2)) for a, b in matchspans]
-                if matchspans: indexes.add(i), spans.extend(matchspans)
+                if matchspans:
+                    indexes.add(i), spans.extend(matchspans)
+                    pattern_spans.setdefault(id(patterns[i]), {})[top] = matchspans
+            field_values.setdefault(top, (parent, v, v2))
             if PLAIN_INVERT: spans = [(0, len(v2))] if v2 and not spans else []
-            if spans: field_matches.setdefault(top, (parent, v, v2, []))[-1].extend(spans)
+            if spans: field_matches.setdefault(top, []).extend(spans)
             return indexes
 
         def populate_matches(obj, patterns, top=()):
             """
             Recursively populates `field_matches` for message fields matching patterns.
-            Returns set of pattern indexes that found a match.
+            Populates `field_values`. Returns set of pattern indexes that found a match.
             """
             indexes = set()
             selects, noselects = self._patterns["select"], self._patterns["noselect"]
@@ -441,9 +451,10 @@ class Scanner(object):
                 indexes |= process_value(v, obj, top, patterns)
             return indexes
 
-        def wrap_matches(matches):
+        def wrap_matches(values, matches):
             """Replaces result-message field values with matched parts wrapped in marker tags."""
-            for path, (parent, v1, v2, spans) in matches.items() if any(WRAPS) else ():
+            for path, spans in matches.items() if any(WRAPS) else ():
+                parent, v1, v2 = values[path]
                 is_collection = isinstance(v1, (list, tuple))
                 for a, b in reversed(common.merge_spans(spans)):  # Backwards for stable indexes
                     v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
@@ -457,7 +468,7 @@ class Scanner(object):
             is_match = not indexes if self.args.INVERT else len(indexes) == len(patterns)
             if not indexes and self._settings["pure_anymatch"] and not api.get_message_fields(obj):
                 is_match = True  # Ensure any-match for messages with no fields
-            if is_match and WRAPS: wrap_matches(field_matches)
+            if is_match and WRAPS: wrap_matches(field_values, field_matches)
             return is_match
 
 
@@ -471,14 +482,23 @@ class Scanner(object):
         WRAPS         = self._settings["wraps"]
         LISTIFIABLES  = (bytes, tuple) if six.PY3 else (tuple, )
         PLAIN_INVERT  = self.args.INVERT and not self._expression
-        field_matches = {}  # {field path: (parent, original value, stringified value, [(span), ])}
+        field_values  = {}  # {field path: (parent, original value, stringified value)}
+        field_matches = {}  # {field path: [(span), ]}
+        pattern_spans = {}  # {id(pattern tuple): {field path: (span)}}
 
         result, is_match = copy.deepcopy(msg) if WRAPS else msg, False
         if self._expression:
-            terminal, eager = lambda x: bool(populate_matches(result, [x])), [ExpressionTree.OR]
+            evaler = lambda x: bool(populate_matches(result, [x]))
+            terminal = evaler if not WRAPS else lambda x: BooleanResult(x, evaler)
+            eager = [ExpressionTree.OR] if WRAPS else ()
             evalresult = self._expressor.evaluate(self._expression, terminal, eager)
-            if not evalresult if self.args.INVERT else evalresult:
-                is_match, _ = True, wrap_matches(field_matches)
+            is_match = not evalresult if self.args.INVERT else evalresult
+            if is_match and WRAPS:
+                actives = [pattern_spans[id(v)] for v in evalresult]
+                matches = {k: sum((v.get(k, []) for v in actives), [])
+                           for k in set(sum((list(v) for v in actives), []))} or \
+                          {k: [(0, len(v))] for k, (_, _, v) in field_values.items()}  # Wrap all
+                wrap_matches(field_values, matches)
         else:
             is_match = process_message(result, self._patterns["content"])
         return result if is_match else None
@@ -697,4 +717,47 @@ class ExpressionTree(object):
                          stack_push=stack.append, stack_pop=stack_pop, validate=validate)
 
 
-__all__ = ["ExpressionTree", "Scanner"]
+class BooleanResult(object):
+    """Accumulative result of boolean expression evaluation, tracking value contribution."""
+
+    def __init__(self, value=Ellipsis, terminal=None, **__props):
+        self._result  = Ellipsis  # Final accumulated result of expression
+        self._values  = []  # All accumulated operands
+        self._actives = []  # For each operand, True/False/None: active/invertedly active/inactive
+        for k, v in __props.items(): setattr(self, "_" + k, v)
+        if value is not Ellipsis: self.set(value, terminal)
+
+    def set(self, value, terminal=None):
+        """Sets value to instance, using terminal callback for evaluation if given."""
+        self._result = bool(terminal(value) if terminal else value)
+        self._values, self._actives = [value], [True if self._result else None]
+
+    def __iter__(self):
+        """Yields active values: contributing to true result positively."""
+        for v in (v for v, a in zip(self._values, self._actives) if a): yield v
+
+    def __bool__(self):      return self._result  # Py3
+    def __nonzero__(self):   return self._result  # Py2´
+    def __eq__(self, other): return (bool(self) if isinstance(other, bool) else self) is other
+        
+
+    @classmethod
+    def and_(cls, a, b):
+        """Returns new BooleanResult as a and b."""
+        actives = [on if y else None for x, y in ((a, b), (b, a)) for on in x._actives]
+        return cls(result=bool(a and b), values=a._values + b._values, actives=actives)
+
+    @classmethod
+    def or_(cls, a, b, eager=False):
+        """Returns new BooleanResult as a or b."""
+        actives = a._actives + [x if eager or not a else None for x in b._actives]
+        return cls(result=bool(a or b), values=a._values + b._values, actives=actives)
+
+    @classmethod
+    def not_(cls, a):
+        """Returns new BooleanResult as not a."""
+        actives = [None if x is None else not x for x in a._actives]
+        return cls(result=not a, values=a._values, actives=actives)
+
+
+__all__ = ["BooleanResult", "ExpressionTree", "Scanner"]

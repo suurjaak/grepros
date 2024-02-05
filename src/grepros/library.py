@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    16.01.2024
+@modified    05.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -58,7 +58,7 @@ from . plugins.sql           import SqlSink
 from . api  import Bag
 from . inputs  import AppSource, BagSource, Source, TopicSource
 from . outputs import AppSink, BagSink, ConsoleSink, MultiSink, Sink, TopicSink
-from . search  import ExpressionTree, Scanner
+from . search  import BooleanResult, ExpressionTree, Scanner
 from . import api
 from . import common
 from . import main
@@ -368,8 +368,8 @@ def init(args=None, **kwargs):
 
 
 __all__ = [
-    "AppSink", "AppSource", "Bag", "BagSink", "BagSource", "ConsoleSink", "CsvSink",
-    "ExpressionTree", "HtmlSink", "McapBag", "McapSink", "MultiSink", "ParquetSink", "PostgresSink",
-    "Scanner", "Sink", "Source", "SqliteSink", "SqlSink", "TopicSink", "TopicSource",
-    "grep", "init", "sink", "source",
+    "AppSink", "AppSource", "Bag", "BagSink", "BagSource", "BooleanResult", "ConsoleSink",
+    "CsvSink", "ExpressionTree", "HtmlSink", "McapBag", "McapSink", "MultiSink", "ParquetSink",
+    "PostgresSink", "Scanner", "Sink", "Source", "SqliteSink", "SqlSink", "TopicSink",
+    "TopicSource", "grep", "init", "sink", "source",
 ]
