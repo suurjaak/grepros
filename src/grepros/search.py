@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    03.02.2024
+@modified    05.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -106,8 +106,12 @@ class Scanner(object):
         # Patterns to check in message plaintext and skip full matching if not found
         self._brute_prechecks = []     # [re.Pattern to match against message fulltext for early skip]
         self._idcounter       = 0      # Counter for unique message IDs
-        self._highlight       = None   # Highlight matched values in message fields
-        self._passthrough     = False  # Emit messages without pattern-matching and highlighting
+        self._settings = {             # Various cached settings
+            "highlight":       None,   # Highlight matched values in message fields
+            "passthrough":     False,  # Emit messages without pattern-matching and highlighting
+            "pure_anymatch":   False,  # Simple match for any content
+            "wraps":           [],     # Match wrapper start-end strings
+        }
 
         ## Source instance
         self.source = None
@@ -150,9 +154,8 @@ class Scanner(object):
         @return             original or highlighted message on match else `None`
         """
         result = None
-        if not isinstance(self.source, inputs.AppSource):
-            self._prepare(inputs.AppSource(self.args), highlight=highlight)
-        if self._highlight != bool(highlight): self._configure_flags(highlight=highlight)
+        if isinstance(self.source, inputs.AppSource): self._configure_settings(highlight=highlight)
+        else: self._prepare(inputs.AppSource(self.args), highlight=highlight)
 
         self.source.push(topic, msg, stamp)
         item = self.source.read_queue()
@@ -290,7 +293,7 @@ class Scanner(object):
         self.source, self.sink = source, sink
         source.bind(sink), sink and sink.bind(source)
         source.preprocess = False
-        self._configure_flags(highlight=highlight)
+        self._configure_settings(highlight=highlight)
 
 
     def _prune_data(self, topickey):
@@ -348,15 +351,20 @@ class Scanner(object):
         self._statuses[topickey][msgid] = None
 
 
-    def _configure_flags(self, highlight=None):
-        """Sets highlight and passthrough flags from current settings."""
-        self._highlight = bool(highlight if highlight is not None else
-                               False if self.sink and not self.sink.is_highlighting() else
-                               self.args.HIGHLIGHT)
-        self._passthrough = not self._highlight and not self._expression \
-                            and not self._patterns["select"] \
-                            and not self._patterns["noselect"] and not self.args.INVERT \
-                            and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
+    def _configure_settings(self, highlight=None):
+        """Caches settings for message matching."""
+        highlight = bool(highlight if highlight is not None else self.args.HIGHLIGHT
+                         if not self.sink or self.sink.is_highlighting() else False)
+        pure_anymatch = not self.args.INVERT and not self._patterns["select"] \
+                        and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
+        passthrough = pure_anymatch and not highlight and not self._expression \
+                      and not self._patterns["noselect"]
+        wraps = [] if not highlight else self.args.MATCH_WRAPPER if not self.sink else \
+                (common.MatchMarkers.START, common.MatchMarkers.END)
+        wraps = wraps if isinstance(wraps, (list, tuple)) else [] if wraps is None else [wraps]
+        wraps = ((wraps or [""]) * 2)[:2]
+        self._settings.update(highlight=highlight, passthrough=passthrough,
+                              pure_anymatch=pure_anymatch, wraps=wraps)
 
 
     def _is_max_done(self):
@@ -447,32 +455,25 @@ class Scanner(object):
             """Returns whether message matches patterns, wraps matches in marker tags if so."""
             indexes = populate_matches(obj, patterns)
             is_match = not indexes if self.args.INVERT else len(indexes) == len(patterns)
-            if is_match:
-                wrap_matches(field_matches)
-            if not self.args.INVERT and not indexes and not self._patterns["select"] \
-            and set(self._patterns["content"]) <= set(self.ANY_MATCHES) \
-            and not api.get_message_fields(obj):  # Ensure any-match for messages with no fields
-                is_match = True
+            if not indexes and self._settings["pure_anymatch"] and not api.get_message_fields(obj):
+                is_match = True  # Ensure any-match for messages with no fields
+            if is_match and WRAPS: wrap_matches(field_matches)
             return is_match
 
 
-        if self._passthrough: return msg
+        if self._settings["passthrough"]: return msg
 
         if self._brute_prechecks:
             text  = "\n".join("%r" % (v, ) for _, v, _ in api.iter_message_fields(msg, flat=True))
             if not all(any(p.finditer(text)) for p in self._brute_prechecks):
                 return None  # Skip detailed matching if patterns not present at all
 
-        WRAPS = [] if not self._highlight else self.args.MATCH_WRAPPER if not self.sink else \
-                (common.MatchMarkers.START, common.MatchMarkers.END)
-        WRAPS = WRAPS if isinstance(WRAPS, (list, tuple)) else [] if WRAPS is None else [WRAPS]
-        WRAPS = ((WRAPS or [""]) * 2)[:2]
-
-        LISTIFIABLES = (bytes, tuple) if six.PY3 else (tuple, )
-        PLAIN_INVERT = self.args.INVERT and not self._expression
+        WRAPS         = self._settings["wraps"]
+        LISTIFIABLES  = (bytes, tuple) if six.PY3 else (tuple, )
+        PLAIN_INVERT  = self.args.INVERT and not self._expression
         field_matches = {}  # {field path: (parent, original value, stringified value, [(span), ])}
 
-        result, is_match = copy.deepcopy(msg) if self._highlight else msg, False
+        result, is_match = copy.deepcopy(msg) if WRAPS else msg, False
         if self._expression:
             terminal, eager = lambda x: bool(populate_matches(result, [x])), [ExpressionTree.OR]
             evalresult = self._expressor.evaluate(self._expression, terminal, eager)
@@ -480,7 +481,7 @@ class Scanner(object):
                 is_match, _ = True, wrap_matches(field_matches)
         else:
             is_match = process_message(result, self._patterns["content"])
-        return (result if self._highlight else msg) if is_match else None
+        return result if is_match else None
 
 
 
@@ -505,6 +506,7 @@ class ExpressionTree(object):
 
     SHORTCIRCUITS    = {AND: False, OR: True}  # Values for binary operators to short-circuit on
     FORMAT_TEMPLATES = {AND: "%s and %s", OR: "%s or %s", NOT: "not %s"}
+    VOID = None  # Placeholder for operands skipped as short-circuited
 
 
     def __init__(self, **props):
@@ -512,12 +514,63 @@ class ExpressionTree(object):
         @param   props  class property overrides, case-insensitive, e.g. `cased=False`
         """
         self._state = None  # Temporary state namespace dictionary during parse
+        self.configure(**props)
+
+
+    def configure(self, **props):
+        """
+        Overrides instance configuration.
+
+        @param   props  class property overrides, case-insensitive, e.g. `cased=False`
+        """
         for k, v in props.items():
-            k0, v0 = k.upper(), getattr(self, k.upper())
-            allowed = (type(v0), type(None)) if "IMPLICIT" == k0 else type(v0)
-            if not isinstance(v, allowed) and set(map(type, (v, v0))) - set([list, tuple]):
-                raise ValueError("Invalid value for %s=%s: expected %s" % (k, v, type(v0).__name__))
-            setattr(self, k0, v)
+            K, V = k.upper(), getattr(self, k.upper())
+            accept = (type(V), type(None)) if "IMPLICIT" == K else () if "VOID" == K else type(V)
+            if accept and not isinstance(v, accept) and set(map(type, (v, V))) - set([list, tuple]):
+                raise ValueError("Invalid value for %s=%s: expected %s" % (k, v, type(V).__name__))
+            setattr(self, K, v)
+
+
+    def evaluate(self, tree, terminal=None, eager=()):
+        """
+        Returns result of evaluating expression tree.
+
+        @param   tree      expression tree structure as given by parse()
+        @param   terminal  callback(value) to evaluate value nodes with, if not using value directly
+        @param   eager     operators where to evaluate both operands in full, despite short-circuit
+        """
+        stack = [(tree, [], [], None)] if tree else []
+        while stack:  # [(node, evaled vals, parent evaled vals, parent op)]
+            ((op, val), nvals, pvals, parentop), done = stack.pop(), set()
+            if nvals: done.add(pvals.append(self.OPERATORS[op](*nvals)))  # Backtracking: fill parent
+            elif pvals and parentop in self.SHORTCIRCUITS and not (eager and parentop in eager):
+                ctor = type(self.SHORTCIRCUITS[parentop])  # Skip if first sibling short-circuits op
+                if ctor(pvals[0]) == self.SHORTCIRCUITS[parentop]: done.add(pvals.append(self.VOID))
+            if done: continue  # while
+            if op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            else: stack.extend([((op, val), nvals, pvals, parentop)] +
+                               [(v, [], nvals, op) for v in val[::-1]])  # Queue in processing order
+        return pvals.pop() if tree else None
+
+
+    def format(self, tree, terminal=None):
+        """
+        Returns expression tree formatted as string.
+
+        @param   tree      expression tree structure as given by parse()
+        @param   terminal  callback(value) to format value nodes with, if not using value directly
+        """
+        BRACED = "%s".join(self.FORMAT_TEMPLATES.get(x, x) for x in [self.LBRACE, self.RBRACE])
+        TPL = lambda op: ("%s {0} %s" if op in self.BINARIES else "{0} %s").format(op)
+        WRP = lambda op, parentop: BRACED if self.RANKS[op] > self.RANKS[parentop] else "%s"
+        FMT = lambda vv, op, nodes: tuple(WRP(nop, op) % v for (nop, _), v in zip(nodes, vv))
+        stack = [(tree, [], [])] if tree else [] # [(node, formatted vals, parent formatted vals)]
+        while stack:  # Add to parent if all processed or terminal node, else queue for processing
+            (op, val), nvals, pvals = stack.pop()
+            if nvals: pvals.append((self.FORMAT_TEMPLATES.get(op) or TPL(op)) % FMT(nvals, op, val))
+            elif op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
+            else: stack.extend([((op, val), nvals, pvals)] + [(v, [], nvals) for v in val[::-1]])
+        return pvals.pop() if tree else ""
 
 
     def parse(self, text, terminal=None):
@@ -642,48 +695,6 @@ class ExpressionTree(object):
         return Namespace(add_child=add_child, add_implicit=add_implicit, add_node=add_node,
                          make_val=make_val, finished=finished, parse_op=parse_op,
                          stack_push=stack.append, stack_pop=stack_pop, validate=validate)
-
-
-    def evaluate(self, tree, terminal=None, eager=()):
-        """
-        Returns result of evaluating expression tree.
-
-        @param   tree      expression tree structure as given by parse()
-        @param   terminal  callback(value) to evaluate value nodes with, if not using value directly
-        @param   eager     operators where to evaluate both operands in full, despite short-circuit
-        """
-        stack = [(tree, [], [], None)] if tree else []
-        while stack:  # [(node, evaled vals, parent evaled vals, parent op)]
-            ((op, val), nvals, pvals, parentop), done = stack.pop(), set()
-            if nvals: done.add(pvals.append(self.OPERATORS[op](*nvals)))  # Backtracking: fill parent
-            elif pvals and parentop in self.SHORTCIRCUITS and not (eager and parentop in eager):
-                ctor = type(self.SHORTCIRCUITS[parentop])  # Skip if first sibling short-circuits op
-                if ctor(pvals[0]) == self.SHORTCIRCUITS[parentop]: done.add(pvals.append(None))
-            if done: continue  # while
-            if op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
-            else: stack.extend([((op, val), nvals, pvals, parentop)] +
-                               [(v, [], nvals, op) for v in val[::-1]])  # Queue in processing order
-        return pvals.pop() if tree else None
-
-
-    def format(self, tree, terminal=None):
-        """
-        Returns expression tree formatted as string.
-
-        @param   tree      expression tree structure as given by parse()
-        @param   terminal  callback(value) to format value nodes with, if not using value directly
-        """
-        BRACED = "%s".join(self.FORMAT_TEMPLATES.get(x, x) for x in [self.LBRACE, self.RBRACE])
-        TPL = lambda op: ("%s {0} %s" if op in self.BINARIES else "{0} %s").format(op)
-        WRP = lambda op, parentop: BRACED if self.RANKS[op] > self.RANKS[parentop] else "%s"
-        FMT = lambda vv, op, nodes: tuple(WRP(nop, op) % v for (nop, _), v in zip(nodes, vv))
-        stack = [(tree, [], [])] if tree else [] # [(node, formatted vals, parent formatted vals)]
-        while stack:  # Add to parent if all processed or terminal node, else queue for processing
-            (op, val), nvals, pvals = stack.pop()
-            if nvals: pvals.append((self.FORMAT_TEMPLATES.get(op) or TPL(op)) % FMT(nvals, op, val))
-            elif op not in self.OPERATORS: pvals.append(val if terminal is None else terminal(val))
-            else: stack.extend([((op, val), nvals, pvals)] + [(v, [], nvals) for v in val[::-1]])
-        return pvals.pop() if tree else ""
 
 
 __all__ = ["ExpressionTree", "Scanner"]
