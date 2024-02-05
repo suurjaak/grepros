@@ -22,7 +22,7 @@ import sys
 
 import six
 
-from grepros import ExpressionTree
+from grepros import BooleanResult, ExpressionTree
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -105,6 +105,32 @@ INDEXED_TERMINALS = {  # {expr: [..expected tree with terminals as variable inde
     "a AND (b OR c)": ["AND", [["VAL", 0], ["OR", [["VAL", 1], ["VAL", 2]]]]],
 }
 
+ACTIVE_OPERANDS = {  # {expr: [({namespace}, active operands), ]}
+    "NOT a":                     [({"a": False}, ""), (({"a": True}, ""))],
+    "NOT NOT a":                 [({"a": False}, ""), (({"a": True}, "a"))],
+    "a OR NOT a":                [({"a": False}, ""), (({"a": True}, "a"))],
+    "a OR b":                    [({"a": False, "b": False},         ""),
+                                  ({"a": False, "b":  True},         "b"),
+                                  ({"a":  True, "b": False},         "a"),
+                                  ({"a":  True, "b":  True},         "ab"), ],
+    "NOT (a OR b)":              [({"a": False, "b": False},         ""),
+                                  ({"a": False, "b":  True},         ""),
+                                  ({"a":  True, "b": False},         ""),
+                                  ({"a":  True, "b":  True},         ""), ],
+    "NOT NOT (a OR b)":          [({"a": False, "b": False},         ""),
+                                  ({"a": False, "b":  True},         "b"),
+                                  ({"a":  True, "b": False},         "a"),
+                                  ({"a":  True, "b":  True},         "ab"), ],
+    "a AND (b OR NOT a)":        [({"a": False, "b": False},         ""),
+                                  ({"a": False, "b":  True},         ""),
+                                  ({"a":  True, "b": False},         ""),
+                                  ({"a":  True, "b":  True},         "ab"), ],
+    "(a OR b) OR NOT (a AND b)": [({"a": False, "b": False},         ""),
+                                  ({"a": False, "b":  True},         "b"),
+                                  ({"a":  True, "b": False},         "a"),
+                                  ({"a":  True, "b":  True},         "ab"), ],
+}
+
 
 class TestExpressionTree(testbase.TestBase):
 
@@ -117,9 +143,15 @@ class TestExpressionTree(testbase.TestBase):
 
     def __init__(self, *args, **kwargs):
         super(TestExpressionTree, self).__init__(*args, **kwargs)
-        self._expressor = ExpressionTree()
+        self._expressor = None
         self._cmd = ["grepros", '(this OR that) AND NOT "not"', "--expression",
                      "--match-wrapper", "--color", "never", "--path", self.DATA_DIR]
+
+
+    def setUp(self):
+        """Initializes state."""
+        super(TestExpressionTree, self).setUp()
+        self._expressor = ExpressionTree()
 
 
     def test_expressiontree(self):
@@ -167,6 +199,27 @@ class TestExpressionTree(testbase.TestBase):
                 self.verify_terminal(text, tree)
 
 
+    def test_expressiontree_booleanresult(self):
+        """Verifies using BooleanResult terminal and tracking operand contribution."""
+        ops = {ExpressionTree.AND: BooleanResult.and_, ExpressionTree.NOT: BooleanResult.not_,
+               ExpressionTree.OR: lambda a, b: BooleanResult.or_(a, b, eager=True)}
+        self._expressor.configure(operators=ops, void=BooleanResult(None))
+        logger.info("Verifying using BooleanResult.")
+        maker = lambda terminal: lambda x: BooleanResult(x, terminal)
+        for text in VALIDS:
+            with self.subTest(text): self.verify_expression(text, make_terminal=maker)
+        logger.info("Verifying operand contribution in expressions with BooleanResult.")
+        for text, ns_expecteds in ACTIVE_OPERANDS.items():
+            logger.debug("Verifying operand contribution in %r.", text)
+            with self.subTest(text):
+                for (ns, contribs) in ns_expecteds:
+                    terminal = lambda x: BooleanResult(x, ns.get)
+                    tree = self._expressor.parse(text)
+                    result = self._expressor.evaluate(tree, terminal, [ExpressionTree.OR])
+                    self.assertEqual(list(contribs), list(result),
+                                     "Unexpected operands active in BooleanResult.")
+
+
     def test_grepros_cli_expression(self):
         """Runs grepros on bags in data directory, verifies console output."""
         logger.info("Verifying expression use in command-line.")
@@ -179,7 +232,8 @@ class TestExpressionTree(testbase.TestBase):
         self.verify_topics(topics=fulltext, messages=fulltext)
 
 
-    def verify_expression(self, text, expected=None, expreval=True, texteval=True):
+    def verify_expression(self, text, expected=None, expreval=True, texteval=True,
+                          make_terminal=None):
         """Verifies expression parsing and evaluating, raises on error."""
         logger.debug("Verifying expression %r%s.", *(text, "") if len(text) < 100 else
                      (text[:100].strip( ) + "...", " [%s chars]" % len(text)))
@@ -195,11 +249,13 @@ class TestExpressionTree(testbase.TestBase):
             except Exception: self.fail("Error compiling formatted expression."); raise
             return
 
+        cast = bool if make_terminal else lambda x: x
         safetext = re.sub("and|or|not", lambda m: m[0].upper(), text, flags=re.I)
         EVALS = dict(dict(formatted=expr) if expreval else {}, **dict(raw=text) if texteval else {})
         VARS = "".join(x for x in string.ascii_lowercase if x in safetext)  # Eval all value combos
         for ns in (dict(zip(VARS, x)) for x in itertools.product([True, False], repeat=len(VARS))):
-            treeresult = self._expressor.evaluate(tree, terminal=ns.get)
+            terminal = make_terminal(ns.get) if make_terminal else ns.get
+            treeresult = self._expressor.evaluate(tree, terminal=terminal)
             evalresults = {}
             for name, txt in EVALS.items():
                 try: evalresults[name] = eval(txt.lower(), dict(ns))
@@ -207,7 +263,7 @@ class TestExpressionTree(testbase.TestBase):
                     logger.exception("Error evaluating %s text (namespace %s).", name, ns)
                     raise
             for name, txt in EVALS.items():
-                self.assertEqual(treeresult, evalresults[name],
+                self.assertEqual(cast(treeresult), cast(evalresults[name]),
                                  "Eval mismatch: tree vs Python eval of %s text." % name)
             if len(evalresults) > 1:
                 self.assertEqual(evalresults["raw"], evalresults["formatted"],
