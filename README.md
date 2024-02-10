@@ -191,6 +191,13 @@ Reindex unindexed ROS1 bags before processing
     --reindex-if-unindexed
     --reindex-if-unindexed --progress
 
+Emit messages on original bag timeline from first matched message,
+optionally with a speedup or slowdown factor:
+
+    --time-scale       # At original rate
+    --time-scale 2     # Twice faster
+    --time-scale 0.5   # Twice slower
+
 Decompress archived ROS bags before processing
 (`.zst` `.zstd` extensions, requires `zstandard` Python package)
 (note: unpacks archived file to disk, into same directory as file):
@@ -843,6 +850,9 @@ Bag input control:
   --decompress          decompress archived bagfiles with recognized extensions (.zst .zstd)
   --reindex-if-unindexed
                         reindex unindexed bagfiles (ROS1 only), makes backup copies
+  --time-scale [FACTOR]
+                        emit messages on original bag timeline from first matched message,
+                        optionally with a speedup or slowdown factor
 
 Live topic control:
   --publish-prefix PREFIX

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.02.2024
+@modified    10.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -441,7 +441,7 @@ class BagSource(Source, ConditionMixin):
                         SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False,
-                        STOP_ON_ERROR=False)
+                        STOP_ON_ERROR=False, TIMESCALE=0, TIMESCALE_EMISSION=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -460,6 +460,11 @@ class BagSource(Source, ConditionMixin):
         @param   args.orderby           "topic" or "type" if any to group results by
         @param   args.decompress        decompress archived bags to file directory
         @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
+        @param   args.timescale         emit messages on original timeline from first message
+                                        at given rate, 0 disables
+        @param   args.timescale_emission
+                                        timeline from first matched message not first in bag,
+                                        requires notify() for each message
         @param   args.write             outputs, to skip in input files
         @param   args.bag               one or more {@link grepros.api.Bag Bag} instances
         <!--sep-->
@@ -502,6 +507,7 @@ class BagSource(Source, ConditionMixin):
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
         self._bag0      = ([args0] if isinstance(args0, api.Bag) else args0) if is_bag else None
+        self._delaystamps = collections.defaultdict(int)  # Tracked timestamps for timeline emission
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -553,6 +559,9 @@ class BagSource(Source, ConditionMixin):
         if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
                                  self.args.ORDERBY)
+            self.valid = False
+        if self.args.TIMESCALE and self.args.TIMESCALE < 0:
+            ConsolePrinter.error("Invalid timescale factor: %r.", self.args.TIMESCALE)
             self.valid = False
         return self.valid
 
@@ -630,6 +639,10 @@ class BagSource(Source, ConditionMixin):
         self._status = bool(status)
         if status and not self._totals_ok:
             self._ensure_totals()
+        if status and self.args.TIMESCALE and self.args.TIMESCALE_EMISSION:  # Delay until time met
+            if "first" not in self._delaystamps:
+                self._delaystamps["first"] = self._delaystamps["current"]
+            else: self._delay_timeline()
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters."""
@@ -657,6 +670,10 @@ class BagSource(Source, ConditionMixin):
         @param   topics  {topic: [typename, ]}
         """
         if not self._running or not self._bag: return
+        do_predelay = self.args.TIMESCALE and not self.args.TIMESCALE_EMISSION
+        if do_predelay: self._delaystamps["first"] = self._bag.get_start_time()
+        if self.args.TIMESCALE and "read" not in self._delaystamps:
+            self._delaystamps["read"] = getattr(time, "monotonic", time.time)()  # Py3 / Py2
         counts = collections.Counter()
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
@@ -673,7 +690,8 @@ class BagSource(Source, ConditionMixin):
             if not self._sticky and counts[topickey] != self._counts[topickey]:
                 continue  # for topic
 
-            self._status = None
+            self._status, self._delaystamps["current"] = None, api.to_sec(stamp)
+            if do_predelay: self._delay_timeline()  # Delay emission until time
             self.bar and self.bar.update(value=sum(self._counts.values()))
             yield topic, msg, stamp, self._counts[topickey]
 
@@ -738,6 +756,13 @@ class BagSource(Source, ConditionMixin):
                 self.topics[(t, n, h)] = c
             self._totals_ok = True
 
+    def _delay_timeline(self):
+        """Sleeps until message ought to be emitted in bag timeline."""
+        curstamp, readstamp, startstamp = map(self._delaystamps.get, ("current", "read", "first"))
+        delta = max(0, api.to_sec(curstamp) - startstamp) / (self.args.TIMESCALE or 1)
+        if delta: time.sleep(max(0, delta + readstamp - getattr(time, "monotonic", time.time)()))
+
+
     def _configure(self, filename=None, bag=None):
         """Opens bag and populates bag-specific argument state, returns success."""
         self._meta      = None
@@ -745,6 +770,7 @@ class BagSource(Source, ConditionMixin):
         self._filename  = None
         self._sticky    = False
         self._totals_ok = False
+        self._delaystamps.clear()
         self._counts.clear()
         self._processables.clear()
         self._hashes.clear()

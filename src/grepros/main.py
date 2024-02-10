@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    13.01.2024
+@modified    10.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -356,6 +356,15 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--reindex-if-unindexed"],
              dest="REINDEX", action="store_true",
              help="reindex unindexed bagfiles (ROS1 only), makes backup copies"),
+
+        dict(args=["--time-scale"],
+             dest="TIMESCALE", metavar="FACTOR", nargs="?", type=float, const=1, default=0,
+             help="emit messages on original bag timeline from first matched message,\n"
+                  "optionally with a speedup or slowdown factor"),
+
+        dict(args=["--time-scale-emission"],
+             dest="TIMESCALE_EMISSION", nargs="?", type=int, const=True, default=True,
+             help=argparse.SUPPRESS),  # Timeline from first matched message vs first in bag
 
     ], "Live topic control": [
 

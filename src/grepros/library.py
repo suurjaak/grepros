@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    05.02.2024
+@modified    10.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -79,78 +79,81 @@ def grep(args=None, **kwargs):
     Read from live topics: `grep(live=True, pattern="cpu")`.
 
 
-    @param   args                     arguments as namespace or dictionary, case-insensitive;
-                                      or a single path as the ROS bagfile to read,
-                                      or one or more {@link grepros.api.Bag Bag} instances
-    @param   kwargs                   any and all arguments as keyword overrides, case-insensitive
+    @param   args                      arguments as namespace or dictionary, case-insensitive;
+                                       or a single path as the ROS bagfile to read,
+                                       or one or more {@link grepros.api.Bag Bag} instances
+    @param   kwargs                    any and all arguments as keyword overrides, case-insensitive
     <!--sep-->
 
     Bag source:
-    @param   args.file                names of ROS bagfiles to read if not all in directory
-    @param   args.path                paths to scan if not current directory
-    @param   args.recurse             recurse into subdirectories when looking for bagfiles
-    @param   args.decompress          decompress archived bags to file directory
-    @param   args.reindex             make a copy of unindexed bags and reindex them (ROS1 only)
-    @param   args.orderby             "topic" or "type" if any to group results by
-    @param   args.bag                 one or more {@link grepros.api.Bag Bag} instances
+    @param   args.file                 names of ROS bagfiles to read if not all in directory
+    @param   args.path                 paths to scan if not current directory
+    @param   args.recurse              recurse into subdirectories when looking for bagfiles
+    @param   args.decompress           decompress archived bags to file directory
+    @param   args.reindex              make a copy of unindexed bags and reindex them (ROS1 only)
+    @param   args.orderby              "topic" or "type" if any to group results by
+    @param   args.timescale            emit messages on original timeline from first message
+                                       at given rate, 0 disables
+    @param   args.timescale_emission   start timeline from first matched message not first in bag
+    @param   args.bag                  one or more {@link grepros.api.Bag Bag} instances
     <!--sep-->
 
     Live source:
-    @param   args.live                whether reading messages from live ROS topics
-    @param   args.queue_size_in       subscriber queue size (default 10)
-    @param   args.ros_time_in         stamp messages with ROS time instead of wall time
+    @param   args.live                 whether reading messages from live ROS topics
+    @param   args.queue_size_in        subscriber queue size (default 10)
+    @param   args.ros_time_in          stamp messages with ROS time instead of wall time
     <!--sep-->
 
     App source:
-    @param   args.app                 whether reading messages from iterable or pushed data;
-                                      may contain the iterable itself
-    @param   args.iterable            iterable yielding (topic, msg, stamp) or (topic, msg);
-                                      yielding `None` signals end of content
+    @param   args.app                  whether reading messages from iterable or pushed data;
+                                       may contain the iterable itself
+    @param   args.iterable             iterable yielding (topic, msg, stamp) or (topic, msg);
+                                       yielding `None` signals end of content
     Any source:
-    @param   args.topic               ROS topics to read if not all
-    @param   args.type                ROS message types to read if not all
-    @param   args.skip_topic          ROS topics to skip
-    @param   args.skip_type           ROS message types to skip
-    @param   args.start_time          earliest timestamp of messages to read
-    @param   args.end_time            latest timestamp of messages to read
-    @param   args.start_index         message index within topic to start from
-    @param   args.end_index           message index within topic to stop at
+    @param   args.topic                ROS topics to read if not all
+    @param   args.type                 ROS message types to read if not all
+    @param   args.skip_topic           ROS topics to skip
+    @param   args.skip_type            ROS message types to skip
+    @param   args.start_time           earliest timestamp of messages to read
+    @param   args.end_time             latest timestamp of messages to read
+    @param   args.start_index          message index within topic to start from
+    @param   args.end_index            message index within topic to stop at
 
-    @param   args.nth_message         read every Nth message in topic
-    @param   args.nth_interval        minimum time interval between messages in topic
+    @param   args.nth_message          read every Nth message in topic
+    @param   args.nth_interval         minimum time interval between messages in topic
 
-    @param   args.select_field        message fields to use in matching if not all
-    @param   args.noselect_field      message fields to skip in matching
+    @param   args.select_field         message fields to use in matching if not all
+    @param   args.noselect_field       message fields to skip in matching
 
-    @param   args.unique              emit messages that are unique in topic
-                                      (select_field and noselect_field apply if specified)
-    @param   args.condition           Python expressions that must evaluate as true
-                                      for message to be processable, see ConditionMixin
+    @param   args.unique               emit messages that are unique in topic
+                                       (select_field and noselect_field apply if specified)
+    @param   args.condition            Python expressions that must evaluate as true
+                                       for message to be processable, see ConditionMixin
     <!--sep-->
 
     Search&zwj;:
-    @param   args.pattern             pattern(s) to find in message field values
-    @param   args.fixed_string        pattern contains ordinary strings, not regular expressions
-    @param   args.case                use case-sensitive matching in pattern
-    @param   args.invert              select messages not matching pattern
-    @param   args.expression          pattern(s) are a logical expression
-                                      like 'this AND (this2 OR NOT "skip this")',
-                                      with elements as patterns to find in message fields
+    @param   args.pattern              pattern(s) to find in message field values
+    @param   args.fixed_string         pattern contains ordinary strings, not regular expressions
+    @param   args.case                 use case-sensitive matching in pattern
+    @param   args.invert               select messages not matching pattern
+    @param   args.expression           pattern(s) are a logical expression
+                                       like 'this AND (this2 OR NOT "skip this")',
+                                       with elements as patterns to find in message fields
 
-    @param   args.nth_match           emit every Nth match in topic
-    @param   args.max_count           number of matched messages to emit (per file if bag input)
-    @param   args.max_per_topic       number of matched messages to emit from each topic
-    @param   args.max_topics          number of topics to print matches from
+    @param   args.nth_match            emit every Nth match in topic
+    @param   args.max_count            number of matched messages to emit (per file if bag input)
+    @param   args.max_per_topic        number of matched messages to emit from each topic
+    @param   args.max_topics           number of topics to print matches from
 
-    @param   args.before              number of messages of leading context to emit before match
-    @param   args.after               number of messages of trailing context to emit after match
-    @param   args.context             number of messages of leading and trailing context
-                                      to emit around match
+    @param   args.before               number of messages of leading context to emit before match
+    @param   args.after                number of messages of trailing context to emit after match
+    @param   args.context              number of messages of leading and trailing context
+                                       to emit around match
 
-    @param   args.highlight           highlight matched values
-    @param   args.match_wrapper       string to wrap around matched values,
-                                      both sides if one value, start and end if more than one,
-                                      or no wrapping if zero values
+    @param   args.highlight            highlight matched values
+    @param   args.match_wrapper        string to wrap around matched values,
+                                       both sides if one value, start and end if more than one,
+                                       or no wrapping if zero values
 
     @return  {@link grepros.Scanner.GrepMessage GrepMessage} namedtuples
              of (topic, message, timestamp, match, index)
@@ -187,52 +190,55 @@ def source(args=None, **kwargs):
 
     Initializes grepros if not already initialized.
 
-    @param   args                  arguments as namespace or dictionary, case-insensitive;
-                                   or a single path as the ROS bagfile to read
-    @param   kwargs                any and all arguments as keyword overrides, case-insensitive
-    @param   args.file             one or more names of ROS bagfiles to read from
-    @param   args.live             read messages from live ROS topics instead
-    @param   args.app              read messages from iterable or pushed data instead;
-                                   may contain the iterable itself
+    @param   args                      arguments as namespace or dictionary, case-insensitive;
+                                       or a single path as the ROS bagfile to read
+    @param   kwargs                    any and all arguments as keyword overrides, case-insensitive
+    @param   args.file                 one or more names of ROS bagfiles to read from
+    @param   args.live                 read messages from live ROS topics instead
+    @param   args.app                  read messages from iterable or pushed data instead;
+                                       may contain the iterable itself
     <!--sep-->
 
     Bag source:
-    @param   args.file             names of ROS bagfiles to read if not all in directory
-    @param   args.path             paths to scan if not current directory
-    @param   args.recurse          recurse into subdirectories when looking for bagfiles
-    @param   args.orderby          "topic" or "type" if any to group results by
-    @param   args.decompress       decompress archived bags to file directory
-    @param   args.reindex          make a copy of unindexed bags and reindex them (ROS1 only)
-    @param   args.progress         whether to print progress bar
+    @param   args.file                 names of ROS bagfiles to read if not all in directory
+    @param   args.path                 paths to scan if not current directory
+    @param   args.recurse              recurse into subdirectories when looking for bagfiles
+    @param   args.orderby              "topic" or "type" if any to group results by
+    @param   args.decompress           decompress archived bags to file directory
+    @param   args.reindex              make a copy of unindexed bags and reindex them (ROS1 only)
+    @param   args.timescale            emit messages on original timeline from first message
+                                       at given rate, 0 disables
+    @param   args.timescale_emission   start timeline from first matched message not first in bag
+    @param   args.progress             whether to print progress bar
     <!--sep-->
 
     Live source:
-    @param   args.queue_size_in    subscriber queue size (default 10)
-    @param   args.ros_time_in      stamp messages with ROS time instead of wall time
-    @param   args.progress         whether to print progress bar
+    @param   args.queue_size_in        subscriber queue size (default 10)
+    @param   args.ros_time_in          stamp messages with ROS time instead of wall time
+    @param   args.progress             whether to print progress bar
     <!--sep-->
 
     App source:
-    @param   args.iterable         iterable yielding (topic, msg, stamp) or (topic, msg);
-                                   yielding `None` signals end of content
+    @param   args.iterable             iterable yielding (topic, msg, stamp) or (topic, msg);
+                                       yielding `None` signals end of content
     <!--sep-->
 
     Any source:
-    @param   args.topic            ROS topics to read if not all
-    @param   args.type             ROS message types to read if not all
-    @param   args.skip_topic       ROS topics to skip
-    @param   args.skip_type        ROS message types to skip
-    @param   args.start_time       earliest timestamp of messages to read
-    @param   args.end_time         latest timestamp of messages to read
-    @param   args.start_index      message index within topic to start from
-    @param   args.end_index        message index within topic to stop at
-    @param   args.unique           emit messages that are unique in topic
-    @param   args.select_field     message fields to use for uniqueness if not all
-    @param   args.noselect_field   message fields to skip for uniqueness
-    @param   args.nth_message      read every Nth message in topic
-    @param   args.nth_interval     minimum time interval between messages in topic
-    @param   args.condition        Python expressions that must evaluate as true
-                                   for message to be processable, see ConditionMixin
+    @param   args.topic                ROS topics to read if not all
+    @param   args.type                 ROS message types to read if not all
+    @param   args.skip_topic           ROS topics to skip
+    @param   args.skip_type            ROS message types to skip
+    @param   args.start_time           earliest timestamp of messages to read
+    @param   args.end_time             latest timestamp of messages to read
+    @param   args.start_index          message index within topic to start from
+    @param   args.end_index            message index within topic to stop at
+    @param   args.unique               emit messages that are unique in topic
+    @param   args.select_field         message fields to use for uniqueness if not all
+    @param   args.noselect_field       message fields to skip for uniqueness
+    @param   args.nth_message          read every Nth message in topic
+    @param   args.nth_interval         minimum time interval between messages in topic
+    @param   args.condition            Python expressions that must evaluate as true
+                                       for message to be processable, see ConditionMixin
     """
     DEFAULT_ARGS = dict(FILE=[], LIVE=False, APP=False, ITERABLE=None)
     args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else args
