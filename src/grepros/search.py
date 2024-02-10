@@ -409,7 +409,7 @@ class Scanner(object):
 
         def process_value(v, parent, top, patterns):
             """
-            Populates `field_matches` for patterns matching given string value.
+            Populates `field_matches` and `pattern_spans` for patterns matching given string value.
             Populates `field_values`. Returns set of pattern indexes that found a match.
             """
             indexes, spans, topstr = set(), [], ".".join(map(str, top))
@@ -429,9 +429,9 @@ class Scanner(object):
             if spans: field_matches.setdefault(top, []).extend(spans)
             return indexes
 
-        def populate_matches(obj, patterns, top=()):
+        def populate_matches(obj, patterns, top=(), parent=None):
             """
-            Recursively populates `field_matches` for message fields matching patterns.
+            Recursively populates `field_matches`  and `pattern_spans` for fields matching patterns.
             Populates `field_values`. Returns set of pattern indexes that found a match.
             """
             indexes = set()
@@ -441,24 +441,25 @@ class Scanner(object):
                 fieldmap = api.filter_fields(fieldmap, top, include=selects, exclude=noselects)
             for k, t in fieldmap.items() if fieldmap != obj else ():
                 v, path = api.get_message_value(obj, k, t), top + (k, )
-                if api.is_ros_message(v):
-                    indexes |= populate_matches(v, patterns, path)
-                elif v and isinstance(v, (list, tuple)) and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
-                    for i, x in enumerate(v): indexes |= populate_matches(x, patterns, path + (i, ))
-                else:
+                if api.is_ros_message(v):  # Nested message
+                    indexes |= populate_matches(v, patterns, path, obj)
+                elif v and isinstance(v, (list, tuple)) \
+                and api.scalar(t) not in api.ROS_NUMERIC_TYPES:
+                    for i, x in enumerate(v):  # List of strings or nested messages
+                        indexes |= populate_matches(x, patterns, path + (i, ), v)
+                else:  # Scalar value, empty list, or list of numbers
                     indexes |= process_value(v, obj, path, patterns)
             if not api.is_ros_message(obj):
-                indexes |= process_value(v, obj, top, patterns)
+                indexes |= process_value(obj, parent, top, patterns)
             return indexes
 
         def wrap_matches(values, matches):
             """Replaces result-message field values with matched parts wrapped in marker tags."""
             for path, spans in matches.items() if any(WRAPS) else ():
                 parent, v1, v2 = values[path]
-                is_collection = isinstance(v1, (list, tuple))
                 for a, b in reversed(common.merge_spans(spans)):  # Backwards for stable indexes
                     v2 = v2[:a] + WRAPS[0] + v2[a:b] + WRAPS[1] + v2[b:]
-                if v1 and is_collection: v2 = "[%s]" % v2  # Readd collection braces
+                if v1 and isinstance(v1, (list, tuple)): v2 = "[%s]" % v2  # Readd collection braces
                 if isinstance(parent, list) and isinstance(path[-1], int): parent[path[-1]] = v2
                 else: api.set_message_value(parent, path[-1], v2)
 
