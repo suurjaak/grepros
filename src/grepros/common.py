@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.02.2024
+@modified    11.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -642,15 +642,15 @@ class TextWrapper(object):
             cur_line.append(reversed_chunks.pop())
 
 
-
 def drop_zeros(v, replace=""):
-    """Drops or replaces trailing zeros and empty decimal separator, if any."""
-    return re.sub(r"\.?0+$", lambda x: len(x.group()) * replace, str(v))
+    """Drops trailing zeros and empty decimal separator, if any."""
+    repl = lambda m: ("." if m[1] or replace else "") + (m[1] or "") + len(m[2]) * replace
+    return re.sub(r"\.(\d*[1-9])?(0+)$", repl, str(v))
 
 
 def ellipsize(text, limit, ellipsis=".."):
     """Returns text ellipsized if beyond limit."""
-    if limit <= 0 or len(text) < limit:
+    if limit <= 0 or len(text) <= limit:
         return text
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
@@ -669,7 +669,7 @@ def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
     else: val = structcopy(val)
-    for k, v in vars(val).items():
+    for k, v in list(vars(val).items()):
         if not k.isupper():
             delattr(val, k)
             setattr(val, k.upper(), v)
@@ -679,7 +679,7 @@ def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
         if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
             setattr(val, k, [getattr(val, k)])
-    for arg in (getattr(val, n, None) for n in dashify or ()):
+    for arg in (getattr(val, n.upper(), None) for n in dashify or ()):
         for k in (list(arg) if isinstance(arg, dict) else []):
             if isinstance(k, six.text_type) and "_" in k and 0 < k.index("_") < len(k) - 1:
                 arg[k.replace("_", "-", 1)] = arg.pop(k)
@@ -778,13 +778,14 @@ def format_timedelta(delta):
 
 def format_bytes(size, precision=2, inter=" ", strip=True):
     """Returns a formatted byte size (like 421.40 MB), trailing zeros optionally removed."""
-    result = "0 bytes"
-    if size:
-        UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
+    result = "" if math.isinf(size) or math.isnan(size) else "0 bytes"
+    if size and result:
+        UNITS = ["bytes"] + [x + "B" for x in "KMGTPEZY"]
+        size, sign = abs(size), ("-" if size < 0 else "")
         exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
         result = "%.*f" % (precision, size / (1024. ** exponent))
-        result += "" if precision > 0 else "."  # Do not strip integer zeroes
-        result = (drop_zeros(result) if strip else result) + inter + UNITS[exponent]
+        if strip: result = drop_zeros(result)
+        result = sign + result + inter + (UNITS[exponent] if result != "1" or exponent else "byte")
     return result
 
 
@@ -804,10 +805,13 @@ def get_name(obj):
     if inspect.ismodule(obj): return namer(obj)
     if inspect.isclass(obj):  return ".".join((obj.__module__, namer(obj)))
     if inspect.isroutine(obj):
-        parts, self = [], six.get_method_self(obj)
-        if self is not None:           parts.extend((get_name(self), obj.__name__))
-        elif hasattr(obj, "im_class"): parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
-        else:                          parts.extend((obj.__module__, namer(obj)))          # Py3
+        parts = []
+        try: self = six.get_method_self(obj)
+        except Exception: self = None
+        if self is not None:             parts.extend((get_name(self), obj.__name__))
+        elif hasattr(obj, "im_class"):   parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
+        elif hasattr(obj, "__module__"): parts.extend((obj.__module__, namer(obj)))
+        else:                            parts.append(namer(obj))
         return ".".join(parts)
     cls = type(obj)
     return "%s.%s<0x%x>" % (cls.__module__, namer(cls), id(obj))
@@ -817,7 +821,7 @@ def has_arg(func, name):
     """Returns whether function supports taking specified argument by name."""
     spec = getattr(inspect, "getfullargspec", getattr(inspect, "getargspec", None))(func)  # Py3/Py2
     return name in spec.args or name in getattr(spec, "kwonlyargs", ()) or \
-           getattr(spec, "varkw", None) or getattr(spec, "keywords", None)
+           bool(getattr(spec, "varkw", None) or getattr(spec, "keywords", None))
 
 
 def import_item(name):
@@ -892,12 +896,13 @@ def memoize(func):
 
 
 def merge_dicts(d1, d2):
-    """Merges d2 into d1, recursively for nested dicts."""
+    """Merges d2 into d1, recursively for nested dicts, returns d1."""
     for k, v in d2.items():
         if k in d1 and isinstance(v, dict) and isinstance(d1[k], dict):
             merge_dicts(d1[k], v)
         else:
             d1[k] = v
+    return d1
 
 
 def merge_spans(spans, join_blanks=False):
@@ -933,7 +938,7 @@ def parse_datetime(text):
     text = re.sub(r"\D", "", text)
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
-    return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+    return dt + datetime.timedelta(microseconds=int(text[len(BASE):][:6] or "0"))
 
 
 def parse_number(value, suffixes=None):
@@ -963,8 +968,8 @@ def path_to_regex(text, sep=".", wildcard="*", end=False, intify=False):
     """
     pattern, split_wild = "", lambda x: x.split(wildcard) if wildcard else [x]
     for i, part in enumerate(text.split(sep) if sep else [text]):
-        pattern += r"(\.\d+)?" if i and intify else ""
-        pattern += (r"\." if i else "") + ".*".join(map(re.escape, split_wild(part)))
+        pattern += (r"(%s\d+)?" % re.escape(sep)) if i and intify else ""
+        pattern += (re.escape(sep) if i else "") + ".*".join(map(re.escape, split_wild(part)))
     return re.compile(pattern + ("$" if end else ""), re.I)
 
 
@@ -983,12 +988,12 @@ def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf="")
     """
     count   = len(items) if hasattr(items, "__len__") else items or 0
     isupper = word[-1:].isupper()
-    suffix = "es" if word and word[-1:].lower() in "xyz" \
+    suffix = "es" if word and word[-1:].lower() in "sxyz" \
              and not word[-2:].lower().endswith("ay") \
              else "s" if word else ""
-    if isupper: suffix = suffix.upper()
     if count != 1 and "es" == suffix and "y" == word[-1:].lower():
         word = word[:-1] + ("I" if isupper else "i")
+    if isupper: suffix = suffix.upper()
     result = word + ("" if 1 == count else suffix)
     if numbers and items is not None:
         if 1 == count: fmtcount = single
@@ -1107,8 +1112,8 @@ def wildcard_to_regex(text, end=False):
 
 
 __all__ = [
-    "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
-    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
+    "PATH_TYPES", "ConsolePrinter", "Decompressor", "LenIterable", "MatchMarkers", "ProgressBar",
+    "TextWrapper", "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
     "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
     "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
     "parse_datetime", "parse_number", "path_to_regex", "plural", "unique_path", "verify_io",
