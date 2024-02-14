@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.02.2024
+@modified    14.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -64,6 +64,7 @@ class Source(object):
         # {(topic, typename, typehash): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
         self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
+        self._status = None  # Processable/match status of last produced message
 
         self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
         ## outputs.Sink instance bound to this source
@@ -110,6 +111,7 @@ class Source(object):
         self._counts.clear()
         self._hashes.clear()
         self._processables.clear()
+        self._status = None
         if self.bar:
             self.bar.pulse_pos = None
             self.bar.update(flush=True).stop()
@@ -156,14 +158,13 @@ class Source(object):
         return api.get_message_type_hash(msg_or_type)
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
         if self.args.START_TIME and stamp < self.args.START_TIME:
             return False
         if self.args.END_TIME and stamp > self.args.END_TIME:
             return False
-        if self.args.UNIQUE or self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-            topickey = api.TypeMeta.make(msg, topic).topickey
-            last_accepted = self._processables.get(topickey)
+        if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            last_accepted = self._processables.get(api.TypeMeta.make(msg, topic).topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
             if (index - 1) % self.args.NTH_MESSAGE:
                 return False
@@ -173,13 +174,16 @@ class Source(object):
         if self.args.UNIQUE:
             include, exclude = self._patterns["select"], self._patterns["noselect"]
             msghash = api.make_message_hash(msg, include, exclude)
+            topickey = api.TypeMeta.make(msg, topic).topickey
             if msghash in self._hashes[topickey]:
                 return False
             self._hashes[topickey].add(msghash)
+        self._status = True
         return True
 
     def notify(self, status):
         """Reports match status of last produced message."""
+        self._status = bool(status)
 
     def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
@@ -498,7 +502,6 @@ class BagSource(Source, ConditionMixin):
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = common.structcopy(self.args)  # Original arguments
-        self._status    = None   # Match status of last produced message
         self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
         self._types_ok  = False  # Whether type definitions have been retrieved (ROS2 optimize)
@@ -636,16 +639,17 @@ class BagSource(Source, ConditionMixin):
 
     def notify(self, status):
         """Reports match status of last produced message."""
-        self._status = bool(status)
+        super(BagSource, self).notify(status)
         if status and not self._totals_ok:
             self._ensure_totals()
-        if status and self.args.TIMESCALE and self.args.TIMESCALE_EMISSION:  # Delay until time met
+        if status and self.args.TIMESCALE and self.args.TIMESCALE_EMISSION:
             if "first" not in self._delaystamps:
                 self._delaystamps["first"] = self._delaystamps["current"]
-            else: self._delay_timeline()
+            else: self._delay_timeline()  # Delay until time met
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
         topickey = api.TypeMeta.make(msg, topic).topickey
         if self.args.START_INDEX and index is not None:
             self._ensure_totals()
@@ -661,7 +665,10 @@ class BagSource(Source, ConditionMixin):
                 return False
         if not super(BagSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
 
     def _produce(self, topics, start_time=None):
         """
@@ -695,9 +702,9 @@ class BagSource(Source, ConditionMixin):
             self.bar and self.bar.update(value=sum(self._counts.values()))
             yield topic, msg, stamp, self._counts[topickey]
 
-            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            if self._status:
                 self._processables[topickey] = (self._counts[topickey], stamp)
-            if self._status and self.args.AFTER and not self._sticky \
+            if self._status and not self.preprocess and self.args.AFTER and not self._sticky \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
@@ -897,10 +904,11 @@ class TopicSource(Source, ConditionMixin):
                 self.conditions_register_message(topic, msg)
                 if self.is_conditions_topic(topic, pure=True): continue  # while
 
+                self._status = None
                 if not self.preprocess \
                 or self.is_processable(topic, msg, stamp, self._counts[topickey]):
                     yield self.SourceMessage(topic, msg, stamp)
-                if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+                if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
                     self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
@@ -971,7 +979,8 @@ class TopicSource(Source, ConditionMixin):
         return result
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
         if self.args.START_INDEX and index is not None:
             if max(0, self.args.START_INDEX) >= index:
                 return False
@@ -980,7 +989,10 @@ class TopicSource(Source, ConditionMixin):
                 return False
         if not super(TopicSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
 
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
@@ -1109,10 +1121,11 @@ class AppSource(Source, ConditionMixin):
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
 
+            self._status = None
             if not self.preprocess \
             or self.is_processable(topic, msg, stamp, self._counts[topickey]):
                 yield self.SourceMessage(topic, msg, stamp)
-            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
                 self._processables[topickey] = (self._counts[topickey], stamp)
         self._reading = False
 
@@ -1156,7 +1169,8 @@ class AppSource(Source, ConditionMixin):
         else: self._queue.put((topic, msg, stamp or api.get_rostime(fallback=True)))
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
         dct = common.filter_dict({topic: [api.get_message_type(msg)]},
                                  self.args.TOPIC, self.args.TYPE)
         if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
@@ -1169,7 +1183,10 @@ class AppSource(Source, ConditionMixin):
                 return False
         if not super(AppSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
