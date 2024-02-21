@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    03.02.2024
+@modified    21.02.2024
 ------------------------------------------------------------------------------
 """
 import contextlib
@@ -131,7 +131,9 @@ class TestBase(unittest.TestCase):
     def create_publisher(self, topic, cls):
         if os.getenv("ROS_VERSION") == "1":
             return rospy.Publisher(topic, cls, queue_size=10)
-        return self._node.create_publisher(cls, topic, 10)
+        pub = self._node.create_publisher(cls, topic, 10)
+        pub.get_num_connections = pub.get_subscription_count
+        return pub
 
 
     def init_node(self):
