@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    02.02.2024
+@modified    21.02.2024
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -36,9 +36,8 @@ class TestAPI(testbase.TestBase):
     NAME = os.path.splitext(os.path.basename(__file__))[0]
 
 
-    @classmethod
-    def setUpClass(cls):
-        """Initializes ROS bindings in grepros."""
+    def __init__(self, *args, **kwargs):
+        super(TestAPI, self).__init__(*args, **kwargs)
         api.validate()
 
 
