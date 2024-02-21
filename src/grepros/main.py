@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    10.02.2024
+@modified    18.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -202,7 +202,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
              help="read every Nth message within topic"),
 
         dict(args=["--every-nth-interval"],
-             dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
+             dest="NTH_INTERVAL", metavar="SECONDS", type=float, default=0,
              help="read messages at least N seconds apart within topic"),
 
         dict(args=["--every-nth-match"],
