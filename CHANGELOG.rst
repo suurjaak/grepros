@@ -2,16 +2,18 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-02-18)
+1.2.0 (2024-02-21)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
 * add --time-scale option to emit messages in bag timeline
+* count --every-nth-message from --start-index
 * support explicit integer indexes in filtering message fields
 * print error stacktraces when --verbose
 * make api.dict_to_message() support nested ROS messages in dictionary
 * make api.get_message_value() accept a default
 * support fractional values in --every-nth-interval option
+* fix negative --start-index and --end-index ignoring different counts in bag topics
 * fix --every-nth-interval not working when messages continuously close
 * fix emitting invalid YAML for nested message arrays
 * fix preparing patterns for early message skip

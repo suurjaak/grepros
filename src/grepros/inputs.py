@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    14.02.2024
+@modified    21.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -41,8 +41,9 @@ class Source(object):
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, UNIQUE=False, SELECT_FIELD=(),
-                        NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0)
+    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, START_INDEX=None, END_INDEX=None,
+                        UNIQUE=False, SELECT_FIELD=(), NOSELECT_FIELD=(),
+                        NTH_MESSAGE=1, NTH_INTERVAL=0)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -50,6 +51,8 @@ class Source(object):
         @param   args.start_time        earliest timestamp of messages to read
         @param   args.end_time          latest timestamp of messages to read
         @param   args.unique            emit messages that are unique in topic
+        @param   args.start_index       message index within topic to start from
+        @param   args.end_index         message index within topic to stop at
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
         @param   args.nth_message       read every Nth message in topic
@@ -63,7 +66,9 @@ class Source(object):
         self._counts = collections.Counter()  # {(topic, typename, typehash): count processed}
         # {(topic, typename, typehash): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
-        self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
+        self._processables  = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
+        self._start_indexes = {}  # {(topic, typename, typehash): start index}
+        self._end_indexes   = {}  # {(topic, typename, typehash): end index}
         self._status = None  # Processable/match status of last produced message
 
         self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
@@ -163,10 +168,20 @@ class Source(object):
             return False
         if self.args.END_TIME and stamp > self.args.END_TIME:
             return False
+        if self.args.START_INDEX or self.args.END_INDEX \
+        or self.args.NTH_MESSAGE or self.args.UNIQUE:
+            topickey = api.TypeMeta.make(msg, topic).topickey
+        if self.args.START_INDEX and index is not None:
+            if max(0, self._start_indexes.get(topickey, self.args.START_INDEX)) > index:
+                return False
+        if self.args.END_INDEX and index is not None:
+            if self._end_indexes.get(topickey, self.args.END_INDEX) < index:
+                return False
         if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-            last_accepted = self._processables.get(api.TypeMeta.make(msg, topic).topickey)
+            last_accepted = self._processables.get(topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
-            if (index - 1) % self.args.NTH_MESSAGE:
+            shift = self.args.START_INDEX if (self.args.START_INDEX or 0) > 1 else 0
+            if (index - shift) % self.args.NTH_MESSAGE:
                 return False
         if self.args.NTH_INTERVAL > 0 and last_accepted and stamp is not None:
             if api.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
@@ -174,7 +189,6 @@ class Source(object):
         if self.args.UNIQUE:
             include, exclude = self._patterns["select"], self._patterns["noselect"]
             msghash = api.make_message_hash(msg, include, exclude)
-            topickey = api.TypeMeta.make(msg, topic).topickey
             if msghash in self._hashes[topickey]:
                 return False
             self._hashes[topickey].add(msghash)
@@ -651,18 +665,15 @@ class BagSource(Source, ConditionMixin):
         """Returns whether message passes source filters; registers status."""
         self._status = False
         topickey = api.TypeMeta.make(msg, topic).topickey
-        if self.args.START_INDEX and index is not None:
+        if self.args.START_INDEX and index is not None and self.args.START_INDEX < 0 \
+        and topickey not in self._start_indexes:
             self._ensure_totals()
-            START = self.args.START_INDEX
-            MIN = max(0, START + (self.topics[topickey] if START < 0 else 0))
-            if MIN >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
+            self._start_indexes[topickey] = max(0, self.args.START_INDEX + self.topics[topickey])
+        if self.args.END_INDEX and index is not None and self.args.END_INDEX < 0 \
+        and topickey not in self._end_indexes:
             self._ensure_totals()
-            END = self.args.END_INDEX
-            MAX = END + (self.topics[topickey] if END < 0 else 0)
-            if MAX < index:
-                return False
+            self._end_indexes[topickey] = (self.args.END_INDEX + self.topics[topickey])
+            if not self._end_indexes[topickey]: self._end_indexes[topickey] = -1
         if not super(BagSource, self).is_processable(topic, msg, stamp, index):
             return False
         if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
@@ -779,6 +790,8 @@ class BagSource(Source, ConditionMixin):
         self._totals_ok = False
         self._delaystamps.clear()
         self._counts.clear()
+        self._start_indexes.clear()
+        self._end_indexes.clear()
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
@@ -822,9 +835,9 @@ class BagSource(Source, ConditionMixin):
         for topic in self.conditions_get_topics():  # Add topics used in conditions
             matches = [t for p in [common.wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
-            for topic in matches:
-                self.conditions_set_topic_state(topic, topic not in dct)
-                dct.setdefault(topic, fulldct[topic])
+            for realtopic in matches:
+                self.conditions_set_topic_state(realtopic, realtopic not in dct)
+                dct.setdefault(realtopic, fulldct[realtopic])
         self._topics = dct
         self._meta   = self.get_meta()
 
@@ -981,12 +994,6 @@ class TopicSource(Source, ConditionMixin):
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters; registers status."""
         self._status = False
-        if self.args.START_INDEX and index is not None:
-            if max(0, self.args.START_INDEX) >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
-            if 0 < self.args.END_INDEX < index:
-                return False
         if not super(TopicSource, self).is_processable(topic, msg, stamp, index):
             return False
         if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
@@ -1175,12 +1182,6 @@ class AppSource(Source, ConditionMixin):
                                  self.args.TOPIC, self.args.TYPE)
         if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
             return False
-        if self.args.START_INDEX and index is not None:
-            if max(0, self.args.START_INDEX) >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
-            if 0 < self.args.END_INDEX < index:
-                return False
         if not super(AppSource, self).is_processable(topic, msg, stamp, index):
             return False
         if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
