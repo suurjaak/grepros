@@ -16,6 +16,7 @@ Changelog for package grepros
 * fix negative --start-index and --end-index ignoring different counts in bag topics
 * fix --every-nth-interval not working when messages continuously close
 * fix emitting invalid YAML for nested message arrays
+* fix using --filename with --recursive
 * fix preparing patterns for early message skip
 
 1.1.0 (2023-12-30)

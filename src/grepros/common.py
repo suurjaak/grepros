@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    11.02.2024
+@modified    21.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -712,40 +712,39 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     return result
 
 
-def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
+def find_files(names=(), paths=(), suffixes=(), skip_suffixes=(), recurse=False):
     """
     Yields filenames from current directory or given paths.
 
     Seeks only files with given extensions if names not given.
     Logs errors for names and paths not found.
 
-    @param   names            list of specific files to return (supports * wildcards)
-    @param   paths            list of paths to look under, if not using current directory
-    @param   extensions       list of extensions to select if not using names, as (".ext1", ..)
-    @param   skip_extensions  list of extensions to skip if not using names, as (".ext1", ..)
-    @param   recurse          whether to recurse into subdirectories
+    @param   names          list of specific files to return (supports * wildcards)
+    @param   paths          list of paths to look under, if not using current directory
+    @param   suffixes       list of suffixes to select if no wilcarded names, as (".ext1", ..)
+    @param   skip_suffixes  list of suffixes to skip if no wildcarded names, as (".ext1", ..)
+    @param   recurse        whether to recurse into subdirectories
     """
     namesfound, pathsfound = set(), set()
+    ok = lambda f: (not suffixes or any(map(f.endswith, suffixes))) \
+                   and not any(map(f.endswith, skip_suffixes))
     def iter_files(directory):
         """Yields matching filenames from path."""
         if os.path.isfile(directory):
             ConsolePrinter.log(logging.ERROR, "%s: Is a file", directory)
             return
-        for path in sorted(glob.glob(directory)):  # Expand * wildcards, if any
+        for root in sorted(glob.glob(directory)):  # Expand * wildcards, if any
             pathsfound.add(directory)
-            for n in names:
-                p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
-                for f in (f for f in glob.glob(p) if "*" not in n
-                          or not any(map(f.endswith, skip_extensions))):
-                    if os.path.isdir(f):
-                        ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
-                        continue  # for n
-                    namesfound.add(n)
-                    yield f
-            for root, _, files in os.walk(path) if not names else ():
-                for f in (os.path.join(root, f) for f in sorted(files)
-                          if (not extensions or any(map(f.endswith, extensions)))
-                          and not any(map(f.endswith, skip_extensions))):
+            for path, _, files in os.walk(root):
+                for n in names:
+                    p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
+                    for f in (f for f in glob.glob(p) if "*" not in n or ok(f)):
+                        if os.path.isdir(f):
+                            ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
+                            continue  # for f
+                        namesfound.add(n)
+                        yield f
+                for f in () if names else (os.path.join(root, f) for f in sorted(files) if ok(f)):
                     yield f
                 if not recurse:
                     break  # for root

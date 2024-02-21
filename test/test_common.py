@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.02.2024
-@modified    11.02.2024
+@modified    21.02.2024
 ------------------------------------------------------------------------------
 """
 from argparse import Namespace
@@ -112,13 +112,26 @@ class TestCommon(testbase.TestBase):
                 logger.debug("Verifying %s.", NAME(func, **kwargs))
                 self.assertEqual(func(**kwargs), expected, ERR(func, **kwargs))
 
-        KWARGS = dict(names=["*o*"], paths=[os.path.join(self.DATA_DIR, "..")],
-                      extensions=[self.BAG_SUFFIX], skip_extensions=[".py", ".md"], recurse=True)
+        PARENT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        VALS = [
+            (dict(names=["one*", "two*"], paths=[PARENT], suffixes=[self.BAG_SUFFIX], recurse=True),
+             [os.path.join(PARENT, "test", "data", "%s%s" % (x, self.BAG_SUFFIX))
+              for x in ("one", "two")]),
+            (dict(names=["LI*"], paths=[PARENT, os.path.join(PARENT, "doc")], suffixes=[".md"]),
+             [os.path.join(PARENT, "LICENSE.md"), os.path.join(PARENT, "doc", "LIBRARY.md")]),
+            (dict(names=["generate*"], paths=[PARENT], suffixes=[".sh"], recurse=True),
+             [os.path.join(PARENT, "doc", "generate.sh")]),
+            (dict(names=["generate*"], paths=[PARENT], skip_suffixes=[".sh", ".html", ".js"],
+                  recurse=True),
+             [os.path.join(PARENT, "scripts", "generate_msgs.py")]),
+        ]
         func = common.find_files
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
-            files = list(func(**KWARGS))
-            self.assertEqual(2, len(files), ERR(func, **KWARGS))
+            for kwargs, expected in VALS:
+                logger.debug("Verifying %s.", NAME(func, **kwargs))
+                files = list(func(**kwargs))
+                self.assertEqual(expected, files, ERR(func, **kwargs))
 
         VALS = [
             (dict(size=0),                                "0 bytes"),
