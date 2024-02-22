@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    21.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import contextlib
 import logging
 import glob
+import inspect
 import os
 import sqlite3
 import subprocess
@@ -33,6 +34,15 @@ else:
     import rosidl_runtime_py.utilities
 
 logger = logging.getLogger()
+
+
+# Helpers for formatting class and function names
+ARGS = lambda *a, **w: "" if not (a or w) else "(%s)" % \
+                       ", ".join(filter(bool, [", ".join(map(repr, a)),
+                                               ", ".join("%s=%r" % x for x in w.items())]))
+NAME = lambda x, *a, **w: "%s.%s%s" % (x.__module__, x.__name__,
+                                       ARGS(*a, **w) if a or w or not inspect.isclass(x) else "")
+ERR  = lambda x, *a, **w: "Unexpected result from %s." % NAME(x, *a, **w)
 
 
 def init_logging(name):

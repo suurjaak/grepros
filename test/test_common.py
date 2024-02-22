@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.02.2024
-@modified    21.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 from argparse import Namespace
@@ -25,6 +25,7 @@ from grepros import common
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from test import testbase
+from test.testbase import NAME, ERR
 
 logger = logging.getLogger()
 
@@ -38,10 +39,6 @@ class TestCommon(testbase.TestBase):
 
     def test_common(self):
         """Tests common functions."""
-        ARGS = lambda *a, **w: ", ".join(filter(bool, [", ".join(map(repr, a)),
-                                                       ", ".join("%s=%r" % x for x in w.items())]))
-        NAME = lambda f, *a, **w: "%s.%s(%s)" % (f.__module__, f.__name__, ARGS(*a, **w))
-        ERR  = lambda f, *a, **w: "Unexpected result from %s." % NAME(f, *a, **w)
         logger.info("Testing common functions.")
 
         VALS = [(dict(v=12.1),                  str(12.1)),

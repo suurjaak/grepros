@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    03.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -29,6 +29,7 @@ from grepros import api
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from test import testbase
+from test.testbase import NAME, ERR
 
 logger = logging.getLogger()
 
@@ -178,9 +179,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_read(self, bagcls, filename):
         """Tests parameters to read functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
-
         logger.info("Verifying invoking Bag %r read methods with parameters.", bagcls)
 
         messages = {}  # {topic: [(message, stamp)]}
@@ -304,9 +302,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_write(self, bagcls, filename):
         """Tests parameters to write functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
-
         logger.info("Verifying invoking Bag %r write methods with parameters.", bagcls)
 
         messages = {}  # {topic: [message, ]}
@@ -345,7 +340,6 @@ class TestLibrary(testbase.TestBase):
 
     def test_rollover(self):
         """Tests rollover settings for sinks."""
-        NAME = lambda f: "%s.%s" % (f.__module__, f.__name__)
         logger.debug("Verifying sink rollover.")
         SINKS = [grepros.BagSink, grepros.HtmlSink, grepros.SqliteSink] + \
                 ([grepros.McapSink] if ".mcap" in api.BAG_EXTENSIONS else [])
@@ -391,8 +385,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_grep(self):
         """Tests grepros.grep()."""
-        NAME = lambda f, **w: "%s.%s(%s)" % (f.__module__, f.__name__, "**%s" % w if w else "")
-        ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
         logger.info("Verifying reading bags and grepping messages, via grepros.grep().")
         messages = {}  # {topic: [msg, ]}
         args = dict(pattern=self.SEARCH_WORDS, topic="/match/this*", no_topic="/not/this*",
@@ -411,9 +403,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_sources_sinks(self):
         """Tests general Source and Sink API."""
-        NAME = lambda f, **w: "%s.%s(%s)" % (f.__module__, f.__name__, "**%s" % w if w else "")
-        ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
-
         FUNC_TESTS = {  # {function: [({..kwargs..}, expected source class), ]}
             grepros.source: [
                 (dict(app=True),                      grepros.AppSource),

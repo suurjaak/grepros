@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.02.2024
-@modified    21.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import collections
@@ -32,6 +32,7 @@ from grepros.common import ensure_namespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from test import testbase
+from test.testbase import NAME
 
 logger = logging.getLogger()
 
@@ -98,9 +99,6 @@ class TestSourceLimits(testbase.TestBase):
 
     def test_source_limits(self):
         """Tests reading from sources with limit filters."""
-        ARGS = lambda *a, **w: ", ".join(filter(bool, [", ".join(map(repr, a)),
-                                                       ", ".join("%s=%r" % x for x in w.items())]))
-        NAME = lambda f, *a, **w: "%s.%s(%s)" % (f.__module__, f.__name__, ARGS(*a, **w))
         logger.info("Verifying reading with limit filters.")
 
         HANDLERS = {grepros.AppSource:   self.verify_appsource_limits,
@@ -167,15 +165,11 @@ class TestSourceLimits(testbase.TestBase):
 
     def verify_results(self, cls, source, expecteds, source_args, scanner_args=None):
         """Verifies messages from source being as expected."""
-        ARGS = lambda *a, **w: ", ".join(filter(bool, [", ".join(map(repr, a)),
-                                                       ", ".join("%s=%r" % x for x in w.items())]))
-        NAME = lambda f, *a, **w: "%s.%s(%s)" % (f.__module__, f.__name__, ARGS(*a, **w))
-
         NAMETEXT = NAME(cls, **source_args)
         expecteds_provider, receiveds_provider, count_expected = iter(expecteds), source, 0
         if scanner_args is not None:
             NAMETEXT += " via %s" % NAME(grepros.Scanner, **scanner_args)
-            if cls is not grepros.TopicSource:
+            if cls is not grepros.TopicSource:  # Applied in subprocess already
                 receiveds_provider = grepros.Scanner(source_args, **scanner_args).find(source)
 
         logger.debug("Checking expected messages vs received messages.")

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    21.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -25,6 +25,7 @@ from grepros import api
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from test import testbase
+from test.testbase import NAME, ERR
 
 logger = logging.getLogger()
 
@@ -43,8 +44,6 @@ class TestAPI(testbase.TestBase):
 
     def test_messages(self):
         """Tests API functions for dealing with messages."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing message API functions.")
 
         func = api.get_message_class
@@ -55,9 +54,9 @@ class TestAPI(testbase.TestBase):
         func = api.get_message_definition
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
-            self.assertTrue(func("std_msgs/Bool"),            ERR(func))
-            self.assertTrue(func(std_msgs.msg.Bool),          ERR(func))
-            self.assertTrue(func(std_msgs.msg.Bool()),        ERR(func))
+            self.assertTrue(func("std_msgs/Bool"),     ERR(func))
+            self.assertTrue(func(std_msgs.msg.Bool),   ERR(func))
+            self.assertTrue(func(std_msgs.msg.Bool()), ERR(func))
 
         func = api.get_message_fields
         with self.subTest(NAME(func)):
@@ -213,8 +212,6 @@ class TestAPI(testbase.TestBase):
 
     def test_typenames(self):
         """Tests API functions for dealing with ROS types."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing ROS type API functions.")
 
         func = api.canonical
@@ -267,8 +264,6 @@ class TestAPI(testbase.TestBase):
 
     def test_temporals(self):
         """Tests API functions for dealing with ROS time/duration values."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing temporal API functions.")
 
         func = api.get_ros_time_category
