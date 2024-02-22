@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -105,7 +105,7 @@ class Source(object):
         self.sink = sink
 
     def validate(self):
-        """Returns whether source prerequisites are met (like ROS environment for TopicSource)."""
+        """Returns whether source prerequisites are met (like ROS environment for LiveSource)."""
         if self.valid is None: self.valid = True
         return self.valid
 
@@ -849,7 +849,7 @@ class BagSource(Source, ConditionMixin):
         return True
 
 
-class TopicSource(Source, ConditionMixin):
+class LiveSource(Source, ConditionMixin):
     """Produces messages from live ROS topics."""
 
     ## Seconds between refreshing available topics from ROS master.
@@ -884,8 +884,8 @@ class TopicSource(Source, ConditionMixin):
         @param   args.stop_on_error     stop execution on any error like unknown message type
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
-        super(TopicSource, self).__init__(args)
+        args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **kwargs)
+        super(LiveSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, ROS time)]
@@ -929,7 +929,7 @@ class TopicSource(Source, ConditionMixin):
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
         if not self.validate(): raise Exception("invalid")
-        super(TopicSource, self).bind(sink)
+        super(LiveSource, self).bind(sink)
         api.init_node()
 
     def validate(self):
@@ -945,7 +945,7 @@ class TopicSource(Source, ConditionMixin):
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
         ConditionMixin.close_batch(self)
-        super(TopicSource, self).close()
+        super(LiveSource, self).close()
 
     def get_meta(self):
         """Returns source metainfo data dict."""
@@ -954,7 +954,7 @@ class TopicSource(Source, ConditionMixin):
 
     def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
-        result = super(TopicSource, self).get_message_meta(topic, msg, stamp, index)
+        result = super(LiveSource, self).get_message_meta(topic, msg, stamp, index)
         topickey = (topic, result["type"], result["hash"])
         if topickey in self._subs:
             result.update(qoses=self._subs[topickey].get_qoses())
@@ -994,7 +994,7 @@ class TopicSource(Source, ConditionMixin):
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes source filters; registers status."""
         self._status = False
-        if not super(TopicSource, self).is_processable(topic, msg, stamp, index):
+        if not super(LiveSource, self).is_processable(topic, msg, stamp, index):
             return False
         if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
             return False
@@ -1197,4 +1197,4 @@ class AppSource(Source, ConditionMixin):
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
 
-__all__ = ["AppSource", "BagSource", "ConditionMixin", "Source", "TopicSource"]
+__all__ = ["AppSource", "BagSource", "LiveSource", "ConditionMixin", "Source"]

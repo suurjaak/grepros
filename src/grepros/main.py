@@ -569,7 +569,7 @@ def run():
             sys.exit(1)
 
         source = plugins.load("source", args) or \
-                 (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+                 (inputs.LiveSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)

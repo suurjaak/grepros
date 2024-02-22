@@ -515,7 +515,7 @@ class TypeMeta(object):
         Other parameters are only required for first registration.
 
         @param   topic   topic the message is in if root message
-        @param   source  message source like TopicSource or Bag,
+        @param   source  message source like LiveSource or Bag,
                          for looking up message type metadata
         @param   root    root message that msg is a nested value of, if any
         @param   data    message serialized binary, if any

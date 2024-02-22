@@ -407,13 +407,13 @@ class TestLibrary(testbase.TestBase):
             grepros.source: [
                 (dict(app=True),                      grepros.AppSource),
                 (dict(file=self._bags),               grepros.BagSource),
-                (dict(live=True),                     grepros.TopicSource),
+                (dict(live=True),                     grepros.LiveSource),
            ],
            grepros.sink: [
                 (dict(app=True),                      grepros.AppSink),
                 (dict(app=lambda *_: _),              grepros.AppSink),
                 (dict(console=True),                  grepros.ConsoleSink),
-                (dict(publish=True),                  grepros.TopicSink),
+                (dict(publish=True),                  grepros.LiveSink),
                 (dict(app=True, console=True),        grepros.MultiSink),
                 (dict(app=True, publish=True),        grepros.MultiSink),
                 (dict(console=True, publish=True),    grepros.MultiSink),

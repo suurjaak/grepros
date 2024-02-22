@@ -101,11 +101,11 @@ class TestSourceLimits(testbase.TestBase):
         """Tests reading from sources with limit filters."""
         logger.info("Verifying reading with limit filters.")
 
-        HANDLERS = {grepros.AppSource:   self.verify_appsource_limits,
-                    grepros.BagSource:   self.verify_bagsource_limits,
-                    grepros.TopicSource: self.verify_topicsource_limits}
-        SKIP_ARGS = {grepros.AppSource:   ("start_time", "end_time"),  # Tricky to make stable test
-                     grepros.TopicSource: ("start_time", "end_time", "nth_interval")}
+        HANDLERS = {grepros.AppSource:  self.verify_appsource_limits,
+                    grepros.BagSource:  self.verify_bagsource_limits,
+                    grepros.LiveSource: self.verify_livesource_limits}
+        SKIP_ARGS = {grepros.AppSource:  ("start_time", "end_time"),  # Tricky to make stable test
+                     grepros.LiveSource: ("start_time", "end_time", "nth_interval")}
         for cls, handler in HANDLERS.items():
             for source_args in self.SOURCE_ARGS:
                 if cls in SKIP_ARGS and set(SKIP_ARGS[cls]) & set(source_args):
@@ -138,7 +138,7 @@ class TestSourceLimits(testbase.TestBase):
             self.verify_results(grepros.BagSource, source, expecteds, source_args, scanner_args)
 
 
-    def verify_topicsource_limits(self, source_args, scanner_args=None):
+    def verify_livesource_limits(self, source_args, scanner_args=None):
         """Tests reading from live with limit filters."""
         clify = lambda x: "--%s%s" % ("every-" if x.startswith("nth_") else "", x.replace("_", "-"))
 
@@ -153,14 +153,14 @@ class TestSourceLimits(testbase.TestBase):
         self._outnames.append(outname)
         self.run_command(communicate=False)
         all_args = dict(source_args, **scanner_args or {})
-        expecteds = list(self.make_producer(all_args, self.make_emitter(grepros.TopicSource)))
+        expecteds = list(self.make_producer(all_args, self.make_emitter(grepros.LiveSource)))
         time.sleep(1)  # Allow subprocess to receive all messages
         logger.debug("Closing subprocess.")
         os.kill(self._proc.pid, signal.SIGINT)
         time.sleep(1)  # Allow subprocess to finalize bagfile
 
         with grepros.BagSource(file=outname) as source:
-            self.verify_results(grepros.TopicSource, source, expecteds, source_args, scanner_args)
+            self.verify_results(grepros.LiveSource, source, expecteds, source_args, scanner_args)
 
 
     def verify_results(self, cls, source, expecteds, source_args, scanner_args=None):
@@ -169,7 +169,7 @@ class TestSourceLimits(testbase.TestBase):
         expecteds_provider, receiveds_provider, count_expected = iter(expecteds), source, 0
         if scanner_args is not None:
             NAMETEXT += " via %s" % NAME(grepros.Scanner, **scanner_args)
-            if cls is not grepros.TopicSource:  # Applied in subprocess already
+            if cls is not grepros.LiveSource:  # Applied in subprocess already
                 receiveds_provider = grepros.Scanner(source_args, **scanner_args).find(source)
 
         logger.debug("Checking expected messages vs received messages.")
@@ -178,7 +178,7 @@ class TestSourceLimits(testbase.TestBase):
             if isinstance(source, grepros.BagSource):  # Dictify as ROS1 bag makes its own classes
                 expected = (expected[0], message_to_dict(expected[1]), expected[2])
                 received = (received[0], message_to_dict(received[1]), received[2])
-            if cls is grepros.TopicSource:  # Drop timestamps from live as inevitably different
+            if cls is grepros.LiveSource:  # Drop timestamps from live as inevitably different
                 expected, received = (x[:2] for x in (expected, received))
             self.assertEqual(expected, received, "Unexpected result from %s." % NAMETEXT)
             count_expected += 1
@@ -256,7 +256,7 @@ class TestSourceLimits(testbase.TestBase):
         if isinstance(source_or_cls, grepros.AppSource):
             return source_or_cls.push
 
-        if isinstance(source_or_cls, grepros.TopicSource) or source_or_cls is grepros.TopicSource:
+        if isinstance(source_or_cls, grepros.LiveSource) or source_or_cls is grepros.LiveSource:
             def publish(topic, msg=None, stamp=None):
                 if not topic: return
                 self._pubs[topic].publish(msg)

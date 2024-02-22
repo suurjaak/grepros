@@ -6,7 +6,7 @@ Source classes:
 
 - {@link grepros.inputs.AppSource AppSource}: produces messages from iterable or pushed data
 - {@link grepros.inputs.BagSource BagSource}: produces messages from ROS bagfiles
-- {@link grepros.inputs.TopicSource TopicSource}: produces messages from live ROS topics
+- {@link grepros.inputs.LiveSource LiveSource}: produces messages from live ROS topics
 
 Sink classes:
 
@@ -15,13 +15,13 @@ Sink classes:
 - {@link grepros.outputs.ConsoleSink ConsoleSink}: prints messages to console
 - {@link grepros.plugins.auto.csv.CsvSink CsvSink}: writes messages to CSV files, each topic to a separate file
 - {@link grepros.plugins.auto.html.HtmlSink HtmlSink}: writes messages to an HTML file
+- {@link grepros.outputs.LiveSink LiveSink}: publishes messages to ROS topics
 - {@link grepros.plugins.mcap.McapSink McapSink}: writes messages to MCAP file
 - {@link grepros.outputs.MultiSink MultiSink}: combines any number of sinks
 - {@link grepros.plugins.parquet.ParquetSink ParquetSink}: writes messages to Apache Parquet files
 - {@link grepros.plugins.auto.postgres.PostgresSink PostgresSink}: writes messages to a Postgres database
 - {@link grepros.plugins.auto.sqlite.SqliteSink SqliteSink}: writes messages to an SQLite database
 - {@link grepros.plugins.sql.SqlSink SqlSink}: writes SQL schema file for message type tables and topic views
-- {@link grepros.outputs.TopicSink TopicSink}: publishes messages to ROS topics
 
 {@link grepros.api.BaseBag Bag}: generic bag interface.
 {@link grepros.search.Scanner Scanner}: ROS message grepper.
@@ -56,8 +56,8 @@ from . plugins.parquet       import ParquetSink
 from . plugins.sql           import SqlSink
 
 from . api  import Bag
-from . inputs  import AppSource, BagSource, Source, TopicSource
-from . outputs import AppSink, BagSink, ConsoleSink, MultiSink, Sink, TopicSink
+from . inputs  import AppSource, BagSource, LiveSource, Source
+from . outputs import AppSink, BagSink, ConsoleSink, LiveSink, MultiSink, Sink
 from . search  import BooleanResult, ExpressionTree, Scanner
 from . import api
 from . import common
@@ -173,7 +173,7 @@ def grep(args=None, **kwargs):
     if common.is_iterable(args.APP) and not common.is_iterable(args.ITERABLE):
         args.APP, args.ITERABLE = True, args.APP
     src = args0 if isinstance(args0, Source) else \
-          TopicSource(args) if args.LIVE else \
+          LiveSource(args) if args.LIVE else \
           AppSource(args) if args.APP else \
           BagSource(args0, **vars(args)) if is_bag else BagSource(args)
     src.validate()
@@ -247,7 +247,7 @@ def source(args=None, **kwargs):
 
     if common.is_iterable(args.APP) and not common.is_iterable(args.ITERABLE):
         args.APP, args.ITERABLE = True, args.APP
-    result = (TopicSource if args.LIVE else AppSource if args.APP else BagSource)(args)
+    result = (LiveSource if args.LIVE else AppSource if args.APP else BagSource)(args)
     result.validate()
     return result
 
@@ -375,7 +375,7 @@ def init(args=None, **kwargs):
 
 __all__ = [
     "AppSink", "AppSource", "Bag", "BagSink", "BagSource", "BooleanResult", "ConsoleSink",
-    "CsvSink", "ExpressionTree", "HtmlSink", "McapBag", "McapSink", "MultiSink", "ParquetSink",
-    "PostgresSink", "Scanner", "Sink", "Source", "SqliteSink", "SqlSink", "TopicSink",
-    "TopicSource", "grep", "init", "sink", "source",
+    "CsvSink", "ExpressionTree", "HtmlSink", "LiveSink", "LiveSource", "McapBag", "McapSink",
+    "MultiSink", "ParquetSink", "PostgresSink", "Scanner", "Sink", "Source", "SqliteSink",
+    "SqlSink", "grep", "init", "sink", "source",
 ]

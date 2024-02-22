@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    02.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -86,7 +86,7 @@ class Sink(object):
         self.source = source
 
     def validate(self):
-        """Returns whether sink prerequisites are met (like ROS environment set if TopicSink)."""
+        """Returns whether sink prerequisites are met (like ROS environment set if LiveSink)."""
         if self.valid is None: self.valid = True
         return self.valid
 
@@ -726,7 +726,7 @@ class BagSink(Sink, RolloverSinkMixin):
         return ext in api.BAG_EXTENSIONS
 
 
-class TopicSink(Sink):
+class LiveSink(Sink):
     """Publishes messages to ROS topics."""
 
     ## Constructor argument defaults
@@ -746,8 +746,8 @@ class TopicSink(Sink):
         @param   args.verbose           whether to emit debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = common.ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
-        super(TopicSink, self).__init__(args)
+        args = common.ensure_namespace(args, LiveSink.DEFAULT_ARGS, **kwargs)
+        super(LiveSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
@@ -771,12 +771,12 @@ class TopicSink(Sink):
 
         self._pubs[topickey].publish(msg)
         self._close_printed = False
-        super(TopicSink, self).emit(topic, msg, stamp, match, index)
+        super(LiveSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
         if not self.validate(): raise Exception("invalid")
-        super(TopicSink, self).bind(source)
+        super(LiveSink, self).bind(source)
         api.init_node()
 
     def validate(self):
@@ -807,7 +807,7 @@ class TopicSink(Sink):
             except Exception as e:
                 if self.args.VERBOSE:
                     ConsolePrinter.warn("Error closing publisher on topic %r: %s", k[0], e)
-        super(TopicSink, self).close()
+        super(LiveSink, self).close()
 
 
 class AppSink(Sink):
@@ -852,7 +852,7 @@ class MultiSink(Sink):
     """Combines any number of sinks."""
 
     ## Autobinding between argument flags and sink classes
-    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink, "APP": AppSink}
+    FLAG_CLASSES = {"PUBLISH": LiveSink, "CONSOLE": ConsoleSink, "APP": AppSink}
 
     ## Autobinding between `--write TARGET format=FORMAT` and sink classes
     FORMAT_CLASSES = {"bag": BagSink}
@@ -937,6 +937,6 @@ class MultiSink(Sink):
 
 
 __all__ = [
-    "AppSink", "BagSink", "ConsoleSink", "MultiSink", "RolloverSinkMixin", "Sink", "TextSinkMixin",
-    "TopicSink"
+    "AppSink", "BagSink", "ConsoleSink", "LiveSink", "MultiSink", "RolloverSinkMixin", "Sink",
+    "TextSinkMixin",
 ]

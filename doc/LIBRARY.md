@@ -75,11 +75,11 @@ with grepros.PostgresSink("username=postgres dbname=postgres") as sink:
         sink.emit(*data)
 
 # Grep live topics:
-for topic, msg, stamp, match, index in grepros.TopicSource(topic="/diagnostics", pattern="cpu"):
+for topic, msg, stamp, match, index in grepros.LiveSource(topic="/diagnostics", pattern="cpu"):
     print("MESSAGE #%s MATCH: " % index, match)
 
 # Subscribe to live topics and write to bag:
-with grepros.TopicSource(topic="/rosout") as source, \
+with grepros.LiveSource(topic="/rosout") as source, \
      grepros.Bag("my.bag", "w") as bag:
     for topic, msg, stamp, *_ in grepros.Scanner(pattern="error").find(source)
         bag.write(topic, msg, stamp)
@@ -100,7 +100,7 @@ Source classes:
 
 - [`grepros.AppSource`](https://suurjaak.github.io/grepros/api/classgrepros_1_1inputs_1_1_app_source.html): produces messages from iterable or pushed data
 - [`grepros.BagSource`](https://suurjaak.github.io/grepros/api/classgrepros_1_1inputs_1_1_bag_source.html): produces messages from ROS bagfiles
-- [`grepros.TopicSource`](https://suurjaak.github.io/grepros/api/classgrepros_1_1inputs_1_1_topic_source.html): produces messages from live ROS topics
+- [`grepros.LiveSource`](https://suurjaak.github.io/grepros/api/classgrepros_1_1inputs_1_1_live_source.html): produces messages from live ROS topics
 
 Sink classes:
 
@@ -109,13 +109,13 @@ Sink classes:
 - [`grepros.ConsoleSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1outputs_1_1_console_sink.html): prints messages to console
 - [`grepros.CsvSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html): writes messages to CSV files, each topic to a separate file
 - [`grepros.HtmlSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html): writes messages to an HTML file
+- [`grepros.LiveSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1outputs_1_1_live_sink.html): publishes messages to live ROS topics
 - [`grepros.McapSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html): writes messages to an MCAP file
 - [`grepros.MultiSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1outputs_1_1_multi_sink.html): combines any number of sinks
 - [`grepros.ParquetSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html): writes messages to Apache Parquet files
 - [`grepros.PostgresSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html): writes messages to a Postgres database
 - [`grepros.SqliteSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html): writes messages to an SQLite database
 - [`grepros.SqlSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html): writes an SQL schema file for message type tables and topic views
-- [`grepros.TopicSink`](https://suurjaak.github.io/grepros/api/classgrepros_1_1outputs_1_1_topic_sink.html): publishes messages to live ROS topics
 
 [`grepros.Bag`](https://suurjaak.github.io/grepros/api/classgrepros_1_1api_1_1_base_bag.html): generic ROS bag interface.<br />
 [`grepros.Scanner`](https://suurjaak.github.io/grepros/api/classgrepros_1_1search_1_1_scanner.html): ROS message grepper.
