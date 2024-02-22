@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.02.2024
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -544,7 +544,7 @@ class TypeMeta(object):
         """Discards stale or surplus messages from cache."""
         if cls.POPULATION > 0 and len(cls._CACHE) > cls.POPULATION:
             count = len(cls._CACHE) - cls.POPULATION
-            for msgid, tm in sorted(x[::-1] for x in cls._TIMINGS.items())[:count]:
+            for msgid, tm in sorted(x[::-1] for x in list(cls._TIMINGS.items()))[:count]:
                 cls._CACHE.pop(msgid, None), cls._TIMINGS.pop(msgid, None)
                 for childid in cls._CHILDREN.pop(msgid, []):
                     cls._CACHE.pop(childid, None), cls._TIMINGS.pop(childid, None)

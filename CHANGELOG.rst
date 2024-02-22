@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-02-21)
+1.2.0 (2024-02-22)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -18,6 +18,7 @@ Changelog for package grepros
 * fix emitting invalid YAML for nested message arrays
 * fix using --filename with --recursive
 * fix preparing patterns for early message skip
+* fix intermittent concurrency issue in HTML output
 
 1.1.0 (2023-12-30)
 -------------------
