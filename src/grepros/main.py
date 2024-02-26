@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.02.2024
+@modified    26.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -19,6 +19,7 @@ import logging
 import os
 import random
 import re
+import signal
 import sys
 import traceback
 
@@ -562,6 +563,7 @@ def run():
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
     except NameError: pass  # Py2
 
+    exitcode = {"value": 0}
     source, sink = None, None
     try:
         ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
@@ -577,7 +579,8 @@ def run():
         if not sink.validate():
             sys.exit(1)
 
-        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), sys.exit(1))
+        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), exitcode.update(value=1),
+                                          api.shutdown_node(), os.kill(os.getpid(), signal.SIGINT))
         source.thread_excepthook = sink.thread_excepthook = thread_excepthook
         grepper = plugins.load("scan", args) or search.Scanner(args)
         grepper.work(source, sink)
@@ -589,7 +592,7 @@ def run():
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except (Exception, KeyboardInterrupt): pass
-        sys.exit()
+        sys.exit(exitcode["value"])
     except Exception as e:
         ConsolePrinter.error(e)
         if args.VERBOSE: traceback.print_exc()
