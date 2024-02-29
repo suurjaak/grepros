@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    26.02.2024
+@modified    29.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -542,6 +542,18 @@ def preload_plugins():
     except ImportWarning: sys.exit(1)
 
 
+def make_thread_excepthook(args, exitcode_dict):
+    """Returns thread exception handler: function(text, exc) prints error, stops application."""
+    def thread_excepthook(text, exc):
+        """Prints error, sets exitcode flag, shuts down ROS node if any, interrupts main thread."""
+        ConsolePrinter.error(text)
+        if args.VERBOSE: traceback.print_exc()
+        exitcode_dict["value"] = 1
+        api.shutdown_node()
+        os.kill(os.getpid(), signal.SIGINT)
+    return thread_excepthook
+
+
 def run():
     """Parses command-line arguments and runs search."""
     global CLI_ARGS
@@ -579,9 +591,7 @@ def run():
         if not sink.validate():
             sys.exit(1)
 
-        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), exitcode.update(value=1),
-                                          api.shutdown_node(), os.kill(os.getpid(), signal.SIGINT))
-        source.thread_excepthook = sink.thread_excepthook = thread_excepthook
+        source.thread_excepthook = sink.thread_excepthook = make_thread_excepthook(args, exitcode)
         grepper = plugins.load("scan", args) or search.Scanner(args)
         grepper.work(source, sink)
     except BREAK_EXS:
@@ -604,7 +614,8 @@ def run():
 
 __all__ = [
     "ARGUMENTS", "CLI_ARGS", "HelpFormatter",
-    "make_parser", "process_args", "validate_args", "flush_stdout", "preload_plugins", "run",
+    "flush_stdout", "make_parser", "make_thread_excepthook", "preload_plugins", "process_args",
+    "run", "validate_args",
 ]
 
 
