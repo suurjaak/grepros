@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.02.2024
+@modified    29.02.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -23,6 +23,7 @@ except ImportError: import Queue as queue  # Py2
 import re
 import threading
 import time
+import traceback
 
 import six
 
@@ -459,7 +460,7 @@ class BagSource(Source, ConditionMixin):
                         SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False,
-                        STOP_ON_ERROR=False, TIMESCALE=0, TIMESCALE_EMISSION=False)
+                        STOP_ON_ERROR=False, TIMESCALE=0, TIMESCALE_EMISSION=False, VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -505,6 +506,7 @@ class BagSource(Source, ConditionMixin):
                                         for message to be processable, see ConditionMixin
         @param   args.progress          whether to print progress bar
         @param   args.stop_on_error     stop execution on any error like unknown message type
+        @param   args.verbose           whether to print error stacktraces
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args0 = args
@@ -816,6 +818,7 @@ class BagSource(Source, ConditionMixin):
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename or bag, e)
             if self.args.STOP_ON_ERROR: raise
+            if self.args.VERBOSE: traceback.print_exc()
             return False
 
         self._bag      = bag
@@ -858,7 +861,8 @@ class LiveSource(Source, ConditionMixin):
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
                         END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITION=(),
-                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False, STOP_ON_ERROR=False)
+                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False, STOP_ON_ERROR=False,
+                        VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -882,6 +886,7 @@ class LiveSource(Source, ConditionMixin):
         @param   args.ros_time_in       stamp messages with ROS time instead of wall time
         @param   args.progress          whether to print progress bar
         @param   args.stop_on_error     stop execution on any error like unknown message type
+        @param   args.verbose           whether to print error stacktraces
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **kwargs)
@@ -1024,6 +1029,7 @@ class LiveSource(Source, ConditionMixin):
                 ConsolePrinter.warn("Error subscribing to topic %s: %%r" % topic,
                                     e, __once=True)
                 if self.args.STOP_ON_ERROR: raise
+                if self.args.VERBOSE: traceback.print_exc()
                 continue  # for topic, typename
             self._subs[topickey] = sub
             self.topics[topickey] = None
