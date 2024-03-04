@@ -13,6 +13,7 @@ Changelog for package grepros
 * make api.dict_to_message() support nested ROS messages in dictionary
 * make api.get_message_value() accept a default
 * support fractional values in --every-nth-interval option
+* add result message count in HTML output
 * rename TopicSource and TopicSink to LiveSource and LiveSink
 * fix negative --start-index and --end-index ignoring different counts in bag topics
 * fix --every-nth-interval not working when messages continuously close

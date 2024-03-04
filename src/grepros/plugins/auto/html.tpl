@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    31.08.2023
+@modified    04.03.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -38,6 +38,10 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     }
     #header #meta {
       white-space:            pre-wrap;
+    }
+    #header #meta #result_count:empty::after {
+      content:                "Loading..";
+      color:                  gray;
     }
     #footer {
       color:                  gray;
@@ -455,6 +459,14 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       var FIRSTMSGS = self.FIRSTMSGS = {};  // {[topic, typename, typehash]: {id, dt}}
       var LASTMSGS  = self.LASTMSGS  = {};  // {[topic, typename, typehash]: {id, dt}}
       var MSGCOUNTS = self.MSGCOUNTS = {};  // {[topic, typename, typehash]: count}
+
+
+      /** Adds total message count to metainfo content. */
+      self.init = function() {
+        var count = Object.keys(MSGCOUNTS).reduce(function(sum, k) { return sum + MSGCOUNTS[k]; }, 0);
+        var countstr = count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");  // Thousand-separators
+        document.getElementById("result_count").innerHTML = countstr;
+      };
 
 
       /** Registers entry in a topic. */
@@ -960,7 +972,8 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 
     window.addEventListener("DOMContentLoaded", function() {
-      TOC.init()
+      Messages.init();
+      TOC.init();
 %if timeline:
       Timeline.init();
 %endif
@@ -980,6 +993,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     %if isdef("args") and args:
 Command: {{ __title__ }} {{ " ".join(args) }}
     %endif
+Messages in result: <span id="result_count"></span>
 %endif
   </div>
   <div id="topics">
