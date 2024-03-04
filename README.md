@@ -439,9 +439,9 @@ Emit a specified number of matches per topic (per each file if bag input):
 
     --max-per-topic 20
 
-Emit every Nth match in topic:
+Emit every Nth match in topic, starting from first:
 
-    --every-nth-match 10  # (skips 9 matches in topic after each match emitted)
+    --every-nth-match 10  # (emits matches #1 #11 #21 ..)
 
 
 ### Filtering
@@ -505,9 +505,9 @@ Stop reading at a specific message index in topic:
     -n1         -100  # (counts back from topic total message count in bag)
     --end-index   10  # (1-based index)
 
-Read every Nth message in topic:
+Read every Nth message in topic, starting from first:
 
-    --every-nth-message 10  # (skips 9 messages in topic with each step)
+    --every-nth-message 10  # (reads messages #1 #11 #21 ..)
 
 Read messages in topic with timestamps at least N seconds apart:
 
@@ -769,11 +769,11 @@ Filtering:
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
   --every-nth-message NUM
-                        read every Nth message within topic
+                        read every Nth message within topic, starting from first
   --every-nth-interval SECONDS
                         read messages at least N seconds apart within topic
   --every-nth-match NUM
-                        emit every Nth match in topic
+                        emit every Nth match in topic, starting from first
   -sf FIELD [FIELD ...], --select-field FIELD [FIELD ...]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)

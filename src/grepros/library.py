@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    10.02.2024
+@modified    04.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -119,7 +119,7 @@ def grep(args=None, **kwargs):
     @param   args.start_index          message index within topic to start from
     @param   args.end_index            message index within topic to stop at
 
-    @param   args.nth_message          read every Nth message in topic
+    @param   args.nth_message          read every Nth message in topic, starting from first
     @param   args.nth_interval         minimum time interval between messages in topic
 
     @param   args.select_field         message fields to use in matching if not all
@@ -140,7 +140,7 @@ def grep(args=None, **kwargs):
                                        like 'this AND (this2 OR NOT "skip this")',
                                        with elements as patterns to find in message fields
 
-    @param   args.nth_match            emit every Nth match in topic
+    @param   args.nth_match            emit every Nth match in topic, starting from first
     @param   args.max_count            number of matched messages to emit (per file if bag input)
     @param   args.max_per_topic        number of matched messages to emit from each topic
     @param   args.max_topics           number of topics to print matches from
@@ -235,7 +235,7 @@ def source(args=None, **kwargs):
     @param   args.unique               emit messages that are unique in topic
     @param   args.select_field         message fields to use for uniqueness if not all
     @param   args.noselect_field       message fields to skip for uniqueness
-    @param   args.nth_message          read every Nth message in topic
+    @param   args.nth_message          read every Nth message in topic, starting from first
     @param   args.nth_interval         minimum time interval between messages in topic
     @param   args.condition            Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin

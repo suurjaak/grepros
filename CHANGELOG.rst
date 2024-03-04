@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-02-26)
+1.2.0 (2024-03-04)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`

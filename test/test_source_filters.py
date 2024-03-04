@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.02.2024
-@modified    22.02.2024
+@modified    04.03.2024
 ------------------------------------------------------------------------------
 """
 import collections
@@ -223,7 +223,7 @@ class TestSourceLimits(testbase.TestBase):
                 if END_TIME and do_expect:
                     do_expect = (stamp <= END_TIME)
                 if args.NTH_MESSAGE and do_expect:  # Expect (START, START+NTH, +NTH*2, ..)
-                    shift = args.START_INDEX if (args.START_INDEX or 0) > 1 else 0
+                    shift = args.START_INDEX if (args.START_INDEX or 0) > 1 else 1
                     do_expect = not expected_counts[topic] or index_in_topic == START_INDEX or \
                                 not (index_in_topic - shift) % args.NTH_MESSAGE
                 if args.NTH_INTERVAL and do_expect:  # Expect (START, START+4, +4*2, ..)

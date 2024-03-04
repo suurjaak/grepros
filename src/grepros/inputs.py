@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    29.02.2024
+@modified    04.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -56,7 +56,7 @@ class Source(object):
         @param   args.end_index         message index within topic to stop at
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
         @param   args.nth_interval      minimum time interval between messages in topic
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
@@ -181,7 +181,7 @@ class Source(object):
         if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             last_accepted = self._processables.get(topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
-            shift = self.args.START_INDEX if (self.args.START_INDEX or 0) > 1 else 0
+            shift = self.args.START_INDEX if (self.args.START_INDEX or 0) > 1 else 1
             if (index - shift) % self.args.NTH_MESSAGE:
                 return False
         if self.args.NTH_INTERVAL > 0 and last_accepted and stamp is not None:
@@ -500,7 +500,7 @@ class BagSource(Source, ConditionMixin):
         @param   args.unique            emit messages that are unique in topic
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
         @param   args.nth_interval      minimum time interval between messages in topic
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
@@ -878,7 +878,7 @@ class LiveSource(Source, ConditionMixin):
         @param   args.unique            emit messages that are unique in topic
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
         @param   args.nth_interval      minimum time interval between messages in topic
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
@@ -1095,7 +1095,7 @@ class AppSource(Source, ConditionMixin):
         @param   args.unique           emit messages that are unique in topic
         @param   args.select_field     message fields to use for uniqueness if not all
         @param   args.noselect_field   message fields to skip for uniqueness
-        @param   args.nth_message      read every Nth message in topic
+        @param   args.nth_message      read every Nth message in topic, starting from first
         @param   args.nth_interval     minimum time interval between messages in topic
         @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin
