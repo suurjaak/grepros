@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    22.02.2024
+@modified    04.03.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import re
+import string
 import sys
 import tempfile
 
@@ -49,7 +50,7 @@ class TestLibrary(testbase.TestBase):
 
     def __init__(self, *args, **kwargs):
         super(TestLibrary, self).__init__(*args, **kwargs)
-        self._tempnames = []  # Names of temporary files for write output
+        self._outnames = []  # [outfile path, ]
 
 
     def setUp(self):
@@ -61,8 +62,8 @@ class TestLibrary(testbase.TestBase):
 
     def tearDown(self):
         """Deletes temporary output files, if any."""
-        while self._tempnames:
-            try: os.unlink(self._tempnames.pop())
+        while self._outnames:
+            try: os.unlink(self._outnames.pop())
             except Exception: pass
         super(TestLibrary, self).tearDown()
 
@@ -362,7 +363,8 @@ class TestLibrary(testbase.TestBase):
                         ropts.update(OPT_OVERRIDES[cls])
                     if not any(ropts.values()): continue  # for ropts
                     logger.info("Testing %s rollover with %s.", NAME(cls), ropts)
-                    SUFF = "".join("%s=%s" % x for x in ropts.items())
+                    SUFF = "__%s__" % "".join(random.sample(string.ascii_lowercase, 5))
+                    SUFF += "_".join("%s=%s" % x for x in ropts.items())
                     template = os.path.join(OUTDIR, TEMPLATE + SUFF + EXT)
 
                     with cls(WRITE, write_options=dict(ropts, rollover_template=template)) as sink:
@@ -371,7 +373,7 @@ class TestLibrary(testbase.TestBase):
                             sink.emit("my/topic%s" % (i % 2), msg, START + api.make_duration(i))
 
                     outputs = sorted(glob.glob(os.path.join(OUTDIR, "test_*" + SUFF + EXT)))
-                    self._tempnames.extend(outputs)
+                    self._outnames.extend(outputs)
                     self.assertGreaterEqual(len(outputs), output_range[0],
                                             "Unexpected output files from %s." % NAME(cls))
                     if output_range[1] is not None:
@@ -470,7 +472,7 @@ class TestLibrary(testbase.TestBase):
     def mkfile(self, suffix):
         """Returns temporary filename with given suffix, deleted in teardown."""
         name = tempfile.NamedTemporaryFile(suffix=suffix).name
-        self._tempnames.append(name)
+        self._outnames.append(name)
         return name
 
 
