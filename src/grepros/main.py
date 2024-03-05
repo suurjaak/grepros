@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.03.2024
+@modified    05.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -595,9 +595,9 @@ def run():
         grepper = plugins.load("scan", args) or search.Scanner(args)
         grepper.work(source, sink)
     except BREAK_EXS:
-        try: source and source.close()
-        except (Exception, KeyboardInterrupt): pass
         try: sink and sink.close()
+        except (Exception, KeyboardInterrupt): pass
+        try: source and source.close()
         except (Exception, KeyboardInterrupt): pass
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())

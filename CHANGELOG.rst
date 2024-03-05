@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-03-04)
+1.2.0 (2024-03-05)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -22,7 +22,7 @@ Changelog for package grepros
 * fix preparing patterns for early message skip
 * fix program not exiting properly on exception in background thread,
   like ROS master shutting down when grepping live topics
-* fix intermittent concurrency issue in HTML output
+* fix intermittent concurrency issues in HTML output
 
 1.1.0 (2023-12-30)
 -------------------
