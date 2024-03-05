@@ -23,6 +23,7 @@ Changelog for package grepros
 * fix program not exiting properly on exception in background thread,
   like ROS master shutting down when grepping live topics
 * fix intermittent concurrency issues in HTML output
+* avoid pointless stacktrace upon multiple Ctrl-C when grepping live topics
 
 1.1.0 (2023-12-30)
 -------------------

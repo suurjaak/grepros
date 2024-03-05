@@ -609,7 +609,8 @@ def run():
     finally:
         sink and sink.close()
         source and source.close()
-        api.shutdown_node()
+        try: api.shutdown_node()
+        except BREAK_EXS: pass
 
 
 __all__ = [
