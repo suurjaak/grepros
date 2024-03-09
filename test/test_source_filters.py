@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.02.2024
-@modified    04.03.2024
+@modified    09.03.2024
 ------------------------------------------------------------------------------
 """
 import collections
@@ -154,7 +154,8 @@ class TestSourceLimits(testbase.TestBase):
         self.run_command(communicate=False)
         all_args = dict(source_args, **scanner_args or {})
         expecteds = list(self.make_producer(all_args, self.make_emitter(grepros.LiveSource)))
-        time.sleep(1)  # Allow subprocess to receive all messages
+        logger.debug("Waiting for subprocess to finish.")
+        time.sleep(5 if grepros.api.ROS2 else 1)  # Allow subprocess to receive all messages
         logger.debug("Closing subprocess.")
         os.kill(self._proc.pid, signal.SIGINT)
         time.sleep(1)  # Allow subprocess to finalize bagfile
@@ -264,6 +265,7 @@ class TestSourceLimits(testbase.TestBase):
             logger.debug("Waiting for subscriptions.")
             while any(not x.get_num_connections() for x in self._pubs.values()):
                 self.spin_once(0.2)
+            if grepros.api.ROS2: self.spin_once(4) # ROS2 needs more time for subscriptions to work
             return publish
 
         if isinstance(source_or_cls, grepros.BagSource) or source_or_cls is grepros.BagSource:
