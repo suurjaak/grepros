@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.02.2024
+@modified    12.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -357,7 +357,7 @@ class ProgressBar(threading.Thread):
 
     def __init__(self, max=100, value=0, min=0, width=30, forechar="-",
                  backchar=" ", foreword="", afterword="", interval=1,
-                 pulse=False, aftertemplate=" {afterword}"):
+                 pulse=False, aftertemplate=" {afterword}", **afterargs):
         """
         Creates a new progress bar, without drawing it yet.
 
@@ -371,20 +371,31 @@ class ProgressBar(threading.Thread):
         @param   afterword      text after progress bar
         @param   interval       ticker thread interval, in seconds
         @param   pulse          ignore value-min-max, use constant pulse instead
-        @param   aftertemplate  afterword format() template, populated with vars(self)
+        @param   aftertemplate  afterword format() template, populated with vars(self) and afterargs
+        @param   afterargs      additional keywords for aftertemplate formatting
         """
         threading.Thread.__init__(self)
-        for k, v in locals().items(): setattr(self, k, v) if "self" != k else 0
-        afterword = aftertemplate.format(**vars(self))
-        self.daemon    = True   # Daemon threads do not keep application running
-        self.percent   = None   # Current progress ratio in per cent
-        self.value     = None   # Current progress bar value
-        self.pause     = False  # Whether drawing is currently paused
-        self.pulse_pos = 0      # Current pulse position
+        self.max           = max
+        self.value         = value
+        self.min           = min
+        self.width         = width
+        self.forechar      = forechar
+        self.backchar      = backchar
+        self.foreword      = foreword
+        self.afterword     = afterword
+        self.interval      = interval
+        self.pulse         = pulse
+        self.aftertemplate = aftertemplate
+        self.afterargs     = afterargs
+        self.daemon        = True   # Daemon threads do not keep application running
+        self.percent       = None   # Current progress ratio in per cent
+        self.value         = 0      # Current progress bar value
+        self.pause         = False  # Whether drawing is currently paused
+        self.pulse_pos     = 0      # Current pulse position
         self.bar = "%s[%s%s]%s" % (foreword,
                                    backchar if pulse else forechar,
                                    backchar * (width - 3),
-                                   afterword)
+                                   aftertemplate.format(**dict(vars(self), **self.afterargs)))
         self.printbar = self.bar   # Printable text, with padding to clear previous
         self.progresschar = itertools.cycle("-\\|/")
         self.is_running = False
@@ -392,8 +403,10 @@ class ProgressBar(threading.Thread):
 
     def update(self, value=None, draw=True, flush=False):
         """Updates the progress bar value, and refreshes by default; returns self."""
-        if value is not None: self.value = min(self.max, max(self.min, value))
-        afterword = self.aftertemplate.format(**vars(self))
+        if value is not None:
+            self.value = value if self.pulse else min(self.max, max(self.min, value))
+        args = dict(vars(self), **self.afterargs) if self.afterargs else vars(self)
+        afterword = self.aftertemplate.format(**args)
         w_full = self.width - 2
         if self.pulse:
             if self.pulse_pos is None:
