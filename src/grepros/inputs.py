@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    04.03.2024
+@modified    15.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -44,7 +44,7 @@ class Source(object):
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, START_INDEX=None, END_INDEX=None,
                         UNIQUE=False, SELECT_FIELD=(), NOSELECT_FIELD=(),
-                        NTH_MESSAGE=1, NTH_INTERVAL=0)
+                        NTH_MESSAGE=1, NTH_INTERVAL=0, PROGRESS=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -58,6 +58,7 @@ class Source(object):
         @param   args.noselect_field    message fields to skip for uniqueness
         @param   args.nth_message       read every Nth message in topic, starting from first
         @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.progress          whether to print progress bar
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
@@ -70,6 +71,7 @@ class Source(object):
         self._processables  = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
         self._start_indexes = {}  # {(topic, typename, typehash): start index}
         self._end_indexes   = {}  # {(topic, typename, typehash): end index}
+        self._bar_args      = {}  # Progress bar options
         self._status = None  # Processable/match status of last produced message
 
         self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
@@ -199,6 +201,35 @@ class Source(object):
     def notify(self, status):
         """Reports match status of last produced message."""
         self._status = bool(status)
+        if self.bar and self._bar_args.get("source_value") is not None:
+            self.bar.update(self.bar.value + bool(status))
+
+    def configure_progress(self, **kwargs):
+        """Configures progress bar options, updates current bar if any."""
+        for k, v in kwargs.items():
+            if isinstance(self._bar_args.get(k), dict) and isinstance(v, dict):
+                self._bar_args[k].update(v)
+            else: self._bar_args[k] = v
+        if self.bar:
+            bar_attrs = set(k for k in vars(self.bar) if not k.startswith("_"))
+            for k, v in self._bar_args.items():
+                if k in bar_attrs: setattr(self.bar, k, v)
+                else: self.bar.afterargs[k] = v
+
+    def init_progress(self):
+        """Initializes progress bar, if any."""
+        if self.args.PROGRESS and not self.bar:
+            self.bar = common.ProgressBar(**self._bar_args)
+            self.bar.start() if self.bar.pulse else self.bar.update(value=0)
+
+    def update_progress(self, count, running=True):
+        """Updates progress bar, if any, with source processed count, pauses bar if not running."""
+        if self.bar:
+            if not running:
+                self.bar.pause, self.bar.pulse_pos = True, None
+            if self._bar_args.get("source_value") is not None:
+                self.bar.afterargs["source_value"] = count
+            else: self.bar.update(count)
 
     def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
@@ -547,7 +578,7 @@ class BagSource(Source, ConditionMixin):
                 topicsets = [{n: [t] for n in nn} for t, nn in sorted(typetopics.items())]
 
             self._types_ok = False
-            self._init_progress()
+            self.init_progress()
             for topics in topicsets:
                 for topic, msg, stamp, index in self._produce(topics) if topics else ():
                     self.conditions_register_message(topic, msg)
@@ -599,6 +630,8 @@ class BagSource(Source, ConditionMixin):
         if self.bar:
             self.bar.update(flush=True)
             self.bar = None
+            if self._bar_args.get("source_value") is not None:
+                self._bar_args["source_value"] = 0
         ConditionMixin.close_batch(self)
 
     def format_meta(self):
@@ -712,7 +745,7 @@ class BagSource(Source, ConditionMixin):
 
             self._status, self._delaystamps["current"] = None, api.to_sec(stamp)
             if do_predelay: self._delay_timeline()  # Delay emission until time
-            self.bar and self.bar.update(value=sum(self._counts.values()))
+            if self.bar: self.update_progress(sum(self._counts.values()))
             yield topic, msg, stamp, self._counts[topickey]
 
             if self._status:
@@ -756,16 +789,33 @@ class BagSource(Source, ConditionMixin):
             encountereds.add(self._bag.filename)
             yield self._bag
 
-    def _init_progress(self):
+    def init_progress(self):
         """Initializes progress bar, if any, for current bag."""
         if self.args.PROGRESS and not self.bar:
             self._ensure_totals()
-            self.bar = common.ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
-            self.bar.afterword = os.path.basename(self._filename or "<stream>")
-            self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items()
-                                   if c and t == t_ and n in nn)
-                               for t_, nn in self._topics.items())
-            self.bar.update(value=0)
+            self.configure_progress(**self._make_progress_args())
+            super(BagSource, self).init_progress()
+
+    def _make_progress_args(self):
+        """Returns dictionary with progress bar options"""
+        total = sum(sum(c for (t, n, _), c in self.topics.items() if c and t == t_ and n in nn)
+                    for t_, nn in self._topics.items())
+        result = dict(max=total, afterword=os.path.basename(self._filename or "<stream>"))
+
+        instr, outstr = "{value:,d}/{max:,d}", ""
+        if any([self.args.CONDITION, self.args.UNIQUE, self.args.NTH_INTERVAL,
+                self.args.START_TIME, self.args.END_TIME]) or self.args.NTH_MESSAGE > 1:
+            self._bar_args.setdefault("source_value", 0)  # Separate counts if not all messages
+        if self._bar_args.get("source_value") is not None \
+        or self._bar_args.get("match_max") is not None:
+            result.update(source_value=self._bar_args.get("source_value") or 0)
+            instr, outstr = "{source_value:,d}/{max:,d}", "matched {value:,d}"
+            if self._bar_args.get("match_max") is not None:
+                instr, outstr = "{source_value:,d}/{source_max:,d}", outstr + "/{match_max:,d}"
+                result.update(source_max=total, max=min(total, self._bar_args["match_max"]))
+        result.update(aftertemplate=" {afterword} (%s)" % "  ".join(filter(bool, (instr, outstr))))
+
+        return result
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
@@ -781,7 +831,6 @@ class BagSource(Source, ConditionMixin):
         curstamp, readstamp, startstamp = map(self._delaystamps.get, ("current", "read", "first"))
         delta = max(0, api.to_sec(curstamp) - startstamp) / (self.args.TIMESCALE or 1)
         if delta: time.sleep(max(0, delta + readstamp - getattr(time, "monotonic", time.time)()))
-
 
     def _configure(self, filename=None, bag=None):
         """Opens bag and populates bag-specific argument state, returns success."""
@@ -911,11 +960,11 @@ class LiveSource(Source, ConditionMixin):
             t.start()
 
         total = 0
-        self._init_progress()
+        self.init_progress()
         while self._running:
             topic, msg, stamp = self._queue.get()
             total += bool(topic)
-            self._update_progress(total, running=self._running and bool(topic))
+            self.update_progress(total, running=self._running and bool(topic))
             if topic:
                 topickey = api.TypeMeta.make(msg, topic, self).topickey
                 self._counts[topickey] += 1
@@ -1034,21 +1083,18 @@ class LiveSource(Source, ConditionMixin):
             self._subs[topickey] = sub
             self.topics[topickey] = None
 
-    def _init_progress(self):
+    def init_progress(self):
         """Initializes progress bar, if any."""
         if self.args.PROGRESS and not self.bar:
-            self.bar = common.ProgressBar(afterword="ROS%s live" % api.ROS_VERSION,
-                                          aftertemplate=" {afterword}", pulse=True)
-            self.bar.start()
+            self.configure_progress(**self._make_progress_args())
+            super(LiveSource, self).init_progress()
 
-    def _update_progress(self, count, running=True):
+    def update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS%s live, %s" % (api.ROS_VERSION, common.plural("message", count))
-            self.bar.afterword, self.bar.max = afterword, count
-            if not running:
-                self.bar.pause, self.bar.pulse_pos = True, None
-            self.bar.update(count)
+            if count in (1, 2):  # Change plurality
+                self.configure_progress(**self._make_progress_args(count))
+            super(LiveSource, self).update_progress(count, running)
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
@@ -1056,6 +1102,26 @@ class LiveSource(Source, ConditionMixin):
             self.args.START_TIME = api.make_live_time(self.args.START_TIME)
         if self.args.END_TIME is not None:
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
+
+    def _make_progress_args(self, count=None):
+        """Returns dictionary with progress bar options, for specific nessage index if any."""
+        result = dict(afterword = "ROS%s live" % api.ROS_VERSION, pulse=True)
+        if self._bar_args.get("match_max") is not None:
+            result.update(max=self._bar_args["match_max"], pulse=False)
+
+        instr, outstr = "{value:,d} message%s" % ("" if count == 1 else "s"), ""
+        if any([self.args.CONDITION, self.args.UNIQUE, self.args.NTH_INTERVAL,
+                self.args.START_TIME, self.args.END_TIME]) or self.args.NTH_MESSAGE > 1:
+            self._bar_args.setdefault("source_value", 0)  # Separate counts if not all messages
+        if self._bar_args.get("source_value") is not None:
+            instr = "{source_value:,d} message%s" % ("" if count == 1 else "s")
+            outstr = "matched {value:,d}"
+            if self._bar_args.get("match_max") is not None: outstr += "/{match_max:,d}"
+        elif self._bar_args.get("match_max") is not None:
+            instr = "{value:,d}/{max:,d}"
+        result.update(aftertemplate=" {afterword} (%s)" % "  ".join(filter(bool, (instr, outstr))))
+
+        return result
 
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS live."""

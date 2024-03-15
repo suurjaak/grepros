@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    04.03.2024
+@modified    14.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -138,7 +138,7 @@ class Scanner(object):
         """
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
-        self._prepare(source, highlight=highlight)
+        self._prepare(source, highlight=highlight, progress=True)
         for topic, msg, stamp, matched, index in self._generate():
             yield self.GrepMessage(topic, msg, stamp, matched, index)
 
@@ -189,7 +189,7 @@ class Scanner(object):
         """
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
-        self._prepare(source, sink, highlight=self.args.HIGHLIGHT)
+        self._prepare(source, sink, highlight=self.args.HIGHLIGHT, progress=True)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
             sink.emit_meta()
@@ -288,13 +288,13 @@ class Scanner(object):
         api.TypeMeta.clear()
 
 
-    def _prepare(self, source, sink=None, highlight=None):
+    def _prepare(self, source, sink=None, highlight=None, progress=False):
         """Clears local structures, binds and registers source and sink, if any."""
         self._clear_data()
         self.source, self.sink = source, sink
         source.bind(sink), sink and sink.bind(source)
         source.preprocess = False
-        self._configure_settings(highlight=highlight)
+        self._configure_settings(highlight=highlight, progress=progress)
 
 
     def _prune_data(self, topickey):
@@ -352,14 +352,14 @@ class Scanner(object):
         self._statuses[topickey][msgid] = None
 
 
-    def _configure_settings(self, highlight=None):
+    def _configure_settings(self, highlight=None, progress=False):
         """Caches settings for message matching."""
         highlight = bool(highlight if highlight is not None else self.args.HIGHLIGHT
                          if not self.sink or self.sink.is_highlighting() else False)
         pure_anymatch = not self.args.INVERT and not self._patterns["select"] \
                         and set(self._patterns["content"]) <= set(self.ANY_MATCHES)
-        passthrough = pure_anymatch and not highlight and not self._expression \
-                      and not self._patterns["noselect"]
+        no_matching = pure_anymatch and not self._expression and not self._patterns["noselect"]
+        passthrough = no_matching and not highlight  # No message processing at all
         wraps = [] if not highlight else self.args.MATCH_WRAPPER if not self.sink else \
                 (common.MatchMarkers.START, common.MatchMarkers.END)
         wraps = wraps if isinstance(wraps, (list, tuple)) else [] if wraps is None else [wraps]
@@ -372,6 +372,11 @@ class Scanner(object):
                                         void=ExpressionTree.VOID)  # Ensure defaults
         self._settings.update(highlight=highlight, passthrough=passthrough,
                               pure_anymatch=pure_anymatch, wraps=wraps)
+        if progress and (not no_matching or self.args.MAX_COUNT):
+            bar_opts = dict()
+            if self.args.MAX_COUNT: bar_opts.update(match_max=self.args.MAX_COUNT)
+            if not no_matching: bar_opts.update(source_value=0)  # Count source and match separately
+            self.source.configure_progress(**bar_opts)
 
 
     def _is_max_done(self):
@@ -740,7 +745,6 @@ class BooleanResult(object):
     def __bool__(self):      return self._result  # Py3
     def __nonzero__(self):   return self._result  # Py2´
     def __eq__(self, other): return (bool(self) if isinstance(other, bool) else self) is other
-        
 
     @classmethod
     def and_(cls, a, b):
