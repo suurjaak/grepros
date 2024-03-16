@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    02.02.2024
+@modified    16.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -17,6 +17,7 @@ import json
 import os
 import re
 import uuid
+import warnings
 
 try: import pandas
 except Exception: pandas = None
@@ -349,7 +350,9 @@ class ParquetSink(Sink):
         dicts = self._caches[typekey][:]
         del self._caches[typekey][:]
         mapping = {k: [d[k] for d in dicts] for k in dicts[0]}
-        table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
+        with warnings.catch_warnings():  # PyArrow can raise UserWarning about pandas version
+            warnings.simplefilter("ignore", UserWarning)
+            table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
         self._writers[typekey].write_table(table)
 
 
