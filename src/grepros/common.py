@@ -8,12 +8,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    12.03.2024
+@modified    17.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
 from __future__ import print_function
 import argparse
+import collections
 import copy
 import datetime
 import functools
@@ -274,6 +275,113 @@ class ConsolePrinter(object):
         try: text = text.format(*args, **kwargs) if not fmted and (args or kwargs) else text
         except Exception: pass
         return text
+
+
+
+class ArgumentUtil(object):
+    """Namespace for program argument handling."""
+
+
+    @staticmethod
+    def preprocess(args, arg_opts, cli_args=()):
+        """
+        Converts or combines arguments where necessary, returns updated args.
+
+        @param   args      arguments object like argparse.Namespace
+        @param   arg_opts  list of argument props as [{"args": [..flags..], ?"dest": .., ..}]
+        @param   cli_args  list of command-line arguments given
+        """
+        for arg in arg_opts:
+            name = arg.get("dest") or arg["args"][0]
+            if "version" != arg.get("action") and argparse.SUPPRESS != arg.get("default") \
+            and "HELP" != name and not hasattr(args, name):
+                value = False if arg.get("store_true") else True if arg.get("store_false") else None
+                setattr(args, name, arg.get("default", value))
+
+        if args.CONTEXT:
+            args.BEFORE = args.AFTER = args.CONTEXT
+
+        # Default to printing metadata for publish/write if no console output
+        args.VERBOSE = False if args.SKIP_VERBOSE else \
+                       (args.VERBOSE or not args.CONSOLE and bool(cli_args))
+
+        # Show progress bar only if no console output
+        args.PROGRESS = args.PROGRESS and not args.CONSOLE
+
+        # Print filename prefix on each console message line if not single specific file
+        args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
+                                                 or args.PATH or any("*" in x for x in args.FILE))
+
+        for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
+            if isinstance(v, list) and "WRITE" != k and not ("PATTERN" == k and args.EXPRESSION):
+                here = set()
+                setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
+                                  if not (x in here or here.add(x))])
+
+        for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+            if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, n
+            try: v = float(v)
+            except Exception: pass  # If numeric, leave as string for source to process as relative time
+            try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+            except Exception: pass
+
+        return args
+
+
+    @staticmethod
+    def validate(args):
+        """
+        Validates arguments, prints errors, returns success.
+
+        @param   args  arguments object like argparse.Namespace
+        """
+        errors = collections.defaultdict(list)  # {category: [error, ]}
+
+        # Validate --write .. key=value
+        for opts in args.WRITE:  # List of lists, one for each --write
+            erropts = []
+            for opt in opts[1:]:
+                try: dict([opt.split("=", 1)])
+                except Exception: erropts.append(opt)
+            if erropts:
+                errors[""].append('Invalid KEY=VALUE in "--write %s": %s' %
+                                  (" ".join(opts), " ".join(erropts)))
+
+        for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+            if v is None: continue  # for v, n
+            try: v = float(v)
+            except Exception: pass
+            try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
+            except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
+                                                (n.lower().replace("_", " "), v))
+
+        for v in args.PATTERN if not args.FIXED_STRING and not args.EXPRESSION else ():
+            split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
+            v = v[split + 1:] if split > 0 else v
+            try: re.compile(re.escape(v) if args.FIXED_STRING else v)
+            except Exception as e:
+                errors["Invalid regular expression"].append("'%s': %s" % (v, e))
+
+        TOPIC_RGX = None
+        try: TOPIC_RGX = import_item("grepros.inputs.ConditionMixin.TOPIC_RGX")
+        except ImportError: ConsolePrinter.warn("Failed to import condition topic regex.")
+        for v in args.CONDITION if TOPIC_RGX else ():
+            v = TOPIC_RGX.sub("dummy", v)
+            try: compile(v, "", "eval")
+            except SyntaxError as e:
+                errors["Invalid condition"].append("'%s': %s at %schar %s" %
+                    (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
+            except Exception as e:
+                errors["Invalid condition"].append("'%s': %s" % (v, e))
+
+        for err in errors.get("", []):
+            ConsolePrinter.log(logging.ERROR, err)
+        for category in filter(bool, errors):
+            ConsolePrinter.log(logging.ERROR, category)
+            for err in errors[category]:
+                ConsolePrinter.log(logging.ERROR, "  %s" % err)
+        return not errors
+
 
 
 class Decompressor(object):

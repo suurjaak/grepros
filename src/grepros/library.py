@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    04.03.2024
+@modified    17.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -61,7 +61,6 @@ from . outputs import AppSink, BagSink, ConsoleSink, LiveSink, MultiSink, Sink
 from . search  import BooleanResult, ExpressionTree, Scanner
 from . import api
 from . import common
-from . import main
 from . import plugins
 
 
@@ -167,7 +166,7 @@ def grep(args=None, **kwargs):
     args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else \
            {} if is_bag or isinstance(args, Source) else args
     args = common.ensure_namespace(args, DEFAULT_ARGS, **kwargs)
-    main.validate_args(main.process_args(args))
+    common.ArgumentUtil.validate(common.ArgumentUtil.preprocess(args))
     if not _inited: init(args)
 
     if common.is_iterable(args.APP) and not common.is_iterable(args.ITERABLE):
