@@ -162,6 +162,7 @@ class TextSinkMixin(object):
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches if configured."""
+        if self.args.MAX_MESSAGE_LINES == 0: return ""
         text = self.message_to_yaml(msg).rstrip("\n")
 
         highlight = highlight and self.args.HIGHLIGHT
