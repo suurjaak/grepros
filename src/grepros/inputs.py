@@ -749,6 +749,7 @@ class BagSource(Source, ConditionMixin):
         if self.args.TIMESCALE and "read" not in self._delaystamps:
             self._delaystamps["read"] = getattr(time, "monotonic", time.time)()  # Py3 / Py2
         counts = collections.Counter()
+        nametypes = {(n, t) for n, tt in topics.items() for t in tt}
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
                 break  # for topic, 
@@ -782,6 +783,13 @@ class BagSource(Source, ConditionMixin):
                 self._sticky = False
             if not self._running or not self._bag:
                 break  # for topic
+            if not self._sticky and self.args.END_INDEX:
+                max_index = self.args.END_INDEX + self.args.AFTER
+                if counts[topickey] >= max_index:  # Stop reading when reaching max in all topics
+                    mycounts = {k: v for k, v in self._counts.items() if k[:2] in nametypes}
+                    if nametypes == set(k[:2] for k in mycounts) \
+                    and all(v >= self._end_indexes.get(k, max_index) for k, v in mycounts.items()):
+                        break  # for topic
 
     def _produce_bags(self):
         """Yields Bag instances from configured arguments."""

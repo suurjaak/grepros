@@ -15,6 +15,7 @@ Changelog for package grepros
 * make api.get_message_value() accept a default
 * support fractional values in --every-nth-interval option
 * support --lines-per-message 0
+* stop bag reading when reaching --end-index in each topic
 * add result message count in HTML output
 * rename TopicSource and TopicSink to LiveSource and LiveSink
 * fix negative --start-index and --end-index ignoring different counts in bag topics
