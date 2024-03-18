@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    28.06.2023
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -18,7 +18,8 @@ import re
 import yaml
 
 from ... import api
-from ... common import ConsolePrinter, ellipsize, ensure_namespace, import_item, merge_dicts
+from ... common import ArgumentUtil, ConsolePrinter, \
+                       ellipsize, ensure_namespace, import_item, merge_dicts
 
 
 
@@ -46,7 +47,8 @@ class SqlMixin(object):
                                       ```
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        self._args      = ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs)
+        args = ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs)
+        self._args      = ArgumentUtil.validate(args)
         self._topics    = {}  # {(topic, typename, typehash): {name, table_name, view_name, sql, ..}}
         self._types     = {}  # {(typename, typehash): {type, table_name, sql, ..}}
         self._schema    = {}  # {(typename, typehash): {cols}}

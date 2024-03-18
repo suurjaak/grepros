@@ -8,13 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.03.2024
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
 from __future__ import print_function
 import argparse
-import collections
 import copy
 import datetime
 import functools
@@ -281,29 +280,93 @@ class ConsolePrinter(object):
 class ArgumentUtil(object):
     """Namespace for program argument handling."""
 
+    UNSIGNED_INTS       = {"NTH_MESSAGE", "NTH_MATCH", "MAX_COUNT", "MAX_PER_TOPIC", "MAX_TOPICS",
+                           "BEFORE", "AFTER", "CONTEXT", "LINES_AROUND_MATCH", "MAX_FIELD_LINES",
+                           "MAX_MESSAGE_LINES", "WRAP_WIDTH", "QUEUE_SIZE_IN", "QUEUE_SIZE_OUT"}
+    UNSIGNED_FLOATS     = {"NTH_INTERVAL", "TIME_SCALE"}
+    SIGNED_INTS         = {"START_INDEX", "END_INDEX", "START_LINE", "END_LINE"}
+    STRINGS             = {"PUBLISH_PREFIX", "PUBLISH_SUFFIX", "PUBLISH_FIXNAME"}
+    STRING_COLLECTIONS  = {"TOPIC", "SKIP_TOPIC", "TYPE", "SKIP_TYPE", "SELECT_FIELD",
+                           "NO_SELECT_FIELD", "EMIT_FIELD", "NO_EMIT_FIELD", "MATCH_WRAPPER"}
+    NO_FLATTENS         = {"WRITE"}
 
-    @staticmethod
-    def preprocess(args, arg_opts, cli_args=()):
-        """
-        Converts or combines arguments where necessary, returns updated args.
+    UNSIGNED_WHEN       = {"START_INDEX": "LIVE", "END_INDEX": "LIVE"}
+    PRECASTS            = {"NTH_INTERVAL": lambda v: import_item("grepros.api").to_sec(v)}
+    DEDUPE_UNLESS       = {"PATTERN": "EXPRESSION"}
 
-        @param   args      arguments object like argparse.Namespace
-        @param   arg_opts  list of argument props as [{"args": [..flags..], ?"dest": .., ..}]
-        @param   cli_args  list of command-line arguments given
+
+    class HelpFormatter(argparse.RawTextHelpFormatter):
+        """RawTextHelpFormatter returning custom metavar for non-flattenable list arguments."""
+
+        def _format_action_invocation(self, action):
+            """Returns formatted invocation."""
+            # Avoids oververbose duplicate output like:
+            # --write TARGET [format=bag] [KEY=VALUE ...] [TARGET [format=bag] [KEY=VALUE ...] ...]
+            if action.dest in ArgumentUtil.NO_FLATTENS:
+                return " ".join(action.option_strings + [action.metavar])
+            return super(ArgumentUtil.HelpFormatter, self)._format_action_invocation(action)
+
+
+    @classmethod
+    def make_parser(cls, arguments, formatter=HelpFormatter):
         """
-        for arg in arg_opts:
-            name = arg.get("dest") or arg["args"][0]
-            if "version" != arg.get("action") and argparse.SUPPRESS != arg.get("default") \
-            and "HELP" != name and not hasattr(args, name):
-                value = False if arg.get("store_true") else True if arg.get("store_false") else None
-                setattr(args, name, arg.get("default", value))
+        Returns a configured ArgumentParser instance for program arguments.
+
+        @param  arguments  argparse options as {description, epilog, arguments: [], groups: []}
+        @param  formatter  help formatter class to use
+        """
+        kws = dict(description=arguments["description"], epilog=arguments["epilog"],
+                   formatter_class=formatter, add_help=False)
+        if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
+        argparser = argparse.ArgumentParser(**kws)
+        for arg in map(dict, arguments["arguments"]):
+            argparser.add_argument(*arg.pop("args"), **arg)
+        for group, groupargs in arguments.get("groups", {}).items():
+            grouper = argparser.add_argument_group(group)
+            for arg in map(dict, groupargs):
+                grouper.add_argument(*arg.pop("args"), **arg)
+        return argparser
+
+
+    @classmethod
+    def validate(cls, args, cli=False):
+        """
+        Converts and validates program argument namespace, prints and raises on error.
+
+        Returns new namespace with arguments in expected type and form.
+        """
+        args = cls.flatten(args)
+        cls.transform(args, cli)
+        if not cls.verify(args):
+            raise Exception("Invalid arguments")
+        return args
+
+
+    @classmethod
+    def flatten(cls, args):
+        """Returns new program argument namespace with list values flattened and deduplicated."""
+        args = structcopy(args)
+        for k, v in vars(args).items():
+            if not isinstance(v, list): continue  # for k, v
+            v2 = v
+            if k not in cls.NO_FLATTENS:
+                v2 = [x for xx in v2 for x in (xx if isinstance(xx, list) else [xx])]
+            if k not in cls.DEDUPE_UNLESS or not getattr(args, cls.DEDUPE_UNLESS[k], True):
+                v2 = [here.append(x) or x for here in ([],) for x in v2 if x not in here]
+            if v2 != v: setattr(args, k, v2)
+        return args
+
+
+    @classmethod
+    def transform(cls, args, cli=False):
+        """Sets command-line specific flag state to program argument namespace."""
+        if not cli: return
 
         if args.CONTEXT:
             args.BEFORE = args.AFTER = args.CONTEXT
 
         # Default to printing metadata for publish/write if no console output
-        args.VERBOSE = False if args.SKIP_VERBOSE else \
-                       (args.VERBOSE or not args.CONSOLE and bool(cli_args))
+        args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE and cli)
 
         # Show progress bar only if no console output
         args.PROGRESS = args.PROGRESS and not args.CONSOLE
@@ -312,30 +375,22 @@ class ArgumentUtil(object):
         args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
                                                  or args.PATH or any("*" in x for x in args.FILE))
 
-        for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
-            if isinstance(v, list) and "WRITE" != k and not ("PATTERN" == k and args.EXPRESSION):
-                here = set()
-                setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
-                                  if not (x in here or here.add(x))])
-
-        for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
-            if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, n
+        for k, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+            if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, k
             try: v = float(v)
-            except Exception: pass  # If numeric, leave as string for source to process as relative time
-            try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
+            except Exception: pass  # If numeric, retain string for source to read as relative time
+            try: v if isinstance(v, float) else setattr(args, k, parse_datetime(v))
             except Exception: pass
+        
 
-        return args
-
-
-    @staticmethod
-    def validate(args):
+    @classmethod
+    def verify(cls, args):
         """
         Validates arguments, prints errors, returns success.
 
         @param   args  arguments object like argparse.Namespace
         """
-        errors = collections.defaultdict(list)  # {category: [error, ]}
+        errors = []
 
         # Validate --write .. key=value
         for opts in args.WRITE:  # List of lists, one for each --write
@@ -344,43 +399,56 @@ class ArgumentUtil(object):
                 try: dict([opt.split("=", 1)])
                 except Exception: erropts.append(opt)
             if erropts:
-                errors[""].append('Invalid KEY=VALUE in "--write %s": %s' %
-                                  (" ".join(opts), " ".join(erropts)))
+                errors.append('Invalid KEY=VALUE in "--write %s": %s' %
+                              (" ".join(opts), " ".join(erropts)))
 
         for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
             if v is None: continue  # for v, n
             try: v = float(v)
             except Exception: pass
             try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
-            except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
-                                                (n.lower().replace("_", " "), v))
+            except Exception: errors.append("Invalid ISO datetime for %s: %s" %
+                                            (n.lower().replace("_", " "), v))
 
-        for v in args.PATTERN if not args.FIXED_STRING and not args.EXPRESSION else ():
-            split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
-            v = v[split + 1:] if split > 0 else v
-            try: re.compile(re.escape(v) if args.FIXED_STRING else v)
-            except Exception as e:
-                errors["Invalid regular expression"].append("'%s': %s" % (v, e))
+        errors.extend(cls.process_types(args))
 
-        TOPIC_RGX = None
-        try: TOPIC_RGX = import_item("grepros.inputs.ConditionMixin.TOPIC_RGX")
-        except ImportError: ConsolePrinter.warn("Failed to import condition topic regex.")
-        for v in args.CONDITION if TOPIC_RGX else ():
-            v = TOPIC_RGX.sub("dummy", v)
-            try: compile(v, "", "eval")
-            except SyntaxError as e:
-                errors["Invalid condition"].append("'%s': %s at %schar %s" %
-                    (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
-            except Exception as e:
-                errors["Invalid condition"].append("'%s': %s" % (v, e))
-
-        for err in errors.get("", []):
-            ConsolePrinter.log(logging.ERROR, err)
-        for category in filter(bool, errors):
-            ConsolePrinter.log(logging.ERROR, category)
-            for err in errors[category]:
-                ConsolePrinter.log(logging.ERROR, "  %s" % err)
+        for err in errors: ConsolePrinter.log(logging.ERROR, err)
         return not errors
+
+
+    @classmethod
+    def process_types(cls, args):
+        """Converts and validates types in argument namespace, returns list of errors, if any."""
+        def cast(v, ctor):
+            try: return ctor(v), None
+            except Exception as e: return v, e
+
+        vals1, vals2, errors = vars(args), {}, {}
+
+        for k, f in cls.PRECASTS.items():
+            if vals1.get(k) is not None: vals1[k] = f(vals1[k])
+        for k, v in vals1.items():
+            if v is None: continue  # for k, v
+            err = None
+            if k in cls.UNSIGNED_INTS | cls.SIGNED_INTS: v, err = cast(v, int)
+            elif k in cls.UNSIGNED_FLOATS:               v, err = cast(v, float)
+            elif k in cls.STRINGS:                       v = str(v)
+            elif k in cls.STRING_COLLECTIONS:            v = [str(x) for x in v]
+            if not err and k in cls.UNSIGNED_INTS | cls.UNSIGNED_FLOATS and v < 0:
+                err = "Cannot be negative."
+            if not err and vals1.get(cls.UNSIGNED_WHEN.get(k)) and v < 0:
+                label = cls.UNSIGNED_WHEN[k].lower().replace("_", " ")
+                err = "Cannot be negative for %s." % label
+            (errors if err else vals2)[k] = err or v
+
+        error_texts = []
+        for k, err in errors.items():
+            text = "Invalid value for %s: %s" % (k.lower().replace("_", " "), getattr(args, k))
+            if isinstance(err, six.string_types): text += ". %s" % err
+            error_texts.append(text)
+        for k, v in vals2.items() if not errors else ():
+            setattr(args, k, v)
+        return error_texts
 
 
 
@@ -1232,10 +1300,10 @@ def wildcard_to_regex(text, end=False):
 
 
 __all__ = [
-    "PATH_TYPES", "ConsolePrinter", "Decompressor", "LenIterable", "MatchMarkers", "ProgressBar",
-    "TextWrapper", "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
-    "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
-    "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
+    "PATH_TYPES", "ArgumentUtil", "ConsolePrinter", "Decompressor", "LenIterable", "MatchMarkers",
+    "ProgressBar", "TextWrapper", "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict",
+    "find_files", "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg",
+    "import_item", "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
     "parse_datetime", "parse_number", "path_to_regex", "plural", "unique_path", "verify_io",
     "wildcard_to_regex",
 ]

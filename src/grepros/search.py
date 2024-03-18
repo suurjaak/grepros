@@ -16,6 +16,7 @@ from argparse import Namespace
 import copy
 import collections
 import functools
+import logging
 import re
 
 import six
@@ -86,7 +87,8 @@ class Scanner(object):
         @param   args.end_index           message index within topic to stop at
         @param   args.unique              emit messages that are unique in topic
         @param   args.nth_message         read every Nth message in topic, starting from first
-        @param   args.nth_interval        minimum time interval between messages in topic
+        @param   args.nth_interval        minimum time interval between messages in topic,
+                                          as seconds or ROS duration
         @param   args.condition           Python expressions that must evaluate as true
                                           for message to be processable, see ConditionMixin
         @param   args.progress            whether to print progress bar
@@ -118,10 +120,11 @@ class Scanner(object):
         self.source = None
         ## Sink instance
         self.sink   = None
+        ## Result of validate()
+        self.valid = None
 
-        self.args = common.ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs)
+        self.args = common.ArgumentUtil.validate(common.ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs))
         if self.args.CONTEXT: self.args.BEFORE = self.args.AFTER = self.args.CONTEXT
-        self._parse_patterns()
 
 
     def find(self, source, highlight=None):
@@ -139,6 +142,7 @@ class Scanner(object):
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, highlight=highlight, progress=True)
+        self.validate(reset=True)
         for topic, msg, stamp, matched, index in self._generate():
             yield self.GrepMessage(topic, msg, stamp, matched, index)
 
@@ -157,6 +161,7 @@ class Scanner(object):
         result = None
         if isinstance(self.source, inputs.AppSource): self._configure_settings(highlight=highlight)
         else: self._prepare(inputs.AppSource(self.args), highlight=highlight)
+        self.validate(reset=True)
 
         self.source.push(topic, msg, stamp)
         item = self.source.read_queue()
@@ -190,12 +195,41 @@ class Scanner(object):
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, sink, highlight=self.args.HIGHLIGHT, progress=True)
+        self.validate(reset=True)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
             sink.emit_meta()
             sink.emit(topic, msg, stamp, matched, index)
             total_matched += bool(matched)
         return total_matched
+
+
+    def validate(self, reset=False):
+        """Returns whether conditions have valid syntax, prints errors."""
+        if self.valid is not None and not reset: return self.valid
+
+        errors = collections.defaultdict(list)  # {category: [error, ]}
+        if not self.args.FIXED_STRING and not self.args.EXPRESSION:
+            for v in self.args.PATTERN:  # Pre-check patterns before parsing for full error state
+                split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
+                v = v[split + 1:] if split > 0 else v
+                try: re.compile(re.escape(v) if self.args.FIXED_STRING else v)
+                except Exception as e:
+                    errors["Invalid regular expression"].append("'%s': %s" % (v, e))
+        try: self._parse_patterns()
+        except Exception as e: errors[""].append(str(e))
+
+        for err in errors.get("", []):
+            common.ConsolePrinter.log(logging.ERROR, err)
+        for category in filter(bool, errors):
+            common.ConsolePrinter.log(logging.ERROR, category)
+            for err in errors[category]:
+                common.ConsolePrinter.log(logging.ERROR, "  %s" % err)
+
+        self.valid = not errors
+        if self.source and not self.source.validate(): self.valid = False
+        if self.sink and not self.sink.validate(): self.valid = False
+        return self.valid
 
 
     def __enter__(self):

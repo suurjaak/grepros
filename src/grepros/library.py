@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    17.03.2024
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -119,7 +119,8 @@ def grep(args=None, **kwargs):
     @param   args.end_index            message index within topic to stop at
 
     @param   args.nth_message          read every Nth message in topic, starting from first
-    @param   args.nth_interval         minimum time interval between messages in topic
+    @param   args.nth_interval         minimum time interval between messages in topic,
+                                       as seconds or ROS duration
 
     @param   args.select_field         message fields to use in matching if not all
     @param   args.noselect_field       message fields to skip in matching
@@ -165,8 +166,7 @@ def grep(args=None, **kwargs):
              common.is_iterable(args) and all(isinstance(x, Bag) for x in args)
     args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else \
            {} if is_bag or isinstance(args, Source) else args
-    args = common.ensure_namespace(args, DEFAULT_ARGS, **kwargs)
-    common.ArgumentUtil.validate(common.ArgumentUtil.preprocess(args))
+    args = common.ArgumentUtil.validate(common.ensure_namespace(args, DEFAULT_ARGS, **kwargs))
     if not _inited: init(args)
 
     if common.is_iterable(args.APP) and not common.is_iterable(args.ITERABLE):
@@ -235,7 +235,8 @@ def source(args=None, **kwargs):
     @param   args.select_field         message fields to use for uniqueness if not all
     @param   args.noselect_field       message fields to skip for uniqueness
     @param   args.nth_message          read every Nth message in topic, starting from first
-    @param   args.nth_interval         minimum time interval between messages in topic
+    @param   args.nth_interval         minimum time interval between messages in topic,
+                                       as seconds or ROS duration
     @param   args.condition            Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin
     """

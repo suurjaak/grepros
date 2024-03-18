@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2023
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -22,7 +22,7 @@ import threading
 from ... import api
 from ... import common
 from ... import main
-from ... common import ConsolePrinter, MatchMarkers, plural
+from ... common import ArgumentUtil, ConsolePrinter, MatchMarkers, plural
 from ... outputs import RolloverSinkMixin, Sink, TextSinkMixin
 from ... vendor import step
 
@@ -85,7 +85,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
                                             case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
-        args = common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
+        args = ArgumentUtil.validate(common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = bool(args.HIGHLIGHT)
 

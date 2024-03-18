@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    15.03.2024
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -29,7 +29,7 @@ import six
 
 from . import api
 from . import common
-from . common import ConsolePrinter, ensure_namespace, drop_zeros
+from . common import ArgumentUtil, ConsolePrinter, ensure_namespace, drop_zeros
 
 
 class Source(object):
@@ -57,7 +57,8 @@ class Source(object):
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
         @param   args.nth_message       read every Nth message in topic, starting from first
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
         @param   args.progress          whether to print progress bar
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
@@ -74,7 +75,7 @@ class Source(object):
         self._bar_args      = {}  # Progress bar options
         self._status = None  # Processable/match status of last produced message
 
-        self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
+        self.args = ArgumentUtil.validate(ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs))
         ## outputs.Sink instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
@@ -398,6 +399,23 @@ class ConditionMixin(object):
             if not result: break  # for i,
         return result
 
+    def validate(self):
+        """Returns whether conditions have valid syntax, prints errors."""
+        errors = []
+        for v in self.args.CONDITION:
+            v = self.TOPIC_RGX.sub("dummy", v)
+            try: compile(v, "", "eval")
+            except SyntaxError as e:
+                errors.append("'%s': %s at %schar %s" %
+                              (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
+            except Exception as e:
+                errors.append("'%s': %s" % (v, e))
+        if errors:
+            ConsolePrinter.error("Invalid condition")
+            for err in errors:
+                ConsolePrinter.error("  %s" % err)
+        return not errors
+
     def close_batch(self):
         """Clears cached messages."""
         self._firstmsgs.clear()
@@ -532,7 +550,8 @@ class BagSource(Source, ConditionMixin):
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
         @param   args.nth_message       read every Nth message in topic, starting from first
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
         @param   args.progress          whether to print progress bar
@@ -545,7 +564,7 @@ class BagSource(Source, ConditionMixin):
                  common.is_iterable(args) and all(isinstance(x, api.Bag) for x in args)
         args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else \
                {"FILE": args} if common.is_stream(args) else {} if is_bag else args
-        args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
+        args = ArgumentUtil.validate(ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs))
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = common.structcopy(self.args)  # Original arguments
@@ -612,6 +631,8 @@ class BagSource(Source, ConditionMixin):
             self.valid = False
         if self.args.TIMESCALE and self.args.TIMESCALE < 0:
             ConsolePrinter.error("Invalid timescale factor: %r.", self.args.TIMESCALE)
+            self.valid = False
+        if not ConditionMixin.validate(self):
             self.valid = False
         return self.valid
 
@@ -928,7 +949,8 @@ class LiveSource(Source, ConditionMixin):
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
         @param   args.nth_message       read every Nth message in topic, starting from first
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
         @param   args.queue_size_in     subscriber queue size (default 10)
@@ -938,7 +960,8 @@ class LiveSource(Source, ConditionMixin):
         @param   args.verbose           whether to print error stacktraces
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **kwargs)
+        args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **dict(kwargs, live=True))
+        args = ArgumentUtil.validate(args)
         super(LiveSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._running = False  # Whether is in process of yielding messages from topics
@@ -988,7 +1011,10 @@ class LiveSource(Source, ConditionMixin):
 
     def validate(self):
         """Returns whether ROS environment is set, prints error if not."""
-        if self.valid is None: self.valid = api.validate(live=True)
+        if self.valid is not None: return self.valid
+        self.valid = api.validate(live=True)
+        if not ConditionMixin.validate(self):
+            self.valid = False
         return self.valid
 
     def close(self):
@@ -1162,7 +1188,8 @@ class AppSource(Source, ConditionMixin):
         @param   args.select_field     message fields to use for uniqueness if not all
         @param   args.noselect_field   message fields to skip for uniqueness
         @param   args.nth_message      read every Nth message in topic, starting from first
-        @param   args.nth_interval     minimum time interval between messages in topic
+        @param   args.nth_interval     minimum time interval between messages in topic,
+                                       as seconds or ROS duration
         @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin
         @param   args.iterable         iterable yielding (topic, msg, stamp) or (topic, msg);
@@ -1171,7 +1198,7 @@ class AppSource(Source, ConditionMixin):
         """
         if common.is_iterable(args) and not isinstance(args, dict):
             args = ensure_namespace(None, iterable=args)
-        args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
+        args = ArgumentUtil.validate(ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs))
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._queue = queue.Queue()  # [(topic, msg, ROS time)]

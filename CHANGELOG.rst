@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-03-16)
+1.2.0 (2024-03-18)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -24,6 +24,7 @@ Changelog for package grepros
 * fix program not exiting properly on exception in background thread,
   like ROS master shutting down when grepping live topics
 * fix intermittent concurrency issues in HTML output
+* validate all arguments, check signedness
 * avoid UserWarning from PyArrow in Parquet output
 * avoid pointless stacktrace upon multiple Ctrl-C when grepping live topics
 

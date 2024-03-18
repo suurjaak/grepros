@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.02.2024
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -25,7 +25,7 @@ import yaml
 
 from . import api
 from . import common
-from . common import ConsolePrinter, MatchMarkers
+from . common import ArgumentUtil, ConsolePrinter, MatchMarkers
 from . inputs import Source
 
 
@@ -156,7 +156,8 @@ class TextSinkMixin(object):
         self._format_repls = {}    # {text to replace if highlight: replacement text}
         self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
-        self._configure(common.ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs))
+        args = common.ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs)
+        self._configure(ArgumentUtil.validate(args))
 
 
     def format_message(self, msg, highlight=False):
@@ -543,6 +544,7 @@ class ConsoleSink(Sink, TextSinkMixin):
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
         args = common.ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
+        args = ArgumentUtil.validate(args)
         if args.WRAP_WIDTH is None:
             args = common.structcopy(args)
             args.WRAP_WIDTH = ConsolePrinter.WIDTH
@@ -746,7 +748,7 @@ class LiveSink(Sink):
         @param   args.verbose           whether to emit debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = common.ensure_namespace(args, LiveSink.DEFAULT_ARGS, **kwargs)
+        args = ArgumentUtil.validate(common.ensure_namespace(args, LiveSink.DEFAULT_ARGS, **kwargs))
         super(LiveSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
@@ -869,7 +871,7 @@ class MultiSink(Sink):
         @param   sinks          pre-created sinks, arguments will be ignored
         @param   kwargs         any and all arguments as keyword overrides, case-insensitive
         """
-        args = common.ensure_namespace(args, **kwargs)
+        args = ArgumentUtil.validate(common.ensure_namespace(args, **kwargs))
         super(MultiSink, self).__init__(args)
         self.valid = True
 

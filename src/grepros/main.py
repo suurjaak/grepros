@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    17.03.2024
+@modified    18.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -397,31 +397,6 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 CLI_ARGS = None
 
 
-class HelpFormatter(argparse.RawTextHelpFormatter):
-    """RawTextHelpFormatter returning custom metavar for WRITE."""
-
-    def _format_action_invocation(self, action):
-        """Returns formatted invocation."""
-        if "WRITE" == action.dest:
-            return " ".join(action.option_strings + [action.metavar])
-        return super(HelpFormatter, self)._format_action_invocation(action)
-
-
-def make_parser():
-    """Returns a configured ArgumentParser instance."""
-    kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
-               formatter_class=HelpFormatter, add_help=False)
-    if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
-    argparser = argparse.ArgumentParser(**kws)
-    for arg in map(dict, ARGUMENTS["arguments"]):
-        argparser.add_argument(*arg.pop("args"), **arg)
-    for group, groupargs in ARGUMENTS.get("groups", {}).items():
-        grouper = argparser.add_argument_group(group)
-        for arg in map(dict, groupargs):
-            grouper.add_argument(*arg.pop("args"), **arg)
-    return argparser
-
-
 def flush_stdout():
     """Writes a linefeed to sdtout if nothing has been printed to it so far."""
     if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
@@ -429,7 +404,7 @@ def flush_stdout():
         except (Exception, KeyboardInterrupt): pass
 
 
-def preload_plugins():
+def preload_plugins(cli_args):
     """Imports and initializes plugins from auto-load folder and from arguments."""
     plugins.add_write_format("bag", outputs.BagSink, "bag", [
         ("overwrite=true|false",   "overwrite existing file\nin bag output\n"
@@ -439,10 +414,9 @@ def preload_plugins():
 
     ] + outputs.RolloverSinkMixin.get_write_options("bag"))
     args = None
-    if "--plugin" in CLI_ARGS:
-        args, _ = make_parser().parse_known_args(CLI_ARGS)
-        arg_opts = sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"][:])
-        args = ArgumentUtil.preprocess(args, arg_opts)
+    if "--plugin" in cli_args:
+        args, _ = ArgumentUtil.make_parser(ARGUMENTS).parse_known_args(cli_args)
+        args = ArgumentUtil.flatten(args)
     try: plugins.init(args)
     except ImportWarning: sys.exit(1)
 
@@ -464,8 +438,8 @@ def run():
     global CLI_ARGS
     CLI_ARGS = sys.argv[1:]
     MatchMarkers.populate("%08x" % random.randint(1, 1E9))
-    preload_plugins()
-    argparser = make_parser()
+    preload_plugins(CLI_ARGS)
+    argparser = ArgumentUtil.make_parser(ARGUMENTS)
     if not CLI_ARGS:
         argparser.print_usage()
         return
@@ -484,9 +458,7 @@ def run():
     source, sink = None, None
     try:
         ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
-        arg_opts = sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"][:])
-        if not ArgumentUtil.validate(ArgumentUtil.preprocess(args, arg_opts, CLI_ARGS)):
-            sys.exit(1)
+        args = ArgumentUtil.validate(args, cli=True)
 
         source = plugins.load("source", args) or \
                  (inputs.LiveSource if args.LIVE else inputs.BagSource)(args)
@@ -520,8 +492,7 @@ def run():
 
 
 __all__ = [
-    "ARGUMENTS", "CLI_ARGS", "HelpFormatter",
-    "flush_stdout", "make_parser", "make_thread_excepthook", "preload_plugins", "run",
+    "ARGUMENTS", "CLI_ARGS", "flush_stdout", "make_thread_excepthook", "preload_plugins", "run",
 ]
 
 
