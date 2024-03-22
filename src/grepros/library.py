@@ -43,7 +43,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     09.12.2022
-@modified    18.03.2024
+@modified    22.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.library
@@ -80,7 +80,8 @@ def grep(args=None, **kwargs):
 
     @param   args                      arguments as namespace or dictionary, case-insensitive;
                                        or a single path as the ROS bagfile to read,
-                                       or one or more {@link grepros.api.Bag Bag} instances
+                                       or one or more {@link grepros.api.Bag Bag} instances,
+                                       or a {@link grepros.inputs.Source Source} instance
     @param   kwargs                    any and all arguments as keyword overrides, case-insensitive
     <!--sep-->
 
