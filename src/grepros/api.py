@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.02.2024
+@modified    22.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -895,6 +895,7 @@ def make_bag_time(stamp, bag):
     shift = 0
     if is_ros_time(stamp):
         if "duration" != get_ros_time_category(stamp): return stamp
+        stamp = realapi.to_sec(stamp)
         shift = bag.get_start_time() if stamp >= 0 else bag.get_end_time()
     elif isinstance(stamp, datetime.datetime):
         stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
@@ -920,7 +921,7 @@ def make_live_time(stamp):
     shift = 0
     if is_ros_time(stamp):
         if "duration" != get_ros_time_category(stamp): return stamp
-        shift = time.time()
+        stamp, shift = realapi.to_sec(stamp), time.time()
     elif isinstance(stamp, datetime.datetime):
         stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
     elif isinstance(stamp, datetime.timedelta):
