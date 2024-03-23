@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    27.12.2023
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -118,6 +118,7 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to database."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
         super(SqliteSink, self).emit(topic, msg, stamp, match, index)

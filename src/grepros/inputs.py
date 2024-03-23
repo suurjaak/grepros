@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.03.2024
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -75,7 +75,7 @@ class Source(object):
         self._bar_args      = {}  # Progress bar options
         self._status = None  # Processable/match status of last produced message
 
-        self.args = ArgumentUtil.validate(ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs))
+        self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
         ## outputs.Sink instance bound to this source
         self.sink = None
         ## All topics in source, as {(topic, typenane, typehash): total message count or None}
@@ -109,8 +109,10 @@ class Source(object):
         self.sink = sink
 
     def validate(self):
-        """Returns whether source prerequisites are met (like ROS environment for LiveSource)."""
-        if self.valid is None: self.valid = True
+        """Returns whether arguments are valid and source prerequisites are met."""
+        if self.valid is not None: return self.valid
+        try: self.args, self.valid = ArgumentUtil.validate(self.args), True
+        except Exception: self.valid = False
         return self.valid
 
     def close(self):
@@ -564,7 +566,7 @@ class BagSource(Source, ConditionMixin):
                  common.is_iterable(args) and all(isinstance(x, api.Bag) for x in args)
         args = {"FILE": str(args)} if isinstance(args, common.PATH_TYPES) else \
                {"FILE": args} if common.is_stream(args) else {} if is_bag else args
-        args = ArgumentUtil.validate(ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs))
+        args = ensure_namespace(args, BagSource.DEFAULT_ARGS, **kwargs)
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = common.structcopy(self.args)  # Original arguments
@@ -613,7 +615,9 @@ class BagSource(Source, ConditionMixin):
     def validate(self):
         """Returns whether ROS environment is set and arguments valid, prints error if not."""
         if self.valid is not None: return self.valid
-        self.valid = api.validate()
+        self.valid = Source.validate(self)
+        if not api.validate():
+            self.valid = False
         if not self._bag0 and self.args.FILE and os.path.isfile(self.args.FILE[0]) \
         and not common.verify_io(self.args.FILE[0], "r"):
             ConsolePrinter.error("File not readable.")
@@ -969,14 +973,11 @@ class LiveSource(Source, ConditionMixin):
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **dict(kwargs, live=True))
-        args = ArgumentUtil.validate(args)
         super(LiveSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._running = False  # Whether is in process of yielding messages from topics
         self._queue   = None   # [(topic, msg, ROS time)]
         self._subs    = {}     # {(topic, typename, typehash): ROS subscriber}
-
-        self._configure()
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
@@ -1018,11 +1019,15 @@ class LiveSource(Source, ConditionMixin):
         api.init_node()
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
+        """Returns whether ROS environment is set and arguments valid, prints error if not."""
         if self.valid is not None: return self.valid
-        self.valid = api.validate(live=True)
+        self.valid = Source.validate(self)
+        if not api.validate(live=True):
+            self.valid = False
         if not ConditionMixin.validate(self):
             self.valid = False
+        if self.valid:
+            self._configure()
         return self.valid
 
     def close(self):
@@ -1206,13 +1211,11 @@ class AppSource(Source, ConditionMixin):
         """
         if common.is_iterable(args) and not isinstance(args, dict):
             args = ensure_namespace(None, iterable=args)
-        args = ArgumentUtil.validate(ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs))
+        args = ensure_namespace(args, AppSource.DEFAULT_ARGS, **kwargs)
         super(AppSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._queue = queue.Queue()  # [(topic, msg, ROS time)]
         self._reading = False
-
-        self._configure()
 
     def read(self):
         """
@@ -1220,6 +1223,7 @@ class AppSource(Source, ConditionMixin):
 
         Blocks until a message is available, or source is closed.
         """
+        if not self.validate(): raise Exception("invalid")
         def generate(iterable):
             for x in iterable: yield x
         feeder = generate(self.args.ITERABLE) if self.args.ITERABLE else None
@@ -1254,6 +1258,7 @@ class AppSource(Source, ConditionMixin):
         Returns (topic, msg, stamp) from push queue, or `None` if no queue
         or message in queue is condition topic only.
         """
+        if not self.validate(): raise Exception("invalid")
         item = None
         try: item = self._queue.get(block=False)
         except queue.Empty: pass
@@ -1267,6 +1272,7 @@ class AppSource(Source, ConditionMixin):
 
     def mark_queue(self, topic, msg, stamp):
         """Registers message produced from read_queue()."""
+        if not self.validate(): raise Exception("invalid")
         if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             topickey = api.TypeMeta.make(msg, topic).topickey
             self._processables[topickey] = (self._counts[topickey], stamp)
@@ -1279,6 +1285,7 @@ class AppSource(Source, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
+        if not self.validate(): raise Exception("invalid")
         if topic is None: self._queue.put(None)
         else: self._queue.put((topic, msg, stamp or api.get_rostime(fallback=True)))
 
@@ -1296,6 +1303,14 @@ class AppSource(Source, ConditionMixin):
         self._status = True
         return True
 
+    def validate(self):
+        """Returns whether configured arguments are valid, prints error if not."""
+        if self.valid is not None: return self.valid
+        self.valid = Source.validate(self)
+        if self.valid:
+            self._configure()
+        return self.valid
+
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
         if self.args.START_TIME is not None:
@@ -1304,4 +1319,4 @@ class AppSource(Source, ConditionMixin):
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
 
-__all__ = ["AppSource", "BagSource", "LiveSource", "ConditionMixin", "Source"]
+__all__ = ["AppSource", "ConditionMixin", "BagSource", "LiveSource", "Source"]

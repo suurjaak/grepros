@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    16.03.2024
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -144,7 +144,8 @@ class ParquetSink(Sink):
         and file base is writable.
         """
         if self.valid is not None: return self.valid
-        ok, pandas_ok, pyarrow_ok = self._configure(), bool(pandas), bool(pyarrow)
+        ok = all([Sink.validate(self), self._configure()])
+        pandas_ok, pyarrow_ok = bool(pandas), bool(pyarrow)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
                                  "Choose one of {true, false}.",
@@ -358,6 +359,11 @@ class ParquetSink(Sink):
 
     def _configure(self):
         """Parses args.WRITE_OPTIONS, returns success."""
+        self.COMMON_TYPES = type(self).COMMON_TYPES.copy()
+        self.WRITER_ARGS = type(self).WRITER_ARGS.copy()
+        del self._extra_basecols[:]
+        del self._extra_basevals[:]
+        self._patterns.clear()
         ok = self._configure_ids()
 
         def process_column(name, rostype, value):  # Parse "column-name=rostype:value"
@@ -424,6 +430,8 @@ class ParquetSink(Sink):
     def _configure_ids(self):
         """Configures ID generator from args.WRITE_OPTIONS, returns success."""
         ok = True
+        self.MESSAGE_TYPE_BASECOLS = type(self).MESSAGE_TYPE_BASECOLS[:]
+        self.MESSAGE_TYPE_NESTCOLS = type(self).MESSAGE_TYPE_NESTCOLS[:]
 
         k, v = "idgenerator", self.args.WRITE_OPTIONS.get("idgenerator")
         if k in self.args.WRITE_OPTIONS:

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    18.03.2024
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -22,7 +22,7 @@ import threading
 from ... import api
 from ... import common
 from ... import main
-from ... common import ArgumentUtil, ConsolePrinter, MatchMarkers, plural
+from ... common import ConsolePrinter, MatchMarkers
 from ... outputs import RolloverSinkMixin, Sink, TextSinkMixin
 from ... vendor import step
 
@@ -85,7 +85,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
                                             case-insensitive
         """
         args = {"WRITE": str(args)} if isinstance(args, common.PATH_TYPES) else args
-        args = ArgumentUtil.validate(common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs))
+        args = common.ensure_namespace(args, HtmlSink.DEFAULT_ARGS, **kwargs)
         args.WRAP_WIDTH = self.WRAP_WIDTH
         args.COLOR = bool(args.HIGHLIGHT)
 
@@ -128,7 +128,9 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         emits error if not.
         """
         if self.valid is not None: return self.valid
-        result = RolloverSinkMixin.validate(self)
+        result = Sink.validate(self)
+        if not RolloverSinkMixin.validate(self):
+            result = False
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
