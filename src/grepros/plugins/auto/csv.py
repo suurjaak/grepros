@@ -58,7 +58,7 @@ class CsvSink(Sink):
         self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
         self._patterns      = {}          # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite     = None
         self._close_printed = False
 
         for key, vals in [("print", args.EMIT_FIELD), ("noprint", args.NOEMIT_FIELD)]:
@@ -87,6 +87,8 @@ class CsvSink(Sink):
         if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = result
+        if self.valid:
+            self._overwrite = self.args.WRITE_OPTIONS.get("overwrite") in (True, "true")
         return self.valid
 
     def close(self):

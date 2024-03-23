@@ -176,6 +176,7 @@ def grep(args=None, **kwargs):
           LiveSource(args) if args.LIVE else \
           AppSource(args) if args.APP else \
           BagSource(args0, **vars(args)) if is_bag else BagSource(args)
+    if args and isinstance(args0, Source): src.configure(**kwargs)
     src.validate()
 
     try:

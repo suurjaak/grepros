@@ -94,20 +94,13 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         TextSinkMixin.__init__(self, args)
         self._queue     = queue.Queue()
         self._writer    = None        # threading.Thread running _stream()
-        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
-        self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
+        self._overwrite = None
+        self._template_path = None
         self._close_printed = False
+        self._tag_repls = {}
+        self._tag_rgx = None
 
-        WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
-        START = ('<span class="match">' + step.escape_html(WRAPS[0])) if args.HIGHLIGHT else ""
-        END = (step.escape_html(WRAPS[1]) + '</span>') if args.HIGHLIGHT else ""
-        self._tag_repls = {MatchMarkers.START: START,
-                           MatchMarkers.END:   END,
-                           ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
-                           ConsolePrinter.STYLE_RESET:    '</span>'}
-        self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
-
-        self._format_repls.clear()
+        self._format_repls.clear()  # TextSinkMixin member
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
@@ -142,6 +135,19 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = api.validate() and result
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+            self._template_path = self.args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
+
+            WRAPS, START = ((self.args.MATCH_WRAPPER or [""]) * 2)[:2], ""
+            if self.args.HIGHLIGHT: START = ('<span class="match">' + step.escape_html(WRAPS[0]))
+            END = (step.escape_html(WRAPS[1]) + '</span>') if self.args.HIGHLIGHT else ""
+            self._tag_repls = {MatchMarkers.START: START,
+                               MatchMarkers.END:   END,
+                               ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
+                               ConsolePrinter.STYLE_RESET:    '</span>'}
+            self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
+
         return self.valid
 
     def close(self):

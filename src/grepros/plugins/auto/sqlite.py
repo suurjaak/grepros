@@ -88,8 +88,8 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
         super(SqliteSink, self).__init__(args, **kwargs)
         RolloverSinkMixin.__init__(self, args)
 
-        self._do_yaml     = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
-        self._overwrite   = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._do_yaml     = None
+        self._overwrite   = None
         self._id_counters = {}  # {table next: max ID}
 
 
@@ -113,6 +113,9 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
         if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok
+        if self.valid:
+            self._do_yaml   = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         return self.valid
 
 

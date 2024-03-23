@@ -124,7 +124,7 @@ class ParquetSink(Sink):
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE
-        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite      = None
         self._filenames      = {}  # {(typename, typehash): Parquet file path}
         self._caches         = {}  # {(typename, typehash): [{data}, ]}
         self._schemas        = {}  # {(typename, typehash): pyarrow.Schema}
@@ -163,6 +163,8 @@ class ParquetSink(Sink):
         if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and pandas_ok and pyarrow_ok
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         return self.valid
 
 

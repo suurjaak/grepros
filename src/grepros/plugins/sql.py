@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     20.12.2021
-@modified    28.12.2023
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.sql
@@ -78,13 +78,13 @@ class SqlSink(Sink, SqlMixin):
         self._batch         = None   # Current source batch
         self._nested_types  = {}     # {(typename, typehash): "CREATE TABLE .."}
         self._batch_metas   = []     # [source batch metainfo string, ]
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite     = None
         self._close_printed = False
 
         # Whether to create tables for nested message types,
         # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
-        self._nesting = args.WRITE_OPTIONS.get("nesting")
+        self._nesting = None
 
         atexit.register(self.close)
 
@@ -109,6 +109,9 @@ class SqlSink(Sink, SqlMixin):
         if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = sqlconfig_ok and ok
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+            self._nesting = self.args.WRITE_OPTIONS.get("nesting")
         return self.valid
 
 

@@ -85,6 +85,16 @@ class Sink(object):
         """Attaches source to sink."""
         self.source = source
 
+    def configure(self, args=None, **kwargs):
+        """
+        Updates sink configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        self.args = common.ensure_namespace(args, vars(self.args), **kwargs)
+        self.valid = None
+
     def validate(self):
         """Returns whether sink prerequisites are met (like ROS environment set if LiveSink)."""
         if self.valid is not None: return self.valid
@@ -559,10 +569,6 @@ class ConsoleSink(Sink, TextSinkMixin):
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
         args = common.ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
-        if args.WRAP_WIDTH is None:
-            args = common.structcopy(args)
-            args.WRAP_WIDTH = ConsolePrinter.WIDTH
-
         super(ConsoleSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
@@ -609,6 +615,8 @@ class ConsoleSink(Sink, TextSinkMixin):
     def validate(self):
         """Returns whether arguments environment set, populates options, emits error if not."""
         if self.valid is not None: return self.valid
+        if self.args.WRAP_WIDTH is None:
+            self.args.WRAP_WIDTH = ConsolePrinter.WIDTH
         self.valid = Sink.validate(self) and TextSinkMixin.validate(self)
         return self.valid
 

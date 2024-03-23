@@ -108,6 +108,16 @@ class Source(object):
         """Attaches sink to source"""
         self.sink = sink
 
+    def configure(self, args=None, **kwargs):
+        """
+        Updates source configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        self.args = ensure_namespace(args, vars(self.args), **kwargs)
+        self.valid = None
+
     def validate(self):
         """Returns whether arguments are valid and source prerequisites are met."""
         if self.valid is not None: return self.valid
@@ -371,7 +381,6 @@ class ConditionMixin(object):
 
         ## {condition with <topic x> as get_topic("x"): compiled code object}
         self._conditions = collections.OrderedDict()
-        self._configure_conditions(ensure_namespace(args, ConditionMixin.DEFAULT_ARGS, **kwargs))
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes passes current state conditions, if any."""
@@ -402,7 +411,7 @@ class ConditionMixin(object):
         return result
 
     def validate(self):
-        """Returns whether conditions have valid syntax, prints errors."""
+        """Returns whether conditions have valid syntax, sets options, prints errors."""
         errors = []
         for v in self.args.CONDITION:
             v = self.TOPIC_RGX.sub("dummy", v)
@@ -416,6 +425,8 @@ class ConditionMixin(object):
             ConsolePrinter.error("Invalid condition")
             for err in errors:
                 ConsolePrinter.error("  %s" % err)
+        else:
+            self._configure_conditions(ensure_namespace(self.args, ConditionMixin.DEFAULT_ARGS))
         return not errors
 
     def close_batch(self):
@@ -476,6 +487,11 @@ class ConditionMixin(object):
 
     def _configure_conditions(self, args):
         """Parses condition expressions and populates local structures."""
+        self._conditions.clear()
+        self._topic_limits.clear()
+        self._topic_states.clear()
+        self._wildcard_topics.clear()
+        del self._topics_per_condition[:]
         for v in args.CONDITION:
             topics = list(set(self.TOPIC_RGX.findall(v)))
             self._topic_states.update({t: True for t in topics})
@@ -611,6 +627,16 @@ class BagSource(Source, ConditionMixin):
             self._counts and self.sink and self.sink.flush()
             self.close_batch()
         self._running = False
+
+    def configure(self, args=None, **kwargs):
+        """
+        Updates source configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        super(BagSource, self).configure(args, **kwargs)
+        self._args0 = common.structcopy(self.args)
 
     def validate(self):
         """Returns whether ROS environment is set and arguments valid, prints error if not."""

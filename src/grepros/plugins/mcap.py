@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    28.12.2023
+@modified    23.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -595,7 +595,7 @@ class McapSink(Sink, RolloverSinkMixin):
         self._file          = None  # Open file() object
         self._writer        = None  # mcap_ros.writer.Writer object
         self._schemas       = {}    # {(typename, typehash): mcap.records.Schema}
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite     = None
         self._close_printed = False
 
         atexit.register(self.close)
@@ -621,6 +621,8 @@ class McapSink(Sink, RolloverSinkMixin):
         if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and mcap_ok and mcap_ros_ok
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         return self.valid
 
 

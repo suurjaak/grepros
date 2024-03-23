@@ -35,7 +35,7 @@ class SqlMixin(object):
     DEFAULT_DIALECT = "sqlite"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(META=False, WRITE_OPTIONS={}, MATCH_WRAPPER=None, VERBOSE=False)
+    DEFAULT_ARGS = dict(WRITE_OPTIONS={})
 
 
     def __init__(self, args=None, **kwargs):
@@ -47,14 +47,12 @@ class SqlMixin(object):
                                       ```
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, SqlMixin.DEFAULT_ARGS, **kwargs)
-        self._args      = ArgumentUtil.validate(args)
         self._topics    = {}  # {(topic, typename, typehash): {name, table_name, view_name, sql, ..}}
         self._types     = {}  # {(typename, typehash): {type, table_name, sql, ..}}
         self._schema    = {}  # {(typename, typehash): {cols}}
         self._sql_cache = {}  # {table: "INSERT INTO table VALUES (%s, ..)"}
-        self._dialect   = args.WRITE_OPTIONS.get("dialect", self.DEFAULT_DIALECT)
-        self._nesting   = args.WRITE_OPTIONS.get("nesting")
+        self._dialect   = None
+        self._nesting   = None
 
 
     def validate(self):
@@ -63,14 +61,18 @@ class SqlMixin(object):
 
         Verifies that "dialect-file" is valid and "dialect" contains supported value, if any.
         """
+        write_options = getattr(self.args, "WRITE_OPTIONS", {})
+        self._dialect = write_options.get("dialect", (self._dialect or self.DEFAULT_DIALECT))
+        self._nesting = write_options.get("nesting")
         return all([self._validate_dialect_file(), self._validate_dialect()])
 
 
     def _validate_dialect_file(self):
         """Returns whether "dialect-file" is valid in args.WRITE_OPTIONS."""
         ok = True
-        if self._args.WRITE_OPTIONS.get("dialect-file"):
-            filename = self._args.WRITE_OPTIONS["dialect-file"]
+        write_options = getattr(self.args, "WRITE_OPTIONS", {})
+        if write_options.get("dialect-file"):
+            filename = write_options["dialect-file"]
             try:
                 with open(filename) as f:
                     dialects = yaml.safe_load(f.read())
@@ -103,12 +105,12 @@ class SqlMixin(object):
     def _validate_dialect(self):
         """Returns whether "dialect" is valid in args.WRITE_OPTIONS."""
         ok = True
-        if "dialect" in self._args.WRITE_OPTIONS \
-        and self._args.WRITE_OPTIONS["dialect"] not in tuple(filter(bool, self.DIALECTS)):
+        write_options = getattr(self.args, "WRITE_OPTIONS", {})
+        if "dialect" in write_options \
+        and write_options["dialect"] not in tuple(filter(bool, self.DIALECTS)):
             ok = False
-            ConsolePrinter.error("Unknown dialect for SQL: %r. "
-                                 "Choose one of {%s}.",
-                                 self._args.WRITE_OPTIONS["dialect"],
+            ConsolePrinter.error("Unknown dialect for SQL: %r. Choose one of {%s}.",
+                                 write_options["dialect"],
                                  "|".join(sorted(filter(bool, self.DIALECTS))))
         return ok
 

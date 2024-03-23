@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    14.03.2024
+@modified    22.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -123,6 +123,7 @@ class Scanner(object):
         ## Result of validate()
         self.valid = None
 
+        self.args0 = common.ensure_namespace(args, **kwargs)
         self.args = common.ArgumentUtil.validate(common.ensure_namespace(args, Scanner.DEFAULT_ARGS, **kwargs))
         if self.args.CONTEXT: self.args.BEFORE = self.args.AFTER = self.args.CONTEXT
 
@@ -406,6 +407,8 @@ class Scanner(object):
                                         void=ExpressionTree.VOID)  # Ensure defaults
         self._settings.update(highlight=highlight, passthrough=passthrough,
                               pure_anymatch=pure_anymatch, wraps=wraps)
+        self.source.configure(self.args0)
+        self.sink and self.sink.configure(self.args0)
         if progress and (not no_matching or self.args.MAX_COUNT):
             bar_opts = dict()
             if self.args.MAX_COUNT: bar_opts.update(match_max=self.args.MAX_COUNT)
