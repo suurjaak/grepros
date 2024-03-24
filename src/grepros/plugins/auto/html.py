@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    23.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -121,7 +121,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         emits error if not.
         """
         if self.valid is not None: return self.valid
-        result = Sink.validate(self)
+        result = all([Sink.validate(self), TextSinkMixin.validate(self)])
         if not RolloverSinkMixin.validate(self):
             result = False
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):

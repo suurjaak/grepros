@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     28.09.2021
-@modified    22.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.search
@@ -140,10 +140,11 @@ class Scanner(object):
                             where match is matched optionally highlighted message
                             or `None` if yielding a context message
         """
+        if not self.validate(reset=True):
+            return
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, highlight=highlight, progress=True)
-        self.validate(reset=True)
         for topic, msg, stamp, matched, index in self._generate():
             yield self.GrepMessage(topic, msg, stamp, matched, index)
 
@@ -160,9 +161,10 @@ class Scanner(object):
         @return             original or highlighted message on match else `None`
         """
         result = None
+        if not self.validate(reset=True):
+            return result
         if isinstance(self.source, inputs.AppSource): self._configure_settings(highlight=highlight)
         else: self._prepare(inputs.AppSource(self.args), highlight=highlight)
-        self.validate(reset=True)
 
         self.source.push(topic, msg, stamp)
         item = self.source.read_queue()
@@ -193,10 +195,11 @@ class Scanner(object):
         @param   sink    outputs.Sink instance
         @return          count matched
         """
+        if not self.validate(reset=True):
+            return
         if isinstance(source, api.Bag):
             source = inputs.BagSource(source, **vars(self.args))
         self._prepare(source, sink, highlight=self.args.HIGHLIGHT, progress=True)
-        self.validate(reset=True)
         total_matched = 0
         for topic, msg, stamp, matched, index in self._generate():
             sink.emit_meta()
@@ -228,8 +231,6 @@ class Scanner(object):
                 common.ConsolePrinter.log(logging.ERROR, "  %s" % err)
 
         self.valid = not errors
-        if self.source and not self.source.validate(): self.valid = False
-        if self.sink and not self.sink.validate(): self.valid = False
         return self.valid
 
 

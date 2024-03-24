@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -590,14 +590,14 @@ def validate(live=False):
     """
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS1, ROS2, ROS_VERSION, ROS_FAMILY, \
            ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES, ROS_ALIAS_TYPES
-    if realapi:
+    if realapi and not live:
         return True
 
     success, version = False, os.getenv("ROS_VERSION")
     if "1" == version:
         from . import ros1
         realapi = ros1
-        success = realapi.validate()
+        success = realapi.validate(live)
         ROS1, ROS2, ROS_VERSION, ROS_FAMILY = True, False, 1, "rospy"
     elif "2" == version:
         from . import ros2

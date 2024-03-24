@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -458,6 +458,7 @@ def run():
     source, sink = None, None
     try:
         ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
+        api.validate()
         args = ArgumentUtil.validate(args, cli=True)
 
         source = plugins.load("source", args) or \

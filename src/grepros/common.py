@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -393,7 +393,7 @@ class ArgumentUtil(object):
         errors = []
 
         # Validate --write .. key=value
-        for opts in args.WRITE:  # List of lists, one for each --write
+        for opts in getattr(args, "WRITE", []):  # List of lists, one for each --write
             erropts = []
             for opt in opts[1:]:
                 try: dict([opt.split("=", 1)])
@@ -402,7 +402,8 @@ class ArgumentUtil(object):
                 errors.append('Invalid KEY=VALUE in "--write %s": %s' %
                               (" ".join(opts), " ".join(erropts)))
 
-        for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+        for n in ("START_TIME", "END_TIME"):
+            v = getattr(args, n, None)
             if v is None: continue  # for v, n
             try: v = float(v)
             except Exception: pass
@@ -433,7 +434,8 @@ class ArgumentUtil(object):
             if k in cls.UNSIGNED_INTS | cls.SIGNED_INTS: v, err = cast(v, int)
             elif k in cls.UNSIGNED_FLOATS:               v, err = cast(v, float)
             elif k in cls.STRINGS:                       v = str(v)
-            elif k in cls.STRING_COLLECTIONS:            v = [str(x) for x in v]
+            elif k in cls.STRING_COLLECTIONS:
+                v = [str(x) for x in (v if isinstance(v, (dict, list, set, tuple)) else [v])]
             if not err and k in cls.UNSIGNED_INTS | cls.UNSIGNED_FLOATS and v < 0:
                 err = "Cannot be negative."
             if not err and vals1.get(cls.UNSIGNED_WHEN.get(k)) and v < 0:

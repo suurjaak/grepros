@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.03.2024
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -965,6 +965,17 @@ class MultiSink(Sink):
         for sink in self.sinks:
             sink.bind(source)
             sink.thread_excepthook = self.thread_excepthook
+
+    def configure(self, args=None, **kwargs):
+        """
+        Updates sinks configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        args = common.ensure_namespace(args, **kwargs)
+        hasattr(args, "WRITE") and delattr(args, "WRITE")  # Special arg for MultiSink
+        for sink in self.sinks: sink.configure(args, **kwargs)
 
     def validate(self):
         """Returns whether prerequisites are met for all sinks."""
