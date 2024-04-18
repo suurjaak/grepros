@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    23.03.2024
+@modified    18.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -70,8 +70,8 @@ class Source(object):
         # {(topic, typename, typehash): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
         self._processables  = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
-        self._start_indexes = {}  # {(topic, typename, typehash): start index}
-        self._end_indexes   = {}  # {(topic, typename, typehash): end index}
+        self._start_indexes = {}  # {(topic, typename, typehash): index to start producing from}
+        self._end_indexes   = {}  # {(topic, typename, typehash): index to stop producing at}
         self._bar_args      = {}  # Progress bar options
         self._status = None  # Processable/match status of last produced message
 
@@ -752,20 +752,28 @@ class BagSource(Source, ConditionMixin):
         self._status = False
         topickey = api.TypeMeta.make(msg, topic).topickey
         if self.args.START_INDEX and index is not None and self.args.START_INDEX < 0 \
-        and topickey not in self._start_indexes:
+        and topickey not in self._start_indexes:  # Populate topic in _start_indexes
             self._ensure_totals()
             self._start_indexes[topickey] = max(0, self.args.START_INDEX + self.topics[topickey])
         if self.args.END_INDEX and index is not None and self.args.END_INDEX < 0 \
-        and topickey not in self._end_indexes:
+        and topickey not in self._end_indexes:  # Populate topic in _end_indexes
             self._ensure_totals()
             self._end_indexes[topickey] = (self.args.END_INDEX + self.topics[topickey])
             if not self._end_indexes[topickey]: self._end_indexes[topickey] = -1
+
         if not super(BagSource, self).is_processable(topic, msg, stamp, index):
             return False
         if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
             return False
         self._status = True
         return True
+
+    def init_progress(self):
+        """Initializes progress bar, if any, for current bag."""
+        if self.args.PROGRESS and not self.bar:
+            self._ensure_totals()
+            self.configure_progress(**self._make_progress_args())
+            super(BagSource, self).init_progress()
 
     def _produce(self, topics, start_time=None):
         """
@@ -779,13 +787,14 @@ class BagSource(Source, ConditionMixin):
         if self.args.TIMESCALE and "read" not in self._delaystamps:
             self._delaystamps["read"] = getattr(time, "monotonic", time.time)()  # Py3 / Py2
         counts = collections.Counter()
+        endtime_indexes = {}  # {topickey: index at reaching END_TIME}
         nametypes = {(n, t) for n, tt in topics.items() for t in tt}
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
-                break  # for topic, 
+                break  # for topic,
             typename = api.get_message_type(msg)
             if topics and typename not in topics[topic]:
-                continue  # for topic
+                continue  # for topic,
             if api.ROS2 and not self._types_ok:
                 self.topics, self._types_ok = self._bag.get_topic_info(counts=False), True
 
@@ -793,7 +802,7 @@ class BagSource(Source, ConditionMixin):
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
             if not self._sticky and counts[topickey] != self._counts[topickey]:
-                continue  # for topic
+                continue  # for topic,
 
             self._status, self._delaystamps["current"] = None, api.to_sec(stamp)
             if do_predelay: self._delay_timeline()  # Delay emission until time
@@ -811,15 +820,9 @@ class BagSource(Source, ConditionMixin):
                 for entry in self._produce({topic: typename}, continue_from):
                     yield entry
                 self._sticky = False
-            if not self._running or not self._bag:
-                break  # for topic
-            if not self._sticky and self.args.END_INDEX:
-                max_index = self.args.END_INDEX + self.args.AFTER
-                if counts[topickey] >= max_index:  # Stop reading when reaching max in all topics
-                    mycounts = {k: v for k, v in self._counts.items() if k[:2] in nametypes}
-                    if nametypes == set(k[:2] for k in mycounts) \
-                    and all(v >= self._end_indexes.get(k, max_index) for k, v in mycounts.items()):
-                        break  # for topic
+            if not self._running or not self._bag \
+            or self._is_at_end_threshold(topickey, stamp, nametypes, endtime_indexes):
+                break  # for topic,
 
     def _produce_bags(self):
         """Yields Bag instances from configured arguments."""
@@ -847,13 +850,6 @@ class BagSource(Source, ConditionMixin):
 
             encountereds.add(self._bag.filename)
             yield self._bag
-
-    def init_progress(self):
-        """Initializes progress bar, if any, for current bag."""
-        if self.args.PROGRESS and not self.bar:
-            self._ensure_totals()
-            self.configure_progress(**self._make_progress_args())
-            super(BagSource, self).init_progress()
 
     def _make_progress_args(self):
         """Returns dictionary with progress bar options"""
@@ -890,6 +886,34 @@ class BagSource(Source, ConditionMixin):
         curstamp, readstamp, startstamp = map(self._delaystamps.get, ("current", "read", "first"))
         delta = max(0, api.to_sec(curstamp) - startstamp) / (self.args.TIMESCALE or 1)
         if delta: time.sleep(max(0, delta + readstamp - getattr(time, "monotonic", time.time)()))
+
+    def _is_at_end_threshold(self, topickey, stamp, nametypes, endtime_indexes):
+        """
+        Returns whether bag reading has reached END_INDEX or END_TIME in all given topics.
+
+        @param   topickey         (topic, typename, typehash) of current message
+        @param   stamp            ROS timestamp of current message
+        @param   nametypes        {(topic, typename)} to account for
+        @param   endtime_indexes  {topickey: index at reaching END_TIME}, gets modified
+        """
+        if not self._sticky and self.args.END_INDEX:
+            max_index = self.args.END_INDEX + self.args.AFTER
+            if self._counts[topickey] >= max_index:  # Stop reading when reaching max in all topics
+                mycounts = {k: v for k, v in self._counts.items() if k[:2] in nametypes}
+                if nametypes == set(k[:2] for k in mycounts) \
+                and all(v >= self._end_indexes.get(k, max_index) for k, v in mycounts.items()):
+                    return True  # Early break if all topics at max index
+        if not self._sticky and self.args.END_TIME and stamp > self.args.END_TIME:
+            self._ensure_totals()
+            if topickey not in endtime_indexes: endtime_indexes[topickey] = self._counts[topickey]
+            max_index = min(self.topics[topickey], endtime_indexes[topickey] + self.args.AFTER)
+            if self._counts[topickey] >= max_index: # One topic reached end: check all topics
+                myindexes = {k: v for k, v in endtime_indexes.items() if k[:2] in nametypes}
+                if nametypes == set(k[:2] for k in myindexes) \
+                and all(self._counts[k] >= min(self.topics[k], v + self.args.AFTER)
+                        for k, v in myindexes.items()):
+                    return True  # Early break if all topics at max time
+        return False
 
     def _configure(self, filename=None, bag=None):
         """Opens bag and populates bag-specific argument state, returns success."""
@@ -1001,9 +1025,10 @@ class LiveSource(Source, ConditionMixin):
         args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **dict(kwargs, live=True))
         super(LiveSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._running = False  # Whether is in process of yielding messages from topics
-        self._queue   = None   # [(topic, msg, ROS time)]
-        self._subs    = {}     # {(topic, typename, typehash): ROS subscriber}
+        self._running    = False  # Whether is in process of yielding messages from topics
+        self._queue      = None   # [(topic, msg, ROS time)]
+        self._last_stamp = None   # ROS stamp of last message
+        self._subs       = {}     # {(topic, typename, typehash): ROS subscriber}
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
@@ -1016,6 +1041,11 @@ class LiveSource(Source, ConditionMixin):
             t = threading.Thread(target=self._run_refresh)
             t.daemon = True
             t.start()
+            if self.args.END_TIME:
+                self._last_stamp = None
+                t = threading.Thread(target=self._run_endtime_closer)
+                t.daemon = True
+                t.start()
 
         total = 0
         self.init_progress()
@@ -1023,18 +1053,20 @@ class LiveSource(Source, ConditionMixin):
             topic, msg, stamp = self._queue.get()
             total += bool(topic)
             self.update_progress(total, running=self._running and bool(topic))
-            if topic:
-                topickey = api.TypeMeta.make(msg, topic, self).topickey
-                self._counts[topickey] += 1
-                self.conditions_register_message(topic, msg)
-                if self.is_conditions_topic(topic, pure=True): continue  # while
+            if not topic: continue  # while
 
-                self._status = None
-                if not self.preprocess \
-                or self.is_processable(topic, msg, stamp, self._counts[topickey]):
-                    yield self.SourceMessage(topic, msg, stamp)
-                if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
-                    self._processables[topickey] = (self._counts[topickey], stamp)
+            topickey = api.TypeMeta.make(msg, topic, self).topickey
+            self._counts[topickey] += 1
+            self._last_stamp = stamp
+            self.conditions_register_message(topic, msg)
+            if self.is_conditions_topic(topic, pure=True): continue  # while
+
+            self._status = None
+            if not self.preprocess \
+            or self.is_processable(topic, msg, stamp, self._counts[topickey]):
+                yield self.SourceMessage(topic, msg, stamp)
+            if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
+                self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
 
@@ -1195,6 +1227,15 @@ class LiveSource(Source, ConditionMixin):
             try: self.refresh_topics()
             except Exception as e: self.thread_excepthook("Error refreshing live topics: %r" % e, e)
             time.sleep(self.MASTER_INTERVAL)
+
+    def _run_endtime_closer(self):
+        """Periodically checks whether END_TIME has been reached, closes source when so."""
+        time.sleep(self.MASTER_INTERVAL)
+        while self._running and self.args.END_TIME:
+            if self._last_stamp and self._last_stamp > self.args.END_TIME:
+                time.sleep(self.MASTER_INTERVAL)  # Allow some more arrivals just in case
+                self.close()
+            else: time.sleep(self.MASTER_INTERVAL)
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""

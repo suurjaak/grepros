@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-03-23)
+1.2.0 (2024-04-18)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -16,6 +16,7 @@ Changelog for package grepros
 * support fractional values in --every-nth-interval option
 * support --lines-per-message 0
 * stop bag reading when reaching --end-index in each topic
+* stop bag and live reading when reaching --end-time in each topic
 * add result message count in HTML output
 * rename TopicSource and TopicSink to LiveSource and LiveSink
 * fix negative --start-index and --end-index ignoring different counts in bag topics
