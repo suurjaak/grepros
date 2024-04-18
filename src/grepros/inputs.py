@@ -586,7 +586,6 @@ class BagSource(Source, ConditionMixin):
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = common.structcopy(self.args)  # Original arguments
-        self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
         self._types_ok  = False  # Whether type definitions have been retrieved (ROS2 optimize)
         self._running   = False
@@ -801,7 +800,7 @@ class BagSource(Source, ConditionMixin):
             topickey = api.TypeMeta.make(msg, topic, self).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
-            if not self._sticky and counts[topickey] != self._counts[topickey]:
+            if start_time is None and counts[topickey] != self._counts[topickey]:
                 continue  # for topic,
 
             self._status, self._delaystamps["current"] = None, api.to_sec(stamp)
@@ -811,17 +810,14 @@ class BagSource(Source, ConditionMixin):
 
             if self._status:
                 self._processables[topickey] = (self._counts[topickey], stamp)
-            if self._status and not self.preprocess and self.args.AFTER and not self._sticky \
+            if self._status and not self.preprocess and self.args.AFTER and start_time is None \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
-                self._sticky = True
-                continue_from = stamp + api.make_duration(nsecs=1)
-                for entry in self._produce({topic: typename}, continue_from):
+                for entry in self._produce({topic: typename}, stamp + api.make_duration(nsecs=1)):
                     yield entry
-                self._sticky = False
-            if not self._running or not self._bag \
-            or self._is_at_end_threshold(topickey, stamp, nametypes, endtime_indexes):
+            if not self._running or not self._bag or (start_time is None
+            and self._is_at_end_threshold(topickey, stamp, nametypes, endtime_indexes)):
                 break  # for topic,
 
     def _produce_bags(self):
@@ -896,14 +892,14 @@ class BagSource(Source, ConditionMixin):
         @param   nametypes        {(topic, typename)} to account for
         @param   endtime_indexes  {topickey: index at reaching END_TIME}, gets modified
         """
-        if not self._sticky and self.args.END_INDEX:
+        if self.args.END_INDEX:
             max_index = self.args.END_INDEX + self.args.AFTER
             if self._counts[topickey] >= max_index:  # Stop reading when reaching max in all topics
                 mycounts = {k: v for k, v in self._counts.items() if k[:2] in nametypes}
                 if nametypes == set(k[:2] for k in mycounts) \
                 and all(v >= self._end_indexes.get(k, max_index) for k, v in mycounts.items()):
                     return True  # Early break if all topics at max index
-        if not self._sticky and self.args.END_TIME and stamp > self.args.END_TIME:
+        if self.args.END_TIME and stamp > self.args.END_TIME:
             self._ensure_totals()
             if topickey not in endtime_indexes: endtime_indexes[topickey] = self._counts[topickey]
             max_index = min(self.topics[topickey], endtime_indexes[topickey] + self.args.AFTER)
@@ -920,7 +916,6 @@ class BagSource(Source, ConditionMixin):
         self._meta      = None
         self._bag       = None
         self._filename  = None
-        self._sticky    = False
         self._totals_ok = False
         self._delaystamps.clear()
         self._counts.clear()
