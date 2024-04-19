@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    02.02.2024
+@modified    19.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -550,7 +550,9 @@ def create_subscriber(topic, typename, handler, queue_size):
             typedef = msg._connection_header["message_definition"]
             for name, cls in generate_message_classes(typename, typedef).items():
                 TYPECLASSES.setdefault((name, cls._md5sum), cls)
-        handler(TYPECLASSES[typekey]().deserialize(msg._buff))
+        if isinstance(msg, rospy.AnyMsg):  # /clock can yield already deserialized messages
+            msg = TYPECLASSES[typekey]().deserialize(msg._buff)
+        handler(msg)
 
     sub = rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
     sub.get_message_class      = lambda: next(c for (n, h), c in TYPECLASSES.items()

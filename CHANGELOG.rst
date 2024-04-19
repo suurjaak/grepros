@@ -2,13 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-04-18)
+1.2.0 (2024-04-19)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
 * add --time-scale option to emit messages in bag timeline
 * count --every-nth-message from --start-index
-* support explicit integer indexes in filtering message fields
+* support explicit integer indexes in filtering nested message fields
 * add separate match counts to progress bar where relevant
 * print error stacktraces when --verbose
 * make api.dict_to_message() support nested ROS messages in dictionary
@@ -28,6 +28,7 @@ Changelog for package grepros
   like ROS master shutting down when grepping live topics
 * fix intermittent concurrency issues in HTML output
 * fix api.make_bag_time() and api.make_live_time() for Duration parameter
+* fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
 * validate all arguments, check signedness
 * add Source.configure() and Sink.configure()
 * avoid UserWarning from PyArrow in Parquet output
