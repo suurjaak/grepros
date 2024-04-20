@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    18.04.2024
+@modified    20.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -1096,7 +1096,7 @@ class LiveSource(Source, ConditionMixin):
     def get_meta(self):
         """Returns source metainfo data dict."""
         ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
-        return dict(ENV, tcount=len(self.topics))
+        return dict(ENV, tcount=len(self.topics), scount=len(self._subs))
 
     def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
@@ -1135,6 +1135,7 @@ class LiveSource(Source, ConditionMixin):
         if "ROS_DOMAIN_ID" in metadata:
             result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
         result += ", %s initially" % common.plural("topic", metadata["tcount"])
+        result += ", %s subscribed" % metadata["scount"]
         return result
 
     def is_processable(self, topic, msg, stamp, index=None):
@@ -1150,6 +1151,8 @@ class LiveSource(Source, ConditionMixin):
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in api.get_topic_types():
+            topickey = (topic, typename, None)
+            self.topics[topickey] = None
             dct = common.filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
             if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
@@ -1158,8 +1161,7 @@ class LiveSource(Source, ConditionMixin):
                 if self.args.STOP_ON_ERROR: raise Exception(msg)
                 ConsolePrinter.warn(msg, __once=True)
                 continue  # for topic, typename
-            topickey = (topic, typename, None)
-            if topickey in self.topics:
+            if topickey in self._subs:
                 continue  # for topic, typename
 
             handler = functools.partial(self._on_message, topic)
@@ -1173,7 +1175,6 @@ class LiveSource(Source, ConditionMixin):
                 if self.args.VERBOSE: traceback.print_exc()
                 continue  # for topic, typename
             self._subs[topickey] = sub
-            self.topics[topickey] = None
 
     def init_progress(self):
         """Initializes progress bar, if any."""

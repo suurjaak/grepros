@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-04-19)
+1.2.0 (2024-04-20)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -18,6 +18,7 @@ Changelog for package grepros
 * stop bag reading when reaching --end-index in each topic
 * stop bag and live reading when reaching --end-time in each topic
 * add result message count in HTML output
+* add total topic count to output metadata when grepping live topics
 * rename TopicSource and TopicSink to LiveSource and LiveSink
 * fix negative --start-index and --end-index ignoring different counts in bag topics
 * fix --every-nth-interval not working when messages continuously close
