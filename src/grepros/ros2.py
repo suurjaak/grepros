@@ -117,6 +117,9 @@ PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
     """
 
+    ## SQLite file header magic start bytes
+    SQLITE_MAGIC = b"SQLite format 3\x00"
+
 
     def __init__(self, filename, mode="a", *_, **__):
         """
@@ -513,6 +516,18 @@ PRAGMA synchronous=NORMAL;
         """Returns whether specified table exists in database."""
         sql = "SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?"
         return bool(self._db.execute(sql, ("table", name)).fetchone())
+
+
+    @classmethod
+    def autodetect(cls, f):
+        """Returns whether file is recognizable as SQLite format."""
+        if os.path.isfile(f) and os.path.getsize(f):
+            with open(f, "rb") as f:
+                result = (f.read(len(cls.SQLITE_MAGIC)) == cls.SQLITE_MAGIC)
+        else:
+            ext = os.path.splitext(f or "")[-1].lower()
+            result = ext in BAG_EXTENSIONS
+        return result
 Bag = ROS2Bag
 
 

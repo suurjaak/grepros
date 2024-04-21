@@ -30,6 +30,7 @@ Changelog for package grepros
 * fix intermittent concurrency issues in HTML output
 * fix api.make_bag_time() and api.make_live_time() for Duration parameter
 * fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
+* improve auto-detecting ROS2 .db3 bags
 * validate all arguments, check signedness
 * print detailed output statistics only in verbose mode
 * default to non-verbose mode when using progress bar
