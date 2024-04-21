@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.10.2022
-@modified    23.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.mcap
@@ -298,7 +298,9 @@ class McapBag(api.BaseBag):
         self._reader  = mcap.reader.make_reader(self._file) if "r" == self._mode else None
         self._decoder = mcap_ros.decoder.Decoder()          if "r" == self._mode else None
         self._writer  = mcap_ros.writer.Writer(self._file)  if "w" == self._mode else None
-        if "r" == self._mode: self._populate_meta()
+        try: "r" == self._mode and self._populate_meta()
+        except Exception as e:
+            raise Exception("Error reading MCAP metadata: %r" % e)
         self._opened = True
 
 
@@ -475,6 +477,13 @@ class McapBag(api.BaseBag):
         self._start_time = summary.statistics.message_start_time / 1E9
         self._end_time   = summary.statistics.message_end_time   / 1E9
 
+        def make_hash(typename, msgdef, extradefs):
+            """Returns MD5 hash calculated for type definition, or None on error."""
+            try: return api.calculate_definition_hash(typename, msgdef, extradefs)
+            except Exception as e:
+                ConsolePrinter.warn("Error calculating message type hash for %r: %r", typename, e)
+                return None
+
         defhashes = {}  # Cached {type definition full text: type hash}
         for cid, channel in summary.channels.items():
             schema = summary.schemas[channel.schema_id]
@@ -483,8 +492,7 @@ class McapBag(api.BaseBag):
             typedef = schema.data.decode("utf-8")  # Full definition including subtype definitions
             subtypedefs, nesting = api.parse_definition_subtypes(typedef, nesting=True)
             typehash = channel.metadata.get("md5sum") or \
-                       api.calculate_definition_hash(typename, typedef,
-                                                        tuple(subtypedefs.items()))
+                       make_hash(typename, typedef, tuple(subtypedefs.items()))
             topickey, typekey = (topic, typename, typehash), (typename, typehash)
 
             qoses = None
@@ -499,8 +507,7 @@ class McapBag(api.BaseBag):
             self._typedefs[typekey] = typedef
             defhashes[typedef] = typehash
             for t, d in subtypedefs.items():  # Populate subtype definitions and hashes
-                if d in defhashes: h = defhashes[d]
-                else: h = api.calculate_definition_hash(t, d, tuple(subtypedefs.items()))
+                h = defhashes[d] if d in defhashes else make_hash(t, d, tuple(subtypedefs.items()))
                 self._typedefs.setdefault((t, h), d)
                 self._type_subtypes.setdefault(typekey, {})[t] = h
                 defhashes[d] = h
@@ -517,7 +524,7 @@ class McapBag(api.BaseBag):
 
     @classmethod
     def autodetect(cls, f):
-        """Returns whether file is readable as MCAP format."""
+        """Returns whether file is recognizable as MCAP format."""
         if common.is_stream(f):
             pos, _ = f.tell(), f.seek(0)
             result, _ = (f.read(len(cls.MCAP_MAGIC)) == cls.MCAP_MAGIC), f.seek(pos)
