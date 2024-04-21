@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -348,7 +348,7 @@ class RolloverSinkMixin(object):
     """Provides output file rollover by size, duration, or message count."""
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(VERBOSE=False, WRITE=None, WRITE_OPTIONS={})
+    DEFAULT_ARGS = dict(WRITE=None, WRITE_OPTIONS={}, VERBOSE=False)
 
     ## Command-line help templates for rollover options, as [(name, text with %s label placeholder)]
     OPTIONS_TEMPLATES = [
@@ -385,6 +385,7 @@ class RolloverSinkMixin(object):
                                                             and "%(index)s" as output file index,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         self._rollover_limits = {}  # {?"size": int, ?"count": int, ?"duration": ROS duration}
@@ -504,8 +505,8 @@ class RolloverSinkMixin(object):
             result += self.FILE_META_TEMPLATE.format(
                 name=common.plural("file", self._rollover_files),
                 size=common.format_bytes(sizesum)
-            ) + ":"
-            for path, props in self._rollover_files.items():
+            ) + (":" if self.args.VERBOSE else ".")
+            for path, props in self._rollover_files.items() if self.args.VERBOSE else ():
                 sizestr = SIZE_ERROR if props["size"] is None else common.format_bytes(props["size"])
                 result += self.MULTI_META_TEMPLATE.format(name=path, size=sizestr,
                     mcount=common.plural("message", sum(props["counts"].values())),
@@ -670,7 +671,7 @@ class BagSink(Sink, RolloverSinkMixin):
         if self._is_pathed: RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
         self._ensure_open()
         topickey = api.TypeMeta.make(msg, topic).topickey
-        if topickey not in self._counts and self.args.VERBOSE:
+        if self.args.VERBOSE and topickey not in self._counts:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
         qoses = self.source.get_message_meta(topic, msg, stamp).get("qoses")

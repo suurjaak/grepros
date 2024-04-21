@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    23.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -106,11 +106,12 @@ class CsvSink(Sink):
                 for k, n in names.items():
                     try: sizes[k] = os.path.getsize(n)
                     except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
-                ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
+                ConsolePrinter.debug("Wrote %s in %s to CSV (%s)%s",
                                      plural("message", sum(self._counts.values())),
                                      plural("topic", self._counts),
-                                     common.format_bytes(sum(filter(bool, sizes.values()))))
-                for topickey, name in names.items():
+                                     common.format_bytes(sum(filter(bool, sizes.values()))),
+                                     ":" if self.args.VERBOSE else ".")
+                for topickey, name in names.items() if self.args.VERBOSE else ():
                     ConsolePrinter.debug("- %s (%s, %s)", name,
                                          "error getting size" if sizes[topickey] is None else
                                          common.format_bytes(sizes[topickey]),

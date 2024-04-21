@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-04-20)
+1.2.0 (2024-04-21)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -31,6 +31,7 @@ Changelog for package grepros
 * fix api.make_bag_time() and api.make_live_time() for Duration parameter
 * fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
 * validate all arguments, check signedness
+* print detailed output statistics only in verbose mode
 * add Source.configure() and Sink.configure()
 * avoid UserWarning from PyArrow in Parquet output
 * avoid pointless stacktrace upon multiple Ctrl-C when grepping live topics

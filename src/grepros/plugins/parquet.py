@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    23.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -88,8 +88,7 @@ class ParquetSink(Sink):
     WRITER_ARGS = {"version": "2.6"}
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={},
-                        VERBOSE=False)
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={}, VERBOSE=False)
 
 
     def __init__(self, args=None, **kwargs):
@@ -191,12 +190,13 @@ class ParquetSink(Sink):
                 for n in self._filenames.values():
                     try: sizes[n] = os.path.getsize(n)
                     except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
-                ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
+                ConsolePrinter.debug("Wrote %s in %s to %s (%s)%s",
                                      common.plural("message", sum(self._counts.values())),
                                      common.plural("topic", self._counts),
                                      common.plural("Parquet file", sizes),
-                                     common.format_bytes(sum(filter(bool, sizes.values()))))
-                for (t, h), name in self._filenames.items():
+                                     common.format_bytes(sum(filter(bool, sizes.values()))),
+                                     ":" if self.args.VERBOSE else ".")
+                for (t, h), name in self._filenames.items() if self.args.VERBOSE else ():
                     count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
                     ConsolePrinter.debug("- %s (%s, %s)", name,
                                          "error getting size" if sizes[name] is None else
@@ -212,7 +212,7 @@ class ParquetSink(Sink):
         rootmsg = rootmsg or msg
         with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
-        if topic and (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
+        if self.args.VERBOSE and topic and (topic, typename, typehash) not in self._counts:
             ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
         if typekey in self._writers: return
 
