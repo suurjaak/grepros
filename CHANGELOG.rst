@@ -32,6 +32,7 @@ Changelog for package grepros
 * fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
 * validate all arguments, check signedness
 * print detailed output statistics only in verbose mode
+* default to non-verbose mode when using progress bar
 * add Source.configure() and Sink.configure()
 * avoid UserWarning from PyArrow in Parquet output
 * avoid pointless stacktrace upon multiple Ctrl-C when grepping live topics

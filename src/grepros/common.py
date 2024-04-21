@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -365,11 +365,12 @@ class ArgumentUtil(object):
         if args.CONTEXT:
             args.BEFORE = args.AFTER = args.CONTEXT
 
-        # Default to printing metadata for publish/write if no console output
-        args.VERBOSE = False if args.SKIP_VERBOSE else (args.VERBOSE or not args.CONSOLE and cli)
-
         # Show progress bar only if no console output
         args.PROGRESS = args.PROGRESS and not args.CONSOLE
+
+        # Default to printing metadata for publish/write if no console output and no progress
+        args.VERBOSE = False if args.SKIP_VERBOSE else args.VERBOSE or \
+                       (False if args.PROGRESS else cli and not args.CONSOLE)
 
         # Print filename prefix on each console message line if not single specific file
         args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
