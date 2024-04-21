@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.07.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 from __future__ import print_function
@@ -26,7 +26,7 @@ PACKAGE = "grepros"
 def readfile(path):
     """Returns contents of path, relative to current file."""
     root = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(root, path)) as f: return f.read()
+    with open(os.path.join(root, path), encoding="utf-8") as f: return f.read()
 
 def get_description():
     """Returns package description from README."""

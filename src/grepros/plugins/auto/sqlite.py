@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    23.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -180,7 +180,7 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
     def _connect(self):
         """Returns new database connection."""
         makedirs(os.path.dirname(self.filename))
-        if self._overwrite: open(self.filename, "w").close()
+        if self._overwrite: open(self.filename, "wb").close()
         db = sqlite3.connect(self.filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None

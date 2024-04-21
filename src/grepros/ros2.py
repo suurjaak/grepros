@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    02.02.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -694,7 +694,7 @@ def _get_message_definition(typename):
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
         try:
             typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
-            with open(typepath) as f:
+            with open(typepath, encoding="utf-8") as f:
                 texts[typename] = f.read()
         except Exception:  # .msg file unavailable: parse IDL
             texts[typename] = get_message_definition_idl(typename)
@@ -771,7 +771,7 @@ def get_message_definition_idl(typename):
                 if "comment" == v.get("language")]
 
     typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".idl")
-    with open(typepath) as f:
+    with open(typepath, encoding="utf-8") as f:
         idlcontent = rosidl_parser.parser.parse_idl_string(f.read())
     msgidl = idlcontent.get_elements_of_type(rosidl_parser.definition.Message)[0]
     package = msgidl.structure.namespaced_type.namespaces[0]

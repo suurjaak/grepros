@@ -137,9 +137,9 @@ class CsvSink(Sink):
                 name = "%s.%s%s" % (base, topic.lstrip("/").replace("/", "__"), ext)
                 if self._overwrite:
                     if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
-                    open(name, "w").close()
+                    open(name, "wb").close()
                 else: name = common.unique_path(name)
-            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": ""}
+            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": "", "encoding": "utf-8"}
             f = open(name, **flags)
             w = CsvWriter(f)
             if topickey not in self._files:

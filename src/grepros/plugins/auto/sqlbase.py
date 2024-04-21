@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    18.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -18,8 +18,7 @@ import re
 import yaml
 
 from ... import api
-from ... common import ArgumentUtil, ConsolePrinter, \
-                       ellipsize, ensure_namespace, import_item, merge_dicts
+from ... common import ConsolePrinter, ellipsize, import_item, merge_dicts
 
 
 
@@ -74,7 +73,7 @@ class SqlMixin(object):
         if write_options.get("dialect-file"):
             filename = write_options["dialect-file"]
             try:
-                with open(filename) as f:
+                with open(filename, encoding="utf-8") as f:
                     dialects = yaml.safe_load(f.read())
                 if any(not isinstance(v, dict) for v in dialects.values()):
                     raise Exception("Each dialect must be a dictionary.")

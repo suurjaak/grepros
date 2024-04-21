@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    24.03.2024
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -187,7 +187,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
             return
 
         try:
-            with open(self._template_path, "r") as f: tpl = f.read()
+            with open(self._template_path, encoding="utf-8") as f: tpl = f.read()
             template = step.Template(tpl, escape=True, strip=False, postprocess=convert_lf)
             ns = dict(source=self.source, sink=self, messages=self._produce(),
                       args=None, timeline=not self.args.ORDERBY)
