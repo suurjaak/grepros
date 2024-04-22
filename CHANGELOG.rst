@@ -20,6 +20,7 @@ Changelog for package grepros
 * add result message count in HTML output
 * add total topic count to output metadata when grepping live topics
 * rename TopicSource and TopicSink to LiveSource and LiveSink
+* fix parsing and hashing message type definitions with leading whitespace
 * fix negative --start-index and --end-index ignoring different counts in bag topics
 * fix --every-nth-interval not working when messages continuously close
 * fix emitting invalid YAML for nested message arrays

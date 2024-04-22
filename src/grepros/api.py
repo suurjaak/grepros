@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    24.03.2024
+@modified    22.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -627,7 +627,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     @param   extradefs  additional subtype definitions as ((typename, msgdef), )
     """
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
-    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     lines, pkg = [], typename.rsplit("/", 1)[0]
     subtypedefs = dict(extradefs, **parse_definition_subtypes(msgdef))
@@ -1038,7 +1038,7 @@ def parse_definition_fields(typename, typedef):
     """
     result = collections.OrderedDict()  # {subtypename: subtypedef}
 
-    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     pkg = typename.rsplit("/", 1)[0]
     for line in filter(bool, typedef.splitlines()):
@@ -1088,7 +1088,7 @@ def parse_definition_subtypes(typedef, nesting=False):
         result[curtype] = "\n".join(curlines)
 
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
-    FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     # Concatenate nested subtype definitions to parent subtype definitions
     for subtype, subdef in list(result.items()):
         pkg, seen = subtype.rsplit("/", 1)[0], set()
