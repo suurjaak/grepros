@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    21.04.2024
+@modified    22.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -1272,6 +1272,7 @@ def verify_io(f, mode):
                     paths_created.append(curpath)
         elif not present and "r" == mode:
             return False
+        op = " opening"
         with open(f, {"r": "rb", "w": "ab", "a": "ab+"}[mode]) as g:
             if mode in ("r", "a"):
                 op = " reading from"
@@ -1281,7 +1282,7 @@ def verify_io(f, mode):
                 result, _ = True, g.write(b"")
             return result
     except Exception as e:
-        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", f, e)
+        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", op, f, e)
         return False
     finally:
         if not present:

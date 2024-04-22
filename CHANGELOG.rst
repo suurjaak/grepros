@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-04-21)
+1.2.0 (2024-04-22)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
@@ -30,6 +30,7 @@ Changelog for package grepros
 * fix intermittent concurrency issues in HTML output
 * fix api.make_bag_time() and api.make_live_time() for Duration parameter
 * fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
+* fix invalid error message when trying to write to unwritable path
 * improve auto-detecting MCAP and ROS2 .db3 bags
 * validate all arguments, check signedness
 * print detailed output statistics only in verbose mode
