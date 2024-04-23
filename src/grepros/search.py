@@ -553,7 +553,7 @@ class ExpressionTree(object):
     """
     Parses and evaluates operator expressions like "a AND (b OR NOT c)".
 
-    Operands can be quoted strings, `\` can be used to escape quotes within the string.
+    Operands can be quoted strings, '\' can be used to escape quotes within the string.
     Operators are case-insensitive.
     """
 

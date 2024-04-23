@@ -14,7 +14,7 @@ Changelog for package grepros
 * make api.dict_to_message() support nested ROS messages in dictionary
 * make api.get_message_value() accept a default
 * support fractional values in --every-nth-interval option
-* support --lines-per-message 0
+* support `--lines-per-message 0`
 * stop bag reading when reaching --end-index in each topic
 * stop bag and live reading when reaching --end-time in each topic
 * add result message count in HTML output
