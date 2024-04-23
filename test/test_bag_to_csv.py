@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2021
-@modified    25.12.2021
+@modified    03.02.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -37,12 +37,12 @@ class TestBagInputCsvOutput(testbase.TestBase):
 
     def setUp(self):
         """Collects bags in data directory, assembles command."""
-        super().setUp()
+        super(TestBagInputCsvOutput, self).setUp()
         self._cmd = self.CMD_BASE + ["--no-console-output", "--write", self._outname]
 
     def tearDown(self):
         """Terminates subprocess and deletes temporary output files, if any."""
-        super().tearDown()
+        super(TestBagInputCsvOutput, self).tearDown()
         for filename in glob.glob("%s*%s" % os.path.splitext(self._outname)):
             try: os.unlink(filename)
             except Exception: pass

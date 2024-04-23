@@ -2,7 +2,45 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.1.0 (2024-01-03)
+1.2.0 (2024-04-22)
+-------------------
+* add --expression option to give pattern as a logical expression
+  like `this AND (this2 OR NOT "skip this")`
+* add --time-scale option to emit messages in bag timeline
+* count --every-nth-message from --start-index
+* support explicit integer indexes in filtering nested message fields
+* add separate match counts to progress bar where relevant
+* print error stacktraces when --verbose
+* make api.dict_to_message() support nested ROS messages in dictionary
+* make api.get_message_value() accept a default
+* support fractional values in --every-nth-interval option
+* support `--lines-per-message 0`
+* stop bag reading when reaching --end-index in each topic
+* stop bag and live reading when reaching --end-time in each topic
+* add result message count in HTML output
+* add total topic count to output metadata when grepping live topics
+* rename TopicSource and TopicSink to LiveSource and LiveSink
+* fix parsing and hashing message type definitions with leading whitespace
+* fix negative --start-index and --end-index ignoring different counts in bag topics
+* fix --every-nth-interval not working when messages continuously close
+* fix emitting invalid YAML for nested message arrays
+* fix using --filename with --recursive
+* fix preparing patterns for early message skip
+* fix program not exiting properly on exception in background thread,
+  like ROS master shutting down when grepping live topics
+* fix intermittent concurrency issues in HTML output
+* fix api.make_bag_time() and api.make_live_time() for Duration parameter
+* fix handling already deserialized clock messages when grepping ROS1 live topics in sim time
+* fix invalid error message when trying to write to unwritable path
+* improve auto-detecting MCAP and ROS2 .db3 bags
+* validate all arguments, check signedness
+* print detailed output statistics only in verbose mode
+* default to non-verbose mode when using progress bar
+* add Source.configure() and Sink.configure()
+* avoid UserWarning from PyArrow in Parquet output
+* avoid pointless stacktrace upon multiple Ctrl-C when grepping live topics
+
+1.1.0 (2023-12-30)
 -------------------
 * add support for splitting files in bag/HTML/MCAP/SQLite output
 * add api.to_duration()

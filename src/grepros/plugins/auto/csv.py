@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.csv
@@ -58,11 +58,11 @@ class CsvSink(Sink):
         self._writers       = {}          # {(topic, typename, typehash): CsvWriter}
         self._patterns      = {}          # {key: [(() if any field else ('path', ), re.Pattern), ]}
         self._lasttopickey  = None        # Last (topic, typename, typehash) emitted
-        self._overwrite     = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite     = None
         self._close_printed = False
 
         for key, vals in [("print", args.EMIT_FIELD), ("noprint", args.NOEMIT_FIELD)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
@@ -76,9 +76,9 @@ class CsvSink(Sink):
         super(CsvSink, self).emit(topic, msg, stamp, match, index)
 
     def validate(self):
-        """Returns whether overwrite option is valid and file base is writable."""
+        """Returns whether arguments and overwrite option are valid, and file base is writable."""
         if self.valid is not None: return self.valid
-        result = True
+        result = Sink.validate(self)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for CSV: %r. "
                                  "Choose one of {true, false}.",
@@ -87,6 +87,8 @@ class CsvSink(Sink):
         if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = result
+        if self.valid:
+            self._overwrite = self.args.WRITE_OPTIONS.get("overwrite") in (True, "true")
         return self.valid
 
     def close(self):
@@ -104,11 +106,12 @@ class CsvSink(Sink):
                 for k, n in names.items():
                     try: sizes[k] = os.path.getsize(n)
                     except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
-                ConsolePrinter.debug("Wrote %s in %s to CSV (%s):",
+                ConsolePrinter.debug("Wrote %s in %s to CSV (%s)%s",
                                      plural("message", sum(self._counts.values())),
                                      plural("topic", self._counts),
-                                     common.format_bytes(sum(filter(bool, sizes.values()))))
-                for topickey, name in names.items():
+                                     common.format_bytes(sum(filter(bool, sizes.values()))),
+                                     ":" if self.args.VERBOSE else ".")
+                for topickey, name in names.items() if self.args.VERBOSE else ():
                     ConsolePrinter.debug("- %s (%s, %s)", name,
                                          "error getting size" if sizes[topickey] is None else
                                          common.format_bytes(sizes[topickey]),
@@ -134,9 +137,9 @@ class CsvSink(Sink):
                 name = "%s.%s%s" % (base, topic.lstrip("/").replace("/", "__"), ext)
                 if self._overwrite:
                     if os.path.isfile(name) and os.path.getsize(name): action = "Overwriting"
-                    open(name, "w").close()
+                    open(name, "wb").close()
                 else: name = common.unique_path(name)
-            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": ""}
+            flags = {"mode": "ab"} if six.PY2 else {"mode": "a", "newline": "", "encoding": "utf-8"}
             f = open(name, **flags)
             w = CsvWriter(f)
             if topickey not in self._files:

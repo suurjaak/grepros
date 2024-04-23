@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    29.12.2023
+@modified    22.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -515,7 +515,7 @@ class TypeMeta(object):
         Other parameters are only required for first registration.
 
         @param   topic   topic the message is in if root message
-        @param   source  message source like TopicSource or Bag,
+        @param   source  message source like LiveSource or Bag,
                          for looking up message type metadata
         @param   root    root message that msg is a nested value of, if any
         @param   data    message serialized binary, if any
@@ -544,7 +544,7 @@ class TypeMeta(object):
         """Discards stale or surplus messages from cache."""
         if cls.POPULATION > 0 and len(cls._CACHE) > cls.POPULATION:
             count = len(cls._CACHE) - cls.POPULATION
-            for msgid, tm in sorted(x[::-1] for x in cls._TIMINGS.items())[:count]:
+            for msgid, tm in sorted(x[::-1] for x in list(cls._TIMINGS.items()))[:count]:
                 cls._CACHE.pop(msgid, None), cls._TIMINGS.pop(msgid, None)
                 for childid in cls._CHILDREN.pop(msgid, []):
                     cls._CACHE.pop(childid, None), cls._TIMINGS.pop(childid, None)
@@ -590,14 +590,14 @@ def validate(live=False):
     """
     global realapi, BAG_EXTENSIONS, SKIP_EXTENSIONS, ROS1, ROS2, ROS_VERSION, ROS_FAMILY, \
            ROS_COMMON_TYPES, ROS_TIME_TYPES, ROS_TIME_CLASSES, ROS_ALIAS_TYPES
-    if realapi:
+    if realapi and not live:
         return True
 
     success, version = False, os.getenv("ROS_VERSION")
     if "1" == version:
         from . import ros1
         realapi = ros1
-        success = realapi.validate()
+        success = realapi.validate(live)
         ROS1, ROS2, ROS_VERSION, ROS_FAMILY = True, False, 1, "rospy"
     elif "2" == version:
         from . import ros2
@@ -627,7 +627,7 @@ def calculate_definition_hash(typename, msgdef, extradefs=()):
     @param   extradefs  additional subtype definitions as ((typename, msgdef), )
     """
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
-    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     lines, pkg = [], typename.rsplit("/", 1)[0]
     subtypedefs = dict(extradefs, **parse_definition_subtypes(msgdef))
@@ -757,9 +757,15 @@ def get_message_type(msg_or_cls):
     return realapi.get_message_type(msg_or_cls)
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, with numeric arrays converted to lists."""
-    return realapi.get_message_value(msg, name, typename)
+def get_message_value(msg, name, typename=None, default=Ellipsis):
+    """
+    Returns object attribute value, with numeric arrays converted to lists.
+
+    @param   name      message attribute name
+    @param   typename  value ROS type name, for identifying byte arrays
+    @param   default   value to return if attribute does not exist; raises exception otherwise
+    """
+    return realapi.get_message_value(msg, name, typename, default)
 
 
 def get_rostime(fallback=False):
@@ -829,7 +835,7 @@ def iter_message_fields(msg, messages_only=False, flat=False, scalars=(), includ
     Yields ((nested, path), value, typename) from ROS message.
 
     @param   messages_only  whether to yield only values that are ROS messages themselves
-                            or lists of ROS messages, else will yield scalar and list values
+                            or lists of ROS messages, else will yield scalar and scalar list values
     @param   flat           recurse into lists of nested messages, ignored if `messages_only`
     @param   scalars        sequence of ROS types to consider as scalars, like ("time", duration")
     @param   include        [((nested, path), re.Pattern())] to require in field path, if any
@@ -889,6 +895,7 @@ def make_bag_time(stamp, bag):
     shift = 0
     if is_ros_time(stamp):
         if "duration" != get_ros_time_category(stamp): return stamp
+        stamp = realapi.to_sec(stamp)
         shift = bag.get_start_time() if stamp >= 0 else bag.get_end_time()
     elif isinstance(stamp, datetime.datetime):
         stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
@@ -914,7 +921,7 @@ def make_live_time(stamp):
     shift = 0
     if is_ros_time(stamp):
         if "duration" != get_ros_time_category(stamp): return stamp
-        shift = time.time()
+        stamp, shift = realapi.to_sec(stamp), time.time()
     elif isinstance(stamp, datetime.datetime):
         stamp = time.mktime(stamp.timetuple()) + stamp.microsecond / 1E6
     elif isinstance(stamp, datetime.timedelta):
@@ -1001,7 +1008,7 @@ def dict_to_message(dct, msg):
         v, msgv = dct[name], realapi.get_message_value(msg, name, typename)
 
         if realapi.is_ros_message(msgv):
-            v = v if is_ros_time(v) and is_ros_time(msgv) else dict_to_message(v, msgv)
+            v = v if is_ros_message(v) else dict_to_message(v, msgv)
         elif isinstance(msgv, (list, tuple)):
             scalarname = realapi.scalar(typename)
             if scalarname in ROS_BUILTIN_TYPES:
@@ -1009,7 +1016,7 @@ def dict_to_message(dct, msg):
                 v = [x if isinstance(x, cls) else cls(x) for x in v]
             else:
                 cls = realapi.get_message_class(scalarname)
-                v = [dict_to_message(x, cls()) for x in v]
+                v = [x if realapi.is_ros_message(x) else dict_to_message(x, cls()) for x in v]
         else:
             v = type(msgv)(v)
 
@@ -1031,7 +1038,7 @@ def parse_definition_fields(typename, typedef):
     """
     result = collections.OrderedDict()  # {subtypename: subtypedef}
 
-    FIELD_RGX = re.compile(r"^([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s:]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     STR_CONST_RGX = re.compile(r"^w?string\s+([^\s=#]+)\s*=")
     pkg = typename.rsplit("/", 1)[0]
     for line in filter(bool, typedef.splitlines()):
@@ -1081,7 +1088,7 @@ def parse_definition_subtypes(typedef, nesting=False):
         result[curtype] = "\n".join(curlines)
 
     # "type name (= constvalue)?" or "type name (defaultvalue)?" (ROS2 format)
-    FIELD_RGX = re.compile(r"^([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
+    FIELD_RGX = re.compile(r"^\s*([a-z][^\s]+)\s+([^\s=]+)(\s*=\s*([^\n]+))?(\s+([^\n]+))?", re.I)
     # Concatenate nested subtype definitions to parent subtype definitions
     for subtype, subdef in list(result.items()):
         pkg, seen = subtype.rsplit("/", 1)[0], set()

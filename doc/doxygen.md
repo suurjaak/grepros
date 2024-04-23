@@ -19,19 +19,19 @@ Supports loading custom plugins, mainly for additional output formats.
 |                                                                         | **Sources**
 | {@link grepros.inputs.AppSource                   grepros.AppSource}    | produces messages from iterable or pushed data
 | {@link grepros.inputs.BagSource                   grepros.BagSource}    | produces messages from ROS bagfiles
-| {@link grepros.inputs.TopicSource                 grepros.TopicSource}  | produces messages from live ROS topics
+| {@link grepros.inputs.LiveSource                  grepros.LiveSource}   | produces messages from live ROS topics
 |                                                                         | **Sinks**
 | {@link grepros.outputs.AppSink                    grepros.AppSink}      | provides messages to callback function
 | {@link grepros.outputs.BagSink                    grepros.BagSink}      | writes messages to bagfile
 | {@link grepros.outputs.ConsoleSink                grepros.ConsoleSink}  | prints messages to console
 | {@link grepros.plugins.auto.csv.CsvSink           grepros.CsvSink}      | writes messages to CSV files, each topic separately
 | {@link grepros.plugins.auto.html.HtmlSink         grepros.HtmlSink}     | writes messages to an HTML file
+| {@link grepros.outputs.LiveSink                   grepros.LiveSink}     | publishes messages to live ROS topics
 | {@link grepros.plugins.mcap.McapSink              grepros.McapSink}     | writes messages to an MCAP bag file
 | {@link grepros.outputs.MultiSink                  grepros.MultiSink}    | combines any number of sinks
 | {@link grepros.plugins.parquet.ParquetSink        grepros.ParquetSink}  | writes messages to Apache Parquet files
 | {@link grepros.plugins.auto.postgres.PostgresSink grepros.PostgresSink} | writes messages to a Postgres database
 | {@link grepros.plugins.auto.sqlite.SqliteSink     grepros.SqliteSink}   | writes messages to an SQLite database
-| {@link grepros.outputs.TopicSink                  grepros.TopicSink}    | publishes messages to live ROS topics
 
 
 ## Convenience entrypoints
@@ -126,11 +126,11 @@ with grepros.PostgresSink("username=postgres dbname=postgres") as sink:
         sink.emit(*data)
 
 # Grep live topics:
-for topic, msg, stamp, match, index in grepros.TopicSource(topic="/diagnostics", pattern="cpu"):
+for topic, msg, stamp, match, index in grepros.LiveSource(topic="/diagnostics", pattern="cpu"):
     print("MESSAGE #%s MATCH: " % index, match)
 
 # Subscribe to live topics and write to bag:
-with grepros.TopicSource(topic="/rosout") as source, \
+with grepros.LiveSource(topic="/rosout") as source, \
      grepros.Bag("my.bag", "w") as bag:
     for topic, msg, stamp, *_ in grepros.Scanner(pattern="error").find(source)
         bag.write(topic, msg, stamp)

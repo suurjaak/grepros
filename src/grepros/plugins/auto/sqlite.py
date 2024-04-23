@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    27.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
@@ -88,8 +88,8 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
         super(SqliteSink, self).__init__(args, **kwargs)
         RolloverSinkMixin.__init__(self, args)
 
-        self._do_yaml     = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
-        self._overwrite   = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._do_yaml     = None
+        self._overwrite   = None
         self._id_counters = {}  # {table next: max ID}
 
 
@@ -113,11 +113,15 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
         if not verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok
+        if self.valid:
+            self._do_yaml   = (self.args.WRITE_OPTIONS.get("message-yaml") != "false")
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         return self.valid
 
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Writes message to database."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
         super(SqliteSink, self).emit(topic, msg, stamp, match, index)
@@ -176,7 +180,7 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
     def _connect(self):
         """Returns new database connection."""
         makedirs(os.path.dirname(self.filename))
-        if self._overwrite: open(self.filename, "w").close()
+        if self._overwrite: open(self.filename, "wb").close()
         db = sqlite3.connect(self.filename, check_same_thread=False,
                              detect_types=sqlite3.PARSE_DECLTYPES)
         if not self.COMMIT_INTERVAL: db.isolation_level = None

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    28.12.2023
+@modified    23.04.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import re
+import string
 import sys
 import tempfile
 
@@ -29,6 +30,7 @@ from grepros import api
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from test import testbase
+from test.testbase import NAME, ERR
 
 logger = logging.getLogger()
 
@@ -47,31 +49,31 @@ class TestLibrary(testbase.TestBase):
 
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._tempnames = []  # Names of temporary files for write output
+        super(TestLibrary, self).__init__(*args, **kwargs)
+        self._outnames = []  # [outfile path, ]
 
 
     def setUp(self):
         """Collects and verifies bags in data directory."""
-        super().setUp()
+        super(TestLibrary, self).setUp()
         grepros.init()
         self.verify_bags()
 
 
     def tearDown(self):
         """Deletes temporary output files, if any."""
-        while self._tempnames:
-            try: os.unlink(self._tempnames.pop())
+        while self._outnames:
+            try: os.unlink(self._outnames.pop())
             except Exception: pass
-        super().tearDown()
+        super(TestLibrary, self).tearDown()
 
 
     def test_bag_rw_grep(self):
         """Tests reading and writing bags and matching messages."""
         logger.info("Verifying reading and writing bags, and grepping messages.")
         grep = grepros.Scanner(pattern=self.SEARCH_WORDS,
-                               topic="/match/this*", no_topic="/not/this*",
-                               type="std_msgs/*", no_type="std_msgs/Bool")
+                               topic="/match/this*", skip_topic="/not/this*",
+                               type="std_msgs/*", skip_type="std_msgs/Bool")
         logger.debug("Writing to bag %r.", self._outname)
         with grepros.Bag(self._outname, mode="w") as outbag:
             for bagname in self._bags:
@@ -178,9 +180,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_read(self, bagcls, filename):
         """Tests parameters to read functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
-
         logger.info("Verifying invoking Bag %r read methods with parameters.", bagcls)
 
         messages = {}  # {topic: [(message, stamp)]}
@@ -304,9 +303,6 @@ class TestLibrary(testbase.TestBase):
 
     def verify_bag_parameters_write(self, bagcls, filename):
         """Tests parameters to write functions of given Bag class."""
-        NAME = lambda f, *a: "%s.%s(%s)" % (f.__module__, (f.__name__), ", ".join(map(repr, a)))
-        ERR  = lambda f, *a: "Unexpected result from %s(%s)." % (f.__name__, ", ".join(map(repr, a)))
-
         logger.info("Verifying invoking Bag %r write methods with parameters.", bagcls)
 
         messages = {}  # {topic: [message, ]}
@@ -345,17 +341,17 @@ class TestLibrary(testbase.TestBase):
 
     def test_rollover(self):
         """Tests rollover settings for sinks."""
-        NAME = lambda f: "%s.%s" % (f.__module__, f.__name__)
         logger.debug("Verifying sink rollover.")
         SINKS = [grepros.BagSink, grepros.HtmlSink, grepros.SqliteSink] + \
                 ([grepros.McapSink] if ".mcap" in api.BAG_EXTENSIONS else [])
-        TEMPLATE = "test_%Y_%m_%d__%(index)s__%(index)s"
+        TEMPLATE = "test_%Y_%m_%d__%(index)02d__%(index)02d"
         OPTS = [  # [({..rollover opts..}, (min files, max files or None for undetermined))]
             (dict(rollover_size=2000),    (2, None)),
             (dict(rollover_count=40),     (2, 3)),
             (dict(rollover_duration=40),  (2, 3)),
         ]
-        OPT_OVERRIDES = {grepros.McapSink: dict(rollover_size=None)}  # MCAP has 1MB cache
+        OPT_OVERRIDES = {grepros.McapSink:   dict(rollover_size=None),  # MCAP has 1MB cache
+                         grepros.SqliteSink: dict(rollover_size=65535)}
 
         START = api.to_time(12345)
         for cls in SINKS:
@@ -368,7 +364,8 @@ class TestLibrary(testbase.TestBase):
                         ropts.update(OPT_OVERRIDES[cls])
                     if not any(ropts.values()): continue  # for ropts
                     logger.info("Testing %s rollover with %s.", NAME(cls), ropts)
-                    SUFF = "".join("%s=%s" % x for x in ropts.items())
+                    SUFF = "__%s__" % "".join(random.sample(string.ascii_lowercase, 5))
+                    SUFF += "_".join("%s=%s" % x for x in ropts.items())
                     template = os.path.join(OUTDIR, TEMPLATE + SUFF + EXT)
 
                     with cls(WRITE, write_options=dict(ropts, rollover_template=template)) as sink:
@@ -377,7 +374,7 @@ class TestLibrary(testbase.TestBase):
                             sink.emit("my/topic%s" % (i % 2), msg, START + api.make_duration(i))
 
                     outputs = sorted(glob.glob(os.path.join(OUTDIR, "test_*" + SUFF + EXT)))
-                    self._tempnames.extend(outputs)
+                    self._outnames.extend(outputs)
                     self.assertGreaterEqual(len(outputs), output_range[0],
                                             "Unexpected output files from %s." % NAME(cls))
                     if output_range[1] is not None:
@@ -391,12 +388,10 @@ class TestLibrary(testbase.TestBase):
 
     def verify_grep(self):
         """Tests grepros.grep()."""
-        NAME = lambda f, **w: "%s.%s(%s)" % (f.__module__, f.__name__, "**%s" % w if w else "")
-        ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
         logger.info("Verifying reading bags and grepping messages, via grepros.grep().")
         messages = {}  # {topic: [msg, ]}
-        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this*", no_topic="/not/this*",
-                    file=self._bags, type="std_msgs/*", no_type="std_msgs/Bool")
+        args = dict(pattern=self.SEARCH_WORDS, topic="/match/this*", skip_topic="/not/this*",
+                    file=self._bags, type="std_msgs/*", skip_type="std_msgs/Bool")
         for topic, msg, stamp, match, index in grepros.grep(**args):
             self.assertIn("/match/this", topic, ERR(grepros.grep, **args))
             self.assertNotIn("/not/this", topic, ERR(grepros.grep, **args))
@@ -411,20 +406,17 @@ class TestLibrary(testbase.TestBase):
 
     def verify_sources_sinks(self):
         """Tests general Source and Sink API."""
-        NAME = lambda f, **w: "%s.%s(%s)" % (f.__module__, f.__name__, "**%s" % w if w else "")
-        ERR  = lambda f, **w: "Unexpected result from %s." % NAME(f,  **w)
-
         FUNC_TESTS = {  # {function: [({..kwargs..}, expected source class), ]}
             grepros.source: [
                 (dict(app=True),                      grepros.AppSource),
                 (dict(file=self._bags),               grepros.BagSource),
-                (dict(live=True),                     grepros.TopicSource),
+                (dict(live=True),                     grepros.LiveSource),
            ],
            grepros.sink: [
                 (dict(app=True),                      grepros.AppSink),
                 (dict(app=lambda *_: _),              grepros.AppSink),
                 (dict(console=True),                  grepros.ConsoleSink),
-                (dict(publish=True),                  grepros.TopicSink),
+                (dict(publish=True),                  grepros.LiveSink),
                 (dict(app=True, console=True),        grepros.MultiSink),
                 (dict(app=True, publish=True),        grepros.MultiSink),
                 (dict(console=True, publish=True),    grepros.MultiSink),
@@ -481,7 +473,7 @@ class TestLibrary(testbase.TestBase):
     def mkfile(self, suffix):
         """Returns temporary filename with given suffix, deleted in teardown."""
         name = tempfile.NamedTemporaryFile(suffix=suffix).name
-        self._tempnames.append(name)
+        self._outnames.append(name)
         return name
 
 

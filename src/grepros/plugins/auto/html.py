@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    28.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -22,7 +22,7 @@ import threading
 from ... import api
 from ... import common
 from ... import main
-from ... common import ConsolePrinter, MatchMarkers, plural
+from ... common import ConsolePrinter, MatchMarkers
 from ... outputs import RolloverSinkMixin, Sink, TextSinkMixin
 from ... vendor import step
 
@@ -94,20 +94,13 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         TextSinkMixin.__init__(self, args)
         self._queue     = queue.Queue()
         self._writer    = None        # threading.Thread running _stream()
-        self._overwrite = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
-        self._template_path = args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
+        self._overwrite = None
+        self._template_path = None
         self._close_printed = False
+        self._tag_repls = {}
+        self._tag_rgx = None
 
-        WRAPS = ((args.MATCH_WRAPPER or [""]) * 2)[:2]
-        START = ('<span class="match">' + step.escape_html(WRAPS[0])) if args.HIGHLIGHT else ""
-        END = (step.escape_html(WRAPS[1]) + '</span>') if args.HIGHLIGHT else ""
-        self._tag_repls = {MatchMarkers.START: START,
-                           MatchMarkers.END:   END,
-                           ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
-                           ConsolePrinter.STYLE_RESET:    '</span>'}
-        self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
-
-        self._format_repls.clear()
+        self._format_repls.clear()  # TextSinkMixin member
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
@@ -128,7 +121,9 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         emits error if not.
         """
         if self.valid is not None: return self.valid
-        result = RolloverSinkMixin.validate(self)
+        result = all([Sink.validate(self), TextSinkMixin.validate(self)])
+        if not RolloverSinkMixin.validate(self):
+            result = False
         if self.args.WRITE_OPTIONS.get("template") and not os.path.isfile(self._template_path):
             result = False
             ConsolePrinter.error("Template does not exist: %s.", self._template_path)
@@ -140,6 +135,19 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         if not common.verify_io(self.args.WRITE, "w"):
             result = False
         self.valid = api.validate() and result
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+            self._template_path = self.args.WRITE_OPTIONS.get("template") or self.TEMPLATE_PATH
+
+            WRAPS, START = ((self.args.MATCH_WRAPPER or [""]) * 2)[:2], ""
+            if self.args.HIGHLIGHT: START = ('<span class="match">' + step.escape_html(WRAPS[0]))
+            END = (step.escape_html(WRAPS[1]) + '</span>') if self.args.HIGHLIGHT else ""
+            self._tag_repls = {MatchMarkers.START: START,
+                               MatchMarkers.END:   END,
+                               ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
+                               ConsolePrinter.STYLE_RESET:    '</span>'}
+            self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
+
         return self.valid
 
     def close(self):
@@ -179,7 +187,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
             return
 
         try:
-            with open(self._template_path, "r") as f: tpl = f.read()
+            with open(self._template_path, encoding="utf-8") as f: tpl = f.read()
             template = step.Template(tpl, escape=True, strip=False, postprocess=convert_lf)
             ns = dict(source=self.source, sink=self, messages=self._produce(),
                       args=None, timeline=not self.args.ORDERBY)

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     11.12.2021
-@modified    27.12.2023
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.dbbase
@@ -94,7 +94,7 @@ class BaseDataSink(Sink, SqlMixin):
         # "array" if to do this only for arrays of nested types, or
         # "all" for any nested type, including those fully flattened into parent fields.
         # In parent, nested arrays are inserted as foreign keys instead of formatted values.
-        self._nesting = args.WRITE_OPTIONS.get("nesting")
+        self._nesting = None
 
         self._checkeds      = {}  # {topickey/typekey: whether existence checks are done}
         self._sql_queue     = {}  # {SQL: [(args), ]}
@@ -121,6 +121,8 @@ class BaseDataSink(Sink, SqlMixin):
                                  "Choose one of {array,all}.",
                                  self.ENGINE, self.args.WRITE_OPTIONS["nesting"])
             ok = False
+        if ok and sqlconfig_ok:
+            self._nesting = self.args.WRITE_OPTIONS.get("nesting")
         return ok and sqlconfig_ok
 
 

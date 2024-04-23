@@ -185,6 +185,13 @@ Scan specific paths instead of current directory (supports * wildcards):
     -p     /home/bags/2021-11-*
     --path my/dir
 
+Emit messages on original bag timeline from first matched message,
+optionally with a speedup or slowdown factor:
+
+    --time-scale       # At original rate
+    --time-scale 2     # Twice faster
+    --time-scale 0.5   # Twice slower
+
 Reindex unindexed ROS1 bags before processing
 (note: creates backup copies of files, into same directory as file):
 
@@ -407,6 +414,15 @@ Use case-sensitive matching in patterns (default is insensitive):
     -I
     --no-ignore-case
 
+Give pattern as a logical expression like `this AND (this2 OR NOT "skip this")`,
+with elements as patterns to find in message fields:
+
+    -e
+    --expression
+
+    # (Match live messages containing 'cpu' or 'memory')
+    cpu OR memory --expression --live
+
 
 ### Limits
 
@@ -423,9 +439,9 @@ Emit a specified number of matches per topic (per each file if bag input):
 
     --max-per-topic 20
 
-Emit every Nth match in topic:
+Emit every Nth match in topic, starting from first:
 
-    --every-nth-match 10  # (skips 9 matches in topic after each match emitted)
+    --every-nth-match 10  # (emits matches #1 #11 #21 ..)
 
 
 ### Filtering
@@ -489,9 +505,9 @@ Stop reading at a specific message index in topic:
     -n1         -100  # (counts back from topic total message count in bag)
     --end-index   10  # (1-based index)
 
-Read every Nth message in topic:
+Read every Nth message in topic, starting from first:
 
-    --every-nth-message 10  # (skips 9 messages in topic with each step)
+    --every-nth-message 10  # (reads messages #1 #11 #21 ..)
 
 Read messages in topic with timestamps at least N seconds apart:
 
@@ -651,7 +667,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
-  -v, --invert-match    select messages not matching PATTERN
+  -v, --invert-match    select messages not matching PATTERNs
+  -e, --expression      PATTERNs are a logical expression
+                        like 'this AND (this2 OR NOT "skip this")',
+                        with elements as patterns to find in message fields
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
@@ -683,14 +702,11 @@ optional arguments:
                                                    else for any nested types
                                                    (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
-                          overwrite=true|false     overwrite existing file 
+                          overwrite=true|false     overwrite existing file
                                                    in bag/CSV/HTML/MCAP/Parquet/SQL/SQLite output
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
-                          rollover-size=NUM        size limit for individual files
-                                                   in bag/HTML/MCAP/SQLite output
-                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-count=NUM       message limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    (supports abbreviations like 1K or 2M or 3G)
@@ -698,6 +714,9 @@ optional arguments:
                                                    message time span limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-template=STR    output filename template for individual files
                                                    in bag/HTML/MCAP/SQLite output,
                                                    supporting strftime format codes like "%H-%M-%S"
@@ -753,11 +772,11 @@ Filtering:
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
   --every-nth-message NUM
-                        read every Nth message within topic
+                        read every Nth message within topic, starting from first
   --every-nth-interval SECONDS
                         read messages at least N seconds apart within topic
   --every-nth-match NUM
-                        emit every Nth match in topic
+                        emit every Nth match in topic, starting from first
   -sf FIELD [FIELD ...], --select-field FIELD [FIELD ...]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)
@@ -817,7 +836,7 @@ Output control:
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
-                        for publishing and writing
+                        for publishing and writing, and error stacktraces
   --no-verbose          do not print status messages during console output
                         for publishing and writing
 
@@ -834,6 +853,9 @@ Bag input control:
   --decompress          decompress archived bagfiles with recognized extensions (.zst .zstd)
   --reindex-if-unindexed
                         reindex unindexed bagfiles (ROS1 only), makes backup copies
+  --time-scale [FACTOR]
+                        emit messages on original bag timeline from first matched message,
+                        optionally with a speedup or slowdown factor
 
 Live topic control:
   --publish-prefix PREFIX

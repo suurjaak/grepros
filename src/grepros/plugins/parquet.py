@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     14.12.2021
-@modified    28.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.parquet
@@ -17,6 +17,7 @@ import json
 import os
 import re
 import uuid
+import warnings
 
 try: import pandas
 except Exception: pandas = None
@@ -87,8 +88,7 @@ class ParquetSink(Sink):
     WRITER_ARGS = {"version": "2.6"}
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={},
-                        VERBOSE=False)
+    DEFAULT_ARGS = dict(EMIT_FIELD=(), META=False, NOEMIT_FIELD=(), WRITE_OPTIONS={}, VERBOSE=False)
 
 
     def __init__(self, args=None, **kwargs):
@@ -123,7 +123,7 @@ class ParquetSink(Sink):
         super(ParquetSink, self).__init__(args)
 
         self._filebase       = args.WRITE
-        self._overwrite      = (args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
+        self._overwrite      = None
         self._filenames      = {}  # {(typename, typehash): Parquet file path}
         self._caches         = {}  # {(typename, typehash): [{data}, ]}
         self._schemas        = {}  # {(typename, typehash): pyarrow.Schema}
@@ -143,7 +143,8 @@ class ParquetSink(Sink):
         and file base is writable.
         """
         if self.valid is not None: return self.valid
-        ok, pandas_ok, pyarrow_ok = self._configure(), bool(pandas), bool(pyarrow)
+        ok = all([Sink.validate(self), self._configure()])
+        pandas_ok, pyarrow_ok = bool(pandas), bool(pyarrow)
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for Parquet: %r. "
                                  "Choose one of {true, false}.",
@@ -161,6 +162,8 @@ class ParquetSink(Sink):
         if not common.verify_io(self.args.WRITE, "w"):
             ok = False
         self.valid = ok and pandas_ok and pyarrow_ok
+        if self.valid:
+            self._overwrite = (self.args.WRITE_OPTIONS.get("overwrite") in (True, "true"))
         return self.valid
 
 
@@ -187,12 +190,13 @@ class ParquetSink(Sink):
                 for n in self._filenames.values():
                     try: sizes[n] = os.path.getsize(n)
                     except Exception as e: ConsolePrinter.warn("Error getting size of %s: %s", n, e)
-                ConsolePrinter.debug("Wrote %s in %s to %s (%s):",
+                ConsolePrinter.debug("Wrote %s in %s to %s (%s)%s",
                                      common.plural("message", sum(self._counts.values())),
                                      common.plural("topic", self._counts),
                                      common.plural("Parquet file", sizes),
-                                     common.format_bytes(sum(filter(bool, sizes.values()))))
-                for (t, h), name in self._filenames.items():
+                                     common.format_bytes(sum(filter(bool, sizes.values()))),
+                                     ":" if self.args.VERBOSE else ".")
+                for (t, h), name in self._filenames.items() if self.args.VERBOSE else ():
                     count = sum(c for (_, t_, h_), c in self._counts.items() if (t, h) == (t_, h_))
                     ConsolePrinter.debug("- %s (%s, %s)", name,
                                          "error getting size" if sizes[name] is None else
@@ -208,7 +212,7 @@ class ParquetSink(Sink):
         rootmsg = rootmsg or msg
         with api.TypeMeta.make(msg, root=rootmsg) as m:
             typename, typehash, typekey = (m.typename, m.typehash, m.typekey)
-        if topic and (topic, typename, typehash) not in self._counts and self.args.VERBOSE:
+        if self.args.VERBOSE and topic and (topic, typename, typehash) not in self._counts:
             ConsolePrinter.debug("Adding topic %s in Parquet output.", topic)
         if typekey in self._writers: return
 
@@ -349,12 +353,19 @@ class ParquetSink(Sink):
         dicts = self._caches[typekey][:]
         del self._caches[typekey][:]
         mapping = {k: [d[k] for d in dicts] for k in dicts[0]}
-        table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
+        with warnings.catch_warnings():  # PyArrow can raise UserWarning about pandas version
+            warnings.simplefilter("ignore", UserWarning)
+            table = pyarrow.Table.from_pydict(mapping, self._schemas[typekey])
         self._writers[typekey].write_table(table)
 
 
     def _configure(self):
         """Parses args.WRITE_OPTIONS, returns success."""
+        self.COMMON_TYPES = type(self).COMMON_TYPES.copy()
+        self.WRITER_ARGS = type(self).WRITER_ARGS.copy()
+        del self._extra_basecols[:]
+        del self._extra_basevals[:]
+        self._patterns.clear()
         ok = self._configure_ids()
 
         def process_column(name, rostype, value):  # Parse "column-name=rostype:value"
@@ -378,7 +389,7 @@ class ParquetSink(Sink):
             self.COMMON_TYPES[rostype] = arrowtype
 
         for key, vals in [("print", self.args.EMIT_FIELD), ("noprint", self.args.NOEMIT_FIELD)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
         # Populate ROS type aliases like "byte" and "char"
         for rostype in list(self.COMMON_TYPES):
@@ -421,6 +432,8 @@ class ParquetSink(Sink):
     def _configure_ids(self):
         """Configures ID generator from args.WRITE_OPTIONS, returns success."""
         ok = True
+        self.MESSAGE_TYPE_BASECOLS = type(self).MESSAGE_TYPE_BASECOLS[:]
+        self.MESSAGE_TYPE_NESTCOLS = type(self).MESSAGE_TYPE_NESTCOLS[:]
 
         k, v = "idgenerator", self.args.WRITE_OPTIONS.get("idgenerator")
         if k in self.args.WRITE_OPTIONS:

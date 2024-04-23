@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.outputs
@@ -25,7 +25,7 @@ import yaml
 
 from . import api
 from . import common
-from . common import ConsolePrinter, MatchMarkers
+from . common import ArgumentUtil, ConsolePrinter, MatchMarkers
 from . inputs import Source
 
 
@@ -85,9 +85,21 @@ class Sink(object):
         """Attaches source to sink."""
         self.source = source
 
+    def configure(self, args=None, **kwargs):
+        """
+        Updates sink configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        self.args = common.ensure_namespace(args, vars(self.args), **kwargs)
+        self.valid = None
+
     def validate(self):
-        """Returns whether sink prerequisites are met (like ROS environment set if TopicSink)."""
-        if self.valid is None: self.valid = True
+        """Returns whether sink prerequisites are met (like ROS environment set if LiveSink)."""
+        if self.valid is not None: return self.valid
+        try: self.args, self.valid = ArgumentUtil.validate(self.args), True
+        except Exception: self.valid = False
         return self.valid
 
     def close(self):
@@ -156,11 +168,19 @@ class TextSinkMixin(object):
         self._format_repls = {}    # {text to replace if highlight: replacement text}
         self._styles = collections.defaultdict(str)  # {label: ANSI code string}
 
-        self._configure(common.ensure_namespace(args, TextSinkMixin.DEFAULT_ARGS, **kwargs))
+
+    def validate(self):
+        """Returns whether arguments are valid, emits error if not, else populates options."""
+        args = common.ensure_namespace(self.args, TextSinkMixin.DEFAULT_ARGS)
+        try: args = ArgumentUtil.validate(args)
+        except Exception: return False
+        self._configure(args)
+        return True
 
 
     def format_message(self, msg, highlight=False):
         """Returns message as formatted string, optionally highlighted for matches if configured."""
+        if self.args.MAX_MESSAGE_LINES == 0: return ""
         text = self.message_to_yaml(msg).rstrip("\n")
 
         highlight = highlight and self.args.HIGHLIGHT
@@ -257,10 +277,11 @@ class TextSinkMixin(object):
             if api.scalar(typename) in api.ROS_STRING_TYPES:
                 yaml_str = yaml.safe_dump(truncate(val)).rstrip('\n')
                 return "\n" + "\n".join(indent + line for line in yaml_str.splitlines())
-            vals = [x for v in truncate(val) for x in [self.message_to_yaml(v, top, typename)] if x]
+            vals = [x for i, v in enumerate(truncate(val))
+                    for x in [self.message_to_yaml(v, top + (i, ), typename)] if x]
             if api.scalar(typename) in api.ROS_NUMERIC_TYPES:
                 return "[%s]" % ", ".join(unquote(str(v)) for v in vals)
-            return ("\n" + "\n".join(indent + "- " + v for v in vals)) if vals else ""
+            return ("\n" + "\n".join(indent + "-   " + v for v in vals)) if vals else ""
         if api.is_ros_message(val):
             MATCHED_ONLY = self.args.MATCHED_FIELDS_ONLY and not self.args.LINES_AROUND_MATCH
             vals, fieldmap = [], api.get_message_fields(val)
@@ -289,9 +310,12 @@ class TextSinkMixin(object):
 
     def _configure(self, args):
         """Initializes output settings."""
+        self._patterns.clear()
+        self._styles.clear()
+        self._styles.default_factory = str
         prints, noprints = args.EMIT_FIELD, args.NOEMIT_FIELD
         for key, vals in [("print", prints), ("noprint", noprints)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
         if args.COLOR not in ("never", False):
             self._styles.update({"hl0":  ConsolePrinter.STYLE_HIGHLIGHT if self.args.HIGHLIGHT
@@ -324,7 +348,7 @@ class RolloverSinkMixin(object):
     """Provides output file rollover by size, duration, or message count."""
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(VERBOSE=False, WRITE=None, WRITE_OPTIONS={})
+    DEFAULT_ARGS = dict(WRITE=None, WRITE_OPTIONS={}, VERBOSE=False)
 
     ## Command-line help templates for rollover options, as [(name, text with %s label placeholder)]
     OPTIONS_TEMPLATES = [
@@ -361,6 +385,7 @@ class RolloverSinkMixin(object):
                                                             and "%(index)s" as output file index,
                                        "overwrite": whether to overwrite existing file
                                                     (default false)}
+        @param   args.verbose         whether to emit debug information
         @param   kwargs               any and all arguments as keyword overrides, case-insensitive
         """
         self._rollover_limits = {}  # {?"size": int, ?"count": int, ?"duration": ROS duration}
@@ -374,6 +399,8 @@ class RolloverSinkMixin(object):
     def validate(self):
         """Returns whether write options are valid, emits error if not, else populates options."""
         ok = True
+        self._rollover_limits.clear()
+        self._rollover_template = None
         for k in ("size", "count", "duration"):
             value = value0 = self.args.WRITE_OPTIONS.get("rollover-%s" % k)
             if value is None: continue  # for k
@@ -401,7 +428,8 @@ class RolloverSinkMixin(object):
                                      "Value must contain valid strftime codes.", value)
                 ok = False
             else:
-                self._rollover_template = value
+                if ok:
+                    self._rollover_template = value
                 if ok and not self._rollover_limits:
                     ConsolePrinter.warn("Ignoring rollover template option: "
                                         "no rollover limits given.")
@@ -477,8 +505,8 @@ class RolloverSinkMixin(object):
             result += self.FILE_META_TEMPLATE.format(
                 name=common.plural("file", self._rollover_files),
                 size=common.format_bytes(sizesum)
-            ) + ":"
-            for path, props in self._rollover_files.items():
+            ) + (":" if self.args.VERBOSE else ".")
+            for path, props in self._rollover_files.items() if self.args.VERBOSE else ():
                 sizestr = SIZE_ERROR if props["size"] is None else common.format_bytes(props["size"])
                 result += self.MULTI_META_TEMPLATE.format(name=path, size=sizestr,
                     mcount=common.plural("message", sum(props["counts"].values())),
@@ -542,16 +570,13 @@ class ConsoleSink(Sink, TextSinkMixin):
         @param   kwargs                     any and all arguments as keyword overrides, case-insensitive
         """
         args = common.ensure_namespace(args, ConsoleSink.DEFAULT_ARGS, **kwargs)
-        if args.WRAP_WIDTH is None:
-            args = common.structcopy(args)
-            args.WRAP_WIDTH = ConsolePrinter.WIDTH
-
         super(ConsoleSink, self).__init__(args)
         TextSinkMixin.__init__(self, args)
 
 
     def emit_meta(self):
         """Prints source metainfo like bag header, if not already printed."""
+        if not self.validate(): raise Exception("invalid")
         batch = self.args.META and self.source.get_batch()
         if self.args.META and batch not in self._batch_meta:
             meta = self._batch_meta[batch] = self.source.format_meta()
@@ -563,6 +588,7 @@ class ConsoleSink(Sink, TextSinkMixin):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Prints separator line and message text."""
+        if not self.validate(): raise Exception("invalid")
         self._prefix = ""
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         if self.args.LINE_PREFIX and self.source.get_batch():
@@ -585,6 +611,15 @@ class ConsoleSink(Sink, TextSinkMixin):
     def is_highlighting(self):
         """Returns True if sink is configured to highlight matched values."""
         return bool(self.args.HIGHLIGHT)
+
+
+    def validate(self):
+        """Returns whether arguments environment set, populates options, emits error if not."""
+        if self.valid is not None: return self.valid
+        if self.args.WRAP_WIDTH is None:
+            self.args.WRAP_WIDTH = ConsolePrinter.WIDTH
+        self.valid = Sink.validate(self) and TextSinkMixin.validate(self)
+        return self.valid
 
 
 
@@ -636,7 +671,7 @@ class BagSink(Sink, RolloverSinkMixin):
         if self._is_pathed: RolloverSinkMixin.ensure_rollover(self, topic, msg, stamp)
         self._ensure_open()
         topickey = api.TypeMeta.make(msg, topic).topickey
-        if topickey not in self._counts and self.args.VERBOSE:
+        if self.args.VERBOSE and topickey not in self._counts:
             ConsolePrinter.debug("Adding topic %s in bag output.", topic)
 
         qoses = self.source.get_message_meta(topic, msg, stamp).get("qoses")
@@ -646,7 +681,9 @@ class BagSink(Sink, RolloverSinkMixin):
     def validate(self):
         """Returns whether write options are valid and ROS environment set, emits error if not."""
         if self.valid is not None: return self.valid
-        result = RolloverSinkMixin.validate(self)
+        result = Sink.validate(self)
+        if not RolloverSinkMixin.validate(self):
+            result = False
         if self.args.WRITE_OPTIONS.get("overwrite") not in (None, True, False, "true", "false"):
             ConsolePrinter.error("Invalid overwrite option for bag: %r. "
                                  "Choose one of {true, false}.",
@@ -725,7 +762,7 @@ class BagSink(Sink, RolloverSinkMixin):
         return ext in api.BAG_EXTENSIONS
 
 
-class TopicSink(Sink):
+class LiveSink(Sink):
     """Publishes messages to ROS topics."""
 
     ## Constructor argument defaults
@@ -745,8 +782,8 @@ class TopicSink(Sink):
         @param   args.verbose           whether to emit debug information
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = common.ensure_namespace(args, TopicSink.DEFAULT_ARGS, **kwargs)
-        super(TopicSink, self).__init__(args)
+        args = common.ensure_namespace(args, LiveSink.DEFAULT_ARGS, **kwargs)
+        super(LiveSink, self).__init__(args)
         self._pubs = {}  # {(intopic, typename, typehash): ROS publisher}
         self._close_printed = False
 
@@ -770,12 +807,12 @@ class TopicSink(Sink):
 
         self._pubs[topickey].publish(msg)
         self._close_printed = False
-        super(TopicSink, self).emit(topic, msg, stamp, match, index)
+        super(LiveSink, self).emit(topic, msg, stamp, match, index)
 
     def bind(self, source):
         """Attaches source to sink and blocks until connected to ROS."""
         if not self.validate(): raise Exception("invalid")
-        super(TopicSink, self).bind(source)
+        super(LiveSink, self).bind(source)
         api.init_node()
 
     def validate(self):
@@ -784,10 +821,12 @@ class TopicSink(Sink):
         and output topic configuration is valid, emits error if not.
         """
         if self.valid is not None: return self.valid
-        result = api.validate(live=True)
+        result = Sink.validate(self)
+        if not api.validate(live=True):
+            result = False
         config_ok = True
         if self.args.LIVE and not any((self.args.PUBLISH_PREFIX, self.args.PUBLISH_SUFFIX,
-                                        self.args.PUBLISH_FIXNAME)):
+                                       self.args.PUBLISH_FIXNAME)):
             ConsolePrinter.error("Need topic prefix or suffix or fixname "
                                  "when republishing messages from live ROS topics.")
             config_ok = False
@@ -806,7 +845,7 @@ class TopicSink(Sink):
             except Exception as e:
                 if self.args.VERBOSE:
                     ConsolePrinter.warn("Error closing publisher on topic %r: %s", k[0], e)
-        super(TopicSink, self).close()
+        super(LiveSink, self).close()
 
 
 class AppSink(Sink):
@@ -830,6 +869,7 @@ class AppSink(Sink):
 
     def emit_meta(self):
         """Invokes registered metaemit callback, if any, and not already invoked."""
+        if not self.validate(): raise Exception("invalid")
         if not self.source: return
         batch = self.source.get_batch() if self.args.METAEMIT else None
         if self.args.METAEMIT and batch not in self._batch_meta:
@@ -838,6 +878,7 @@ class AppSink(Sink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Registers message and invokes registered emit callback, if any."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         super(AppSink, self).emit(topic, msg, stamp, match, index)
         if self.args.EMIT: self.args.EMIT(topic, msg, stamp, match, index)
@@ -846,12 +887,22 @@ class AppSink(Sink):
         """Returns whether emitted matches are highlighted."""
         return self.args.HIGHLIGHT
 
+    def validate(self):
+        """Returns whether callbacks are valid, emits error if not."""
+        if self.valid is not None: return self.valid
+        self.valid = True
+        for key in ("EMIT", "METAEMIT"):
+            if getattr(self.args, key) and not callable(getattr(self.args, key)):
+                ConsolePrinter.error("Invalid callback for %s: %r", key, getattr(self.args, key))
+                self.valid = False
+        return self.valid
+
 
 class MultiSink(Sink):
     """Combines any number of sinks."""
 
     ## Autobinding between argument flags and sink classes
-    FLAG_CLASSES = {"PUBLISH": TopicSink, "CONSOLE": ConsoleSink, "APP": AppSink}
+    FLAG_CLASSES = {"PUBLISH": LiveSink, "CONSOLE": ConsoleSink, "APP": AppSink}
 
     ## Autobinding between `--write TARGET format=FORMAT` and sink classes
     FORMAT_CLASSES = {"bag": BagSink}
@@ -895,6 +946,7 @@ class MultiSink(Sink):
 
     def emit_meta(self):
         """Outputs source metainfo in one sink, if not already emitted."""
+        if not self.validate(): raise Exception("invalid")
         sink = next((s for s in self.sinks if isinstance(s, ConsoleSink)), None)
         # Emit meta in one sink only, prefer console
         sink = sink or self.sinks[0] if self.sinks else None
@@ -902,6 +954,7 @@ class MultiSink(Sink):
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
         """Outputs ROS message to all sinks."""
+        if not self.validate(): raise Exception("invalid")
         stamp, index = self._ensure_stamp_index(topic, msg, stamp, index)
         for sink in self.sinks:
             sink.emit(topic, msg, stamp, match, index)
@@ -913,6 +966,17 @@ class MultiSink(Sink):
         for sink in self.sinks:
             sink.bind(source)
             sink.thread_excepthook = self.thread_excepthook
+
+    def configure(self, args=None, **kwargs):
+        """
+        Updates sinks configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        args = common.ensure_namespace(args, **kwargs)
+        hasattr(args, "WRITE") and delattr(args, "WRITE")  # Special arg for MultiSink
+        for sink in self.sinks: sink.configure(args, **kwargs)
 
     def validate(self):
         """Returns whether prerequisites are met for all sinks."""
@@ -936,6 +1000,6 @@ class MultiSink(Sink):
 
 
 __all__ = [
-    "AppSink", "BagSink", "ConsoleSink", "MultiSink", "RolloverSinkMixin", "Sink", "TextSinkMixin",
-    "TopicSink"
+    "AppSink", "BagSink", "ConsoleSink", "LiveSink", "MultiSink", "RolloverSinkMixin", "Sink",
+    "TextSinkMixin",
 ]

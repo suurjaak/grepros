@@ -8,23 +8,20 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    27.12.2023
+@modified    24.03.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
 import argparse
 import atexit
-import collections
-import logging
 import os
 import random
-import re
+import signal
 import sys
-
-import six
+import traceback
 
 from . import __title__, __version__, __version_date__, api, inputs, outputs, search
-from . common import ConsolePrinter, MatchMarkers, parse_datetime
+from . common import ArgumentUtil, ConsolePrinter, MatchMarkers
 from . import plugins
 
 
@@ -98,7 +95,13 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["-v", "--invert-match"],
              dest="INVERT", action="store_true",
-             help="select messages not matching PATTERN"),
+             help="select messages not matching PATTERNs"),
+
+        dict(args=["-e", "--expression"],
+             dest="EXPRESSION", action="store_true",
+             help="PATTERNs are a logical expression\n"
+                  "like 'this AND (this2 OR NOT \"skip this\")',\n"
+                  "with elements as patterns to find in message fields"),
 
         dict(args=["--version"],
              dest="VERSION", action="version",
@@ -192,15 +195,15 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--every-nth-message"],
              dest="NTH_MESSAGE", metavar="NUM", type=int, default=1,
-             help="read every Nth message within topic"),
+             help="read every Nth message within topic, starting from first"),
 
         dict(args=["--every-nth-interval"],
-             dest="NTH_INTERVAL", metavar="SECONDS", type=int, default=0,
+             dest="NTH_INTERVAL", metavar="SECONDS", type=float, default=0,
              help="read messages at least N seconds apart within topic"),
 
         dict(args=["--every-nth-match"],
              dest="NTH_MATCH", metavar="NUM", type=int, default=1,
-             help="emit every Nth match in topic"),
+             help="emit every Nth match in topic, starting from first"),
 
         dict(args=["-sf", "--select-field"],
              dest="SELECT_FIELD", metavar="FIELD", nargs="+", default=[], action="append",
@@ -316,7 +319,7 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 
         dict(args=["--verbose"], dest="VERBOSE", action="store_true",
              help="print status messages during console output\n"
-                  "for publishing and writing"),
+                  "for publishing and writing, and error stacktraces"),
 
         dict(args=["--no-verbose"], dest="SKIP_VERBOSE", action="store_true",
              help="do not print status messages during console output\n"
@@ -349,6 +352,15 @@ Export all bag messages to SQLite and Postgres, print only export progress:
         dict(args=["--reindex-if-unindexed"],
              dest="REINDEX", action="store_true",
              help="reindex unindexed bagfiles (ROS1 only), makes backup copies"),
+
+        dict(args=["--time-scale"],
+             dest="TIMESCALE", metavar="FACTOR", nargs="?", type=float, const=1, default=0,
+             help="emit messages on original bag timeline from first matched message,\n"
+                  "optionally with a speedup or slowdown factor"),
+
+        dict(args=["--time-scale-emission"],
+             dest="TIMESCALE_EMISSION", nargs="?", type=int, const=True, default=True,
+             help=argparse.SUPPRESS),  # Timeline from first matched message vs first in bag
 
     ], "Live topic control": [
 
@@ -385,125 +397,6 @@ Export all bag messages to SQLite and Postgres, print only export progress:
 CLI_ARGS = None
 
 
-class HelpFormatter(argparse.RawTextHelpFormatter):
-    """RawTextHelpFormatter returning custom metavar for WRITE."""
-
-    def _format_action_invocation(self, action):
-        """Returns formatted invocation."""
-        if "WRITE" == action.dest:
-            return " ".join(action.option_strings + [action.metavar])
-        return super(HelpFormatter, self)._format_action_invocation(action)
-
-
-def make_parser():
-    """Returns a configured ArgumentParser instance."""
-    kws = dict(description=ARGUMENTS["description"], epilog=ARGUMENTS["epilog"],
-               formatter_class=HelpFormatter, add_help=False)
-    if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
-    argparser = argparse.ArgumentParser(**kws)
-    for arg in map(dict, ARGUMENTS["arguments"]):
-        argparser.add_argument(*arg.pop("args"), **arg)
-    for group, groupargs in ARGUMENTS.get("groups", {}).items():
-        grouper = argparser.add_argument_group(group)
-        for arg in map(dict, groupargs):
-            grouper.add_argument(*arg.pop("args"), **arg)
-    return argparser
-
-
-def process_args(args):
-    """
-    Converts or combines arguments where necessary, returns full args.
-
-    @param   args  arguments object like argparse.Namespace
-    """
-    for arg in sum(ARGUMENTS.get("groups", {}).values(), ARGUMENTS["arguments"][:]):
-        name = arg.get("dest") or arg["args"][0]
-        if "version" != arg.get("action") and argparse.SUPPRESS != arg.get("default") \
-        and "HELP" != name and not hasattr(args, name):
-            value = False if arg.get("store_true") else True if arg.get("store_false") else None
-            setattr(args, name, arg.get("default", value))
-
-    if args.CONTEXT:
-        args.BEFORE = args.AFTER = args.CONTEXT
-
-    # Default to printing metadata for publish/write if no console output
-    args.VERBOSE = False if args.SKIP_VERBOSE else \
-                   (args.VERBOSE or not args.CONSOLE and bool(CLI_ARGS))
-
-    # Show progress bar only if no console output
-    args.PROGRESS = args.PROGRESS and not args.CONSOLE
-
-    # Print filename prefix on each console message line if not single specific file
-    args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
-                                             or args.PATH or any("*" in x for x in args.FILE))
-
-    for k, v in vars(args).items():  # Flatten lists of lists and drop duplicates
-        if k != "WRITE" and isinstance(v, list):
-            here = set()
-            setattr(args, k, [x for xx in v for x in (xx if isinstance(xx, list) else [xx])
-                              if not (x in here or here.add(x))])
-
-    for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
-        if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, n
-        try: v = float(v)
-        except Exception: pass  # If numeric, leave as string for source to process as relative time
-        try: not isinstance(v, float) and setattr(args, n, parse_datetime(v))
-        except Exception: pass
-
-    return  args
-
-
-def validate_args(args):
-    """
-    Validates arguments, prints errors, returns success.
-
-    @param   args  arguments object like argparse.Namespace
-    """
-    errors = collections.defaultdict(list)  # {category: [error, ]}
-
-    # Validate --write .. key=value
-    for opts in args.WRITE:  # List of lists, one for each --write
-        erropts = []
-        for opt in opts[1:]:
-            try: dict([opt.split("=", 1)])
-            except Exception: erropts.append(opt)
-        if erropts:
-            errors[""].append('Invalid KEY=VALUE in "--write %s": %s' %
-                              (" ".join(opts), " ".join(erropts)))
-
-    for n, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
-        if v is None: continue  # for v, n
-        try: v = float(v)
-        except Exception: pass
-        try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
-        except Exception: errors[""].append("Invalid ISO datetime for %s: %s" %
-                                            (n.lower().replace("_", " "), v))
-
-    for v in args.PATTERN if not args.FIXED_STRING else ():
-        split = v.find("=", 1, -1)  # May be "PATTERN" or "attribute=PATTERN"
-        v = v[split + 1:] if split > 0 else v
-        try: re.compile(re.escape(v) if args.FIXED_STRING else v)
-        except Exception as e:
-            errors["Invalid regular expression"].append("'%s': %s" % (v, e))
-
-    for v in args.CONDITION:
-        v = inputs.ConditionMixin.TOPIC_RGX.sub("dummy", v)
-        try: compile(v, "", "eval")
-        except SyntaxError as e:
-            errors["Invalid condition"].append("'%s': %s at %schar %s" %
-                (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
-        except Exception as e:
-            errors["Invalid condition"].append("'%s': %s" % (v, e))
-
-    for err in errors.get("", []):
-        ConsolePrinter.log(logging.ERROR, err)
-    for category in filter(bool, errors):
-        ConsolePrinter.log(logging.ERROR, category)
-        for err in errors[category]:
-            ConsolePrinter.log(logging.ERROR, "  %s" % err)
-    return not errors
-
-
 def flush_stdout():
     """Writes a linefeed to sdtout if nothing has been printed to it so far."""
     if not ConsolePrinter.PRINTS.get(sys.stdout) and not sys.stdout.isatty():
@@ -511,7 +404,7 @@ def flush_stdout():
         except (Exception, KeyboardInterrupt): pass
 
 
-def preload_plugins():
+def preload_plugins(cli_args):
     """Imports and initializes plugins from auto-load folder and from arguments."""
     plugins.add_write_format("bag", outputs.BagSink, "bag", [
         ("overwrite=true|false",   "overwrite existing file\nin bag output\n"
@@ -520,9 +413,24 @@ def preload_plugins():
                                    "(default false)")
 
     ] + outputs.RolloverSinkMixin.get_write_options("bag"))
-    args = make_parser().parse_known_args(CLI_ARGS)[0] if "--plugin" in CLI_ARGS else None
-    try: plugins.init(process_args(args) if args else None)
+    args = None
+    if "--plugin" in cli_args:
+        args, _ = ArgumentUtil.make_parser(ARGUMENTS).parse_known_args(cli_args)
+        args = ArgumentUtil.flatten(args)
+    try: plugins.init(args)
     except ImportWarning: sys.exit(1)
+
+
+def make_thread_excepthook(args, exitcode_dict):
+    """Returns thread exception handler: function(text, exc) prints error, stops application."""
+    def thread_excepthook(text, exc):
+        """Prints error, sets exitcode flag, shuts down ROS node if any, interrupts main thread."""
+        ConsolePrinter.error(text)
+        if args.VERBOSE: traceback.print_exc()
+        exitcode_dict["value"] = 1
+        api.shutdown_node()
+        os.kill(os.getpid(), signal.SIGINT)
+    return thread_excepthook
 
 
 def run():
@@ -530,8 +438,8 @@ def run():
     global CLI_ARGS
     CLI_ARGS = sys.argv[1:]
     MatchMarkers.populate("%08x" % random.randint(1, 1E9))
-    preload_plugins()
-    argparser = make_parser()
+    preload_plugins(CLI_ARGS)
+    argparser = ArgumentUtil.make_parser(ARGUMENTS)
     if not CLI_ARGS:
         argparser.print_usage()
         return
@@ -546,14 +454,15 @@ def run():
     try: BREAK_EXS += (BrokenPipeError, )  # Py3
     except NameError: pass  # Py2
 
+    exitcode = {"value": 0}
     source, sink = None, None
     try:
         ConsolePrinter.configure({"always": True, "never": False}.get(args.COLOR))
-        if not validate_args(process_args(args)):
-            sys.exit(1)
+        api.validate()
+        args = ArgumentUtil.validate(args, cli=True)
 
         source = plugins.load("source", args) or \
-                 (inputs.TopicSource if args.LIVE else inputs.BagSource)(args)
+                 (inputs.LiveSource if args.LIVE else inputs.BagSource)(args)
         if not source.validate():
             sys.exit(1)
         sink = outputs.MultiSink(args)
@@ -561,28 +470,30 @@ def run():
         if not sink.validate():
             sys.exit(1)
 
-        thread_excepthook = lambda t, e: (ConsolePrinter.error(t), sys.exit(1))
-        source.thread_excepthook = sink.thread_excepthook = thread_excepthook
+        source.thread_excepthook = sink.thread_excepthook = make_thread_excepthook(args, exitcode)
         grepper = plugins.load("scan", args) or search.Scanner(args)
         grepper.work(source, sink)
     except BREAK_EXS:
-        try: source and source.close()
-        except (Exception, KeyboardInterrupt): pass
         try: sink and sink.close()
+        except (Exception, KeyboardInterrupt): pass
+        try: source and source.close()
         except (Exception, KeyboardInterrupt): pass
         # Redirect remaining output to devnull to avoid another BrokenPipeError
         try: os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         except (Exception, KeyboardInterrupt): pass
-        sys.exit()
+        sys.exit(exitcode["value"])
+    except Exception as e:
+        ConsolePrinter.error(e)
+        if args.VERBOSE: traceback.print_exc()
     finally:
         sink and sink.close()
         source and source.close()
-        api.shutdown_node()
+        try: api.shutdown_node()
+        except BREAK_EXS: pass
 
 
 __all__ = [
-    "ARGUMENTS", "CLI_ARGS", "HelpFormatter",
-    "make_parser", "process_args", "validate_args", "flush_stdout", "preload_plugins", "run",
+    "ARGUMENTS", "CLI_ARGS", "flush_stdout", "make_thread_excepthook", "preload_plugins", "run",
 ]
 
 

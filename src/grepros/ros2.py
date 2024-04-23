@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    27.12.2023
+@modified    21.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -116,6 +116,9 @@ CREATE INDEX IF NOT EXISTS timestamp_idx ON messages (timestamp ASC);
 PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
     """
+
+    ## SQLite file header magic start bytes
+    SQLITE_MAGIC = b"SQLite format 3\x00"
 
 
     def __init__(self, filename, mode="a", *_, **__):
@@ -513,6 +516,18 @@ PRAGMA synchronous=NORMAL;
         """Returns whether specified table exists in database."""
         sql = "SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?"
         return bool(self._db.execute(sql, ("table", name)).fetchone())
+
+
+    @classmethod
+    def autodetect(cls, f):
+        """Returns whether file is recognizable as SQLite format."""
+        if os.path.isfile(f) and os.path.getsize(f):
+            with open(f, "rb") as f:
+                result = (f.read(len(cls.SQLITE_MAGIC)) == cls.SQLITE_MAGIC)
+        else:
+            ext = os.path.splitext(f or "")[-1].lower()
+            result = ext in BAG_EXTENSIONS
+        return result
 Bag = ROS2Bag
 
 
@@ -694,7 +709,7 @@ def _get_message_definition(typename):
         texts, pkg = collections.OrderedDict(), typename.rsplit("/", 1)[0]
         try:
             typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".msg")
-            with open(typepath) as f:
+            with open(typepath, encoding="utf-8") as f:
                 texts[typename] = f.read()
         except Exception:  # .msg file unavailable: parse IDL
             texts[typename] = get_message_definition_idl(typename)
@@ -771,7 +786,7 @@ def get_message_definition_idl(typename):
                 if "comment" == v.get("language")]
 
     typepath = rosidl_runtime_py.get_interface_path(make_full_typename(typename) + ".idl")
-    with open(typepath) as f:
+    with open(typepath, encoding="utf-8") as f:
         idlcontent = rosidl_parser.parser.parse_idl_string(f.read())
     msgidl = idlcontent.get_elements_of_type(rosidl_parser.definition.Message)[0]
     package = msgidl.structure.namespaced_type.namespaces[0]
@@ -818,8 +833,15 @@ def get_message_type(msg_or_cls):
     return canonical("%s/%s" % (cls.__module__.split(".")[0], cls.__name__))
 
 
-def get_message_value(msg, name, typename):
-    """Returns object attribute value, with numeric arrays converted to lists."""
+def get_message_value(msg, name, typename=None, default=Ellipsis):
+    """
+    Returns object attribute value, with numeric arrays converted to lists.
+
+    @param   name      message attribute name
+    @param   typename  value ROS type name, for identifying byte arrays
+    @param   default   value to return if attribute does not exist; raises exception otherwise
+    """
+    if default is not Ellipsis and not hasattr(msg, name): return default
     v, scalartype = getattr(msg, name), scalar(typename)
     if isinstance(v, (bytes, array.array)): v = list(v)
     elif numpy and isinstance(v, (numpy.generic, numpy.ndarray)):

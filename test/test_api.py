@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    29.12.2023
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -25,6 +25,7 @@ from grepros import api
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from test import testbase
+from test.testbase import NAME, ERR
 
 logger = logging.getLogger()
 
@@ -36,16 +37,13 @@ class TestAPI(testbase.TestBase):
     NAME = os.path.splitext(os.path.basename(__file__))[0]
 
 
-    @classmethod
-    def setUpClass(cls):
-        """Initializes ROS bindings in grepros."""
+    def __init__(self, *args, **kwargs):
+        super(TestAPI, self).__init__(*args, **kwargs)
         api.validate()
 
 
     def test_messages(self):
         """Tests API functions for dealing with messages."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing message API functions.")
 
         func = api.get_message_class
@@ -56,9 +54,9 @@ class TestAPI(testbase.TestBase):
         func = api.get_message_definition
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
-            self.assertTrue(func("std_msgs/Bool"),            ERR(func))
-            self.assertTrue(func(std_msgs.msg.Bool),          ERR(func))
-            self.assertTrue(func(std_msgs.msg.Bool()),        ERR(func))
+            self.assertTrue(func("std_msgs/Bool"),     ERR(func))
+            self.assertTrue(func(std_msgs.msg.Bool),   ERR(func))
+            self.assertTrue(func(std_msgs.msg.Bool()), ERR(func))
 
         func = api.get_message_fields
         with self.subTest(NAME(func)):
@@ -100,8 +98,10 @@ class TestAPI(testbase.TestBase):
             msg2 = std_msgs.msg.UInt8MultiArray(data=b"123")
             timename = next(x for x in api.ROS_TIME_TYPES if "time" in x.lower())
             self.assertEqual(func(msg1, "frame_id", "string"), msg1.frame_id,   ERR(func))
-            self.assertEqual(func(msg1, "stamp", timename), msg1.stamp, ERR(func))
-            self.assertEqual(func(msg2, "data", "uint8[]"), list(msg2.data), ERR(func))
+            self.assertEqual(func(msg1, "frame_id"),           msg1.frame_id,   ERR(func))
+            self.assertEqual(func(msg1, "stamp", timename),    msg1.stamp,      ERR(func))
+            self.assertEqual(func(msg2, "data", "uint8[]"),    list(msg2.data), ERR(func))
+            self.assertEqual(func(msg1, "nope", default=123),  123,             ERR(func))
             with self.assertRaises(Exception, msg=ERR(func)):
                 func(msg1, "nosuchfield", "whatever")
 
@@ -212,8 +212,6 @@ class TestAPI(testbase.TestBase):
 
     def test_typenames(self):
         """Tests API functions for dealing with ROS types."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing ROS type API functions.")
 
         func = api.canonical
@@ -266,8 +264,6 @@ class TestAPI(testbase.TestBase):
 
     def test_temporals(self):
         """Tests API functions for dealing with ROS time/duration values."""
-        NAME = lambda f: "%s.%s()" % (f.__module__, f.__name__)
-        ERR  = lambda f: "Unexpected result from %s." % f.__name__
         logger.info("Testing temporal API functions.")
 
         func = api.get_ros_time_category

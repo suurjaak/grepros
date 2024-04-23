@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    30.12.2023
+@modified    20.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.inputs
@@ -23,12 +23,13 @@ except ImportError: import Queue as queue  # Py2
 import re
 import threading
 import time
+import traceback
 
 import six
 
 from . import api
 from . import common
-from . common import ConsolePrinter, ensure_namespace, drop_zeros
+from . common import ArgumentUtil, ConsolePrinter, ensure_namespace, drop_zeros
 
 
 class Source(object):
@@ -41,8 +42,9 @@ class Source(object):
     MESSAGE_META_TEMPLATE = "{topic} #{index} ({type}  {dt}  {stamp})"
 
     ## Constructor argument defaults
-    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, UNIQUE=False, SELECT_FIELD=(),
-                        NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0)
+    DEFAULT_ARGS = dict(START_TIME=None, END_TIME=None, START_INDEX=None, END_INDEX=None,
+                        UNIQUE=False, SELECT_FIELD=(), NOSELECT_FIELD=(),
+                        NTH_MESSAGE=1, NTH_INTERVAL=0, PROGRESS=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -50,10 +52,14 @@ class Source(object):
         @param   args.start_time        earliest timestamp of messages to read
         @param   args.end_time          latest timestamp of messages to read
         @param   args.unique            emit messages that are unique in topic
+        @param   args.start_index       message index within topic to start from
+        @param   args.end_index         message index within topic to stop at
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
+        @param   args.progress          whether to print progress bar
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         # {key: [(() if any field else ('nested', 'path') or re.Pattern, re.Pattern), ]}
@@ -63,7 +69,11 @@ class Source(object):
         self._counts = collections.Counter()  # {(topic, typename, typehash): count processed}
         # {(topic, typename, typehash): (message hash over all fields used in matching)}
         self._hashes = collections.defaultdict(set)
-        self._processables = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
+        self._processables  = {}  # {(topic, typename, typehash): (index, stamp) of last processable}
+        self._start_indexes = {}  # {(topic, typename, typehash): index to start producing from}
+        self._end_indexes   = {}  # {(topic, typename, typehash): index to stop producing at}
+        self._bar_args      = {}  # Progress bar options
+        self._status = None  # Processable/match status of last produced message
 
         self.args = ensure_namespace(args, Source.DEFAULT_ARGS, **kwargs)
         ## outputs.Sink instance bound to this source
@@ -98,9 +108,21 @@ class Source(object):
         """Attaches sink to source"""
         self.sink = sink
 
+    def configure(self, args=None, **kwargs):
+        """
+        Updates source configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        self.args = ensure_namespace(args, vars(self.args), **kwargs)
+        self.valid = None
+
     def validate(self):
-        """Returns whether source prerequisites are met (like ROS environment for TopicSource)."""
-        if self.valid is None: self.valid = True
+        """Returns whether arguments are valid and source prerequisites are met."""
+        if self.valid is not None: return self.valid
+        try: self.args, self.valid = ArgumentUtil.validate(self.args), True
+        except Exception: self.valid = False
         return self.valid
 
     def close(self):
@@ -110,6 +132,7 @@ class Source(object):
         self._counts.clear()
         self._hashes.clear()
         self._processables.clear()
+        self._status = None
         if self.bar:
             self.bar.pulse_pos = None
             self.bar.update(flush=True).stop()
@@ -156,16 +179,25 @@ class Source(object):
         return api.get_message_type_hash(msg_or_type)
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
         if self.args.START_TIME and stamp < self.args.START_TIME:
             return False
         if self.args.END_TIME and stamp > self.args.END_TIME:
             return False
-        if self.args.UNIQUE or self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+        if self.args.START_INDEX or self.args.END_INDEX \
+        or self.args.NTH_MESSAGE or self.args.UNIQUE:
             topickey = api.TypeMeta.make(msg, topic).topickey
+        if self.args.START_INDEX and index is not None:
+            if max(0, self._start_indexes.get(topickey, self.args.START_INDEX)) > index:
+                return False
+        if self.args.END_INDEX and index is not None:
+            if self._end_indexes.get(topickey, self.args.END_INDEX) < index:
+                return False
+        if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             last_accepted = self._processables.get(topickey)
         if self.args.NTH_MESSAGE > 1 and last_accepted and index is not None:
-            if (index - 1) % self.args.NTH_MESSAGE:
+            shift = self.args.START_INDEX if (self.args.START_INDEX or 0) > 1 else 1
+            if (index - shift) % self.args.NTH_MESSAGE:
                 return False
         if self.args.NTH_INTERVAL > 0 and last_accepted and stamp is not None:
             if api.to_sec(stamp - last_accepted[1]) < self.args.NTH_INTERVAL:
@@ -176,10 +208,41 @@ class Source(object):
             if msghash in self._hashes[topickey]:
                 return False
             self._hashes[topickey].add(msghash)
+        self._status = True
         return True
 
     def notify(self, status):
         """Reports match status of last produced message."""
+        self._status = bool(status)
+        if self.bar and self._bar_args.get("source_value") is not None:
+            self.bar.update(self.bar.value + bool(status))
+
+    def configure_progress(self, **kwargs):
+        """Configures progress bar options, updates current bar if any."""
+        for k, v in kwargs.items():
+            if isinstance(self._bar_args.get(k), dict) and isinstance(v, dict):
+                self._bar_args[k].update(v)
+            else: self._bar_args[k] = v
+        if self.bar:
+            bar_attrs = set(k for k in vars(self.bar) if not k.startswith("_"))
+            for k, v in self._bar_args.items():
+                if k in bar_attrs: setattr(self.bar, k, v)
+                else: self.bar.afterargs[k] = v
+
+    def init_progress(self):
+        """Initializes progress bar, if any."""
+        if self.args.PROGRESS and not self.bar:
+            self.bar = common.ProgressBar(**self._bar_args)
+            self.bar.start() if self.bar.pulse else self.bar.update(value=0)
+
+    def update_progress(self, count, running=True):
+        """Updates progress bar, if any, with source processed count, pauses bar if not running."""
+        if self.bar:
+            if not running:
+                self.bar.pause, self.bar.pulse_pos = True, None
+            if self._bar_args.get("source_value") is not None:
+                self.bar.afterargs["source_value"] = count
+            else: self.bar.update(count)
 
     def thread_excepthook(self, text, exc):
         """Handles exception, used by background threads."""
@@ -189,7 +252,7 @@ class Source(object):
         """Parses pattern arguments into re.Patterns."""
         selects, noselects = self.args.SELECT_FIELD, self.args.NOSELECT_FIELD
         for key, vals in [("select", selects), ("noselect", noselects)]:
-            self._patterns[key] = [(tuple(v.split(".")), common.wildcard_to_regex(v)) for v in vals]
+            self._patterns[key] = [(tuple(v.split(".")), common.path_to_regex(v)) for v in vals]
 
 
 class ConditionMixin(object):
@@ -318,7 +381,6 @@ class ConditionMixin(object):
 
         ## {condition with <topic x> as get_topic("x"): compiled code object}
         self._conditions = collections.OrderedDict()
-        self._configure_conditions(ensure_namespace(args, ConditionMixin.DEFAULT_ARGS, **kwargs))
 
     def is_processable(self, topic, msg, stamp, index=None):
         """Returns whether message passes passes current state conditions, if any."""
@@ -347,6 +409,25 @@ class ConditionMixin(object):
                 if result: break  # for remaps
             if not result: break  # for i,
         return result
+
+    def validate(self):
+        """Returns whether conditions have valid syntax, sets options, prints errors."""
+        errors = []
+        for v in self.args.CONDITION:
+            v = self.TOPIC_RGX.sub("dummy", v)
+            try: compile(v, "", "eval")
+            except SyntaxError as e:
+                errors.append("'%s': %s at %schar %s" %
+                              (v, e.msg, "line %s " % e.lineno if e.lineno > 1 else "", e.offset))
+            except Exception as e:
+                errors.append("'%s': %s" % (v, e))
+        if errors:
+            ConsolePrinter.error("Invalid condition")
+            for err in errors:
+                ConsolePrinter.error("  %s" % err)
+        else:
+            self._configure_conditions(ensure_namespace(self.args, ConditionMixin.DEFAULT_ARGS))
+        return not errors
 
     def close_batch(self):
         """Clears cached messages."""
@@ -406,6 +487,11 @@ class ConditionMixin(object):
 
     def _configure_conditions(self, args):
         """Parses condition expressions and populates local structures."""
+        self._conditions.clear()
+        self._topic_limits.clear()
+        self._topic_states.clear()
+        self._wildcard_topics.clear()
+        del self._topics_per_condition[:]
         for v in args.CONDITION:
             topics = list(set(self.TOPIC_RGX.findall(v)))
             self._topic_states.update({t: True for t in topics})
@@ -441,7 +527,7 @@ class BagSource(Source, ConditionMixin):
                         SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None, END_TIME=None,
                         START_INDEX=None, END_INDEX=None, CONDITION=(), AFTER=0, ORDERBY=None,
                         DECOMPRESS=False, REINDEX=False, WRITE=(), PROGRESS=False,
-                        STOP_ON_ERROR=False)
+                        STOP_ON_ERROR=False, TIMESCALE=0, TIMESCALE_EMISSION=False, VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -460,6 +546,11 @@ class BagSource(Source, ConditionMixin):
         @param   args.orderby           "topic" or "type" if any to group results by
         @param   args.decompress        decompress archived bags to file directory
         @param   args.reindex           make a copy of unindexed bags and reindex them (ROS1 only)
+        @param   args.timescale         emit messages on original timeline from first message
+                                        at given rate, 0 disables
+        @param   args.timescale_emission
+                                        timeline from first matched message not first in bag,
+                                        requires notify() for each message
         @param   args.write             outputs, to skip in input files
         @param   args.bag               one or more {@link grepros.api.Bag Bag} instances
         <!--sep-->
@@ -476,12 +567,14 @@ class BagSource(Source, ConditionMixin):
         @param   args.unique            emit messages that are unique in topic
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
         @param   args.progress          whether to print progress bar
         @param   args.stop_on_error     stop execution on any error like unknown message type
+        @param   args.verbose           whether to print error stacktraces
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
         args0 = args
@@ -493,8 +586,6 @@ class BagSource(Source, ConditionMixin):
         super(BagSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
         self._args0     = common.structcopy(self.args)  # Original arguments
-        self._status    = None   # Match status of last produced message
-        self._sticky    = False  # Reading a single topic until all after-context emitted
         self._totals_ok = False  # Whether message count totals have been retrieved (ROS2 optimize)
         self._types_ok  = False  # Whether type definitions have been retrieved (ROS2 optimize)
         self._running   = False
@@ -502,6 +593,7 @@ class BagSource(Source, ConditionMixin):
         self._filename  = None   # Current bagfile path
         self._meta      = None   # Cached get_meta()
         self._bag0      = ([args0] if isinstance(args0, api.Bag) else args0) if is_bag else None
+        self._delaystamps = collections.defaultdict(int)  # Tracked timestamps for timeline emission
 
     def read(self):
         """Yields messages from ROS bagfiles, as (topic, msg, ROS time)."""
@@ -522,7 +614,7 @@ class BagSource(Source, ConditionMixin):
                 topicsets = [{n: [t] for n in nn} for t, nn in sorted(typetopics.items())]
 
             self._types_ok = False
-            self._init_progress()
+            self.init_progress()
             for topics in topicsets:
                 for topic, msg, stamp, index in self._produce(topics) if topics else ():
                     self.conditions_register_message(topic, msg)
@@ -535,10 +627,22 @@ class BagSource(Source, ConditionMixin):
             self.close_batch()
         self._running = False
 
+    def configure(self, args=None, **kwargs):
+        """
+        Updates source configuration.
+
+        @param   args    arguments as namespace or dictionary, case-insensitive
+        @param   kwargs  any and all arguments as keyword overrides, case-insensitive
+        """
+        super(BagSource, self).configure(args, **kwargs)
+        self._args0 = common.structcopy(self.args)
+
     def validate(self):
         """Returns whether ROS environment is set and arguments valid, prints error if not."""
         if self.valid is not None: return self.valid
-        self.valid = api.validate()
+        self.valid = Source.validate(self)
+        if not api.validate():
+            self.valid = False
         if not self._bag0 and self.args.FILE and os.path.isfile(self.args.FILE[0]) \
         and not common.verify_io(self.args.FILE[0], "r"):
             ConsolePrinter.error("File not readable.")
@@ -553,6 +657,11 @@ class BagSource(Source, ConditionMixin):
         if self.args.ORDERBY and self.conditions_get_topics():
             ConsolePrinter.error("Cannot use topics in conditions and bag order by %s.",
                                  self.args.ORDERBY)
+            self.valid = False
+        if self.args.TIMESCALE and self.args.TIMESCALE < 0:
+            ConsolePrinter.error("Invalid timescale factor: %r.", self.args.TIMESCALE)
+            self.valid = False
+        if not ConditionMixin.validate(self):
             self.valid = False
         return self.valid
 
@@ -571,6 +680,8 @@ class BagSource(Source, ConditionMixin):
         if self.bar:
             self.bar.update(flush=True)
             self.bar = None
+            if self._bar_args.get("source_value") is not None:
+                self._bar_args["source_value"] = 0
         ConditionMixin.close_batch(self)
 
     def format_meta(self):
@@ -627,28 +738,41 @@ class BagSource(Source, ConditionMixin):
 
     def notify(self, status):
         """Reports match status of last produced message."""
-        self._status = bool(status)
+        super(BagSource, self).notify(status)
         if status and not self._totals_ok:
             self._ensure_totals()
+        if status and self.args.TIMESCALE and self.args.TIMESCALE_EMISSION:
+            if "first" not in self._delaystamps:
+                self._delaystamps["first"] = self._delaystamps["current"]
+            else: self._delay_timeline()  # Delay until time met
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
         topickey = api.TypeMeta.make(msg, topic).topickey
-        if self.args.START_INDEX and index is not None:
+        if self.args.START_INDEX and index is not None and self.args.START_INDEX < 0 \
+        and topickey not in self._start_indexes:  # Populate topic in _start_indexes
             self._ensure_totals()
-            START = self.args.START_INDEX
-            MIN = max(0, START + (self.topics[topickey] if START < 0 else 0))
-            if MIN >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
+            self._start_indexes[topickey] = max(0, self.args.START_INDEX + self.topics[topickey])
+        if self.args.END_INDEX and index is not None and self.args.END_INDEX < 0 \
+        and topickey not in self._end_indexes:  # Populate topic in _end_indexes
             self._ensure_totals()
-            END = self.args.END_INDEX
-            MAX = END + (self.topics[topickey] if END < 0 else 0)
-            if MAX < index:
-                return False
+            self._end_indexes[topickey] = (self.args.END_INDEX + self.topics[topickey])
+            if not self._end_indexes[topickey]: self._end_indexes[topickey] = -1
+
         if not super(BagSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
+
+    def init_progress(self):
+        """Initializes progress bar, if any, for current bag."""
+        if self.args.PROGRESS and not self.bar:
+            self._ensure_totals()
+            self.configure_progress(**self._make_progress_args())
+            super(BagSource, self).init_progress()
 
     def _produce(self, topics, start_time=None):
         """
@@ -657,39 +781,44 @@ class BagSource(Source, ConditionMixin):
         @param   topics  {topic: [typename, ]}
         """
         if not self._running or not self._bag: return
+        do_predelay = self.args.TIMESCALE and not self.args.TIMESCALE_EMISSION
+        if do_predelay: self._delaystamps["first"] = self._bag.get_start_time()
+        if self.args.TIMESCALE and "read" not in self._delaystamps:
+            self._delaystamps["read"] = getattr(time, "monotonic", time.time)()  # Py3 / Py2
         counts = collections.Counter()
+        endtime_indexes = {}  # {topickey: index at reaching END_TIME}
+        nametypes = {(n, t) for n, tt in topics.items() for t in tt}
         for topic, msg, stamp in self._bag.read_messages(list(topics), start_time):
             if not self._running or not self._bag:
-                break  # for topic, 
+                break  # for topic,
             typename = api.get_message_type(msg)
             if topics and typename not in topics[topic]:
-                continue  # for topic
+                continue  # for topic,
             if api.ROS2 and not self._types_ok:
                 self.topics, self._types_ok = self._bag.get_topic_info(counts=False), True
 
             topickey = api.TypeMeta.make(msg, topic, self).topickey
             counts[topickey] += 1; self._counts[topickey] += 1
             # Skip messages already processed during sticky
-            if not self._sticky and counts[topickey] != self._counts[topickey]:
-                continue  # for topic
+            if start_time is None and counts[topickey] != self._counts[topickey]:
+                continue  # for topic,
 
-            self._status = None
-            self.bar and self.bar.update(value=sum(self._counts.values()))
+            self._status, self._delaystamps["current"] = None, api.to_sec(stamp)
+            if do_predelay: self._delay_timeline()  # Delay emission until time
+            if self.bar: self.update_progress(sum(self._counts.values()))
             yield topic, msg, stamp, self._counts[topickey]
 
-            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            if self._status:
                 self._processables[topickey] = (self._counts[topickey], stamp)
-            if self._status and self.args.AFTER and not self._sticky \
+            if self._status and not self.preprocess and self.args.AFTER and start_time is None \
             and not self.has_conditions() \
             and (len(self._topics) > 1 or len(next(iter(self._topics.values()))) > 1):
                 # Stick to one topic until trailing messages have been emitted
-                self._sticky = True
-                continue_from = stamp + api.make_duration(nsecs=1)
-                for entry in self._produce({topic: typename}, continue_from):
+                for entry in self._produce({topic: typename}, stamp + api.make_duration(nsecs=1)):
                     yield entry
-                self._sticky = False
-            if not self._running or not self._bag:
-                break  # for topic
+            if not self._running or not self._bag or (start_time is None
+            and self._is_at_end_threshold(topickey, stamp, nametypes, endtime_indexes)):
+                break  # for topic,
 
     def _produce_bags(self):
         """Yields Bag instances from configured arguments."""
@@ -718,16 +847,26 @@ class BagSource(Source, ConditionMixin):
             encountereds.add(self._bag.filename)
             yield self._bag
 
-    def _init_progress(self):
-        """Initializes progress bar, if any, for current bag."""
-        if self.args.PROGRESS and not self.bar:
-            self._ensure_totals()
-            self.bar = common.ProgressBar(aftertemplate=" {afterword} ({value:,d}/{max:,d})")
-            self.bar.afterword = os.path.basename(self._filename or "<stream>")
-            self.bar.max = sum(sum(c for (t, n, _), c in self.topics.items()
-                                   if c and t == t_ and n in nn)
-                               for t_, nn in self._topics.items())
-            self.bar.update(value=0)
+    def _make_progress_args(self):
+        """Returns dictionary with progress bar options"""
+        total = sum(sum(c for (t, n, _), c in self.topics.items() if c and t == t_ and n in nn)
+                    for t_, nn in self._topics.items())
+        result = dict(max=total, afterword=os.path.basename(self._filename or "<stream>"))
+
+        instr, outstr = "{value:,d}/{max:,d}", ""
+        if any([self.args.CONDITION, self.args.UNIQUE, self.args.NTH_INTERVAL,
+                self.args.START_TIME, self.args.END_TIME]) or self.args.NTH_MESSAGE > 1:
+            self._bar_args.setdefault("source_value", 0)  # Separate counts if not all messages
+        if self._bar_args.get("source_value") is not None \
+        or self._bar_args.get("match_max") is not None:
+            result.update(source_value=self._bar_args.get("source_value") or 0)
+            instr, outstr = "{source_value:,d}/{max:,d}", "matched {value:,d}"
+            if self._bar_args.get("match_max") is not None:
+                instr, outstr = "{source_value:,d}/{source_max:,d}", outstr + "/{match_max:,d}"
+                result.update(source_max=total, max=min(total, self._bar_args["match_max"]))
+        result.update(aftertemplate=" {afterword} (%s)" % "  ".join(filter(bool, (instr, outstr))))
+
+        return result
 
     def _ensure_totals(self):
         """Retrieves total message counts if not retrieved."""
@@ -738,14 +877,50 @@ class BagSource(Source, ConditionMixin):
                 self.topics[(t, n, h)] = c
             self._totals_ok = True
 
+    def _delay_timeline(self):
+        """Sleeps until message ought to be emitted in bag timeline."""
+        curstamp, readstamp, startstamp = map(self._delaystamps.get, ("current", "read", "first"))
+        delta = max(0, api.to_sec(curstamp) - startstamp) / (self.args.TIMESCALE or 1)
+        if delta: time.sleep(max(0, delta + readstamp - getattr(time, "monotonic", time.time)()))
+
+    def _is_at_end_threshold(self, topickey, stamp, nametypes, endtime_indexes):
+        """
+        Returns whether bag reading has reached END_INDEX or END_TIME in all given topics.
+
+        @param   topickey         (topic, typename, typehash) of current message
+        @param   stamp            ROS timestamp of current message
+        @param   nametypes        {(topic, typename)} to account for
+        @param   endtime_indexes  {topickey: index at reaching END_TIME}, gets modified
+        """
+        if self.args.END_INDEX:
+            max_index = self.args.END_INDEX + self.args.AFTER
+            if self._counts[topickey] >= max_index:  # Stop reading when reaching max in all topics
+                mycounts = {k: v for k, v in self._counts.items() if k[:2] in nametypes}
+                if nametypes == set(k[:2] for k in mycounts) \
+                and all(v >= self._end_indexes.get(k, max_index) for k, v in mycounts.items()):
+                    return True  # Early break if all topics at max index
+        if self.args.END_TIME and stamp > self.args.END_TIME:
+            self._ensure_totals()
+            if topickey not in endtime_indexes: endtime_indexes[topickey] = self._counts[topickey]
+            max_index = min(self.topics[topickey], endtime_indexes[topickey] + self.args.AFTER)
+            if self._counts[topickey] >= max_index: # One topic reached end: check all topics
+                myindexes = {k: v for k, v in endtime_indexes.items() if k[:2] in nametypes}
+                if nametypes == set(k[:2] for k in myindexes) \
+                and all(self._counts[k] >= min(self.topics[k], v + self.args.AFTER)
+                        for k, v in myindexes.items()):
+                    return True  # Early break if all topics at max time
+        return False
+
     def _configure(self, filename=None, bag=None):
         """Opens bag and populates bag-specific argument state, returns success."""
         self._meta      = None
         self._bag       = None
         self._filename  = None
-        self._sticky    = False
         self._totals_ok = False
+        self._delaystamps.clear()
         self._counts.clear()
+        self._start_indexes.clear()
+        self._end_indexes.clear()
         self._processables.clear()
         self._hashes.clear()
         self.topics.clear()
@@ -770,6 +945,7 @@ class BagSource(Source, ConditionMixin):
         except Exception as e:
             ConsolePrinter.error("\nError opening %r: %s", filename or bag, e)
             if self.args.STOP_ON_ERROR: raise
+            if self.args.VERBOSE: traceback.print_exc()
             return False
 
         self._bag      = bag
@@ -789,9 +965,9 @@ class BagSource(Source, ConditionMixin):
         for topic in self.conditions_get_topics():  # Add topics used in conditions
             matches = [t for p in [common.wildcard_to_regex(topic, end=True)] for t in fulldct
                        if t == topic or "*" in topic and p.match(t)]
-            for topic in matches:
-                self.conditions_set_topic_state(topic, topic not in dct)
-                dct.setdefault(topic, fulldct[topic])
+            for realtopic in matches:
+                self.conditions_set_topic_state(realtopic, realtopic not in dct)
+                dct.setdefault(realtopic, fulldct[realtopic])
         self._topics = dct
         self._meta   = self.get_meta()
 
@@ -803,7 +979,7 @@ class BagSource(Source, ConditionMixin):
         return True
 
 
-class TopicSource(Source, ConditionMixin):
+class LiveSource(Source, ConditionMixin):
     """Produces messages from live ROS topics."""
 
     ## Seconds between refreshing available topics from ROS master.
@@ -812,7 +988,8 @@ class TopicSource(Source, ConditionMixin):
     ## Constructor argument defaults
     DEFAULT_ARGS = dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=None,
                         END_TIME=None, START_INDEX=None, END_INDEX=None, CONDITION=(),
-                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False, STOP_ON_ERROR=False)
+                        QUEUE_SIZE_IN=10, ROS_TIME_IN=False, PROGRESS=False, STOP_ON_ERROR=False,
+                        VERBOSE=False)
 
     def __init__(self, args=None, **kwargs):
         """
@@ -828,24 +1005,25 @@ class TopicSource(Source, ConditionMixin):
         @param   args.unique            emit messages that are unique in topic
         @param   args.select_field      message fields to use for uniqueness if not all
         @param   args.noselect_field    message fields to skip for uniqueness
-        @param   args.nth_message       read every Nth message in topic
-        @param   args.nth_interval      minimum time interval between messages in topic
+        @param   args.nth_message       read every Nth message in topic, starting from first
+        @param   args.nth_interval      minimum time interval between messages in topic,
+                                        as seconds or ROS duration
         @param   args.condition         Python expressions that must evaluate as true
                                         for message to be processable, see ConditionMixin
         @param   args.queue_size_in     subscriber queue size (default 10)
         @param   args.ros_time_in       stamp messages with ROS time instead of wall time
         @param   args.progress          whether to print progress bar
         @param   args.stop_on_error     stop execution on any error like unknown message type
+        @param   args.verbose           whether to print error stacktraces
         @param   kwargs                 any and all arguments as keyword overrides, case-insensitive
         """
-        args = ensure_namespace(args, TopicSource.DEFAULT_ARGS, **kwargs)
-        super(TopicSource, self).__init__(args)
+        args = ensure_namespace(args, LiveSource.DEFAULT_ARGS, **dict(kwargs, live=True))
+        super(LiveSource, self).__init__(args)
         ConditionMixin.__init__(self, args)
-        self._running = False  # Whether is in process of yielding messages from topics
-        self._queue   = None   # [(topic, msg, ROS time)]
-        self._subs    = {}     # {(topic, typename, typehash): ROS subscriber}
-
-        self._configure()
+        self._running    = False  # Whether is in process of yielding messages from topics
+        self._queue      = None   # [(topic, msg, ROS time)]
+        self._last_stamp = None   # ROS stamp of last message
+        self._subs       = {}     # {(topic, typename, typehash): ROS subscriber}
 
     def read(self):
         """Yields messages from subscribed ROS topics, as (topic, msg, ROS time)."""
@@ -858,36 +1036,51 @@ class TopicSource(Source, ConditionMixin):
             t = threading.Thread(target=self._run_refresh)
             t.daemon = True
             t.start()
+            if self.args.END_TIME:
+                self._last_stamp = None
+                t = threading.Thread(target=self._run_endtime_closer)
+                t.daemon = True
+                t.start()
 
         total = 0
-        self._init_progress()
+        self.init_progress()
         while self._running:
             topic, msg, stamp = self._queue.get()
             total += bool(topic)
-            self._update_progress(total, running=self._running and bool(topic))
-            if topic:
-                topickey = api.TypeMeta.make(msg, topic, self).topickey
-                self._counts[topickey] += 1
-                self.conditions_register_message(topic, msg)
-                if self.is_conditions_topic(topic, pure=True): continue  # while
+            self.update_progress(total, running=self._running and bool(topic))
+            if not topic: continue  # while
 
-                if not self.preprocess \
-                or self.is_processable(topic, msg, stamp, self._counts[topickey]):
-                    yield self.SourceMessage(topic, msg, stamp)
-                if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
-                    self._processables[topickey] = (self._counts[topickey], stamp)
+            topickey = api.TypeMeta.make(msg, topic, self).topickey
+            self._counts[topickey] += 1
+            self._last_stamp = stamp
+            self.conditions_register_message(topic, msg)
+            if self.is_conditions_topic(topic, pure=True): continue  # while
+
+            self._status = None
+            if not self.preprocess \
+            or self.is_processable(topic, msg, stamp, self._counts[topickey]):
+                yield self.SourceMessage(topic, msg, stamp)
+            if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
+                self._processables[topickey] = (self._counts[topickey], stamp)
         self._queue = None
         self._running = False
 
     def bind(self, sink):
         """Attaches sink to source and blocks until connected to ROS live."""
         if not self.validate(): raise Exception("invalid")
-        super(TopicSource, self).bind(sink)
+        super(LiveSource, self).bind(sink)
         api.init_node()
 
     def validate(self):
-        """Returns whether ROS environment is set, prints error if not."""
-        if self.valid is None: self.valid = api.validate(live=True)
+        """Returns whether ROS environment is set and arguments valid, prints error if not."""
+        if self.valid is not None: return self.valid
+        self.valid = Source.validate(self)
+        if not api.validate(live=True):
+            self.valid = False
+        if not ConditionMixin.validate(self):
+            self.valid = False
+        if self.valid:
+            self._configure()
         return self.valid
 
     def close(self):
@@ -898,16 +1091,16 @@ class TopicSource(Source, ConditionMixin):
         self._queue and self._queue.put((None, None, None))  # Wake up iterator
         self._queue = None
         ConditionMixin.close_batch(self)
-        super(TopicSource, self).close()
+        super(LiveSource, self).close()
 
     def get_meta(self):
         """Returns source metainfo data dict."""
         ENV = {k: os.getenv(k) for k in ("ROS_MASTER_URI", "ROS_DOMAIN_ID") if os.getenv(k)}
-        return dict(ENV, tcount=len(self.topics))
+        return dict(ENV, tcount=len(self.topics), scount=len(self._subs))
 
     def get_message_meta(self, topic, msg, stamp, index=None):
         """Returns message metainfo data dict."""
-        result = super(TopicSource, self).get_message_meta(topic, msg, stamp, index)
+        result = super(LiveSource, self).get_message_meta(topic, msg, stamp, index)
         topickey = (topic, result["type"], result["hash"])
         if topickey in self._subs:
             result.update(qoses=self._subs[topickey].get_qoses())
@@ -942,23 +1135,24 @@ class TopicSource(Source, ConditionMixin):
         if "ROS_DOMAIN_ID" in metadata:
             result += ", ROS domain ID %s" % metadata["ROS_DOMAIN_ID"]
         result += ", %s initially" % common.plural("topic", metadata["tcount"])
+        result += ", %s subscribed" % metadata["scount"]
         return result
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
-        if self.args.START_INDEX and index is not None:
-            if max(0, self.args.START_INDEX) >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
-            if 0 < self.args.END_INDEX < index:
-                return False
-        if not super(TopicSource, self).is_processable(topic, msg, stamp, index):
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
+        if not super(LiveSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
 
     def refresh_topics(self):
         """Refreshes topics and subscriptions from ROS live."""
         for topic, typename in api.get_topic_types():
+            topickey = (topic, typename, None)
+            self.topics[topickey] = None
             dct = common.filter_dict({topic: [typename]}, self.args.TOPIC, self.args.TYPE)
             if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
                 continue  # for topic, typename
@@ -967,8 +1161,7 @@ class TopicSource(Source, ConditionMixin):
                 if self.args.STOP_ON_ERROR: raise Exception(msg)
                 ConsolePrinter.warn(msg, __once=True)
                 continue  # for topic, typename
-            topickey = (topic, typename, None)
-            if topickey in self.topics:
+            if topickey in self._subs:
                 continue  # for topic, typename
 
             handler = functools.partial(self._on_message, topic)
@@ -979,25 +1172,22 @@ class TopicSource(Source, ConditionMixin):
                 ConsolePrinter.warn("Error subscribing to topic %s: %%r" % topic,
                                     e, __once=True)
                 if self.args.STOP_ON_ERROR: raise
+                if self.args.VERBOSE: traceback.print_exc()
                 continue  # for topic, typename
             self._subs[topickey] = sub
-            self.topics[topickey] = None
 
-    def _init_progress(self):
+    def init_progress(self):
         """Initializes progress bar, if any."""
         if self.args.PROGRESS and not self.bar:
-            self.bar = common.ProgressBar(afterword="ROS%s live" % api.ROS_VERSION,
-                                          aftertemplate=" {afterword}", pulse=True)
-            self.bar.start()
+            self.configure_progress(**self._make_progress_args())
+            super(LiveSource, self).init_progress()
 
-    def _update_progress(self, count, running=True):
+    def update_progress(self, count, running=True):
         """Updates progress bar, if any."""
         if self.bar:
-            afterword = "ROS%s live, %s" % (api.ROS_VERSION, common.plural("message", count))
-            self.bar.afterword, self.bar.max = afterword, count
-            if not running:
-                self.bar.pause, self.bar.pulse_pos = True, None
-            self.bar.update(count)
+            if count in (1, 2):  # Change plurality
+                self.configure_progress(**self._make_progress_args(count))
+            super(LiveSource, self).update_progress(count, running)
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
@@ -1006,6 +1196,26 @@ class TopicSource(Source, ConditionMixin):
         if self.args.END_TIME is not None:
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
+    def _make_progress_args(self, count=None):
+        """Returns dictionary with progress bar options, for specific nessage index if any."""
+        result = dict(afterword = "ROS%s live" % api.ROS_VERSION, pulse=True)
+        if self._bar_args.get("match_max") is not None:
+            result.update(max=self._bar_args["match_max"], pulse=False)
+
+        instr, outstr = "{value:,d} message%s" % ("" if count == 1 else "s"), ""
+        if any([self.args.CONDITION, self.args.UNIQUE, self.args.NTH_INTERVAL,
+                self.args.START_TIME, self.args.END_TIME]) or self.args.NTH_MESSAGE > 1:
+            self._bar_args.setdefault("source_value", 0)  # Separate counts if not all messages
+        if self._bar_args.get("source_value") is not None:
+            instr = "{source_value:,d} message%s" % ("" if count == 1 else "s")
+            outstr = "matched {value:,d}"
+            if self._bar_args.get("match_max") is not None: outstr += "/{match_max:,d}"
+        elif self._bar_args.get("match_max") is not None:
+            instr = "{value:,d}/{max:,d}"
+        result.update(aftertemplate=" {afterword} (%s)" % "  ".join(filter(bool, (instr, outstr))))
+
+        return result
+
     def _run_refresh(self):
         """Periodically refreshes topics and subscriptions from ROS live."""
         time.sleep(self.MASTER_INTERVAL)
@@ -1013,6 +1223,15 @@ class TopicSource(Source, ConditionMixin):
             try: self.refresh_topics()
             except Exception as e: self.thread_excepthook("Error refreshing live topics: %r" % e, e)
             time.sleep(self.MASTER_INTERVAL)
+
+    def _run_endtime_closer(self):
+        """Periodically checks whether END_TIME has been reached, closes source when so."""
+        time.sleep(self.MASTER_INTERVAL)
+        while self._running and self.args.END_TIME:
+            if self._last_stamp and self._last_stamp > self.args.END_TIME:
+                time.sleep(self.MASTER_INTERVAL)  # Allow some more arrivals just in case
+                self.close()
+            else: time.sleep(self.MASTER_INTERVAL)
 
     def _on_message(self, topic, msg):
         """Subscription callback handler, queues message for yielding."""
@@ -1044,8 +1263,9 @@ class AppSource(Source, ConditionMixin):
         @param   args.unique           emit messages that are unique in topic
         @param   args.select_field     message fields to use for uniqueness if not all
         @param   args.noselect_field   message fields to skip for uniqueness
-        @param   args.nth_message      read every Nth message in topic
-        @param   args.nth_interval     minimum time interval between messages in topic
+        @param   args.nth_message      read every Nth message in topic, starting from first
+        @param   args.nth_interval     minimum time interval between messages in topic,
+                                       as seconds or ROS duration
         @param   args.condition        Python expressions that must evaluate as true
                                        for message to be processable, see ConditionMixin
         @param   args.iterable         iterable yielding (topic, msg, stamp) or (topic, msg);
@@ -1060,14 +1280,13 @@ class AppSource(Source, ConditionMixin):
         self._queue = queue.Queue()  # [(topic, msg, ROS time)]
         self._reading = False
 
-        self._configure()
-
     def read(self):
         """
         Yields messages from iterable or pushed data, as (topic, msg, ROS timestamp).
 
         Blocks until a message is available, or source is closed.
         """
+        if not self.validate(): raise Exception("invalid")
         def generate(iterable):
             for x in iterable: yield x
         feeder = generate(self.args.ITERABLE) if self.args.ITERABLE else None
@@ -1083,10 +1302,11 @@ class AppSource(Source, ConditionMixin):
             self.conditions_register_message(topic, msg)
             if self.is_conditions_topic(topic, pure=True): continue  # while
 
+            self._status = None
             if not self.preprocess \
             or self.is_processable(topic, msg, stamp, self._counts[topickey]):
                 yield self.SourceMessage(topic, msg, stamp)
-            if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
+            if self._status and (self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0):
                 self._processables[topickey] = (self._counts[topickey], stamp)
         self._reading = False
 
@@ -1101,6 +1321,7 @@ class AppSource(Source, ConditionMixin):
         Returns (topic, msg, stamp) from push queue, or `None` if no queue
         or message in queue is condition topic only.
         """
+        if not self.validate(): raise Exception("invalid")
         item = None
         try: item = self._queue.get(block=False)
         except queue.Empty: pass
@@ -1114,6 +1335,7 @@ class AppSource(Source, ConditionMixin):
 
     def mark_queue(self, topic, msg, stamp):
         """Registers message produced from read_queue()."""
+        if not self.validate(): raise Exception("invalid")
         if self.args.NTH_MESSAGE > 1 or self.args.NTH_INTERVAL > 0:
             topickey = api.TypeMeta.make(msg, topic).topickey
             self._processables[topickey] = (self._counts[topickey], stamp)
@@ -1126,24 +1348,31 @@ class AppSource(Source, ConditionMixin):
         @param   msg    ROS message
         @param   stamp  message ROS timestamp, defaults to current wall time if `None`
         """
+        if not self.validate(): raise Exception("invalid")
         if topic is None: self._queue.put(None)
         else: self._queue.put((topic, msg, stamp or api.get_rostime(fallback=True)))
 
     def is_processable(self, topic, msg, stamp, index=None):
-        """Returns whether message passes source filters."""
+        """Returns whether message passes source filters; registers status."""
+        self._status = False
         dct = common.filter_dict({topic: [api.get_message_type(msg)]},
                                  self.args.TOPIC, self.args.TYPE)
         if not common.filter_dict(dct, self.args.SKIP_TOPIC, self.args.SKIP_TYPE, reverse=True):
             return False
-        if self.args.START_INDEX and index is not None:
-            if max(0, self.args.START_INDEX) >= index:
-                return False
-        if self.args.END_INDEX and index is not None:
-            if 0 < self.args.END_INDEX < index:
-                return False
         if not super(AppSource, self).is_processable(topic, msg, stamp, index):
             return False
-        return ConditionMixin.is_processable(self, topic, msg, stamp, index)
+        if not ConditionMixin.is_processable(self, topic, msg, stamp, index):
+            return False
+        self._status = True
+        return True
+
+    def validate(self):
+        """Returns whether configured arguments are valid, prints error if not."""
+        if self.valid is not None: return self.valid
+        self.valid = Source.validate(self)
+        if self.valid:
+            self._configure()
+        return self.valid
 
     def _configure(self):
         """Adjusts start/end time filter values to current time."""
@@ -1153,4 +1382,4 @@ class AppSource(Source, ConditionMixin):
             self.args.END_TIME = api.make_live_time(self.args.END_TIME)
 
 
-__all__ = ["AppSource", "BagSource", "ConditionMixin", "Source", "TopicSource"]
+__all__ = ["AppSource", "ConditionMixin", "BagSource", "LiveSource", "Source"]

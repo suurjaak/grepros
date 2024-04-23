@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    28.12.2023
+@modified    22.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -276,6 +276,185 @@ class ConsolePrinter(object):
         return text
 
 
+
+class ArgumentUtil(object):
+    """Namespace for program argument handling."""
+
+    UNSIGNED_INTS       = {"NTH_MESSAGE", "NTH_MATCH", "MAX_COUNT", "MAX_PER_TOPIC", "MAX_TOPICS",
+                           "BEFORE", "AFTER", "CONTEXT", "LINES_AROUND_MATCH", "MAX_FIELD_LINES",
+                           "MAX_MESSAGE_LINES", "WRAP_WIDTH", "QUEUE_SIZE_IN", "QUEUE_SIZE_OUT"}
+    UNSIGNED_FLOATS     = {"NTH_INTERVAL", "TIME_SCALE"}
+    SIGNED_INTS         = {"START_INDEX", "END_INDEX", "START_LINE", "END_LINE"}
+    STRINGS             = {"PUBLISH_PREFIX", "PUBLISH_SUFFIX", "PUBLISH_FIXNAME"}
+    STRING_COLLECTIONS  = {"TOPIC", "SKIP_TOPIC", "TYPE", "SKIP_TYPE", "SELECT_FIELD",
+                           "NO_SELECT_FIELD", "EMIT_FIELD", "NO_EMIT_FIELD", "MATCH_WRAPPER"}
+    NO_FLATTENS         = {"WRITE"}
+
+    UNSIGNED_WHEN       = {"START_INDEX": "LIVE", "END_INDEX": "LIVE"}
+    PRECASTS            = {"NTH_INTERVAL": lambda v: import_item("grepros.api").to_sec(v)}
+    DEDUPE_UNLESS       = {"PATTERN": "EXPRESSION"}
+
+
+    class HelpFormatter(argparse.RawTextHelpFormatter):
+        """RawTextHelpFormatter returning custom metavar for non-flattenable list arguments."""
+
+        def _format_action_invocation(self, action):
+            """Returns formatted invocation."""
+            # Avoids oververbose duplicate output like:
+            # --write TARGET [format=bag] [KEY=VALUE ...] [TARGET [format=bag] [KEY=VALUE ...] ...]
+            if action.dest in ArgumentUtil.NO_FLATTENS:
+                return " ".join(action.option_strings + [action.metavar])
+            return super(ArgumentUtil.HelpFormatter, self)._format_action_invocation(action)
+
+
+    @classmethod
+    def make_parser(cls, arguments, formatter=HelpFormatter):
+        """
+        Returns a configured ArgumentParser instance for program arguments.
+
+        @param  arguments  argparse options as {description, epilog, arguments: [], groups: []}
+        @param  formatter  help formatter class to use
+        """
+        kws = dict(description=arguments["description"], epilog=arguments["epilog"],
+                   formatter_class=formatter, add_help=False)
+        if sys.version_info >= (3, 5): kws.update(allow_abbrev=False)
+        argparser = argparse.ArgumentParser(**kws)
+        for arg in map(dict, arguments["arguments"]):
+            argparser.add_argument(*arg.pop("args"), **arg)
+        for group, groupargs in arguments.get("groups", {}).items():
+            grouper = argparser.add_argument_group(group)
+            for arg in map(dict, groupargs):
+                grouper.add_argument(*arg.pop("args"), **arg)
+        return argparser
+
+
+    @classmethod
+    def validate(cls, args, cli=False):
+        """
+        Converts and validates program argument namespace, prints and raises on error.
+
+        Returns new namespace with arguments in expected type and form.
+        """
+        args = cls.flatten(args)
+        cls.transform(args, cli)
+        if not cls.verify(args):
+            raise Exception("Invalid arguments")
+        return args
+
+
+    @classmethod
+    def flatten(cls, args):
+        """Returns new program argument namespace with list values flattened and deduplicated."""
+        args = structcopy(args)
+        for k, v in vars(args).items():
+            if not isinstance(v, list): continue  # for k, v
+            v2 = v
+            if k not in cls.NO_FLATTENS:
+                v2 = [x for xx in v2 for x in (xx if isinstance(xx, list) else [xx])]
+            if k not in cls.DEDUPE_UNLESS or not getattr(args, cls.DEDUPE_UNLESS[k], True):
+                v2 = [here.append(x) or x for here in ([],) for x in v2 if x not in here]
+            if v2 != v: setattr(args, k, v2)
+        return args
+
+
+    @classmethod
+    def transform(cls, args, cli=False):
+        """Sets command-line specific flag state to program argument namespace."""
+        if not cli: return
+
+        if args.CONTEXT:
+            args.BEFORE = args.AFTER = args.CONTEXT
+
+        # Show progress bar only if no console output
+        args.PROGRESS = args.PROGRESS and not args.CONSOLE
+
+        # Default to printing metadata for publish/write if no console output and no progress
+        args.VERBOSE = False if args.SKIP_VERBOSE else args.VERBOSE or \
+                       (False if args.PROGRESS else cli and not args.CONSOLE)
+
+        # Print filename prefix on each console message line if not single specific file
+        args.LINE_PREFIX = args.LINE_PREFIX and (args.RECURSE or len(args.FILE) != 1
+                                                 or args.PATH or any("*" in x for x in args.FILE))
+
+        for k, v in [("START_TIME", args.START_TIME), ("END_TIME", args.END_TIME)]:
+            if not isinstance(v, (six.binary_type, six.text_type)): continue  # for v, k
+            try: v = float(v)
+            except Exception: pass  # If numeric, retain string for source to read as relative time
+            try: v if isinstance(v, float) else setattr(args, k, parse_datetime(v))
+            except Exception: pass
+        
+
+    @classmethod
+    def verify(cls, args):
+        """
+        Validates arguments, prints errors, returns success.
+
+        @param   args  arguments object like argparse.Namespace
+        """
+        errors = []
+
+        # Validate --write .. key=value
+        for opts in getattr(args, "WRITE", []):  # List of lists, one for each --write
+            erropts = []
+            for opt in opts[1:]:
+                try: dict([opt.split("=", 1)])
+                except Exception: erropts.append(opt)
+            if erropts:
+                errors.append('Invalid KEY=VALUE in "--write %s": %s' %
+                              (" ".join(opts), " ".join(erropts)))
+
+        for n in ("START_TIME", "END_TIME"):
+            v = getattr(args, n, None)
+            if v is None: continue  # for v, n
+            try: v = float(v)
+            except Exception: pass
+            try: isinstance(v, (six.binary_type, six.text_type)) and parse_datetime(v)
+            except Exception: errors.append("Invalid ISO datetime for %s: %s" %
+                                            (n.lower().replace("_", " "), v))
+
+        errors.extend(cls.process_types(args))
+
+        for err in errors: ConsolePrinter.log(logging.ERROR, err)
+        return not errors
+
+
+    @classmethod
+    def process_types(cls, args):
+        """Converts and validates types in argument namespace, returns list of errors, if any."""
+        def cast(v, ctor):
+            try: return ctor(v), None
+            except Exception as e: return v, e
+
+        vals1, vals2, errors = vars(args), {}, {}
+
+        for k, f in cls.PRECASTS.items():
+            if vals1.get(k) is not None: vals1[k] = f(vals1[k])
+        for k, v in vals1.items():
+            if v is None: continue  # for k, v
+            err = None
+            if k in cls.UNSIGNED_INTS | cls.SIGNED_INTS: v, err = cast(v, int)
+            elif k in cls.UNSIGNED_FLOATS:               v, err = cast(v, float)
+            elif k in cls.STRINGS:                       v = str(v)
+            elif k in cls.STRING_COLLECTIONS:
+                v = [str(x) for x in (v if isinstance(v, (dict, list, set, tuple)) else [v])]
+            if not err and k in cls.UNSIGNED_INTS | cls.UNSIGNED_FLOATS and v < 0:
+                err = "Cannot be negative."
+            if not err and vals1.get(cls.UNSIGNED_WHEN.get(k)) and v < 0:
+                label = cls.UNSIGNED_WHEN[k].lower().replace("_", " ")
+                err = "Cannot be negative for %s." % label
+            (errors if err else vals2)[k] = err or v
+
+        error_texts = []
+        for k, err in errors.items():
+            text = "Invalid value for %s: %s" % (k.lower().replace("_", " "), getattr(args, k))
+            if isinstance(err, six.string_types): text += ". %s" % err
+            error_texts.append(text)
+        for k, v in vals2.items() if not errors else ():
+            setattr(args, k, v)
+        return error_texts
+
+
+
 class Decompressor(object):
     """Decompresses zstandard archives."""
 
@@ -357,7 +536,7 @@ class ProgressBar(threading.Thread):
 
     def __init__(self, max=100, value=0, min=0, width=30, forechar="-",
                  backchar=" ", foreword="", afterword="", interval=1,
-                 pulse=False, aftertemplate=" {afterword}"):
+                 pulse=False, aftertemplate=" {afterword}", **afterargs):
         """
         Creates a new progress bar, without drawing it yet.
 
@@ -371,20 +550,31 @@ class ProgressBar(threading.Thread):
         @param   afterword      text after progress bar
         @param   interval       ticker thread interval, in seconds
         @param   pulse          ignore value-min-max, use constant pulse instead
-        @param   aftertemplate  afterword format() template, populated with vars(self)
+        @param   aftertemplate  afterword format() template, populated with vars(self) and afterargs
+        @param   afterargs      additional keywords for aftertemplate formatting
         """
         threading.Thread.__init__(self)
-        for k, v in locals().items(): setattr(self, k, v) if "self" != k else 0
-        afterword = aftertemplate.format(**vars(self))
-        self.daemon    = True   # Daemon threads do not keep application running
-        self.percent   = None   # Current progress ratio in per cent
-        self.value     = None   # Current progress bar value
-        self.pause     = False  # Whether drawing is currently paused
-        self.pulse_pos = 0      # Current pulse position
+        self.max           = max
+        self.value         = value
+        self.min           = min
+        self.width         = width
+        self.forechar      = forechar
+        self.backchar      = backchar
+        self.foreword      = foreword
+        self.afterword     = afterword
+        self.interval      = interval
+        self.pulse         = pulse
+        self.aftertemplate = aftertemplate
+        self.afterargs     = afterargs
+        self.daemon        = True   # Daemon threads do not keep application running
+        self.percent       = None   # Current progress ratio in per cent
+        self.value         = 0      # Current progress bar value
+        self.pause         = False  # Whether drawing is currently paused
+        self.pulse_pos     = 0      # Current pulse position
         self.bar = "%s[%s%s]%s" % (foreword,
                                    backchar if pulse else forechar,
                                    backchar * (width - 3),
-                                   afterword)
+                                   aftertemplate.format(**dict(vars(self), **self.afterargs)))
         self.printbar = self.bar   # Printable text, with padding to clear previous
         self.progresschar = itertools.cycle("-\\|/")
         self.is_running = False
@@ -392,8 +582,10 @@ class ProgressBar(threading.Thread):
 
     def update(self, value=None, draw=True, flush=False):
         """Updates the progress bar value, and refreshes by default; returns self."""
-        if value is not None: self.value = min(self.max, max(self.min, value))
-        afterword = self.aftertemplate.format(**vars(self))
+        if value is not None:
+            self.value = value if self.pulse else min(self.max, max(self.min, value))
+        args = dict(vars(self), **self.afterargs) if self.afterargs else vars(self)
+        afterword = self.aftertemplate.format(**args)
         w_full = self.width - 2
         if self.pulse:
             if self.pulse_pos is None:
@@ -642,15 +834,15 @@ class TextWrapper(object):
             cur_line.append(reversed_chunks.pop())
 
 
-
 def drop_zeros(v, replace=""):
-    """Drops or replaces trailing zeros and empty decimal separator, if any."""
-    return re.sub(r"\.?0+$", lambda x: len(x.group()) * replace, str(v))
+    """Drops trailing zeros and empty decimal separator, if any."""
+    repl = lambda m: ("." if m[1] or replace else "") + (m[1] or "") + len(m[2]) * replace
+    return re.sub(r"\.(\d*[1-9])?(0+)$", repl, str(v))
 
 
 def ellipsize(text, limit, ellipsis=".."):
     """Returns text ellipsized if beyond limit."""
-    if limit <= 0 or len(text) < limit:
+    if limit <= 0 or len(text) <= limit:
         return text
     return text[:max(0, limit - len(ellipsis))] + ellipsis
 
@@ -669,7 +861,7 @@ def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     """
     if val is None or isinstance(val, dict): val = argparse.Namespace(**val or {})
     else: val = structcopy(val)
-    for k, v in vars(val).items():
+    for k, v in list(vars(val).items()):
         if not k.isupper():
             delattr(val, k)
             setattr(val, k.upper(), v)
@@ -679,7 +871,7 @@ def ensure_namespace(val, defaults=None, dashify=("WRITE_OPTIONS", ), **kwargs):
     for k, v in ((k.upper(), v) for k, v in (defaults.items() if defaults else ())):
         if isinstance(v, (tuple, list)) and not isinstance(getattr(val, k), (tuple, list)):
             setattr(val, k, [getattr(val, k)])
-    for arg in (getattr(val, n, None) for n in dashify or ()):
+    for arg in (getattr(val, n.upper(), None) for n in dashify or ()):
         for k in (list(arg) if isinstance(arg, dict) else []):
             if isinstance(k, six.text_type) and "_" in k and 0 < k.index("_") < len(k) - 1:
                 arg[k.replace("_", "-", 1)] = arg.pop(k)
@@ -712,40 +904,39 @@ def filter_dict(dct, keys=(), values=(), reverse=False):
     return result
 
 
-def find_files(names=(), paths=(), extensions=(), skip_extensions=(), recurse=False):
+def find_files(names=(), paths=(), suffixes=(), skip_suffixes=(), recurse=False):
     """
     Yields filenames from current directory or given paths.
 
     Seeks only files with given extensions if names not given.
     Logs errors for names and paths not found.
 
-    @param   names            list of specific files to return (supports * wildcards)
-    @param   paths            list of paths to look under, if not using current directory
-    @param   extensions       list of extensions to select if not using names, as (".ext1", ..)
-    @param   skip_extensions  list of extensions to skip if not using names, as (".ext1", ..)
-    @param   recurse          whether to recurse into subdirectories
+    @param   names          list of specific files to return (supports * wildcards)
+    @param   paths          list of paths to look under, if not using current directory
+    @param   suffixes       list of suffixes to select if no wilcarded names, as (".ext1", ..)
+    @param   skip_suffixes  list of suffixes to skip if no wildcarded names, as (".ext1", ..)
+    @param   recurse        whether to recurse into subdirectories
     """
     namesfound, pathsfound = set(), set()
+    ok = lambda f: (not suffixes or any(map(f.endswith, suffixes))) \
+                   and not any(map(f.endswith, skip_suffixes))
     def iter_files(directory):
         """Yields matching filenames from path."""
         if os.path.isfile(directory):
             ConsolePrinter.log(logging.ERROR, "%s: Is a file", directory)
             return
-        for path in sorted(glob.glob(directory)):  # Expand * wildcards, if any
+        for root in sorted(glob.glob(directory)):  # Expand * wildcards, if any
             pathsfound.add(directory)
-            for n in names:
-                p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
-                for f in (f for f in glob.glob(p) if "*" not in n
-                          or not any(map(f.endswith, skip_extensions))):
-                    if os.path.isdir(f):
-                        ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
-                        continue  # for n
-                    namesfound.add(n)
-                    yield f
-            for root, _, files in os.walk(path) if not names else ():
-                for f in (os.path.join(root, f) for f in sorted(files)
-                          if (not extensions or any(map(f.endswith, extensions)))
-                          and not any(map(f.endswith, skip_extensions))):
+            for path, _, files in os.walk(root):
+                for n in names:
+                    p = n if not paths or os.path.isabs(n) else os.path.join(path, n)
+                    for f in (f for f in glob.glob(p) if "*" not in n or ok(f)):
+                        if os.path.isdir(f):
+                            ConsolePrinter.log(logging.ERROR, "%s: Is a directory", f)
+                            continue  # for f
+                        namesfound.add(n)
+                        yield f
+                for f in () if names else (os.path.join(root, f) for f in sorted(files) if ok(f)):
                     yield f
                 if not recurse:
                     break  # for root
@@ -778,13 +969,14 @@ def format_timedelta(delta):
 
 def format_bytes(size, precision=2, inter=" ", strip=True):
     """Returns a formatted byte size (like 421.40 MB), trailing zeros optionally removed."""
-    result = "0 bytes"
-    if size:
-        UNITS = [("bytes", "byte")[1 == size]] + [x + "B" for x in "KMGTPEZY"]
+    result = "" if math.isinf(size) or math.isnan(size) else "0 bytes"
+    if size and result:
+        UNITS = ["bytes"] + [x + "B" for x in "KMGTPEZY"]
+        size, sign = abs(size), ("-" if size < 0 else "")
         exponent = min(int(math.log(size, 1024)), len(UNITS) - 1)
         result = "%.*f" % (precision, size / (1024. ** exponent))
-        result += "" if precision > 0 else "."  # Do not strip integer zeroes
-        result = (drop_zeros(result) if strip else result) + inter + UNITS[exponent]
+        if strip: result = drop_zeros(result)
+        result = sign + result + inter + (UNITS[exponent] if result != "1" or exponent else "byte")
     return result
 
 
@@ -804,10 +996,13 @@ def get_name(obj):
     if inspect.ismodule(obj): return namer(obj)
     if inspect.isclass(obj):  return ".".join((obj.__module__, namer(obj)))
     if inspect.isroutine(obj):
-        parts, self = [], six.get_method_self(obj)
-        if self is not None:           parts.extend((get_name(self), obj.__name__))
-        elif hasattr(obj, "im_class"): parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
-        else:                          parts.extend((obj.__module__, namer(obj)))          # Py3
+        parts = []
+        try: self = six.get_method_self(obj)
+        except Exception: self = None
+        if self is not None:             parts.extend((get_name(self), obj.__name__))
+        elif hasattr(obj, "im_class"):   parts.extend((get_name(obj.im_class), namer(obj)))  # Py2
+        elif hasattr(obj, "__module__"): parts.extend((obj.__module__, namer(obj)))
+        else:                            parts.append(namer(obj))
         return ".".join(parts)
     cls = type(obj)
     return "%s.%s<0x%x>" % (cls.__module__, namer(cls), id(obj))
@@ -817,7 +1012,7 @@ def has_arg(func, name):
     """Returns whether function supports taking specified argument by name."""
     spec = getattr(inspect, "getfullargspec", getattr(inspect, "getargspec", None))(func)  # Py3/Py2
     return name in spec.args or name in getattr(spec, "kwonlyargs", ()) or \
-           getattr(spec, "varkw", None) or getattr(spec, "keywords", None)
+           bool(getattr(spec, "varkw", None) or getattr(spec, "keywords", None))
 
 
 def import_item(name):
@@ -892,12 +1087,13 @@ def memoize(func):
 
 
 def merge_dicts(d1, d2):
-    """Merges d2 into d1, recursively for nested dicts."""
+    """Merges d2 into d1, recursively for nested dicts, returns d1."""
     for k, v in d2.items():
         if k in d1 and isinstance(v, dict) and isinstance(d1[k], dict):
             merge_dicts(d1[k], v)
         else:
             d1[k] = v
+    return d1
 
 
 def merge_spans(spans, join_blanks=False):
@@ -933,7 +1129,7 @@ def parse_datetime(text):
     text = re.sub(r"\D", "", text)
     text += BASE[len(text):] if text else ""
     dt = datetime.datetime.strptime(text[:len(BASE)], "%Y%m%d%H%M%S")
-    return dt + datetime.timedelta(microseconds=int(text[len(BASE):] or "0"))
+    return dt + datetime.timedelta(microseconds=int(text[len(BASE):][:6] or "0"))
 
 
 def parse_number(value, suffixes=None):
@@ -948,6 +1144,24 @@ def parse_number(value, suffixes=None):
         suffix = next((k for k, v in suffixes.items() if value.lower().endswith(k.lower())), None)
         value = value[:-len(suffix)] if suffix else value
     return int(float(value) * (suffixes[suffix] if suffix else 1))
+
+
+def path_to_regex(text, sep=".", wildcard="*", end=False, intify=False):
+    """
+    Returns re.Pattern for matching path strings with optional integer indexes.
+
+    @param   text      separated wildcarded path pattern like "foo*.bar"
+    @param   sep       path parts separator, optional
+    @param   wildcard  simple wildcard to convert to Python wildcard pattern, optional
+    @param   end       whether pattern should match until end (terminates with $)
+    @param   intify    whether path should match optional integer index between parts,
+                       like "foo.bar" as "foo(\.\d+)?\.bar"
+    """
+    pattern, split_wild = "", lambda x: x.split(wildcard) if wildcard else [x]
+    for i, part in enumerate(text.split(sep) if sep else [text]):
+        pattern += (r"(%s\d+)?" % re.escape(sep)) if i and intify else ""
+        pattern += (re.escape(sep) if i else "") + ".*".join(map(re.escape, split_wild(part)))
+    return re.compile(pattern + ("$" if end else ""), re.I)
 
 
 def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf=""):
@@ -965,12 +1179,12 @@ def plural(word, items=None, numbers=True, single="1", sep=",", pref="", suf="")
     """
     count   = len(items) if hasattr(items, "__len__") else items or 0
     isupper = word[-1:].isupper()
-    suffix = "es" if word and word[-1:].lower() in "xyz" \
+    suffix = "es" if word and word[-1:].lower() in "sxyz" \
              and not word[-2:].lower().endswith("ay") \
              else "s" if word else ""
-    if isupper: suffix = suffix.upper()
     if count != 1 and "es" == suffix and "y" == word[-1:].lower():
         word = word[:-1] + ("I" if isupper else "i")
+    if isupper: suffix = suffix.upper()
     result = word + ("" if 1 == count else suffix)
     if numbers and items is not None:
         if 1 == count: fmtcount = single
@@ -1058,6 +1272,7 @@ def verify_io(f, mode):
                     paths_created.append(curpath)
         elif not present and "r" == mode:
             return False
+        op = " opening"
         with open(f, {"r": "rb", "w": "ab", "a": "ab+"}[mode]) as g:
             if mode in ("r", "a"):
                 op = " reading from"
@@ -1067,7 +1282,7 @@ def verify_io(f, mode):
                 result, _ = True, g.write(b"")
             return result
     except Exception as e:
-        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", f, e)
+        ConsolePrinter.log(logging.ERROR, "Error%s %s: %s", op, f, e)
         return False
     finally:
         if not present:
@@ -1089,9 +1304,10 @@ def wildcard_to_regex(text, end=False):
 
 
 __all__ = [
-    "PATH_TYPES", "ConsolePrinter", "Decompressor", "MatchMarkers", "ProgressBar", "TextWrapper",
-    "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict", "find_files",
-    "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg", "import_item",
-    "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
-    "parse_datetime", "parse_number", "plural", "unique_path", "verify_io", "wildcard_to_regex",
+    "PATH_TYPES", "ArgumentUtil", "ConsolePrinter", "Decompressor", "LenIterable", "MatchMarkers",
+    "ProgressBar", "TextWrapper", "drop_zeros", "ellipsize", "ensure_namespace", "filter_dict",
+    "find_files", "format_bytes", "format_stamp", "format_timedelta", "get_name", "has_arg",
+    "import_item", "is_iterable", "is_stream", "makedirs", "memoize", "merge_dicts", "merge_spans",
+    "parse_datetime", "parse_number", "path_to_regex", "plural", "unique_path", "verify_io",
+    "wildcard_to_regex",
 ]

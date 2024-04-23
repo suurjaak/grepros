@@ -9,12 +9,13 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.12.2021
-@modified    22.12.2023
+@modified    22.02.2024
 ------------------------------------------------------------------------------
 """
 import contextlib
 import logging
 import glob
+import inspect
 import os
 import sqlite3
 import subprocess
@@ -33,6 +34,15 @@ else:
     import rosidl_runtime_py.utilities
 
 logger = logging.getLogger()
+
+
+# Helpers for formatting class and function names
+ARGS = lambda *a, **w: "" if not (a or w) else "(%s)" % \
+                       ", ".join(filter(bool, [", ".join(map(repr, a)),
+                                               ", ".join("%s=%r" % x for x in w.items())]))
+NAME = lambda x, *a, **w: "%s.%s%s" % (x.__module__, x.__name__,
+                                       ARGS(*a, **w) if a or w or not inspect.isclass(x) else "")
+ERR  = lambda x, *a, **w: "Unexpected result from %s." % NAME(x, *a, **w)
 
 
 def init_logging(name):
@@ -131,7 +141,9 @@ class TestBase(unittest.TestCase):
     def create_publisher(self, topic, cls):
         if os.getenv("ROS_VERSION") == "1":
             return rospy.Publisher(topic, cls, queue_size=10)
-        return self._node.create_publisher(cls, topic, 10)
+        pub = self._node.create_publisher(cls, topic, 10)
+        pub.get_num_connections = pub.get_subscription_count
+        return pub
 
 
     def init_node(self):
@@ -161,7 +173,7 @@ class TestBase(unittest.TestCase):
 
 
     def spin_once(self, timeout):
-        """"""
+        """Spins once if ROS2 else sleeps until timeout."""
         if self._node: rclpy.spin_once(self._node, timeout_sec=timeout)
         else: time.sleep(timeout)
 
@@ -206,7 +218,7 @@ class Ros1LogHandler(logging.Handler):
     """Logging handler that forwards logging messages to rospy.logwarn."""
 
     def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(Ros1LogHandler, self).__init__(*args, **kwargs)
         self.__name = name
 
     def emit(self, record):
