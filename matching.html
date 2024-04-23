@@ -90,6 +90,18 @@ Use case-sensitive matching in patterns (default is insensitive):
 --no-ignore-case
 </pre>
 
+<p>
+Give pattern as a logical expression like <code>this AND (this2 OR NOT "skip this")</code>,
+with elements as patterns to find in message fields:
+</p>
+
+<pre>
+-e
+--expression
+
+<code class="comment"># (Match live messages containing 'cpu' or 'memory')</code>
+cpu OR memory --expression --live
+</pre>
 
 <h3 id="limits">Limits</h3>
 
@@ -116,12 +128,11 @@ Emit a specified number of matches per topic (per each file if bag input):
 </pre>
 
 <p>
-Emit every Nth match in topic:
+Emit every Nth match in topic, starting from first:
 </p>
 <pre>
---every-nth-match 10  <code class="comment"># (skips 9 matches in topic after each match emitted)</code>
+--every-nth-match 10  <code class="comment"># (emits matches #1 #11 #21 ..)</code>
 </pre>
-
 
 <h3 id="filtering">Filtering</h3>
 
@@ -219,10 +230,10 @@ Stop reading at a specific message index in topic:
 </pre>
 
 <p>
-Read every Nth message in topic:
+Read every Nth message in topic, starting from first:
 </p>
 <pre>
---every-nth-message 10  <code class="comment"># (skips 9 messages in topic with each step)</code>
+--every-nth-message 10  <code class="comment"># (reads messages #1 #11 #21 ..)</code>
 </pre>
 
 <p>

@@ -179,6 +179,16 @@ Scan specific paths instead of current directory (supports <code>*</code> wildca
 </pre>
 
 <p>
+Emit messages on original bag timeline from first matched message,
+optionally with a speedup or slowdown factor:
+</p>
+<pre>
+--time-scale       <code class="comment"># At original rate</code>
+--time-scale 2     <code class="comment"># Twice faster</code>
+--time-scale 0.5   <code class="comment"># Twice slower</code>
+</pre>
+
+<p>
 Reindex unindexed ROS1 bags before processing
 <br />
 (note: creates backup copies of files, into same directory as file):

@@ -49,7 +49,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
-  -v, --invert-match    select messages not matching PATTERN
+  -v, --invert-match    select messages not matching PATTERNs
+  -e, --expression      PATTERNs are a logical expression
+                        like 'this AND (this2 OR NOT "skip this")',
+                        with elements as patterns to find in message fields
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
@@ -81,14 +84,11 @@ optional arguments:
                                                    else for any nested types
                                                    (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
-                          overwrite=true|false     overwrite existing file 
+                          overwrite=true|false     overwrite existing file
                                                    in bag/CSV/HTML/MCAP/Parquet/SQL/SQLite output
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
-                          rollover-size=NUM        size limit for individual files
-                                                   in bag/HTML/MCAP/SQLite output
-                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-count=NUM       message limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    (supports abbreviations like 1K or 2M or 3G)
@@ -96,6 +96,9 @@ optional arguments:
                                                    message time span limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-template=STR    output filename template for individual files
                                                    in bag/HTML/MCAP/SQLite output,
                                                    supporting strftime format codes like "%H-%M-%S"
@@ -125,8 +128,8 @@ Filtering:
   --condition CONDITION [CONDITION ...]
                         extra conditions to require for matching messages,
                         as ordinary Python expressions, can refer to last messages
-                        in topics as &lt;topic /my/topic&gt;; topic name can contain wildcards.
-                        E.g. --condition "&lt;topic /robot/enabled&gt;.data" matches
+                        in topics as <topic /my/topic>; topic name can contain wildcards.
+                        E.g. --condition "<topic /robot/enabled>.data" matches
                         messages only while last message in '/robot/enabled' has data=true.
   -t0 TIME, --start-time TIME
                         earliest timestamp of messages to read
@@ -151,11 +154,11 @@ Filtering:
                         message index within topic to stop at
                         (1-based if positive, counts back from bag total if negative)
   --every-nth-message NUM
-                        read every Nth message within topic
+                        read every Nth message within topic, starting from first
   --every-nth-interval SECONDS
                         read messages at least N seconds apart within topic
   --every-nth-match NUM
-                        emit every Nth match in topic
+                        emit every Nth match in topic, starting from first
   -sf FIELD [FIELD ...], --select-field FIELD [FIELD ...]
                         message fields to use in matching if not all
                         (supports nested.paths and * wildcards)
@@ -215,7 +218,7 @@ Output control:
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
-                        for publishing and writing
+                        for publishing and writing, and error stacktraces
   --no-verbose          do not print status messages during console output
                         for publishing and writing
 
@@ -232,6 +235,9 @@ Bag input control:
   --decompress          decompress archived bagfiles with recognized extensions (.zst .zstd)
   --reindex-if-unindexed
                         reindex unindexed bagfiles (ROS1 only), makes backup copies
+  --time-scale [FACTOR]
+                        emit messages on original bag timeline from first matched message,
+                        optionally with a speedup or slowdown factor
 
 Live topic control:
   --publish-prefix PREFIX

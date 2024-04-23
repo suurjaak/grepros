@@ -35,13 +35,52 @@
 <h2>Changelog</h2>
 
 
+<h4>1.2.0 (2024-04-23)</h4>
+<ul>
+  <li>add --expression option to give pattern as a logical expression<br />
+      like <code>this AND (this2 OR NOT "skip this")</code></li>
+  <li>add --time-scale option to emit messages in bag timeline</li>
+  <li>count --every-nth-message from --start-index</li>
+  <li>support explicit integer indexes in filtering nested message fields</li>
+  <li>add separate match counts to progress bar where relevant</li>
+  <li>print error stacktraces when --verbose</li>
+  <li>make api.dict_to_message() support nested ROS messages in dictionary</li>
+  <li>make api.get_message_value() accept a default</li>
+  <li>support fractional values in --every-nth-interval option</li>
+  <li>support <code>--lines-per-message 0</code></li>
+  <li>stop bag reading when reaching --end-index in each topic</li>
+  <li>stop bag and live reading when reaching --end-time in each topic</li>
+  <li>add result message count in HTML output</li>
+  <li>add total topic count to output metadata when grepping live topics</li>
+  <li>rename TopicSource and TopicSink to LiveSource and LiveSink</li>
+  <li>fix parsing and hashing message type definitions with leading whitespace</li>
+  <li>fix negative --start-index and --end-index ignoring different counts in bag topics</li>
+  <li>fix --every-nth-interval not working when messages continuously close</li>
+  <li>fix emitting invalid YAML for nested message arrays</li>
+  <li>fix using --filename with --recursive</li>
+  <li>fix preparing patterns for early message skip</li>
+  <li>fix program not exiting properly on exception in background thread,<br />
+      like ROS master shutting down when grepping live topics</li>
+  <li>fix intermittent concurrency issues in HTML output</li>
+  <li>fix api.make_bag_time() and api.make_live_time() for Duration parameter</li>
+  <li>fix handling already deserialized clock messages when grepping ROS1 live topics in sim time</li>
+  <li>fix invalid error message when trying to write to unwritable path</li>
+  <li>improve auto-detecting MCAP and ROS2 .db3 bags</li>
+  <li>validate all arguments, check signedness</li>
+  <li>print detailed output statistics only in verbose mode</li>
+  <li>default to non-verbose mode when using progress bar</li>
+  <li>add Source.configure() and Sink.configure()</li>
+  <li>avoid UserWarning from PyArrow in Parquet output</li>
+  <li>avoid pointless stacktrace upon multiple Ctrl-C when </li>grepping live topics
+</ul>
+
 <h4>1.1.0 (2024-01-03)</h4>
 <ul>
   <li>add support for splitting files in bag/HTML/MCAP/SQLite output</li>
   <li>add api.to_duration()</li>
   <li>do not use partial match for topic and typename filters without wildcards</li>
   <li>support patterns yielding zero-length matches like "(?!not_this)"</li>
-  <li>support search over message fields in conditions as `--condition "value in msg"`</li>
+  <li>support search over message fields in conditions as <code>--condition "value in msg"</code></li>
   <li>support giving dashed names like "rollover-size" in format-specific write options
       as underscored "rollover_size" instead</li>
   <li>disallow unknown command-line flags and partial abbreviations</li>
