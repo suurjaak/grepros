@@ -185,18 +185,18 @@ Scan specific paths instead of current directory (supports * wildcards):
     -p     /home/bags/2021-11-*
     --path my/dir
 
-Reindex unindexed ROS1 bags before processing
-(note: creates backup copies of files, into same directory as file):
-
-    --reindex-if-unindexed
-    --reindex-if-unindexed --progress
-
 Emit messages on original bag timeline from first matched message,
 optionally with a speedup or slowdown factor:
 
     --time-scale       # At original rate
     --time-scale 2     # Twice faster
     --time-scale 0.5   # Twice slower
+
+Reindex unindexed ROS1 bags before processing
+(note: creates backup copies of files, into same directory as file):
+
+    --reindex-if-unindexed
+    --reindex-if-unindexed --progress
 
 Decompress archived ROS bags before processing
 (`.zst` `.zstd` extensions, requires `zstandard` Python package)
@@ -420,7 +420,7 @@ with elements as patterns to find in message fields:
     -e
     --expression
 
-    # Example: match live messages containing `cpu` or `memory`:
+    # (Match live messages containing 'cpu' or 'memory')
     cpu OR memory --expression --live
 
 
@@ -667,7 +667,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -F, --fixed-strings   PATTERNs are ordinary strings, not regular expressions
   -I, --no-ignore-case  use case-sensitive matching in PATTERNs
-  -v, --invert-match    select messages not matching PATTERN
+  -v, --invert-match    select messages not matching PATTERNs
+  -e, --expression      PATTERNs are a logical expression
+                        like 'this AND (this2 OR NOT "skip this")',
+                        with elements as patterns to find in message fields
   --version             display version information and exit
   --live                read messages from live ROS topics instead of bagfiles
   --publish             publish matched messages to live ROS topics
@@ -699,14 +702,11 @@ optional arguments:
                                                    else for any nested types
                                                    (array fields in parent will be populated 
                                                     with foreign keys instead of messages as JSON)
-                          overwrite=true|false     overwrite existing file 
+                          overwrite=true|false     overwrite existing file
                                                    in bag/CSV/HTML/MCAP/Parquet/SQL/SQLite output
                                                    instead of appending to if bag or database
                                                    or appending unique counter to file name
                                                    (default false)
-                          rollover-size=NUM        size limit for individual files
-                                                   in bag/HTML/MCAP/SQLite output
-                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-count=NUM       message limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    (supports abbreviations like 1K or 2M or 3G)
@@ -714,6 +714,9 @@ optional arguments:
                                                    message time span limit for individual files
                                                    in bag/HTML/MCAP/SQLite output
                                                    as seconds (supports abbreviations like 60m or 2h or 1d)
+                          rollover-size=NUM        size limit for individual files
+                                                   in bag/HTML/MCAP/SQLite output
+                                                   as bytes (supports abbreviations like 1K or 2M or 3G)
                           rollover-template=STR    output filename template for individual files
                                                    in bag/HTML/MCAP/SQLite output,
                                                    supporting strftime format codes like "%H-%M-%S"
@@ -833,7 +836,7 @@ Output control:
   --no-console-output   do not print matches to console
   --progress            show progress bar when not printing matches to console
   --verbose             print status messages during console output
-                        for publishing and writing
+                        for publishing and writing, and error stacktraces
   --no-verbose          do not print status messages during console output
                         for publishing and writing
 
