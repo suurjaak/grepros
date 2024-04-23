@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     15.12.2022
-@modified    24.03.2024
+@modified    23.04.2024
 ------------------------------------------------------------------------------
 """
 import glob
@@ -344,13 +344,14 @@ class TestLibrary(testbase.TestBase):
         logger.debug("Verifying sink rollover.")
         SINKS = [grepros.BagSink, grepros.HtmlSink, grepros.SqliteSink] + \
                 ([grepros.McapSink] if ".mcap" in api.BAG_EXTENSIONS else [])
-        TEMPLATE = "test_%Y_%m_%d__%(index)s__%(index)s"
+        TEMPLATE = "test_%Y_%m_%d__%(index)02d__%(index)02d"
         OPTS = [  # [({..rollover opts..}, (min files, max files or None for undetermined))]
             (dict(rollover_size=2000),    (2, None)),
             (dict(rollover_count=40),     (2, 3)),
             (dict(rollover_duration=40),  (2, 3)),
         ]
-        OPT_OVERRIDES = {grepros.McapSink: dict(rollover_size=None)}  # MCAP has 1MB cache
+        OPT_OVERRIDES = {grepros.McapSink:   dict(rollover_size=None),  # MCAP has 1MB cache
+                         grepros.SqliteSink: dict(rollover_size=65535)}
 
         START = api.to_time(12345)
         for cls in SINKS:
