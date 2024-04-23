@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -113,9 +113,9 @@ Inheritance diagram for Sink:</div>
 <area shape="poly" title=" " alt="" coords="34,238,42,205,55,166,75,125,102,89,121,76,124,81,106,93,80,128,60,168,47,206,39,239"/>
 <area shape="rect" href="classgrepros_1_1outputs_1_1_console_sink.html" title="Prints messages to console." alt="" coords="109,104,212,129"/>
 <area shape="poly" title=" " alt="" coords="39,238,63,188,81,162,102,139,120,127,123,132,106,143,85,165,68,191,44,240"/>
-<area shape="rect" href="classgrepros_1_1outputs_1_1_multi_sink.html" title="Combines any number of sinks." alt="" coords="119,153,202,179"/>
+<area shape="rect" href="classgrepros_1_1outputs_1_1_live_sink.html" title="Publishes messages to ROS topics." alt="" coords="122,153,199,179"/>
 <area shape="poly" title=" " alt="" coords="49,239,73,213,102,188,123,176,126,181,106,192,77,217,53,243"/>
-<area shape="rect" href="classgrepros_1_1outputs_1_1_topic_sink.html" title="Publishes messages to ROS topics." alt="" coords="119,203,202,228"/>
+<area shape="rect" href="classgrepros_1_1outputs_1_1_multi_sink.html" title="Combines any number of sinks." alt="" coords="119,203,202,228"/>
 <area shape="poly" title=" " alt="" coords="68,248,125,226,127,231,70,253"/>
 <area shape="rect" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html" title="Writes messages to CSV files, each topic to a separate file." alt="" coords="123,252,198,277"/>
 <area shape="poly" title=" " alt="" coords="70,262,123,262,123,267,70,267"/>
@@ -155,6 +155,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down output, closing any files or connections.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates sink configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a520532788b9ddd6f698ddf31076d6320"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a520532788b9ddd6f698ddf31076d6320">emit</a> (self, topic, msg, stamp=None, match=None, index=None)</td></tr>
 <tr class="memdesc:a520532788b9ddd6f698ddf31076d6320"><td class="mdescLeft">&#160;</td><td class="mdescRight">Outputs ROS message.  <br /></td></tr>
 <tr class="separator:a520532788b9ddd6f698ddf31076d6320"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -171,7 +174,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a180ccf96b1f552dfe673627ec3305ad3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles exception, used by background threads.  <br /></td></tr>
 <tr class="separator:a180ccf96b1f552dfe673627ec3305ad3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether sink prerequisites are met (like ROS environment set if TopicSink).  <br /></td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether sink prerequisites are met (like ROS environment set if LiveSink).  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -239,7 +242,7 @@ Static Public Attributes</h2></td></tr>
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a250d8f02920667a07450a78c04cc6c68">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a250d8f02920667a07450a78c04cc6c68">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html#a250d8f02920667a07450a78c04cc6c68">TopicSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a250d8f02920667a07450a78c04cc6c68">AppSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a250d8f02920667a07450a78c04cc6c68">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a250d8f02920667a07450a78c04cc6c68">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a250d8f02920667a07450a78c04cc6c68">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html#a250d8f02920667a07450a78c04cc6c68">PostgresSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a250d8f02920667a07450a78c04cc6c68">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a250d8f02920667a07450a78c04cc6c68">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a250d8f02920667a07450a78c04cc6c68">ParquetSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a250d8f02920667a07450a78c04cc6c68">SqlSink</a>, and <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ab75625f2ddff73d935386031d0575b96">MultiSink</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a250d8f02920667a07450a78c04cc6c68">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a250d8f02920667a07450a78c04cc6c68">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html#a250d8f02920667a07450a78c04cc6c68">LiveSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a250d8f02920667a07450a78c04cc6c68">AppSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a250d8f02920667a07450a78c04cc6c68">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a250d8f02920667a07450a78c04cc6c68">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a250d8f02920667a07450a78c04cc6c68">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html#a250d8f02920667a07450a78c04cc6c68">PostgresSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a250d8f02920667a07450a78c04cc6c68">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a250d8f02920667a07450a78c04cc6c68">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a250d8f02920667a07450a78c04cc6c68">ParquetSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a250d8f02920667a07450a78c04cc6c68">SqlSink</a>, and <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ab75625f2ddff73d935386031d0575b96">MultiSink</a>.</p>
 
 <p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00047">47</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
@@ -342,7 +345,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a4c3ac0bbb97dd1556a31f7f19e10e72e">BagSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html#a4c3ac0bbb97dd1556a31f7f19e10e72e">PostgresSink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00111">111</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00123">123</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -374,7 +377,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Attaches source to sink. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb">TopicSink</a>, and <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb">MultiSink</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb">LiveSink</a>, and <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb">MultiSink</a>.</p>
 
 <p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00085">85</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
@@ -398,9 +401,56 @@ Static Public Attributes</h2></td></tr>
 
 <p>Shuts down output, closing any files or connections. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">TopicSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">SqlSink</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">LiveSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">SqlSink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00094">94</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00106">106</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a1735d54344fa76a45fb611a370fb7f62" name="a1735d54344fa76a45fb611a370fb7f62"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1735d54344fa76a45fb611a370fb7f62">&#9670;&#160;</a></span>configure()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">configure </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>args</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">**&#160;</td>
+          <td class="paramname"><em>kwargs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Updates sink configuration. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>arguments as namespace or dictionary, case-insensitive </td></tr>
+    <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a1735d54344fa76a45fb611a370fb7f62">MultiSink</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00095">95</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -466,7 +516,7 @@ Static Public Attributes</h2></td></tr>
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a520532788b9ddd6f698ddf31076d6320">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a520532788b9ddd6f698ddf31076d6320">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html#a520532788b9ddd6f698ddf31076d6320">TopicSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a520532788b9ddd6f698ddf31076d6320">AppSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a520532788b9ddd6f698ddf31076d6320">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a520532788b9ddd6f698ddf31076d6320">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a520532788b9ddd6f698ddf31076d6320">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a520532788b9ddd6f698ddf31076d6320">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a520532788b9ddd6f698ddf31076d6320">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a520532788b9ddd6f698ddf31076d6320">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a520532788b9ddd6f698ddf31076d6320">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a520532788b9ddd6f698ddf31076d6320">SqlSink</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a520532788b9ddd6f698ddf31076d6320">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a520532788b9ddd6f698ddf31076d6320">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html#a520532788b9ddd6f698ddf31076d6320">LiveSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a520532788b9ddd6f698ddf31076d6320">AppSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a520532788b9ddd6f698ddf31076d6320">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a520532788b9ddd6f698ddf31076d6320">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a520532788b9ddd6f698ddf31076d6320">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a520532788b9ddd6f698ddf31076d6320">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a520532788b9ddd6f698ddf31076d6320">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a520532788b9ddd6f698ddf31076d6320">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a520532788b9ddd6f698ddf31076d6320">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a520532788b9ddd6f698ddf31076d6320">SqlSink</a>.</p>
 
 <p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00081">81</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
@@ -516,7 +566,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a80fc36f6ac807f2a33915ec2a59409ef">MultiSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a80fc36f6ac807f2a33915ec2a59409ef">HtmlSink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00099">99</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00111">111</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -540,7 +590,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">AppSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">MultiSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">HtmlSink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00106">106</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00118">118</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -578,7 +628,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Handles exception, used by background threads. </p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00103">103</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00115">115</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -598,11 +648,11 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether sink prerequisites are met (like ROS environment set if TopicSink). </p>
+<p>Returns whether sink prerequisites are met (like ROS environment set if LiveSink). </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a82bf0578fc8d502e231e8121b6574300">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html#a82bf0578fc8d502e231e8121b6574300">TopicSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a82bf0578fc8d502e231e8121b6574300">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a82bf0578fc8d502e231e8121b6574300">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a82bf0578fc8d502e231e8121b6574300">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a82bf0578fc8d502e231e8121b6574300">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html#a82bf0578fc8d502e231e8121b6574300">PostgresSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a82bf0578fc8d502e231e8121b6574300">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a82bf0578fc8d502e231e8121b6574300">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a82bf0578fc8d502e231e8121b6574300">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a82bf0578fc8d502e231e8121b6574300">SqlSink</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html#a82bf0578fc8d502e231e8121b6574300">ConsoleSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html#a82bf0578fc8d502e231e8121b6574300">BagSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html#a82bf0578fc8d502e231e8121b6574300">LiveSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html#a82bf0578fc8d502e231e8121b6574300">AppSink</a>, <a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a82bf0578fc8d502e231e8121b6574300">MultiSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html#a82bf0578fc8d502e231e8121b6574300">CsvSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html#a82bf0578fc8d502e231e8121b6574300">BaseDataSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a82bf0578fc8d502e231e8121b6574300">HtmlSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html#a82bf0578fc8d502e231e8121b6574300">PostgresSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html#a82bf0578fc8d502e231e8121b6574300">SqliteSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html#a82bf0578fc8d502e231e8121b6574300">McapSink</a>, <a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a82bf0578fc8d502e231e8121b6574300">ParquetSink</a>, and <a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a82bf0578fc8d502e231e8121b6574300">SqlSink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00089">89</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00099">99</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -720,7 +770,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1outputs.html">outputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html">Sink</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

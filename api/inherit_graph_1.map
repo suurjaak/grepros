@@ -1,5 +1,15 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="Node000000" title=" " alt="" coords="5,5,111,31"/>
-<area shape="rect" id="Node000001" href="$classgrepros_1_1inputs_1_1_source_1_1_source_message.html" title="Returned from read() as (topic name, ROS message, ROS timestamp object)." alt="" coords="159,5,331,31"/>
-<area shape="poly" id="edge7_Node000000_Node000001" title=" " alt="" coords="125,15,159,15,159,21,125,21"/>
+<area shape="rect" id="Node000000" title=" " alt="" coords="21,5,68,31"/>
+<area shape="rect" id="Node000001" href="$classgrepros_1_1ros1_1_1_r_o_s1_bag.html" title="ROS1 bag reader and writer." alt="" coords="147,5,230,31"/>
+<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="82,15,147,15,147,21,82,21"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_base_bag.html" title="ROS bag interface." alt="" coords="5,104,84,129"/>
+<area shape="poly" id="edge5_Node000002_Node000001" title=" " alt="" coords="66,92,96,66,131,40,152,29,154,33,133,44,99,70,70,96"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1api_1_1_bag.html" title="Bag factory metaclass." alt="" coords="165,55,212,80"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,97,164,73,166,78,96,102"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html" title="embag reader interface, providing most of rosbag.Bag interface." alt="" coords="132,104,245,129"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="98,114,132,114,132,119,98,119"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html" title="MCAP bag interface, providing most of rosbag.Bag interface." alt="" coords="147,153,230,179"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="96,131,151,151,150,156,94,136"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1ros2_1_1_r_o_s2_bag.html" title="ROS2 bag reader and writer (SQLite format), providing most of rosbag.Bag interface." alt="" coords="147,203,230,228"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="71,137,100,163,133,188,157,200,154,205,131,192,96,167,67,141"/>
 </map>

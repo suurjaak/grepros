@@ -6,9 +6,9 @@
 <area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="34,238,42,205,55,166,75,125,102,89,121,76,124,81,106,93,80,128,60,168,47,206,39,239"/>
 <area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_console_sink.html" title="Prints messages to console." alt="" coords="109,104,212,129"/>
 <area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="39,238,63,188,81,162,102,139,120,127,123,132,106,143,85,165,68,191,44,240"/>
-<area shape="rect" id="Node000005" href="$classgrepros_1_1outputs_1_1_multi_sink.html" title="Combines any number of sinks." alt="" coords="119,153,202,179"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1outputs_1_1_live_sink.html" title="Publishes messages to ROS topics." alt="" coords="122,153,199,179"/>
 <area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="49,239,73,213,102,188,123,176,126,181,106,192,77,217,53,243"/>
-<area shape="rect" id="Node000006" href="$classgrepros_1_1outputs_1_1_topic_sink.html" title="Publishes messages to ROS topics." alt="" coords="119,203,202,228"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1outputs_1_1_multi_sink.html" title="Combines any number of sinks." alt="" coords="119,203,202,228"/>
 <area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="68,248,125,226,127,231,70,253"/>
 <area shape="rect" id="Node000007" href="$classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html" title="Writes messages to CSV files, each topic to a separate file." alt="" coords="123,252,198,277"/>
 <area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="70,262,123,262,123,267,70,267"/>

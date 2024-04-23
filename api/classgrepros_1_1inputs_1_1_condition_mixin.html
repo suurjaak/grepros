@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('classgrepros_1_1inputs_1_1_condition_m
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="classgrepros_1_1inputs_1_1_condition_mixin-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">ConditionMixin Class Reference</div></div>
@@ -111,8 +112,8 @@ Inheritance diagram for ConditionMixin:</div>
 <area shape="poly" title=" " alt="" coords="137,40,71,81,68,76,134,35"/>
 <area shape="rect" href="classgrepros_1_1inputs_1_1_bag_source.html" title="Produces messages from ROS bagfiles." alt="" coords="120,79,211,104"/>
 <area shape="poly" title=" " alt="" coords="168,44,168,79,163,79,163,44"/>
-<area shape="rect" href="classgrepros_1_1inputs_1_1_topic_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,333,104"/>
-<area shape="poly" title=" " alt="" coords="198,35,266,76,263,81,195,40"/>
+<area shape="rect" href="classgrepros_1_1inputs_1_1_live_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,328,104"/>
+<area shape="poly" title=" " alt="" coords="197,35,264,76,261,81,194,40"/>
 </map>
 </div>
 <table class="memberdecls">
@@ -132,7 +133,7 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a250d8f02920667a07450a78c04cc6c68"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, args=None, **kwargs)</td></tr>
+<tr class="memitem:a250d8f02920667a07450a78c04cc6c68"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears cached messages.  <br /></td></tr>
@@ -155,6 +156,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes passes current state conditions, if any.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether conditions have valid syntax, sets options, prints errors.  <br /></td></tr>
+<tr class="separator:a82bf0578fc8d502e231e8121b6574300"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
+<tr class="separator:a8187411843a6284ffb964ef3fb9fcab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -181,7 +190,7 @@ Static Public Attributes</h2></td></tr>
 <p>If a condition topic matches more than one real topic (by wildcard or by different types in one topic), evaluation is done for each set of topics separately, condition passing if any set passes.</p>
 <p>Example <code>&lt;topic */control_enable&gt;.data and &lt;topic */cmd_vel&gt;.linear.x &gt; 0</code> <code>and &lt;topic */cmd_vel&gt;.angular.z &lt; 0.02</code>. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00223">223</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00286">286</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a250d8f02920667a07450a78c04cc6c68" name="a250d8f02920667a07450a78c04cc6c68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a250d8f02920667a07450a78c04cc6c68">&#9670;&#160;</a></span>__init__()</h2>
@@ -223,9 +232,9 @@ Static Public Attributes</h2></td></tr>
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a250d8f02920667a07450a78c04cc6c68">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a250d8f02920667a07450a78c04cc6c68">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a250d8f02920667a07450a78c04cc6c68">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a250d8f02920667a07450a78c04cc6c68">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a250d8f02920667a07450a78c04cc6c68">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a250d8f02920667a07450a78c04cc6c68">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00312">312</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00375">375</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -250,7 +259,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a0c0eeccd1c5e2fad4df80498995fa415">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00355">355</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00436">436</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -272,7 +281,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns a list of all topics used in conditions (may contain wildcards). </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00364">364</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00445">445</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -310,7 +319,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Retains message for condition evaluation if in condition topic. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00386">386</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00467">467</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -348,7 +357,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Sets whether topic is purely used for conditions not matching. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00381">381</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00462">462</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -370,7 +379,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns whether there are any conditions configured. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00360">360</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00441">441</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -414,7 +423,7 @@ Static Public Attributes</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00373">373</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00454">454</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -464,13 +473,53 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns whether message passes passes current state conditions, if any. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a699a29f18aa15b83d9cacf335722a3ce">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a699a29f18aa15b83d9cacf335722a3ce">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a699a29f18aa15b83d9cacf335722a3ce">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a699a29f18aa15b83d9cacf335722a3ce">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00327">327</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00389">389</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a82bf0578fc8d502e231e8121b6574300" name="a82bf0578fc8d502e231e8121b6574300"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a82bf0578fc8d502e231e8121b6574300">&#9670;&#160;</a></span>validate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">validate </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns whether conditions have valid syntax, sets options, prints errors. </p>
+
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a82bf0578fc8d502e231e8121b6574300">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a82bf0578fc8d502e231e8121b6574300">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a82bf0578fc8d502e231e8121b6574300">AppSource</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00417">417</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a8187411843a6284ffb964ef3fb9fcab3" name="a8187411843a6284ffb964ef3fb9fcab3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8187411843a6284ffb964ef3fb9fcab3">&#9670;&#160;</a></span>args</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">args</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00433">433</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
 <a id="ad0d00892c1440deb68f2bca93d7b8789" name="ad0d00892c1440deb68f2bca93d7b8789"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad0d00892c1440deb68f2bca93d7b8789">&#9670;&#160;</a></span>DEFAULT_ARGS</h2>
 
@@ -493,7 +542,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Constructor argument defaults. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00228">228</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00291">291</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -517,7 +566,7 @@ Static Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00225">225</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00288">288</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -530,7 +579,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

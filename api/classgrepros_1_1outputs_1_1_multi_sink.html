@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -123,6 +123,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes all sinks.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates sinks configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a520532788b9ddd6f698ddf31076d6320"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a520532788b9ddd6f698ddf31076d6320">emit</a> (self, topic, msg, stamp=None, match=None, index=None)</td></tr>
 <tr class="memdesc:a520532788b9ddd6f698ddf31076d6320"><td class="mdescLeft">&#160;</td><td class="mdescRight">Outputs ROS message to all sinks.  <br /></td></tr>
 <tr class="separator:a520532788b9ddd6f698ddf31076d6320"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -156,6 +159,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down output, closing any files or connections.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates sink configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a520532788b9ddd6f698ddf31076d6320 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a520532788b9ddd6f698ddf31076d6320">emit</a> (self, topic, msg, stamp=None, match=None, index=None)</td></tr>
 <tr class="memdesc:a520532788b9ddd6f698ddf31076d6320 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Outputs ROS message.  <br /></td></tr>
 <tr class="separator:a520532788b9ddd6f698ddf31076d6320 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -172,7 +178,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles exception, used by background threads.  <br /></td></tr>
 <tr class="separator:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether sink prerequisites are met (like ROS environment set if TopicSink).  <br /></td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether sink prerequisites are met (like ROS environment set if LiveSink).  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1outputs_1_1_sink"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -194,7 +200,7 @@ Public Attributes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:ac73df920bafc07a36e1a3375aa905948"><td class="memItemLeft" align="right" valign="top">dict&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ac73df920bafc07a36e1a3375aa905948">FLAG_CLASSES</a> = {&quot;PUBLISH&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html">TopicSink</a>, &quot;CONSOLE&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html">ConsoleSink</a>, &quot;APP&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html">AppSink</a>}</td></tr>
+<tr class="memitem:ac73df920bafc07a36e1a3375aa905948"><td class="memItemLeft" align="right" valign="top">dict&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#ac73df920bafc07a36e1a3375aa905948">FLAG_CLASSES</a> = {&quot;PUBLISH&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html">LiveSink</a>, &quot;CONSOLE&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html">ConsoleSink</a>, &quot;APP&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html">AppSink</a>}</td></tr>
 <tr class="memdesc:ac73df920bafc07a36e1a3375aa905948"><td class="mdescLeft">&#160;</td><td class="mdescRight">Autobinding between argument flags and sink classes.  <br /></td></tr>
 <tr class="separator:ac73df920bafc07a36e1a3375aa905948"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a323cde5fce9894ed784cfe6eaa454025"><td class="memItemLeft" align="right" valign="top">dict&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html#a323cde5fce9894ed784cfe6eaa454025">FORMAT_CLASSES</a> = {&quot;bag&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_bag_sink.html">BagSink</a>}</td></tr>
@@ -211,7 +217,7 @@ Static Public Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Combines any number of sinks. </p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00867">867</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00918">918</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ab75625f2ddff73d935386031d0575b96" name="ab75625f2ddff73d935386031d0575b96"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab75625f2ddff73d935386031d0575b96">&#9670;&#160;</a></span>__init__()</h2>
@@ -267,7 +273,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a250d8f02920667a07450a78c04cc6c68">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00887">887</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00938">938</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -302,7 +308,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00927">927</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00980">980</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -326,7 +332,54 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00940">940</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l01004">1004</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a1735d54344fa76a45fb611a370fb7f62" name="a1735d54344fa76a45fb611a370fb7f62"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1735d54344fa76a45fb611a370fb7f62">&#9670;&#160;</a></span>configure()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">configure </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>args</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">**&#160;</td>
+          <td class="paramname"><em>kwargs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Updates sinks configuration. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>arguments as namespace or dictionary, case-insensitive </td></tr>
+    <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a1735d54344fa76a45fb611a370fb7f62">Sink</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00993">993</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -384,7 +437,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a520532788b9ddd6f698ddf31076d6320">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00920">920</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00972">972</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -408,7 +461,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#afd5813cd8ad6edf1f8015552e3a0f47d">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00913">913</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00964">964</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -432,7 +485,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a80fc36f6ac807f2a33915ec2a59409ef">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00945">945</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l01009">1009</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -456,7 +509,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a6d8ad57639e1cb2997ba035f5cb9a088">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00950">950</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l01014">1014</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -480,7 +533,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1outputs_1_1_sink.html#a82bf0578fc8d502e231e8121b6574300">Sink</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00934">934</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00998">998</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -495,7 +548,7 @@ Static Public Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">dict FLAG_CLASSES = {&quot;PUBLISH&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html">TopicSink</a>, &quot;CONSOLE&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html">ConsoleSink</a>, &quot;APP&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html">AppSink</a>}</td>
+          <td class="memname">dict FLAG_CLASSES = {&quot;PUBLISH&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html">LiveSink</a>, &quot;CONSOLE&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html">ConsoleSink</a>, &quot;APP&quot;: <a class="el" href="classgrepros_1_1outputs_1_1_app_sink.html">AppSink</a>}</td>
         </tr>
       </table>
   </td>
@@ -507,7 +560,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Autobinding between argument flags and sink classes. </p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00871">871</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00922">922</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -533,7 +586,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Autobinding between <code>&ndash;write TARGET format=FORMAT</code> and sink classes. </p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00874">874</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00925">925</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -551,7 +604,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>List of all combined sinks. </p>
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00893">893</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00944">944</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -567,7 +620,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00890">890</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="outputs_8py_source.html#l00941">941</a> of file <a class="el" href="outputs_8py_source.html">outputs.py</a>.</p>
 
 </div>
 </div>
@@ -580,7 +633,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1outputs.html">outputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html">MultiSink</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

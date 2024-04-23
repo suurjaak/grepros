@@ -1,19 +1,28 @@
 var classgrepros_1_1common_1_1_progress_bar =
 [
-    [ "__init__", "classgrepros_1_1common_1_1_progress_bar.html#a226a7c3cb3ea364762c6c52ac7057fe4", null ],
+    [ "__init__", "classgrepros_1_1common_1_1_progress_bar.html#a05df7ee52b8fdd76919f98a29d14232c", null ],
     [ "draw", "classgrepros_1_1common_1_1_progress_bar.html#a3157929ebdfa37155e3e4a6b46720272", null ],
     [ "run", "classgrepros_1_1common_1_1_progress_bar.html#a08060e0924949738f75a0cdd8b49cef4", null ],
     [ "stop", "classgrepros_1_1common_1_1_progress_bar.html#a2f39781a0bb89a6705efdc8d4c527def", null ],
     [ "update", "classgrepros_1_1common_1_1_progress_bar.html#a0b94b95d3fec21c5af220d2d571e38d2", null ],
+    [ "afterargs", "classgrepros_1_1common_1_1_progress_bar.html#a87ea7026b8b123aa118d776cf9307dec", null ],
+    [ "aftertemplate", "classgrepros_1_1common_1_1_progress_bar.html#abdc9f32eba1718f67208bb092a686e81", null ],
+    [ "afterword", "classgrepros_1_1common_1_1_progress_bar.html#ac243b7000d23e89d86dfbafcc321bcca", null ],
+    [ "backchar", "classgrepros_1_1common_1_1_progress_bar.html#a79619980c8788a1f2a040f72e8f10cb7", null ],
     [ "bar", "classgrepros_1_1common_1_1_progress_bar.html#a5426824942db4253f87a1009fd5d2d4f", null ],
     [ "daemon", "classgrepros_1_1common_1_1_progress_bar.html#a56336262068f0a007b1dec71901be1ff", null ],
+    [ "forechar", "classgrepros_1_1common_1_1_progress_bar.html#a7483b325f7477a27393ac66848a413ee", null ],
     [ "foreword", "classgrepros_1_1common_1_1_progress_bar.html#a091f7df486118d289ff74433dcabb887", null ],
     [ "interval", "classgrepros_1_1common_1_1_progress_bar.html#a943af1103d1f1365d6c7f31b331119bf", null ],
     [ "is_running", "classgrepros_1_1common_1_1_progress_bar.html#ae2dc0f1c541d7886d07e3e3d7f11b643", null ],
+    [ "max", "classgrepros_1_1common_1_1_progress_bar.html#aa83862769f78fffb512bc9283007ef67", null ],
+    [ "min", "classgrepros_1_1common_1_1_progress_bar.html#a4735a0c4d1b11f62ea44115d54a93087", null ],
     [ "pause", "classgrepros_1_1common_1_1_progress_bar.html#afd7d49e17b69bd6bf3d7a649856c1067", null ],
     [ "percent", "classgrepros_1_1common_1_1_progress_bar.html#a174e692bc1b62677e7b4d611ed06b109", null ],
     [ "printbar", "classgrepros_1_1common_1_1_progress_bar.html#a1702ac8242f004352282d0e43bcedaea", null ],
     [ "progresschar", "classgrepros_1_1common_1_1_progress_bar.html#a4299f0f984e2afbd4fcd4db6c744fdb5", null ],
+    [ "pulse", "classgrepros_1_1common_1_1_progress_bar.html#a99b09d3545858e4635e422ee8be5f1d8", null ],
     [ "pulse_pos", "classgrepros_1_1common_1_1_progress_bar.html#a9c17a624c873883e9fccc9debdb1c10f", null ],
-    [ "value", "classgrepros_1_1common_1_1_progress_bar.html#afcc7a4b78ecd8fa7e713f8cfa0f51017", null ]
+    [ "value", "classgrepros_1_1common_1_1_progress_bar.html#afcc7a4b78ecd8fa7e713f8cfa0f51017", null ],
+    [ "width", "classgrepros_1_1common_1_1_progress_bar.html#a5558ace5433f9aabbf0a0ec059900d94", null ]
 ];

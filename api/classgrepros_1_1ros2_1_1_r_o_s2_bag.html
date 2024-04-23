@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -123,6 +123,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aba69578c717635c5ab898e66318799c1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#aba69578c717635c5ab898e66318799c1">__next__</a> (self)</td></tr>
 <tr class="memdesc:aba69578c717635c5ab898e66318799c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves next message from bag as (topic, message, timestamp).  <br /></td></tr>
 <tr class="separator:aba69578c717635c5ab898e66318799c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3c9447b34fd9fbb18d96f753105333cd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#a3c9447b34fd9fbb18d96f753105333cd">autodetect</a> (cls, f)</td></tr>
+<tr class="memdesc:a3c9447b34fd9fbb18d96f753105333cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether file is recognizable as SQLite format.  <br /></td></tr>
+<tr class="separator:a3c9447b34fd9fbb18d96f753105333cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes the bag file.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -248,6 +251,9 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:aef521a4e950862ce2962c34a9aaa9537"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#aef521a4e950862ce2962c34a9aaa9537">CREATE_SQL</a></td></tr>
 <tr class="memdesc:aef521a4e950862ce2962c34a9aaa9537"><td class="mdescLeft">&#160;</td><td class="mdescRight">ROS2 bag SQLite schema.  <br /></td></tr>
 <tr class="separator:aef521a4e950862ce2962c34a9aaa9537"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a792f9f1752e5e9c32bf00255a110b6e0"><td class="memItemLeft" align="right" valign="top">str&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#a792f9f1752e5e9c32bf00255a110b6e0">SQLITE_MAGIC</a> = b&quot;SQLite format 3\x00&quot;</td></tr>
+<tr class="memdesc:a792f9f1752e5e9c32bf00255a110b6e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">SQLite file header magic start bytes.  <br /></td></tr>
+<tr class="separator:a792f9f1752e5e9c32bf00255a110b6e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada63144025444771ae2e4cf5cfd127d3"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html#ada63144025444771ae2e4cf5cfd127d3">STREAMABLE</a> = False</td></tr>
 <tr class="memdesc:ada63144025444771ae2e4cf5cfd127d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether bag supports reading or writing stream objects, overridden in subclasses.  <br /></td></tr>
 <tr class="separator:ada63144025444771ae2e4cf5cfd127d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -363,7 +369,7 @@ Properties</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00126">126</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00129">129</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -398,7 +404,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a98825fd50400a309b64b4de1c1011266">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00463">463</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00466">466</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -422,7 +428,39 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#aba69578c717635c5ab898e66318799c1">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00468">468</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00471">471</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+
+</div>
+</div>
+<a id="a3c9447b34fd9fbb18d96f753105333cd" name="a3c9447b34fd9fbb18d96f753105333cd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3c9447b34fd9fbb18d96f753105333cd">&#9670;&#160;</a></span>autodetect()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">autodetect </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>cls</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>f</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns whether file is recognizable as SQLite format. </p>
+
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00547">547</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -446,7 +484,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00410">410</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00413">413</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -470,7 +508,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a6671a4421f5f5627bb00f67a9fe5e9d2">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00172">172</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00175">175</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -510,7 +548,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a6b39b4eb967cf2279eda8807ab1f18f3">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00252">252</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00255">255</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -550,7 +588,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#ae46bae94e909f2e8bed8155a8d0110b4">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00149">149</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00152">152</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -585,7 +623,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#add359405de6242c9250f193d6d86b68a">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00268">268</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00271">271</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -619,7 +657,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a7143cd7ff8b76ec5191ffb37a95d1909">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00276">276</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00279">279</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -659,7 +697,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a6c789dddaa93b43dbfb690412cc641d2">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00238">238</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00241">241</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -683,7 +721,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a5f1b0a90baafa4ccc3e5249356e477af">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00162">162</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00165">165</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -730,7 +768,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a7e3e0bfc2be0c265636dc50ba19e5e66">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00191">191</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00194">194</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -771,7 +809,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a171934f6f506fe2eac25d16a6d1e9898">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00206">206</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00209">209</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -795,7 +833,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a1b1cd51dff32421e012514f2b0123abd">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00405">405</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00408">408</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -865,7 +903,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#a76f543f33c1aa54035985de189aae809">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00300">300</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00303">303</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -939,7 +977,7 @@ Properties</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1api_1_1_base_bag.html#af2711a4269ce46ef2c92b612f6c963a2">BaseBag</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00370">370</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00373">373</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1003,7 +1041,33 @@ Properties</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00486">486</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00489">489</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+
+</div>
+</div>
+<a id="a792f9f1752e5e9c32bf00255a110b6e0" name="a792f9f1752e5e9c32bf00255a110b6e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a792f9f1752e5e9c32bf00255a110b6e0">&#9670;&#160;</a></span>SQLITE_MAGIC</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">str SQLITE_MAGIC = b&quot;SQLite format 3\x00&quot;</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>SQLite file header magic start bytes. </p>
+
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00121">121</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1056,7 +1120,7 @@ Properties</h2></td></tr>
 
 <p>Returns whether file is closed. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00421">421</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00424">424</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1082,7 +1146,7 @@ Properties</h2></td></tr>
 
 <p>Returns bag file path. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00437">437</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00440">440</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1108,7 +1172,7 @@ Properties</h2></td></tr>
 
 <p>Returns file open mode. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00457">457</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00460">460</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1134,7 +1198,7 @@ Properties</h2></td></tr>
 
 <p>Returns current file size in bytes (including journaling files). </p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00445">445</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00448">448</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1160,7 +1224,7 @@ Properties</h2></td></tr>
 
 <p>Returns the list of topics in bag, in alphabetic order. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00429">429</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros2_8py_source.html#l00432">432</a> of file <a class="el" href="ros2_8py_source.html">ros2.py</a>.</p>
 
 </div>
 </div>
@@ -1173,7 +1237,7 @@ Properties</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1ros2.html">ros2</a></li><li class="navelem"><a class="el" href="classgrepros_1_1ros2_1_1_r_o_s2_bag.html">ROS2Bag</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

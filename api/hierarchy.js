@@ -1,5 +1,6 @@
 var hierarchy =
 [
+    [ "ArgumentUtil", "classgrepros_1_1common_1_1_argument_util.html", null ],
     [ "Bag", null, [
       [ "ROS1Bag", "classgrepros_1_1ros1_1_1_r_o_s1_bag.html", null ]
     ] ],
@@ -13,10 +14,11 @@ var hierarchy =
       [ "ROS1Bag", "classgrepros_1_1ros1_1_1_r_o_s1_bag.html", null ],
       [ "ROS2Bag", "classgrepros_1_1ros2_1_1_r_o_s2_bag.html", null ]
     ] ],
+    [ "BooleanResult", "classgrepros_1_1search_1_1_boolean_result.html", null ],
     [ "ConditionMixin", "classgrepros_1_1inputs_1_1_condition_mixin.html", [
       [ "AppSource", "classgrepros_1_1inputs_1_1_app_source.html", null ],
       [ "BagSource", "classgrepros_1_1inputs_1_1_bag_source.html", null ],
-      [ "TopicSource", "classgrepros_1_1inputs_1_1_topic_source.html", null ]
+      [ "LiveSource", "classgrepros_1_1inputs_1_1_live_source.html", null ]
     ] ],
     [ "ConsolePrinter", "classgrepros_1_1common_1_1_console_printer.html", null ],
     [ "CsvWriter", "classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_writer.html", null ],
@@ -25,12 +27,13 @@ var hierarchy =
     [ "Exception", "class_exception.html", [
       [ "ConditionMixin.NoMessageException", "classgrepros_1_1inputs_1_1_condition_mixin_1_1_no_message_exception.html", null ]
     ] ],
+    [ "ExpressionTree", "classgrepros_1_1search_1_1_expression_tree.html", null ],
     [ "generator", "classgenerate__msgs_1_1generator.html", null ],
     [ "LenIterable", "classgrepros_1_1common_1_1_len_iterable.html", null ],
     [ "MatchMarkers", "classgrepros_1_1common_1_1_match_markers.html", null ],
     [ "ConditionMixin.Message", "classgrepros_1_1inputs_1_1_condition_mixin_1_1_message.html", null ],
     [ "RawTextHelpFormatter", null, [
-      [ "HelpFormatter", "classgrepros_1_1main_1_1_help_formatter.html", null ]
+      [ "ArgumentUtil.HelpFormatter", "classgrepros_1_1common_1_1_argument_util_1_1_help_formatter.html", null ]
     ] ],
     [ "RolloverSinkMixin", "classgrepros_1_1outputs_1_1_rollover_sink_mixin.html", [
       [ "BagSink", "classgrepros_1_1outputs_1_1_bag_sink.html", null ],
@@ -44,8 +47,8 @@ var hierarchy =
       [ "AppSink", "classgrepros_1_1outputs_1_1_app_sink.html", null ],
       [ "BagSink", "classgrepros_1_1outputs_1_1_bag_sink.html", null ],
       [ "ConsoleSink", "classgrepros_1_1outputs_1_1_console_sink.html", null ],
+      [ "LiveSink", "classgrepros_1_1outputs_1_1_live_sink.html", null ],
       [ "MultiSink", "classgrepros_1_1outputs_1_1_multi_sink.html", null ],
-      [ "TopicSink", "classgrepros_1_1outputs_1_1_topic_sink.html", null ],
       [ "CsvSink", "classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html", null ],
       [ "BaseDataSink", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html", [
         [ "PostgresSink", "classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html", null ],
@@ -59,7 +62,7 @@ var hierarchy =
     [ "Source", "classgrepros_1_1inputs_1_1_source.html", [
       [ "AppSource", "classgrepros_1_1inputs_1_1_app_source.html", null ],
       [ "BagSource", "classgrepros_1_1inputs_1_1_bag_source.html", null ],
-      [ "TopicSource", "classgrepros_1_1inputs_1_1_topic_source.html", null ]
+      [ "LiveSource", "classgrepros_1_1inputs_1_1_live_source.html", null ]
     ] ],
     [ "SqlMixin", "classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html", [
       [ "BaseDataSink", "classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html", null ],

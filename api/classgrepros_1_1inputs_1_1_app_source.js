@@ -7,5 +7,7 @@ var classgrepros_1_1inputs_1_1_app_source =
     [ "push", "classgrepros_1_1inputs_1_1_app_source.html#a288ea7198dd074e42f676f74844f64c3", null ],
     [ "read", "classgrepros_1_1inputs_1_1_app_source.html#a92f6a631059f85262380255391242b5f", null ],
     [ "read_queue", "classgrepros_1_1inputs_1_1_app_source.html#a4a6ceddd9f06a8f9b6b8c7bd0605a377", null ],
-    [ "DEFAULT_ARGS", "classgrepros_1_1inputs_1_1_app_source.html#ad0d00892c1440deb68f2bca93d7b8789", null ]
+    [ "validate", "classgrepros_1_1inputs_1_1_app_source.html#a82bf0578fc8d502e231e8121b6574300", null ],
+    [ "DEFAULT_ARGS", "classgrepros_1_1inputs_1_1_app_source.html#ad0d00892c1440deb68f2bca93d7b8789", null ],
+    [ "valid", "classgrepros_1_1inputs_1_1_app_source.html#a51646327ac0a3287c4b08e4d28b66f35", null ]
 ];

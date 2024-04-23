@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -112,8 +112,8 @@ Inheritance diagram for Source:</div>
 <area shape="poly" title=" " alt="" coords="137,40,71,81,68,76,134,35"/>
 <area shape="rect" href="classgrepros_1_1inputs_1_1_bag_source.html" title="Produces messages from ROS bagfiles." alt="" coords="120,79,211,104"/>
 <area shape="poly" title=" " alt="" coords="168,44,168,79,163,79,163,44"/>
-<area shape="rect" href="classgrepros_1_1inputs_1_1_topic_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,333,104"/>
-<area shape="poly" title=" " alt="" coords="198,35,266,76,263,81,195,40"/>
+<area shape="rect" href="classgrepros_1_1inputs_1_1_live_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,328,104"/>
+<area shape="poly" title=" " alt="" coords="197,35,264,76,261,81,194,40"/>
 </map>
 </div>
 <table class="memberdecls">
@@ -145,6 +145,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down input batch if any (like bagfile), else all input.  <br /></td></tr>
 <tr class="separator:a0c0eeccd1c5e2fad4df80498995fa415"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates source configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9043b175ed23038ffd9edc779c84ffad"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a9043b175ed23038ffd9edc779c84ffad">configure_progress</a> (self, **kwargs)</td></tr>
+<tr class="memdesc:a9043b175ed23038ffd9edc779c84ffad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configures progress bar options, updates current bar if any.  <br /></td></tr>
+<tr class="separator:a9043b175ed23038ffd9edc779c84ffad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a70293a28f26b211e35edf6b0223d6ca4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a70293a28f26b211e35edf6b0223d6ca4">format_message_meta</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a70293a28f26b211e35edf6b0223d6ca4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns message metainfo string.  <br /></td></tr>
 <tr class="separator:a70293a28f26b211e35edf6b0223d6ca4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -169,8 +175,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a07143efeecc33ff7523fd0af3c23fc8a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a07143efeecc33ff7523fd0af3c23fc8a">get_meta</a> (self)</td></tr>
 <tr class="memdesc:a07143efeecc33ff7523fd0af3c23fc8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns source metainfo data dict.  <br /></td></tr>
 <tr class="separator:a07143efeecc33ff7523fd0af3c23fc8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01445f87187b1374b976c25d2d0e313d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a01445f87187b1374b976c25d2d0e313d">init_progress</a> (self)</td></tr>
+<tr class="memdesc:a01445f87187b1374b976c25d2d0e313d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes progress bar, if any.  <br /></td></tr>
+<tr class="separator:a01445f87187b1374b976c25d2d0e313d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
-<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters.  <br /></td></tr>
+<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters; registers status.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06f854d86bd993084b79f35d7e7b8132"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a06f854d86bd993084b79f35d7e7b8132">notify</a> (self, status)</td></tr>
 <tr class="memdesc:a06f854d86bd993084b79f35d7e7b8132"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reports match status of last produced message.  <br /></td></tr>
@@ -181,8 +190,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a180ccf96b1f552dfe673627ec3305ad3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a180ccf96b1f552dfe673627ec3305ad3">thread_excepthook</a> (self, text, exc)</td></tr>
 <tr class="memdesc:a180ccf96b1f552dfe673627ec3305ad3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles exception, used by background threads.  <br /></td></tr>
 <tr class="separator:a180ccf96b1f552dfe673627ec3305ad3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b35fa0bec0fd68085e692524def4c5b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b">update_progress</a> (self, count, running=True)</td></tr>
+<tr class="memdesc:a4b35fa0bec0fd68085e692524def4c5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates progress bar, if any, with source processed count, pauses bar if not running.  <br /></td></tr>
+<tr class="separator:a4b35fa0bec0fd68085e692524def4c5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether source prerequisites are met (like ROS environment for TopicSource).  <br /></td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether arguments are valid and source prerequisites are met.  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -217,7 +229,7 @@ Static Public Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Message producer base class. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00034">34</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00035">35</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a250d8f02920667a07450a78c04cc6c68" name="a250d8f02920667a07450a78c04cc6c68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a250d8f02920667a07450a78c04cc6c68">&#9670;&#160;</a></span>__init__()</h2>
@@ -256,18 +268,21 @@ Static Public Attributes</h2></td></tr>
     <tr><td class="paramname">args.start_time</td><td>earliest timestamp of messages to read </td></tr>
     <tr><td class="paramname">args.end_time</td><td>latest timestamp of messages to read </td></tr>
     <tr><td class="paramname">args.unique</td><td>emit messages that are unique in topic </td></tr>
+    <tr><td class="paramname">args.start_index</td><td>message index within topic to start from </td></tr>
+    <tr><td class="paramname">args.end_index</td><td>message index within topic to stop at </td></tr>
     <tr><td class="paramname">args.select_field</td><td>message fields to use for uniqueness if not all </td></tr>
     <tr><td class="paramname">args.noselect_field</td><td>message fields to skip for uniqueness </td></tr>
-    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic </td></tr>
-    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic </td></tr>
+    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic, starting from first </td></tr>
+    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic, as seconds or ROS duration </td></tr>
+    <tr><td class="paramname">args.progress</td><td>whether to print progress bar </td></tr>
     <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
   </table>
   </dd>
 </dl>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a250d8f02920667a07450a78c04cc6c68">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a250d8f02920667a07450a78c04cc6c68">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a250d8f02920667a07450a78c04cc6c68">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a250d8f02920667a07450a78c04cc6c68">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a250d8f02920667a07450a78c04cc6c68">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a250d8f02920667a07450a78c04cc6c68">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00059">59</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00065">65</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -290,7 +305,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Context manager entry. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00087">87</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00097">97</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -334,7 +349,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Context manager exit, closes source. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00091">91</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00101">101</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -356,7 +371,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Yields messages from source, as (topic, msg, ROS time). </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00083">83</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00093">93</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -388,9 +403,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Attaches sink to source. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a233d6765c3e657857260a507684c306c">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a233d6765c3e657857260a507684c306c">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00099">99</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00109">109</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -412,9 +427,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Shuts down input, closing any files or connections. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00107">107</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00129">129</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -438,7 +453,86 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a0c0eeccd1c5e2fad4df80498995fa415">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00119">119</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00142">142</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a1735d54344fa76a45fb611a370fb7f62" name="a1735d54344fa76a45fb611a370fb7f62"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1735d54344fa76a45fb611a370fb7f62">&#9670;&#160;</a></span>configure()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">configure </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>args</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">**&#160;</td>
+          <td class="paramname"><em>kwargs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Updates source configuration. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">args</td><td>arguments as namespace or dictionary, case-insensitive </td></tr>
+    <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a1735d54344fa76a45fb611a370fb7f62">BagSource</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00118">118</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a9043b175ed23038ffd9edc779c84ffad" name="a9043b175ed23038ffd9edc779c84ffad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9043b175ed23038ffd9edc779c84ffad">&#9670;&#160;</a></span>configure_progress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">configure_progress </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">**&#160;</td>
+          <td class="paramname"><em>kwargs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Configures progress bar options, updates current bar if any. </p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00221">221</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -490,7 +584,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a70293a28f26b211e35edf6b0223d6ca4">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00127">127</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00150">150</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -512,9 +606,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns source metainfo string. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00123">123</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00146">146</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -538,7 +632,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a2bae8df89a2fc7de7d9e1459482475c5">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00133">133</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00156">156</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -576,9 +670,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns message type class. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00147">147</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00170">170</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -610,9 +704,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns ROS message type definition full text, including subtype definitions. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#add359405de6242c9250f193d6d86b68a">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#add359405de6242c9250f193d6d86b68a">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#add359405de6242c9250f193d6d86b68a">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#add359405de6242c9250f193d6d86b68a">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00151">151</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00174">174</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -662,9 +756,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns message metainfo data dict. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00140">140</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00163">163</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -696,9 +790,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns ROS message type MD5 hash. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00155">155</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00178">178</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -720,9 +814,33 @@ Static Public Attributes</h2></td></tr>
 
 <p>Returns source metainfo data dict. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a07143efeecc33ff7523fd0af3c23fc8a">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a07143efeecc33ff7523fd0af3c23fc8a">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a07143efeecc33ff7523fd0af3c23fc8a">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a07143efeecc33ff7523fd0af3c23fc8a">LiveSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00137">137</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00160">160</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a01445f87187b1374b976c25d2d0e313d" name="a01445f87187b1374b976c25d2d0e313d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a01445f87187b1374b976c25d2d0e313d">&#9670;&#160;</a></span>init_progress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">init_progress </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initializes progress bar, if any. </p>
+
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a01445f87187b1374b976c25d2d0e313d">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a01445f87187b1374b976c25d2d0e313d">LiveSource</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00233">233</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -770,11 +888,11 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether message passes source filters. </p>
+<p>Returns whether message passes source filters; registers status. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a699a29f18aa15b83d9cacf335722a3ce">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a699a29f18aa15b83d9cacf335722a3ce">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a699a29f18aa15b83d9cacf335722a3ce">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a699a29f18aa15b83d9cacf335722a3ce">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00159">159</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00182">182</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -808,7 +926,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a06f854d86bd993084b79f35d7e7b8132">BagSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00182">182</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00215">215</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -830,9 +948,9 @@ Static Public Attributes</h2></td></tr>
 
 <p>Yields messages from source, as (topic, msg, ROS time). </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a92f6a631059f85262380255391242b5f">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a92f6a631059f85262380255391242b5f">TopicSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a92f6a631059f85262380255391242b5f">AppSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a92f6a631059f85262380255391242b5f">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a92f6a631059f85262380255391242b5f">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a92f6a631059f85262380255391242b5f">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00095">95</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00105">105</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -870,7 +988,47 @@ Static Public Attributes</h2></td></tr>
 
 <p>Handles exception, used by background threads. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00186">186</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00248">248</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a4b35fa0bec0fd68085e692524def4c5b" name="a4b35fa0bec0fd68085e692524def4c5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4b35fa0bec0fd68085e692524def4c5b">&#9670;&#160;</a></span>update_progress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">update_progress </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>count</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>running</em> = <code>True</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Updates progress bar, if any, with source processed count, pauses bar if not running. </p>
+
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a4b35fa0bec0fd68085e692524def4c5b">LiveSource</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00239">239</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -890,11 +1048,11 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether source prerequisites are met (like ROS environment for TopicSource). </p>
+<p>Returns whether arguments are valid and source prerequisites are met. </p>
 
-<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a82bf0578fc8d502e231e8121b6574300">BagSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a82bf0578fc8d502e231e8121b6574300">TopicSource</a>.</p>
+<p>Reimplemented in <a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html#a82bf0578fc8d502e231e8121b6574300">BagSource</a>, <a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a82bf0578fc8d502e231e8121b6574300">LiveSource</a>, and <a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a82bf0578fc8d502e231e8121b6574300">AppSource</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00102">102</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00122">122</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -911,7 +1069,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00069">69</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00079">79</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -929,7 +1087,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>ProgressBar instance, if any. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00075">75</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00085">85</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -952,12 +1110,13 @@ Static Public Attributes</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<b>Initial value:</b><div class="fragment"><div class="line">=  dict(START_TIME=<span class="keywordtype">None</span>, END_TIME=<span class="keywordtype">None</span>, UNIQUE=<span class="keyword">False</span>, SELECT_FIELD=(),</div>
-<div class="line">                        NOSELECT_FIELD=(), NTH_MESSAGE=1, NTH_INTERVAL=0)</div>
+<b>Initial value:</b><div class="fragment"><div class="line">=  dict(START_TIME=<span class="keywordtype">None</span>, END_TIME=<span class="keywordtype">None</span>, START_INDEX=<span class="keywordtype">None</span>, END_INDEX=<span class="keywordtype">None</span>,</div>
+<div class="line">                        UNIQUE=<span class="keyword">False</span>, SELECT_FIELD=(), NOSELECT_FIELD=(),</div>
+<div class="line">                        NTH_MESSAGE=1, NTH_INTERVAL=0, PROGRESS=<span class="keyword">False</span>)</div>
 </div><!-- fragment -->
 <p>Constructor argument defaults. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00044">44</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00045">45</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -983,7 +1142,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Template for message metainfo line. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00041">41</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00042">42</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -1001,7 +1160,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Apply all filter arguments when reading, not only topic and type. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00079">79</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00089">89</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -1019,7 +1178,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>outputs.Sink instance bound to this source </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00071">71</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00081">81</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -1037,7 +1196,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>All topics in source, as {(topic, typenane, typehash): total message count or None}. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00073">73</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00083">83</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -1055,7 +1214,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Result of validate() </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00077">77</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00087">87</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -1068,7 +1227,7 @@ Static Public Attributes</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

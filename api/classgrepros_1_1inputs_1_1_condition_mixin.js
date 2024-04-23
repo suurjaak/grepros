@@ -12,6 +12,8 @@ var classgrepros_1_1inputs_1_1_condition_mixin =
     [ "has_conditions", "classgrepros_1_1inputs_1_1_condition_mixin.html#a9dd612d5c1c32e406bd33f8b11933935", null ],
     [ "is_conditions_topic", "classgrepros_1_1inputs_1_1_condition_mixin.html#a89852e5d2981500faeacebb6be84de8b", null ],
     [ "is_processable", "classgrepros_1_1inputs_1_1_condition_mixin.html#a699a29f18aa15b83d9cacf335722a3ce", null ],
+    [ "validate", "classgrepros_1_1inputs_1_1_condition_mixin.html#a82bf0578fc8d502e231e8121b6574300", null ],
+    [ "args", "classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3", null ],
     [ "DEFAULT_ARGS", "classgrepros_1_1inputs_1_1_condition_mixin.html#ad0d00892c1440deb68f2bca93d7b8789", null ],
     [ "TOPIC_RGX", "classgrepros_1_1inputs_1_1_condition_mixin.html#a201d07e4e1fb3859ee84af1cd543b2eb", null ]
 ];

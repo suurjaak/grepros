@@ -16,5 +16,6 @@ var classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink =
     [ "MESSAGE_TYPE_NESTCOLS", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#aa7019a82c5fe453d64fd1ccc7a8bdd23", null ],
     [ "MESSAGE_TYPE_NESTCOLS", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#af4ff3f4e8ec8ce6a361f9051686c8b1e", null ],
     [ "valid", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a51646327ac0a3287c4b08e4d28b66f35", null ],
-    [ "WRITER_ARGS", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a64cfe73b0d4de23ee40863380eb9f407", null ]
+    [ "WRITER_ARGS", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#a64cfe73b0d4de23ee40863380eb9f407", null ],
+    [ "WRITER_ARGS", "classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html#ab912aa9fe4407f926f789d8c84134121", null ]
 ];

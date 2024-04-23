@@ -1,7 +1,9 @@
 var common_8py =
 [
+    [ "ArgumentUtil", "classgrepros_1_1common_1_1_argument_util.html", "classgrepros_1_1common_1_1_argument_util" ],
     [ "ConsolePrinter", "classgrepros_1_1common_1_1_console_printer.html", "classgrepros_1_1common_1_1_console_printer" ],
     [ "Decompressor", "classgrepros_1_1common_1_1_decompressor.html", "classgrepros_1_1common_1_1_decompressor" ],
+    [ "ArgumentUtil.HelpFormatter", "classgrepros_1_1common_1_1_argument_util_1_1_help_formatter.html", null ],
     [ "LenIterable", "classgrepros_1_1common_1_1_len_iterable.html", "classgrepros_1_1common_1_1_len_iterable" ],
     [ "MatchMarkers", "classgrepros_1_1common_1_1_match_markers.html", "classgrepros_1_1common_1_1_match_markers" ],
     [ "ProgressBar", "classgrepros_1_1common_1_1_progress_bar.html", "classgrepros_1_1common_1_1_progress_bar" ],
@@ -10,7 +12,7 @@ var common_8py =
     [ "ellipsize", "common_8py.html#a73470c1dc6e4f9d2063ab2ce0efedd0b", null ],
     [ "ensure_namespace", "common_8py.html#ac0c43844ace8afe318b24d23bd51a6bc", null ],
     [ "filter_dict", "common_8py.html#ac3c0d706b2076ef82e2f264a8152a986", null ],
-    [ "find_files", "common_8py.html#ae332d1619b0f13555033ede3949a543d", null ],
+    [ "find_files", "common_8py.html#ac4196bd40a1b0f744453a7db11101919", null ],
     [ "format_bytes", "common_8py.html#a2ce190b82000d5a44b4769dc4aa8eca6", null ],
     [ "format_stamp", "common_8py.html#a3216ef32e864455856ca733bd0f1ab14", null ],
     [ "format_timedelta", "common_8py.html#accdaf5e86a6940d40e2a40c2f3960232", null ],
@@ -25,6 +27,7 @@ var common_8py =
     [ "merge_spans", "common_8py.html#a73267537ca6dba825de9bde0bd9d8c3a", null ],
     [ "parse_datetime", "common_8py.html#a3cb2a749bcd4fd2e2cdcdd8c95209ab3", null ],
     [ "parse_number", "common_8py.html#afe2e5b13a029be617ff18fd00319a532", null ],
+    [ "path_to_regex", "common_8py.html#a0fc1f5cc063ab834c352d02c1a78be2a", null ],
     [ "plural", "common_8py.html#aceda51d00ae2a27eadde5922158e831a", null ],
     [ "structcopy", "common_8py.html#af5a6a12387662fdeff37db8fd6235131", null ],
     [ "unique_path", "common_8py.html#a7445d9642e3bca9353739e71539f626b", null ],

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -142,9 +142,9 @@ Functions</h2></td></tr>
 <tr class="memitem:acc282a4f386251c250154da7d29276ae"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#acc282a4f386251c250154da7d29276ae">get_message_type_hash</a> (msg_or_type)</td></tr>
 <tr class="memdesc:acc282a4f386251c250154da7d29276ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns ROS message type MD5 hash, or "" if unknown type.  <br /></td></tr>
 <tr class="separator:acc282a4f386251c250154da7d29276ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a91d12131b5dfce68ecb4ed14898cf6c8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#a91d12131b5dfce68ecb4ed14898cf6c8">get_message_value</a> (msg, name, typename)</td></tr>
-<tr class="memdesc:a91d12131b5dfce68ecb4ed14898cf6c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns object attribute value, with numeric arrays converted to lists.  <br /></td></tr>
-<tr class="separator:a91d12131b5dfce68ecb4ed14898cf6c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51151416916ae1fbb9b6fc73e602eca5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#a51151416916ae1fbb9b6fc73e602eca5">get_message_value</a> (msg, name, typename=None, default=Ellipsis)</td></tr>
+<tr class="memdesc:a51151416916ae1fbb9b6fc73e602eca5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns object attribute value, with numeric arrays converted to lists.  <br /></td></tr>
+<tr class="separator:a51151416916ae1fbb9b6fc73e602eca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c030a95af7e7f962124f666b5e7bc46"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1ros1.html#a8c030a95af7e7f962124f666b5e7bc46">get_rostime</a> (fallback=False)</td></tr>
 <tr class="memdesc:a8c030a95af7e7f962124f666b5e7bc46"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns current ROS1 time, as rospy.Time.  <br /></td></tr>
 <tr class="separator:a8c030a95af7e7f962124f666b5e7bc46"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -383,7 +383,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS1 message or service request/response instantiated from serialized binary. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00740">740</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00749">749</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -422,7 +422,7 @@ Variables</h2></td></tr>
 <p>Returns a message attribute value as string. </p>
 <p>Result is at least 10 chars wide if message is a ROS time/duration (aligning seconds and nanoseconds). </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00597">597</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00599">599</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -462,7 +462,7 @@ Variables</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>dictionary of {typename: typeclass} for message type and all subtypes </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00616">616</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00618">618</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -484,7 +484,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS1 message class. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00621">621</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00623">623</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -507,7 +507,7 @@ Variables</h2></td></tr>
 <p>Returns ROS1 message type definition full text, including subtype definitions. </p>
 <p>Returns None if unknown type. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00638">638</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00640">640</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -535,7 +535,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00654">654</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00656">656</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -557,7 +557,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS1 message type name, like "std_msgs/Header". </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00661">661</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00663">663</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -579,12 +579,12 @@ Variables</h2></td></tr>
 
 <p>Returns ROS message type MD5 hash, or "" if unknown type. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00643">643</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00645">645</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
-<a id="a91d12131b5dfce68ecb4ed14898cf6c8" name="a91d12131b5dfce68ecb4ed14898cf6c8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a91d12131b5dfce68ecb4ed14898cf6c8">&#9670;&#160;</a></span>get_message_value()</h2>
+<a id="a51151416916ae1fbb9b6fc73e602eca5" name="a51151416916ae1fbb9b6fc73e602eca5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51151416916ae1fbb9b6fc73e602eca5">&#9670;&#160;</a></span>get_message_value()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -605,7 +605,13 @@ Variables</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>typename</em>&#160;</td>
+          <td class="paramname"><em>typename</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>default</em> = <code>Ellipsis</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -616,8 +622,16 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Returns object attribute value, with numeric arrays converted to lists. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">name</td><td>message attribute name </td></tr>
+    <tr><td class="paramname">typename</td><td>value ROS type name, for identifying byte arrays </td></tr>
+    <tr><td class="paramname">default</td><td>value to return if attribute does not exist; raises exception otherwise </td></tr>
+  </table>
+  </dd>
+</dl>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00669">669</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00678">678</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -645,7 +659,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00684">684</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00693">693</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -667,7 +681,7 @@ Variables</h2></td></tr>
 <p>Returns currently available ROS1 topics, as [(topicname, typename)]. </p>
 <p>Omits topics that the current ROS1 node itself has published. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00696">696</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00705">705</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -728,7 +742,7 @@ Variables</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00711">711</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00720">720</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -750,7 +764,7 @@ Variables</h2></td></tr>
 
 <p>Returns whether value is a ROS1 time/duration class or instance. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00716">716</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00725">725</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -782,7 +796,7 @@ Variables</h2></td></tr>
 
 <p>Returns a ROS1 duration, as rospy.Duration. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00721">721</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00730">730</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -814,7 +828,7 @@ Variables</h2></td></tr>
 
 <p>Returns a ROS1 time, as rospy.Time. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00726">726</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00735">735</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -837,7 +851,7 @@ Variables</h2></td></tr>
 <p>Returns scalar type from ROS message data type, like "uint8" from "uint8[100]". </p>
 <p>Returns type unchanged if already a scalar. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00753">753</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00762">762</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -859,7 +873,7 @@ Variables</h2></td></tr>
 
 <p>Returns ROS1 message as a serialized binary. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00731">731</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00740">740</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -897,7 +911,7 @@ Variables</h2></td></tr>
 
 <p>Sets message or object attribute value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00757">757</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00766">766</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -940,7 +954,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as ROS1 duration if convertible (int/float/time/datetime/decimal), else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00762">762</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00771">771</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -962,7 +976,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in nanoseconds if value is ROS time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00776">776</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00785">785</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -984,7 +998,7 @@ Variables</h2></td></tr>
 
 <p>Returns value in seconds if value is ROS1 time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00781">781</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00790">790</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -1006,7 +1020,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as (seconds, nanoseconds) if value is ROS1 time/duration, else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00786">786</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00795">795</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -1028,7 +1042,7 @@ Variables</h2></td></tr>
 
 <p>Returns value as ROS1 time if convertible (int/float/duration/datetime/decimal), else value. </p>
 
-<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00791">791</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="ros1_8py_source.html#l00800">800</a> of file <a class="el" href="ros1_8py_source.html">ros1.py</a>.</p>
 
 </div>
 </div>
@@ -1245,7 +1259,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1ros1.html">ros1</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

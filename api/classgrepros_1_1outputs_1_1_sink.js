@@ -6,6 +6,7 @@ var classgrepros_1_1outputs_1_1_sink =
     [ "autodetect", "classgrepros_1_1outputs_1_1_sink.html#a4c3ac0bbb97dd1556a31f7f19e10e72e", null ],
     [ "bind", "classgrepros_1_1outputs_1_1_sink.html#ae6d73f76c3a8c0af24650bbe1d6f9beb", null ],
     [ "close", "classgrepros_1_1outputs_1_1_sink.html#a8ab79e14e24aa440dcd1d9e822eb1f1c", null ],
+    [ "configure", "classgrepros_1_1outputs_1_1_sink.html#a1735d54344fa76a45fb611a370fb7f62", null ],
     [ "emit", "classgrepros_1_1outputs_1_1_sink.html#a520532788b9ddd6f698ddf31076d6320", null ],
     [ "emit_meta", "classgrepros_1_1outputs_1_1_sink.html#afd5813cd8ad6edf1f8015552e3a0f47d", null ],
     [ "flush", "classgrepros_1_1outputs_1_1_sink.html#a80fc36f6ac807f2a33915ec2a59409ef", null ],

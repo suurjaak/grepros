@@ -11,6 +11,7 @@ var annotated_dup =
         [ "TypeMeta", "classgrepros_1_1api_1_1_type_meta.html", "classgrepros_1_1api_1_1_type_meta" ]
       ] ],
       [ "common", "namespacegrepros_1_1common.html", [
+        [ "ArgumentUtil", "classgrepros_1_1common_1_1_argument_util.html", "classgrepros_1_1common_1_1_argument_util" ],
         [ "ConsolePrinter", "classgrepros_1_1common_1_1_console_printer.html", "classgrepros_1_1common_1_1_console_printer" ],
         [ "Decompressor", "classgrepros_1_1common_1_1_decompressor.html", "classgrepros_1_1common_1_1_decompressor" ],
         [ "LenIterable", "classgrepros_1_1common_1_1_len_iterable.html", "classgrepros_1_1common_1_1_len_iterable" ],
@@ -22,21 +23,18 @@ var annotated_dup =
         [ "AppSource", "classgrepros_1_1inputs_1_1_app_source.html", "classgrepros_1_1inputs_1_1_app_source" ],
         [ "BagSource", "classgrepros_1_1inputs_1_1_bag_source.html", "classgrepros_1_1inputs_1_1_bag_source" ],
         [ "ConditionMixin", "classgrepros_1_1inputs_1_1_condition_mixin.html", "classgrepros_1_1inputs_1_1_condition_mixin" ],
-        [ "Source", "classgrepros_1_1inputs_1_1_source.html", "classgrepros_1_1inputs_1_1_source" ],
-        [ "TopicSource", "classgrepros_1_1inputs_1_1_topic_source.html", "classgrepros_1_1inputs_1_1_topic_source" ]
-      ] ],
-      [ "main", "namespacegrepros_1_1main.html", [
-        [ "HelpFormatter", "classgrepros_1_1main_1_1_help_formatter.html", null ]
+        [ "LiveSource", "classgrepros_1_1inputs_1_1_live_source.html", "classgrepros_1_1inputs_1_1_live_source" ],
+        [ "Source", "classgrepros_1_1inputs_1_1_source.html", "classgrepros_1_1inputs_1_1_source" ]
       ] ],
       [ "outputs", "namespacegrepros_1_1outputs.html", [
         [ "AppSink", "classgrepros_1_1outputs_1_1_app_sink.html", "classgrepros_1_1outputs_1_1_app_sink" ],
         [ "BagSink", "classgrepros_1_1outputs_1_1_bag_sink.html", "classgrepros_1_1outputs_1_1_bag_sink" ],
         [ "ConsoleSink", "classgrepros_1_1outputs_1_1_console_sink.html", "classgrepros_1_1outputs_1_1_console_sink" ],
+        [ "LiveSink", "classgrepros_1_1outputs_1_1_live_sink.html", "classgrepros_1_1outputs_1_1_live_sink" ],
         [ "MultiSink", "classgrepros_1_1outputs_1_1_multi_sink.html", "classgrepros_1_1outputs_1_1_multi_sink" ],
         [ "RolloverSinkMixin", "classgrepros_1_1outputs_1_1_rollover_sink_mixin.html", "classgrepros_1_1outputs_1_1_rollover_sink_mixin" ],
         [ "Sink", "classgrepros_1_1outputs_1_1_sink.html", "classgrepros_1_1outputs_1_1_sink" ],
-        [ "TextSinkMixin", "classgrepros_1_1outputs_1_1_text_sink_mixin.html", "classgrepros_1_1outputs_1_1_text_sink_mixin" ],
-        [ "TopicSink", "classgrepros_1_1outputs_1_1_topic_sink.html", "classgrepros_1_1outputs_1_1_topic_sink" ]
+        [ "TextSinkMixin", "classgrepros_1_1outputs_1_1_text_sink_mixin.html", "classgrepros_1_1outputs_1_1_text_sink_mixin" ]
       ] ],
       [ "plugins", "namespacegrepros_1_1plugins.html", [
         [ "auto", "namespacegrepros_1_1plugins_1_1auto.html", [
@@ -81,6 +79,8 @@ var annotated_dup =
         [ "ROS2Bag", "classgrepros_1_1ros2_1_1_r_o_s2_bag.html", "classgrepros_1_1ros2_1_1_r_o_s2_bag" ]
       ] ],
       [ "search", "namespacegrepros_1_1search.html", [
+        [ "BooleanResult", "classgrepros_1_1search_1_1_boolean_result.html", "classgrepros_1_1search_1_1_boolean_result" ],
+        [ "ExpressionTree", "classgrepros_1_1search_1_1_expression_tree.html", "classgrepros_1_1search_1_1_expression_tree" ],
         [ "Scanner", "classgrepros_1_1search_1_1_scanner.html", "classgrepros_1_1search_1_1_scanner" ]
       ] ]
     ] ],

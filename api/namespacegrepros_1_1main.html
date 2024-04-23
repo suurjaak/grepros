@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -91,7 +91,6 @@ $(document).ready(function(){initNavTree('namespacegrepros_1_1main.html',''); in
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">grepros.main Namespace Reference</div></div>
@@ -101,32 +100,20 @@ $(document).ready(function(){initNavTree('namespacegrepros_1_1main.html',''); in
 <p>Program main interface.  
 <a href="namespacegrepros_1_1main.html#details">More...</a></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1main_1_1_help_formatter.html">HelpFormatter</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">RawTextHelpFormatter returning custom metavar for WRITE.  <a href="classgrepros_1_1main_1_1_help_formatter.html#details">More...</a><br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:af847ab2600167fbfc071c46ee0ef71f9"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#af847ab2600167fbfc071c46ee0ef71f9">flush_stdout</a> ()</td></tr>
 <tr class="memdesc:af847ab2600167fbfc071c46ee0ef71f9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes a linefeed to sdtout if nothing has been printed to it so far.  <br /></td></tr>
 <tr class="separator:af847ab2600167fbfc071c46ee0ef71f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aec5c0fa32d9eede6064bd671c30777f5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#aec5c0fa32d9eede6064bd671c30777f5">make_parser</a> ()</td></tr>
-<tr class="memdesc:aec5c0fa32d9eede6064bd671c30777f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a configured ArgumentParser instance.  <br /></td></tr>
-<tr class="separator:aec5c0fa32d9eede6064bd671c30777f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af8be4053f2515abdce090229d09bb9da"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#af8be4053f2515abdce090229d09bb9da">preload_plugins</a> ()</td></tr>
-<tr class="memdesc:af8be4053f2515abdce090229d09bb9da"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imports and initializes plugins from auto-load folder and from arguments.  <br /></td></tr>
-<tr class="separator:af8be4053f2515abdce090229d09bb9da"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af10c1a4aa1d0ac7901abdfaa0a5d9faf"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#af10c1a4aa1d0ac7901abdfaa0a5d9faf">process_args</a> (args)</td></tr>
-<tr class="memdesc:af10c1a4aa1d0ac7901abdfaa0a5d9faf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts or combines arguments where necessary, returns full args.  <br /></td></tr>
-<tr class="separator:af10c1a4aa1d0ac7901abdfaa0a5d9faf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3eaa15d3d099a85c809fbc7b66fafe9e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#a3eaa15d3d099a85c809fbc7b66fafe9e">make_thread_excepthook</a> (args, exitcode_dict)</td></tr>
+<tr class="memdesc:a3eaa15d3d099a85c809fbc7b66fafe9e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns thread exception handler: function(text, exc) prints error, stops application.  <br /></td></tr>
+<tr class="separator:a3eaa15d3d099a85c809fbc7b66fafe9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86fce28ff8723b711d3e721ad093cf3c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#a86fce28ff8723b711d3e721ad093cf3c">preload_plugins</a> (cli_args)</td></tr>
+<tr class="memdesc:a86fce28ff8723b711d3e721ad093cf3c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imports and initializes plugins from auto-load folder and from arguments.  <br /></td></tr>
+<tr class="separator:a86fce28ff8723b711d3e721ad093cf3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afb0fafe7e02a3ae1993c01c19fad2bae"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#afb0fafe7e02a3ae1993c01c19fad2bae">run</a> ()</td></tr>
 <tr class="memdesc:afb0fafe7e02a3ae1993c01c19fad2bae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses command-line arguments and runs search.  <br /></td></tr>
 <tr class="separator:afb0fafe7e02a3ae1993c01c19fad2bae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aef1af154f6ae3f3a28ee049a6469386e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacegrepros_1_1main.html#aef1af154f6ae3f3a28ee049a6469386e">validate_args</a> (args)</td></tr>
-<tr class="memdesc:aef1af154f6ae3f3a28ee049a6469386e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Validates arguments, prints errors, returns success.  <br /></td></tr>
-<tr class="separator:aef1af154f6ae3f3a28ee049a6469386e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -157,33 +144,44 @@ Variables</h2></td></tr>
 
 <p>Writes a linefeed to sdtout if nothing has been printed to it so far. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00509">509</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00400">400</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
-<a id="aec5c0fa32d9eede6064bd671c30777f5" name="aec5c0fa32d9eede6064bd671c30777f5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aec5c0fa32d9eede6064bd671c30777f5">&#9670;&#160;</a></span>make_parser()</h2>
+<a id="a3eaa15d3d099a85c809fbc7b66fafe9e" name="a3eaa15d3d099a85c809fbc7b66fafe9e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3eaa15d3d099a85c809fbc7b66fafe9e">&#9670;&#160;</a></span>make_thread_excepthook()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">make_parser </td>
+          <td class="memname">make_thread_excepthook </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>args</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>exitcode_dict</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns a configured ArgumentParser instance. </p>
+<p>Returns thread exception handler: function(text, exc) prints error, stops application. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00400">400</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00424">424</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
-<a id="af8be4053f2515abdce090229d09bb9da" name="af8be4053f2515abdce090229d09bb9da"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af8be4053f2515abdce090229d09bb9da">&#9670;&#160;</a></span>preload_plugins()</h2>
+<a id="a86fce28ff8723b711d3e721ad093cf3c" name="a86fce28ff8723b711d3e721ad093cf3c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a86fce28ff8723b711d3e721ad093cf3c">&#9670;&#160;</a></span>preload_plugins()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -191,7 +189,8 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">preload_plugins </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>cli_args</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -199,35 +198,7 @@ Variables</h2></td></tr>
 
 <p>Imports and initializes plugins from auto-load folder and from arguments. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00516">516</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
-
-</div>
-</div>
-<a id="af10c1a4aa1d0ac7901abdfaa0a5d9faf" name="af10c1a4aa1d0ac7901abdfaa0a5d9faf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af10c1a4aa1d0ac7901abdfaa0a5d9faf">&#9670;&#160;</a></span>process_args()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">process_args </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>args</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Converts or combines arguments where necessary, returns full args. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">args</td><td>arguments object like argparse.Namespace </td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00420">420</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00407">407</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
@@ -248,35 +219,7 @@ Variables</h2></td></tr>
 
 <p>Parses command-line arguments and runs search. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00530">530</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
-
-</div>
-</div>
-<a id="aef1af154f6ae3f3a28ee049a6469386e" name="aef1af154f6ae3f3a28ee049a6469386e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aef1af154f6ae3f3a28ee049a6469386e">&#9670;&#160;</a></span>validate_args()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">validate_args </td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>args</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Validates arguments, prints errors, returns success. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">args</td><td>arguments object like argparse.Namespace </td></tr>
-  </table>
-  </dd>
-</dl>
-
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00463">463</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00436">436</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
@@ -295,7 +238,7 @@ Variables</h2></td></tr>
 
 <p>Configuration for argparse, as {description, epilog, args: [..], groups: {name: [..]}}. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00033">33</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00030">30</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
@@ -313,7 +256,7 @@ Variables</h2></td></tr>
 
 <p>List of command-line arguments the program was invoked with. </p>
 
-<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00385">385</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="main_8py_source.html#l00397">397</a> of file <a class="el" href="main_8py_source.html">main.py</a>.</p>
 
 </div>
 </div>
@@ -323,7 +266,7 @@ Variables</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1main.html">main</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

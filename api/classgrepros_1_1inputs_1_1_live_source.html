@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.7"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>grepros: TopicSource Class Reference</title>
+<title>grepros: LiveSource Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -64,7 +64,7 @@ $(function() {
 </div>
 <script type="text/javascript">
 /* @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&amp;dn=expat.txt MIT */
-$(document).ready(function(){initNavTree('classgrepros_1_1inputs_1_1_topic_source.html',''); initResizable(); });
+$(document).ready(function(){initNavTree('classgrepros_1_1inputs_1_1_live_source.html',''); initResizable(); });
 /* @license-end */
 </script>
 <div id="doc-content">
@@ -94,19 +94,19 @@ $(document).ready(function(){initNavTree('classgrepros_1_1inputs_1_1_topic_sourc
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
-<a href="classgrepros_1_1inputs_1_1_topic_source-members.html">List of all members</a>  </div>
-  <div class="headertitle"><div class="title">TopicSource Class Reference</div></div>
+<a href="classgrepros_1_1inputs_1_1_live_source-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">LiveSource Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
 
 <p>Produces messages from live ROS topics.  
- <a href="classgrepros_1_1inputs_1_1_topic_source.html#details">More...</a></p>
+ <a href="classgrepros_1_1inputs_1_1_live_source.html#details">More...</a></p>
 <div class="dynheader">
-Inheritance diagram for TopicSource:</div>
+Inheritance diagram for LiveSource:</div>
 <div class="dyncontent">
-<div class="center"><img src="classgrepros_1_1inputs_1_1_topic_source__inherit__graph.png" border="0" usemap="#a_topic_source_inherit__map" alt="Inheritance graph"/></div>
-<map name="a_topic_source_inherit__map" id="a_topic_source_inherit__map">
-<area shape="rect" title="Produces messages from live ROS topics." alt="" coords="48,79,147,104"/>
+<div class="center"><img src="classgrepros_1_1inputs_1_1_live_source__inherit__graph.png" border="0" usemap="#a_live_source_inherit__map" alt="Inheritance graph"/></div>
+<map name="a_live_source_inherit__map" id="a_live_source_inherit__map">
+<area shape="rect" title="Produces messages from live ROS topics." alt="" coords="51,79,144,104"/>
 <area shape="rect" href="classgrepros_1_1inputs_1_1_source.html" title="Message producer base class." alt="" coords="5,5,72,31"/>
 <area shape="poly" title=" " alt="" coords="59,40,90,77,86,80,55,43"/>
 <area shape="rect" href="classgrepros_1_1inputs_1_1_condition_mixin.html" title="Provides topic conditions evaluation." alt="" coords="96,5,216,31"/>
@@ -116,43 +116,49 @@ Inheritance diagram for TopicSource:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a250d8f02920667a07450a78c04cc6c68"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memitem:a250d8f02920667a07450a78c04cc6c68"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a233d6765c3e657857260a507684c306c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a233d6765c3e657857260a507684c306c">bind</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#aad7359c59843de9c74f258f03c59a830">sink</a>)</td></tr>
+<tr class="memitem:a233d6765c3e657857260a507684c306c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a233d6765c3e657857260a507684c306c">bind</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#aad7359c59843de9c74f258f03c59a830">sink</a>)</td></tr>
 <tr class="memdesc:a233d6765c3e657857260a507684c306c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attaches sink to source and blocks until connected to ROS live.  <br /></td></tr>
 <tr class="separator:a233d6765c3e657857260a507684c306c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
+<tr class="memitem:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">close</a> (self)</td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down subscribers and stops producing messages.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc5e7ea29a69cb535a4b7f7d67142f0f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">format_meta</a> (self)</td></tr>
+<tr class="memitem:afc5e7ea29a69cb535a4b7f7d67142f0f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">format_meta</a> (self)</td></tr>
 <tr class="memdesc:afc5e7ea29a69cb535a4b7f7d67142f0f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns source metainfo string.  <br /></td></tr>
 <tr class="separator:afc5e7ea29a69cb535a4b7f7d67142f0f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b39b4eb967cf2279eda8807ab1f18f3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">get_message_class</a> (self, typename, typehash=None)</td></tr>
+<tr class="memitem:a6b39b4eb967cf2279eda8807ab1f18f3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">get_message_class</a> (self, typename, typehash=None)</td></tr>
 <tr class="memdesc:a6b39b4eb967cf2279eda8807ab1f18f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns message type class, from active subscription if available.  <br /></td></tr>
 <tr class="separator:a6b39b4eb967cf2279eda8807ab1f18f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add359405de6242c9250f193d6d86b68a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#add359405de6242c9250f193d6d86b68a">get_message_definition</a> (self, msg_or_type)</td></tr>
+<tr class="memitem:add359405de6242c9250f193d6d86b68a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#add359405de6242c9250f193d6d86b68a">get_message_definition</a> (self, msg_or_type)</td></tr>
 <tr class="memdesc:add359405de6242c9250f193d6d86b68a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns ROS message type definition full text, including subtype definitions.  <br /></td></tr>
 <tr class="separator:add359405de6242c9250f193d6d86b68a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c97a9e36d15117d7129d8f86dcbfd02"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">get_message_meta</a> (self, topic, msg, stamp, index=None)</td></tr>
+<tr class="memitem:a3c97a9e36d15117d7129d8f86dcbfd02"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">get_message_meta</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a3c97a9e36d15117d7129d8f86dcbfd02"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns message metainfo data dict.  <br /></td></tr>
 <tr class="separator:a3c97a9e36d15117d7129d8f86dcbfd02"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7143cd7ff8b76ec5191ffb37a95d1909"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">get_message_type_hash</a> (self, msg_or_type)</td></tr>
+<tr class="memitem:a7143cd7ff8b76ec5191ffb37a95d1909"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">get_message_type_hash</a> (self, msg_or_type)</td></tr>
 <tr class="memdesc:a7143cd7ff8b76ec5191ffb37a95d1909"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns ROS message type MD5 hash.  <br /></td></tr>
 <tr class="separator:a7143cd7ff8b76ec5191ffb37a95d1909"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a07143efeecc33ff7523fd0af3c23fc8a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a07143efeecc33ff7523fd0af3c23fc8a">get_meta</a> (self)</td></tr>
+<tr class="memitem:a07143efeecc33ff7523fd0af3c23fc8a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a07143efeecc33ff7523fd0af3c23fc8a">get_meta</a> (self)</td></tr>
 <tr class="memdesc:a07143efeecc33ff7523fd0af3c23fc8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns source metainfo data dict.  <br /></td></tr>
 <tr class="separator:a07143efeecc33ff7523fd0af3c23fc8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
-<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters.  <br /></td></tr>
+<tr class="memitem:a01445f87187b1374b976c25d2d0e313d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a01445f87187b1374b976c25d2d0e313d">init_progress</a> (self)</td></tr>
+<tr class="memdesc:a01445f87187b1374b976c25d2d0e313d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes progress bar, if any.  <br /></td></tr>
+<tr class="separator:a01445f87187b1374b976c25d2d0e313d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
+<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters; registers status.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a92f6a631059f85262380255391242b5f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a92f6a631059f85262380255391242b5f">read</a> (self)</td></tr>
+<tr class="memitem:a92f6a631059f85262380255391242b5f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a92f6a631059f85262380255391242b5f">read</a> (self)</td></tr>
 <tr class="memdesc:a92f6a631059f85262380255391242b5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Yields messages from subscribed ROS topics, as (topic, msg, ROS time).  <br /></td></tr>
 <tr class="separator:a92f6a631059f85262380255391242b5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abe113288f9b2b7ca2834e18ebf461b61"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#abe113288f9b2b7ca2834e18ebf461b61">refresh_topics</a> (self)</td></tr>
+<tr class="memitem:abe113288f9b2b7ca2834e18ebf461b61"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#abe113288f9b2b7ca2834e18ebf461b61">refresh_topics</a> (self)</td></tr>
 <tr class="memdesc:abe113288f9b2b7ca2834e18ebf461b61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refreshes topics and subscriptions from ROS live.  <br /></td></tr>
 <tr class="separator:abe113288f9b2b7ca2834e18ebf461b61"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether ROS environment is set, prints error if not.  <br /></td></tr>
+<tr class="memitem:a4b35fa0bec0fd68085e692524def4c5b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a4b35fa0bec0fd68085e692524def4c5b">update_progress</a> (self, count, running=True)</td></tr>
+<tr class="memdesc:a4b35fa0bec0fd68085e692524def4c5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates progress bar, if any.  <br /></td></tr>
+<tr class="separator:a4b35fa0bec0fd68085e692524def4c5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether ROS environment is set and arguments valid, prints error if not.  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
 <tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
@@ -175,6 +181,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down input batch if any (like bagfile), else all input.  <br /></td></tr>
 <tr class="separator:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates source configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a9043b175ed23038ffd9edc779c84ffad">configure_progress</a> (self, **kwargs)</td></tr>
+<tr class="memdesc:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configures progress bar options, updates current bar if any.  <br /></td></tr>
+<tr class="separator:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a70293a28f26b211e35edf6b0223d6ca4">format_message_meta</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns message metainfo string.  <br /></td></tr>
 <tr class="separator:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -199,8 +211,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a07143efeecc33ff7523fd0af3c23fc8a">get_meta</a> (self)</td></tr>
 <tr class="memdesc:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns source metainfo data dict.  <br /></td></tr>
 <tr class="separator:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a01445f87187b1374b976c25d2d0e313d">init_progress</a> (self)</td></tr>
+<tr class="memdesc:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes progress bar, if any.  <br /></td></tr>
+<tr class="separator:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
-<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters.  <br /></td></tr>
+<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters; registers status.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06f854d86bd993084b79f35d7e7b8132 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a06f854d86bd993084b79f35d7e7b8132">notify</a> (self, status)</td></tr>
 <tr class="memdesc:a06f854d86bd993084b79f35d7e7b8132 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reports match status of last produced message.  <br /></td></tr>
@@ -211,11 +226,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a180ccf96b1f552dfe673627ec3305ad3">thread_excepthook</a> (self, text, exc)</td></tr>
 <tr class="memdesc:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles exception, used by background threads.  <br /></td></tr>
 <tr class="separator:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b">update_progress</a> (self, count, running=True)</td></tr>
+<tr class="memdesc:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates progress bar, if any, with source processed count, pauses bar if not running.  <br /></td></tr>
+<tr class="separator:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether source prerequisites are met (like ROS environment for TopicSource).  <br /></td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether arguments are valid and source prerequisites are met.  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1inputs_1_1_condition_mixin')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></td></tr>
-<tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, args=None, **kwargs)</td></tr>
+<tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears cached messages.  <br /></td></tr>
@@ -238,14 +256,15 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes passes current state conditions, if any.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether conditions have valid syntax, sets options, prints errors.  <br /></td></tr>
+<tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a5426824942db4253f87a1009fd5d2d4f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a5426824942db4253f87a1009fd5d2d4f">bar</a></td></tr>
-<tr class="separator:a5426824942db4253f87a1009fd5d2d4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a339e98fa672256eb9c1217741db622e1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a339e98fa672256eb9c1217741db622e1">MASTER_INTERVAL</a></td></tr>
+<tr class="memitem:a339e98fa672256eb9c1217741db622e1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a339e98fa672256eb9c1217741db622e1">MASTER_INTERVAL</a></td></tr>
 <tr class="separator:a339e98fa672256eb9c1217741db622e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
+<tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
 <tr class="separator:a51646327ac0a3287c4b08e4d28b66f35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
 <tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
@@ -265,13 +284,16 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
 <tr class="memdesc:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Result of validate()  <br /></td></tr>
 <tr class="separator:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></td></tr>
+<tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
+<tr class="separator:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:ad0d00892c1440deb68f2bca93d7b8789"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#ad0d00892c1440deb68f2bca93d7b8789">DEFAULT_ARGS</a></td></tr>
+<tr class="memitem:ad0d00892c1440deb68f2bca93d7b8789"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#ad0d00892c1440deb68f2bca93d7b8789">DEFAULT_ARGS</a></td></tr>
 <tr class="memdesc:ad0d00892c1440deb68f2bca93d7b8789"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor argument defaults.  <br /></td></tr>
 <tr class="separator:ad0d00892c1440deb68f2bca93d7b8789"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7a370d461fead505c564767f85378c49"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html#a7a370d461fead505c564767f85378c49">MASTER_INTERVAL</a> = 2</td></tr>
+<tr class="memitem:a7a370d461fead505c564767f85378c49"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html#a7a370d461fead505c564767f85378c49">MASTER_INTERVAL</a> = 2</td></tr>
 <tr class="memdesc:a7a370d461fead505c564767f85378c49"><td class="mdescLeft">&#160;</td><td class="mdescRight">Seconds between refreshing available topics from ROS master.  <br /></td></tr>
 <tr class="separator:a7a370d461fead505c564767f85378c49"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_static_attribs_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
@@ -291,7 +313,7 @@ Static Public Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Produces messages from live ROS topics. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00825">825</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01005">1005</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a250d8f02920667a07450a78c04cc6c68" name="a250d8f02920667a07450a78c04cc6c68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a250d8f02920667a07450a78c04cc6c68">&#9670;&#160;</a></span>__init__()</h2>
@@ -338,13 +360,14 @@ Static Public Attributes</h2></td></tr>
     <tr><td class="paramname">args.unique</td><td>emit messages that are unique in topic </td></tr>
     <tr><td class="paramname">args.select_field</td><td>message fields to use for uniqueness if not all </td></tr>
     <tr><td class="paramname">args.noselect_field</td><td>message fields to skip for uniqueness </td></tr>
-    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic </td></tr>
-    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic </td></tr>
+    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic, starting from first </td></tr>
+    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic, as seconds or ROS duration </td></tr>
     <tr><td class="paramname">args.condition</td><td>Python expressions that must evaluate as true for message to be processable, see ConditionMixin </td></tr>
     <tr><td class="paramname">args.queue_size_in</td><td>subscriber queue size (default 10) </td></tr>
     <tr><td class="paramname">args.ros_time_in</td><td>stamp messages with ROS time instead of wall time </td></tr>
     <tr><td class="paramname">args.progress</td><td>whether to print progress bar </td></tr>
     <tr><td class="paramname">args.stop_on_error</td><td>stop execution on any error like unknown message type </td></tr>
+    <tr><td class="paramname">args.verbose</td><td>whether to print error stacktraces </td></tr>
     <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
   </table>
   </dd>
@@ -352,7 +375,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a250d8f02920667a07450a78c04cc6c68">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00860">860</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01043">1043</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -387,7 +410,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a233d6765c3e657857260a507684c306c">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00902">902</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01092">1092</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -411,7 +434,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00913">913</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01110">1110</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -435,7 +458,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#afc5e7ea29a69cb535a4b7f7d67142f0f">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00956">956</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01153">1153</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -475,7 +498,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a6b39b4eb967cf2279eda8807ab1f18f3">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00936">936</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01133">1133</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -509,7 +532,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#add359405de6242c9250f193d6d86b68a">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00942">942</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01139">1139</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -561,7 +584,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a3c97a9e36d15117d7129d8f86dcbfd02">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00928">928</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01125">1125</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -595,7 +618,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a7143cd7ff8b76ec5191ffb37a95d1909">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00949">949</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01146">1146</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -619,7 +642,31 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a07143efeecc33ff7523fd0af3c23fc8a">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00923">923</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01120">1120</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a01445f87187b1374b976c25d2d0e313d" name="a01445f87187b1374b976c25d2d0e313d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a01445f87187b1374b976c25d2d0e313d">&#9670;&#160;</a></span>init_progress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">init_progress </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initializes progress bar, if any. </p>
+
+<p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a01445f87187b1374b976c25d2d0e313d">Source</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01203">1203</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -667,11 +714,11 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether message passes source filters. </p>
+<p>Returns whether message passes source filters; registers status. </p>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a699a29f18aa15b83d9cacf335722a3ce">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00967">967</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01165">1165</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -695,7 +742,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a92f6a631059f85262380255391242b5f">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00870">870</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01052">1052</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -717,7 +764,47 @@ Static Public Attributes</h2></td></tr>
 
 <p>Refreshes topics and subscriptions from ROS live. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00979">979</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01175">1175</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a4b35fa0bec0fd68085e692524def4c5b" name="a4b35fa0bec0fd68085e692524def4c5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4b35fa0bec0fd68085e692524def4c5b">&#9670;&#160;</a></span>update_progress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">update_progress </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>count</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>running</em> = <code>True</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Updates progress bar, if any. </p>
+
+<p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b">Source</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01209">1209</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -737,31 +824,15 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether ROS environment is set, prints error if not. </p>
+<p>Returns whether ROS environment is set and arguments valid, prints error if not. </p>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a82bf0578fc8d502e231e8121b6574300">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00908">908</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01098">1098</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
-<a id="a5426824942db4253f87a1009fd5d2d4f" name="a5426824942db4253f87a1009fd5d2d4f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5426824942db4253f87a1009fd5d2d4f">&#9670;&#160;</a></span>bar</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bar</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01011">1011</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
-
-</div>
-</div>
 <a id="ad0d00892c1440deb68f2bca93d7b8789" name="ad0d00892c1440deb68f2bca93d7b8789"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad0d00892c1440deb68f2bca93d7b8789">&#9670;&#160;</a></span>DEFAULT_ARGS</h2>
 
@@ -783,11 +854,12 @@ Static Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=  dict(TOPIC=(), TYPE=(), SKIP_TOPIC=(), SKIP_TYPE=(), START_TIME=<span class="keywordtype">None</span>,</div>
 <div class="line">                        END_TIME=<span class="keywordtype">None</span>, START_INDEX=<span class="keywordtype">None</span>, END_INDEX=<span class="keywordtype">None</span>, CONDITION=(),</div>
-<div class="line">                        QUEUE_SIZE_IN=10, ROS_TIME_IN=<span class="keyword">False</span>, PROGRESS=<span class="keyword">False</span>, STOP_ON_ERROR=<span class="keyword">False</span>)</div>
+<div class="line">                        QUEUE_SIZE_IN=10, ROS_TIME_IN=<span class="keyword">False</span>, PROGRESS=<span class="keyword">False</span>, STOP_ON_ERROR=<span class="keyword">False</span>,</div>
+<div class="line">                        VERBOSE=<span class="keyword">False</span>)</div>
 </div><!-- fragment -->
 <p>Constructor argument defaults. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00832">832</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01012">1012</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -813,7 +885,7 @@ Static Public Attributes</h2></td></tr>
 
 <p>Seconds between refreshing available topics from ROS master. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00829">829</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01009">1009</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -829,7 +901,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01039">1039</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01251">1251</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -845,7 +917,7 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l00910">910</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01101">1101</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -857,8 +929,8 @@ Static Public Attributes</h2></td></tr>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html">TopicSource</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html">LiveSource</a></li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

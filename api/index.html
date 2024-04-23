@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -116,7 +116,7 @@ Main class index</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html">grepros.BagSource</a></code>   </td><td class="markdownTableBodyNone">produces messages from ROS bagfiles    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html">grepros.TopicSource</a></code>   </td><td class="markdownTableBodyNone">produces messages from live ROS topics    </td></tr>
+<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html">grepros.LiveSource</a></code>   </td><td class="markdownTableBodyNone">produces messages from live ROS topics    </td></tr>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"></td><td class="markdownTableBodyNone"><b>Sinks</b>    </td></tr>
 <tr class="markdownTableRowEven">
@@ -130,17 +130,17 @@ Main class index</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html">grepros.HtmlSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to an HTML file    </td></tr>
 <tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html">grepros.LiveSink</a></code>   </td><td class="markdownTableBodyNone">publishes messages to live ROS topics    </td></tr>
+<tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html">grepros.McapSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to an MCAP bag file    </td></tr>
-<tr class="markdownTableRowEven">
+<tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html">grepros.MultiSink</a></code>   </td><td class="markdownTableBodyNone">combines any number of sinks    </td></tr>
-<tr class="markdownTableRowOdd">
+<tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html">grepros.ParquetSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to Apache Parquet files    </td></tr>
-<tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html">grepros.PostgresSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to a Postgres database    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html">grepros.SqliteSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to an SQLite database    </td></tr>
+<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html">grepros.PostgresSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to a Postgres database    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html">grepros.TopicSink</a></code>   </td><td class="markdownTableBodyNone">publishes messages to live ROS topics   </td></tr>
+<td class="markdownTableBodyNone"><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html">grepros.SqliteSink</a></code>   </td><td class="markdownTableBodyNone">writes messages to an SQLite database   </td></tr>
 </table>
 <h2><a class="anchor" id="autotoc_md2"></a>
 Convenience entrypoints</h2>
@@ -218,7 +218,7 @@ Working with bags</h3>
 <div class="line">        print(<span class="stringliteral">&quot;Topic: &quot;</span>, topic)</div>
 <div class="line">        <span class="keywordflow">for</span> topic, msg, stamp <span class="keywordflow">in</span> bag[topic]:</div>
 <div class="line">            print(msg)</div>
-<div class="ttc" id="anamespacegrepros_1_1api_html_a84a09fd35bc402655f827e3c9ca0a577"><div class="ttname"><a href="namespacegrepros_1_1api.html#a84a09fd35bc402655f827e3c9ca0a577">grepros.api.make_duration</a></div><div class="ttdeci">make_duration(secs=0, nsecs=0)</div><div class="ttdoc">Returns a ROS duration.</div><div class="ttdef"><b>Definition</b> <a href="api_8py_source.html#l00970">api.py:970</a></div></div>
+<div class="ttc" id="anamespacegrepros_1_1api_html_a84a09fd35bc402655f827e3c9ca0a577"><div class="ttname"><a href="namespacegrepros_1_1api.html#a84a09fd35bc402655f827e3c9ca0a577">grepros.api.make_duration</a></div><div class="ttdeci">make_duration(secs=0, nsecs=0)</div><div class="ttdoc">Returns a ROS duration.</div><div class="ttdef"><b>Definition</b> <a href="api_8py_source.html#l00977">api.py:977</a></div></div>
 </div><!-- fragment --><h3><a class="anchor" id="autotoc_md7"></a>
 Sources and sinks</h3>
 <div class="fragment"><div class="line"><span class="keyword">import</span> grepros</div>
@@ -230,11 +230,11 @@ Sources and sinks</h3>
 <div class="line">        sink.emit(*data)</div>
 <div class="line"> </div>
 <div class="line"><span class="comment"># Grep live topics:</span></div>
-<div class="line"><span class="keywordflow">for</span> topic, msg, stamp, match, index <span class="keywordflow">in</span> grepros.TopicSource(topic=<span class="stringliteral">&quot;/diagnostics&quot;</span>, pattern=<span class="stringliteral">&quot;cpu&quot;</span>):</div>
+<div class="line"><span class="keywordflow">for</span> topic, msg, stamp, match, index <span class="keywordflow">in</span> grepros.LiveSource(topic=<span class="stringliteral">&quot;/diagnostics&quot;</span>, pattern=<span class="stringliteral">&quot;cpu&quot;</span>):</div>
 <div class="line">    print(<span class="stringliteral">&quot;MESSAGE #%s MATCH: &quot;</span> % index, match)</div>
 <div class="line"> </div>
 <div class="line"><span class="comment"># Subscribe to live topics and write to bag:</span></div>
-<div class="line"><span class="keyword">with</span> grepros.TopicSource(topic=<span class="stringliteral">&quot;/rosout&quot;</span>) <span class="keyword">as</span> source, \</div>
+<div class="line"><span class="keyword">with</span> grepros.LiveSource(topic=<span class="stringliteral">&quot;/rosout&quot;</span>) <span class="keyword">as</span> source, \</div>
 <div class="line">     grepros.Bag(<span class="stringliteral">&quot;my.bag&quot;</span>, <span class="stringliteral">&quot;w&quot;</span>) <span class="keyword">as</span> bag:</div>
 <div class="line">    <span class="keywordflow">for</span> topic, msg, stamp, *_ <span class="keywordflow">in</span> grepros.Scanner(pattern=<span class="stringliteral">&quot;error&quot;</span>).find(source)</div>
 <div class="line">        bag.write(topic, msg, stamp)</div>
@@ -250,7 +250,7 @@ Sources and sinks</h3>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -120,7 +120,7 @@ Functions</h2></td></tr>
 <ul>
 <li><code><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html">AppSource</a></code>: produces messages from iterable or pushed data</li>
 <li><code><a class="el" href="classgrepros_1_1inputs_1_1_bag_source.html">BagSource</a></code>: produces messages from ROS bagfiles</li>
-<li><code><a class="el" href="classgrepros_1_1inputs_1_1_topic_source.html">TopicSource</a></code>: produces messages from live ROS topics</li>
+<li><code><a class="el" href="classgrepros_1_1inputs_1_1_live_source.html">LiveSource</a></code>: produces messages from live ROS topics</li>
 </ul>
 <p>Sink classes:</p>
 <ul>
@@ -129,13 +129,13 @@ Functions</h2></td></tr>
 <li><code><a class="el" href="classgrepros_1_1outputs_1_1_console_sink.html">ConsoleSink</a></code>: prints messages to console</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html">CsvSink</a></code>: writes messages to CSV files, each topic to a separate file</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html">HtmlSink</a></code>: writes messages to an HTML file</li>
+<li><code><a class="el" href="classgrepros_1_1outputs_1_1_live_sink.html">LiveSink</a></code>: publishes messages to ROS topics</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html">McapSink</a></code>: writes messages to MCAP file</li>
 <li><code><a class="el" href="classgrepros_1_1outputs_1_1_multi_sink.html">MultiSink</a></code>: combines any number of sinks</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html">ParquetSink</a></code>: writes messages to Apache Parquet files</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html">PostgresSink</a></code>: writes messages to a Postgres database</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html">SqliteSink</a></code>: writes messages to an SQLite database</li>
 <li><code><a class="el" href="classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html">SqlSink</a></code>: writes SQL schema file for message type tables and topic views</li>
-<li><code><a class="el" href="classgrepros_1_1outputs_1_1_topic_sink.html">TopicSink</a></code>: publishes messages to ROS topics</li>
 </ul>
 <p><code><a class="el" href="classgrepros_1_1api_1_1_base_bag.html">Bag</a></code>: generic bag interface. <code><a class="el" href="classgrepros_1_1search_1_1_scanner.html">Scanner</a></code>: ROS message grepper.</p>
 <p>Format-specific bag classes:</p>
@@ -179,7 +179,7 @@ Functions</h2></td></tr>
 <p>Read from live topics: <code>grep(live=True, pattern="cpu")</code>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">args</td><td>arguments as namespace or dictionary, case-insensitive; or a single path as the ROS bagfile to read, or one or more <code><a class="el" href="classgrepros_1_1api_1_1_bag.html">Bag</a></code> instances </td></tr>
+    <tr><td class="paramname">args</td><td>arguments as namespace or dictionary, case-insensitive; or a single path as the ROS bagfile to read, or one or more <code><a class="el" href="classgrepros_1_1api_1_1_bag.html">Bag</a></code> instances, or a <code><a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></code> instance </td></tr>
     <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive</td></tr>
   </table>
   </dd>
@@ -192,6 +192,8 @@ Functions</h2></td></tr>
     <tr><td class="paramname">args.decompress</td><td>decompress archived bags to file directory </td></tr>
     <tr><td class="paramname">args.reindex</td><td>make a copy of unindexed bags and reindex them (ROS1 only) </td></tr>
     <tr><td class="paramname">args.orderby</td><td>"topic" or "type" if any to group results by </td></tr>
+    <tr><td class="paramname">args.timescale</td><td>emit messages on original timeline from first message at given rate, 0 disables </td></tr>
+    <tr><td class="paramname">args.timescale_emission</td><td>start timeline from first matched message not first in bag </td></tr>
     <tr><td class="paramname">args.bag</td><td>one or more <code><a class="el" href="classgrepros_1_1api_1_1_bag.html">Bag</a></code> instances</td></tr>
   </table>
   </dd>
@@ -216,8 +218,8 @@ Functions</h2></td></tr>
     <tr><td class="paramname">args.end_time</td><td>latest timestamp of messages to read </td></tr>
     <tr><td class="paramname">args.start_index</td><td>message index within topic to start from </td></tr>
     <tr><td class="paramname">args.end_index</td><td>message index within topic to stop at </td></tr>
-    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic </td></tr>
-    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic </td></tr>
+    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic, starting from first </td></tr>
+    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic, as seconds or ROS duration </td></tr>
     <tr><td class="paramname">args.select_field</td><td>message fields to use in matching if not all </td></tr>
     <tr><td class="paramname">args.noselect_field</td><td>message fields to skip in matching </td></tr>
     <tr><td class="paramname">args.unique</td><td>emit messages that are unique in topic (select_field and noselect_field apply if specified) </td></tr>
@@ -231,7 +233,8 @@ Functions</h2></td></tr>
     <tr><td class="paramname">args.fixed_string</td><td>pattern contains ordinary strings, not regular expressions </td></tr>
     <tr><td class="paramname">args.case</td><td>use case-sensitive matching in pattern </td></tr>
     <tr><td class="paramname">args.invert</td><td>select messages not matching pattern </td></tr>
-    <tr><td class="paramname">args.nth_match</td><td>emit every Nth match in topic </td></tr>
+    <tr><td class="paramname">args.expression</td><td>pattern(s) are a logical expression like 'this AND (this2 OR NOT "skip this")', with elements as patterns to find in message fields </td></tr>
+    <tr><td class="paramname">args.nth_match</td><td>emit every Nth match in topic, starting from first </td></tr>
     <tr><td class="paramname">args.max_count</td><td>number of matched messages to emit (per file if bag input) </td></tr>
     <tr><td class="paramname">args.max_per_topic</td><td>number of matched messages to emit from each topic </td></tr>
     <tr><td class="paramname">args.max_topics</td><td>number of topics to print matches from </td></tr>
@@ -246,7 +249,7 @@ Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd><code><a class="el" href="">GrepMessage</a></code> namedtuples <div class="fragment"><div class="line">of (topic, message, timestamp, match, index)</div>
 </div><!-- fragment --> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00152">152</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00159">159</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
 
 </div>
 </div>
@@ -286,7 +289,7 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00342">342</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00353">353</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
 
 </div>
 </div>
@@ -384,7 +387,7 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00313">313</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00324">324</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
 
 </div>
 </div>
@@ -433,6 +436,8 @@ Functions</h2></td></tr>
     <tr><td class="paramname">args.orderby</td><td>"topic" or "type" if any to group results by </td></tr>
     <tr><td class="paramname">args.decompress</td><td>decompress archived bags to file directory </td></tr>
     <tr><td class="paramname">args.reindex</td><td>make a copy of unindexed bags and reindex them (ROS1 only) </td></tr>
+    <tr><td class="paramname">args.timescale</td><td>emit messages on original timeline from first message at given rate, 0 disables </td></tr>
+    <tr><td class="paramname">args.timescale_emission</td><td>start timeline from first matched message not first in bag </td></tr>
     <tr><td class="paramname">args.progress</td><td>whether to print progress bar</td></tr>
   </table>
   </dd>
@@ -464,14 +469,14 @@ Functions</h2></td></tr>
     <tr><td class="paramname">args.unique</td><td>emit messages that are unique in topic </td></tr>
     <tr><td class="paramname">args.select_field</td><td>message fields to use for uniqueness if not all </td></tr>
     <tr><td class="paramname">args.noselect_field</td><td>message fields to skip for uniqueness </td></tr>
-    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic </td></tr>
-    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic </td></tr>
+    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic, starting from first </td></tr>
+    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic, as seconds or ROS duration </td></tr>
     <tr><td class="paramname">args.condition</td><td>Python expressions that must evaluate as true for message to be processable, see ConditionMixin </td></tr>
   </table>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00230">230</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="library_8py_source.html#l00241">241</a> of file <a class="el" href="library_8py_source.html">library.py</a>.</p>
 
 </div>
 </div>
@@ -481,7 +486,7 @@ Functions</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1library.html">library</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:46 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">grepros<span id="projectnumber">&#160;1.1.0</span>
+   <div id="projectname">grepros<span id="projectnumber">&#160;1.2.0</span>
    </div>
    <div id="projectbrief">grep for ROS bag files and live topics</div>
   </td>
@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classgrepros_1_1inputs_1_1_app_source.
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="classgrepros_1_1inputs_1_1_app_source-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">AppSource Class Reference</div></div>
@@ -121,7 +122,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes current read() yielding, if any.  <br /></td></tr>
 <tr class="separator:a8ab79e14e24aa440dcd1d9e822eb1f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
-<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters.  <br /></td></tr>
+<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters; registers status.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a03d48cf8b4bd813b931ba97724c63a24"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a03d48cf8b4bd813b931ba97724c63a24">mark_queue</a> (self, topic, msg, stamp)</td></tr>
 <tr class="memdesc:a03d48cf8b4bd813b931ba97724c63a24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Registers message produced from read_queue().  <br /></td></tr>
@@ -135,6 +136,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a4a6ceddd9f06a8f9b6b8c7bd0605a377"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a4a6ceddd9f06a8f9b6b8c7bd0605a377">read_queue</a> (self)</td></tr>
 <tr class="memdesc:a4a6ceddd9f06a8f9b6b8c7bd0605a377"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns (topic, msg, stamp) from push queue, or <code>None</code> if no queue or message in queue is condition topic only.  <br /></td></tr>
 <tr class="separator:a4a6ceddd9f06a8f9b6b8c7bd0605a377"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether configured arguments are valid, prints error if not.  <br /></td></tr>
+<tr class="separator:a82bf0578fc8d502e231e8121b6574300"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
 <tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -156,6 +160,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shuts down input batch if any (like bagfile), else all input.  <br /></td></tr>
 <tr class="separator:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a1735d54344fa76a45fb611a370fb7f62">configure</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
+<tr class="memdesc:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates source configuration.  <br /></td></tr>
+<tr class="separator:a1735d54344fa76a45fb611a370fb7f62 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a9043b175ed23038ffd9edc779c84ffad">configure_progress</a> (self, **kwargs)</td></tr>
+<tr class="memdesc:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configures progress bar options, updates current bar if any.  <br /></td></tr>
+<tr class="separator:a9043b175ed23038ffd9edc779c84ffad inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a70293a28f26b211e35edf6b0223d6ca4">format_message_meta</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns message metainfo string.  <br /></td></tr>
 <tr class="separator:a70293a28f26b211e35edf6b0223d6ca4 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -180,8 +190,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a07143efeecc33ff7523fd0af3c23fc8a">get_meta</a> (self)</td></tr>
 <tr class="memdesc:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns source metainfo data dict.  <br /></td></tr>
 <tr class="separator:a07143efeecc33ff7523fd0af3c23fc8a inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a01445f87187b1374b976c25d2d0e313d">init_progress</a> (self)</td></tr>
+<tr class="memdesc:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes progress bar, if any.  <br /></td></tr>
+<tr class="separator:a01445f87187b1374b976c25d2d0e313d inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
-<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters.  <br /></td></tr>
+<tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes source filters; registers status.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06f854d86bd993084b79f35d7e7b8132 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a06f854d86bd993084b79f35d7e7b8132">notify</a> (self, status)</td></tr>
 <tr class="memdesc:a06f854d86bd993084b79f35d7e7b8132 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reports match status of last produced message.  <br /></td></tr>
@@ -192,11 +205,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a180ccf96b1f552dfe673627ec3305ad3">thread_excepthook</a> (self, text, exc)</td></tr>
 <tr class="memdesc:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handles exception, used by background threads.  <br /></td></tr>
 <tr class="separator:a180ccf96b1f552dfe673627ec3305ad3 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b">update_progress</a> (self, count, running=True)</td></tr>
+<tr class="memdesc:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates progress bar, if any, with source processed count, pauses bar if not running.  <br /></td></tr>
+<tr class="separator:a4b35fa0bec0fd68085e692524def4c5b inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
-<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether source prerequisites are met (like ROS environment for TopicSource).  <br /></td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether arguments are valid and source prerequisites are met.  <br /></td></tr>
 <tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classgrepros_1_1inputs_1_1_condition_mixin')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></td></tr>
-<tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, args=None, **kwargs)</td></tr>
+<tr class="memitem:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a250d8f02920667a07450a78c04cc6c68">__init__</a> (self, <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a>=None, **kwargs)</td></tr>
 <tr class="separator:a250d8f02920667a07450a78c04cc6c68 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a0c0eeccd1c5e2fad4df80498995fa415">close_batch</a> (self)</td></tr>
 <tr class="memdesc:a0c0eeccd1c5e2fad4df80498995fa415 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears cached messages.  <br /></td></tr>
@@ -219,6 +235,35 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a699a29f18aa15b83d9cacf335722a3ce">is_processable</a> (self, topic, msg, stamp, index=None)</td></tr>
 <tr class="memdesc:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether message passes passes current state conditions, if any.  <br /></td></tr>
 <tr class="separator:a699a29f18aa15b83d9cacf335722a3ce inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a82bf0578fc8d502e231e8121b6574300">validate</a> (self)</td></tr>
+<tr class="memdesc:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether conditions have valid syntax, sets options, prints errors.  <br /></td></tr>
+<tr class="separator:a82bf0578fc8d502e231e8121b6574300 inherit pub_methods_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
+<tr class="separator:a51646327ac0a3287c4b08e4d28b66f35"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_attribs_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
+<tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
+<tr class="separator:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a5426824942db4253f87a1009fd5d2d4f">bar</a></td></tr>
+<tr class="memdesc:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">ProgressBar instance, if any.  <br /></td></tr>
+<tr class="separator:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a7d2696ca3c87f10fec6b6fae16e5c002">preprocess</a></td></tr>
+<tr class="memdesc:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply all filter arguments when reading, not only topic and type.  <br /></td></tr>
+<tr class="separator:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#aad7359c59843de9c74f258f03c59a830">sink</a></td></tr>
+<tr class="memdesc:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">outputs.Sink instance bound to this source  <br /></td></tr>
+<tr class="separator:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#aacf0670a6c7a71d72a1a910cfc7ef096">topics</a></td></tr>
+<tr class="memdesc:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">All topics in source, as {(topic, typenane, typehash): total message count or None}.  <br /></td></tr>
+<tr class="separator:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
+<tr class="memdesc:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Result of validate()  <br /></td></tr>
+<tr class="separator:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html">ConditionMixin</a></td></tr>
+<tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
+<tr class="separator:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -238,32 +283,11 @@ Static Public Attributes</h2></td></tr>
 <tr class="separator:ad0d00892c1440deb68f2bca93d7b8789 inherit pub_static_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a201d07e4e1fb3859ee84af1cd543b2eb inherit pub_static_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_condition_mixin.html#a201d07e4e1fb3859ee84af1cd543b2eb">TOPIC_RGX</a> = re.compile(r&quot;&lt;topic\s+([^\s&gt;&lt;]+)\s*&gt;&quot;)</td></tr>
 <tr class="separator:a201d07e4e1fb3859ee84af1cd543b2eb inherit pub_static_attribs_classgrepros_1_1inputs_1_1_condition_mixin"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
-Additional Inherited Members</h2></td></tr>
-<tr class="inherit_header pub_attribs_classgrepros_1_1inputs_1_1_source"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classgrepros_1_1inputs_1_1_source')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classgrepros_1_1inputs_1_1_source.html">Source</a></td></tr>
-<tr class="memitem:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8187411843a6284ffb964ef3fb9fcab3">args</a></td></tr>
-<tr class="separator:a8187411843a6284ffb964ef3fb9fcab3 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a5426824942db4253f87a1009fd5d2d4f">bar</a></td></tr>
-<tr class="memdesc:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">ProgressBar instance, if any.  <br /></td></tr>
-<tr class="separator:a5426824942db4253f87a1009fd5d2d4f inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a7d2696ca3c87f10fec6b6fae16e5c002">preprocess</a></td></tr>
-<tr class="memdesc:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Apply all filter arguments when reading, not only topic and type.  <br /></td></tr>
-<tr class="separator:a7d2696ca3c87f10fec6b6fae16e5c002 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#aad7359c59843de9c74f258f03c59a830">sink</a></td></tr>
-<tr class="memdesc:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">outputs.Sink instance bound to this source  <br /></td></tr>
-<tr class="separator:aad7359c59843de9c74f258f03c59a830 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#aacf0670a6c7a71d72a1a910cfc7ef096">topics</a></td></tr>
-<tr class="memdesc:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">All topics in source, as {(topic, typenane, typehash): total message count or None}.  <br /></td></tr>
-<tr class="separator:aacf0670a6c7a71d72a1a910cfc7ef096 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classgrepros_1_1inputs_1_1_source.html#a51646327ac0a3287c4b08e4d28b66f35">valid</a></td></tr>
-<tr class="memdesc:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="mdescLeft">&#160;</td><td class="mdescRight">Result of validate()  <br /></td></tr>
-<tr class="separator:a51646327ac0a3287c4b08e4d28b66f35 inherit pub_attribs_classgrepros_1_1inputs_1_1_source"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Produces messages from iterable or pushed data. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01053">1053</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01276">1276</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a250d8f02920667a07450a78c04cc6c68" name="a250d8f02920667a07450a78c04cc6c68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a250d8f02920667a07450a78c04cc6c68">&#9670;&#160;</a></span>__init__()</h2>
@@ -310,8 +334,8 @@ Additional Inherited Members</h2></td></tr>
     <tr><td class="paramname">args.unique</td><td>emit messages that are unique in topic </td></tr>
     <tr><td class="paramname">args.select_field</td><td>message fields to use for uniqueness if not all </td></tr>
     <tr><td class="paramname">args.noselect_field</td><td>message fields to skip for uniqueness </td></tr>
-    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic </td></tr>
-    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic </td></tr>
+    <tr><td class="paramname">args.nth_message</td><td>read every Nth message in topic, starting from first </td></tr>
+    <tr><td class="paramname">args.nth_interval</td><td>minimum time interval between messages in topic, as seconds or ROS duration </td></tr>
     <tr><td class="paramname">args.condition</td><td>Python expressions that must evaluate as true for message to be processable, see ConditionMixin </td></tr>
     <tr><td class="paramname">args.iterable</td><td>iterable yielding (topic, msg, stamp) or (topic, msg); yielding <code>None</code> signals end of content </td></tr>
     <tr><td class="paramname">kwargs</td><td>any and all arguments as keyword overrides, case-insensitive </td></tr>
@@ -321,7 +345,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a250d8f02920667a07450a78c04cc6c68">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01085">1085</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01309">1309</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -346,7 +370,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a8ab79e14e24aa440dcd1d9e822eb1f1c">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01124">1124</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01348">1348</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -394,11 +418,11 @@ Additional Inherited Members</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns whether message passes source filters. </p>
+<p>Returns whether message passes source filters; registers status. </p>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a699a29f18aa15b83d9cacf335722a3ce">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01163">1163</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01390">1390</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -442,7 +466,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Registers message produced from read_queue(). </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01146">1146</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01371">1371</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -494,7 +518,7 @@ Additional Inherited Members</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01159">1159</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01385">1385</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -519,7 +543,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a92f6a631059f85262380255391242b5f">Source</a>.</p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01101">1101</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01323">1323</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -541,7 +565,31 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Returns (topic, msg, stamp) from push queue, or <code>None</code> if no queue or message in queue is condition topic only. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01134">1134</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01358">1358</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a82bf0578fc8d502e231e8121b6574300" name="a82bf0578fc8d502e231e8121b6574300"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a82bf0578fc8d502e231e8121b6574300">&#9670;&#160;</a></span>validate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">validate </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns whether configured arguments are valid, prints error if not. </p>
+
+<p>Reimplemented from <a class="el" href="classgrepros_1_1inputs_1_1_source.html#a82bf0578fc8d502e231e8121b6574300">Source</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01404">1404</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -572,7 +620,23 @@ Additional Inherited Members</h2></td></tr>
 </div><!-- fragment -->
 <p>Constructor argument defaults. </p>
 
-<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01057">1057</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01280">1280</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
+
+</div>
+</div>
+<a id="a51646327ac0a3287c4b08e4d28b66f35" name="a51646327ac0a3287c4b08e4d28b66f35"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51646327ac0a3287c4b08e4d28b66f35">&#9670;&#160;</a></span>valid</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">valid</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="inputs_8py_source.html#l01407">1407</a> of file <a class="el" href="inputs_8py_source.html">inputs.py</a>.</p>
 
 </div>
 </div>
@@ -585,7 +649,7 @@ Additional Inherited Members</h2></td></tr>
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
     <li class="navelem"><a class="el" href="namespacegrepros.html">grepros</a></li><li class="navelem"><a class="el" href="namespacegrepros_1_1inputs.html">inputs</a></li><li class="navelem"><a class="el" href="classgrepros_1_1inputs_1_1_app_source.html">AppSource</a></li>
-    <li class="footer">Generated on Wed Jan 3 2024 20:00:45 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
+    <li class="footer">Generated on Tue Apr 23 2024 20:38:15 for grepros by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.7 </li>
   </ul>
 </div>
 </body>

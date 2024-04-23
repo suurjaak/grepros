@@ -4,6 +4,6 @@
 <area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,40,71,81,68,76,134,35"/>
 <area shape="rect" id="Node000003" href="$classgrepros_1_1inputs_1_1_bag_source.html" title="Produces messages from ROS bagfiles." alt="" coords="120,79,211,104"/>
 <area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="168,44,168,79,163,79,163,44"/>
-<area shape="rect" id="Node000004" href="$classgrepros_1_1inputs_1_1_topic_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,333,104"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="198,35,266,76,263,81,195,40"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1inputs_1_1_live_source.html" title="Produces messages from live ROS topics." alt="" coords="235,79,328,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="197,35,264,76,261,81,194,40"/>
 </map>

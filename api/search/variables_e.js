@@ -1,23 +1,4 @@
 var searchData=
 [
-  ['reader_5fclasses_0',['READER_CLASSES',['../classgrepros_1_1api_1_1_bag.html#aadd2682f30f9da410d3f6da90e04bc34',1,'grepros::api::Bag']]],
-  ['realapi_1',['realapi',['../namespacegrepros_1_1api.html#afecf64c042d81793ef0db1c91a78cb9a',1,'grepros::api']]],
-  ['realwidth_2',['realwidth',['../classgrepros_1_1common_1_1_text_wrapper.html#a081090be3d428541490bb48323877653',1,'grepros::common::TextWrapper']]],
-  ['ros1_3',['ROS1',['../namespacegrepros_1_1api.html#afb6683f410e375b3d72832bee36399e7',1,'grepros::api']]],
-  ['ros2_4',['ROS2',['../namespacegrepros_1_1api.html#ac4d9d21eb9ad93bf8d72495b26703095',1,'grepros::api']]],
-  ['ros_5falias_5ftypes_5',['ROS_ALIAS_TYPES',['../namespacegrepros_1_1ros2.html#a87fcd1a6820149b412bef1c7e213d022',1,'grepros.ros2.ROS_ALIAS_TYPES'],['../namespacegrepros_1_1ros1.html#a87fcd1a6820149b412bef1c7e213d022',1,'grepros.ros1.ROS_ALIAS_TYPES'],['../namespacegrepros_1_1api.html#a87fcd1a6820149b412bef1c7e213d022',1,'grepros.api.ROS_ALIAS_TYPES']]],
-  ['ros_5fbuiltin_5fctors_6',['ROS_BUILTIN_CTORS',['../namespacegrepros_1_1api.html#a4a22184f9cedd7b0279cf579082f9b18',1,'grepros::api']]],
-  ['ros_5fbuiltin_5ftypes_7',['ROS_BUILTIN_TYPES',['../classgenerate__msgs_1_1rosapi.html#a3ec8808a51fd8beb9d5e247f04d839c5',1,'generate_msgs.rosapi.ROS_BUILTIN_TYPES'],['../namespacegrepros_1_1api.html#a3ec8808a51fd8beb9d5e247f04d839c5',1,'grepros.api.ROS_BUILTIN_TYPES']]],
-  ['ros_5fcommon_5ftypes_8',['ROS_COMMON_TYPES',['../namespacegrepros_1_1api.html#a6558edc96936551738351cafb68d8248',1,'grepros::api']]],
-  ['ros_5ffamily_9',['ROS_FAMILY',['../namespacegrepros_1_1api.html#a3bdce4f6a94d0d4f0623446d761520c3',1,'grepros::api']]],
-  ['ros_5finteger_5franges_10',['ROS_INTEGER_RANGES',['../classgenerate__msgs_1_1rosapi.html#a16d089a4262bc824282990253622c3b3',1,'generate_msgs::rosapi']]],
-  ['ros_5fnumeric_5ftypes_11',['ROS_NUMERIC_TYPES',['../classgenerate__msgs_1_1rosapi.html#aad4820166993e27d3663ebc667c215b1',1,'generate_msgs.rosapi.ROS_NUMERIC_TYPES'],['../namespacegrepros_1_1api.html#aad4820166993e27d3663ebc667c215b1',1,'grepros.api.ROS_NUMERIC_TYPES']]],
-  ['ros_5fstring_5ftypes_12',['ROS_STRING_TYPES',['../classgenerate__msgs_1_1rosapi.html#a0e4c7f2ec33433d578efba878ae795bb',1,'generate_msgs.rosapi.ROS_STRING_TYPES'],['../namespacegrepros_1_1api.html#a0e4c7f2ec33433d578efba878ae795bb',1,'grepros.api.ROS_STRING_TYPES']]],
-  ['ros_5ftime_5fclasses_13',['ROS_TIME_CLASSES',['../classgenerate__msgs_1_1rosapi.html#af5751f207805777aca9e764c74e01859',1,'generate_msgs.rosapi.ROS_TIME_CLASSES'],['../namespacegrepros_1_1ros2.html#abf27f652da71b62d5c2b7e37f8b8d392',1,'grepros.ros2.ROS_TIME_CLASSES'],['../namespacegrepros_1_1ros1.html#abf27f652da71b62d5c2b7e37f8b8d392',1,'grepros.ros1.ROS_TIME_CLASSES'],['../namespacegrepros_1_1api.html#abf27f652da71b62d5c2b7e37f8b8d392',1,'grepros.api.ROS_TIME_CLASSES'],['../classgenerate__msgs_1_1rosapi.html#abf27f652da71b62d5c2b7e37f8b8d392',1,'generate_msgs.rosapi.ROS_TIME_CLASSES']]],
-  ['ros_5ftime_5fmessages_14',['ROS_TIME_MESSAGES',['../namespacegrepros_1_1ros2.html#aea461f96a555df951dcc08e5fd51effd',1,'grepros::ros2']]],
-  ['ros_5ftime_5ftypes_15',['ROS_TIME_TYPES',['../namespacegrepros_1_1api.html#a145488677ad2997208aa403fec2b3711',1,'grepros.api.ROS_TIME_TYPES'],['../namespacegrepros_1_1ros1.html#a145488677ad2997208aa403fec2b3711',1,'grepros.ros1.ROS_TIME_TYPES'],['../namespacegrepros_1_1ros2.html#a145488677ad2997208aa403fec2b3711',1,'grepros.ros2.ROS_TIME_TYPES']]],
-  ['ros_5fversion_16',['ROS_VERSION',['../namespacegrepros_1_1api.html#a6d30296769e6248190137f2cdfc70cb8',1,'grepros::api']]],
-  ['rosbag_5fmagic_17',['ROSBAG_MAGIC',['../classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html#a32029c062b5ca9223138d3712e0fc5d4',1,'grepros::plugins::embag::EmbagReader']]],
-  ['rospy_18',['rospy',['../namespacegenerate__msgs.html#a6d0bba4f15ad7ecffec56099f3c80292',1,'generate_msgs']]],
-  ['runargs_19',['runargs',['../namespacegenerate__msgs.html#a649d04c09b8e146ad33e018c8ae67027',1,'generate_msgs']]]
+  ['quotes_0',['QUOTES',['../classgrepros_1_1search_1_1_expression_tree.html#ab08b2d549789be87193c95b9601c4a0b',1,'grepros::search::ExpressionTree']]]
 ];
