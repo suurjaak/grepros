@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    04.03.2023
+@modified    29.04.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -321,7 +321,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
      */
     String.prototype.format = String.prototype.f = function() {
         var s = this, i = arguments.length;
-        while (i--) s = s.replace(new RegExp("\\\\{" + i + "\\\\}", "g"), arguments[i]);
+        while (i--) s = s.replace(new RegExp("\\\{" + i + "\\\}", "g"), arguments[i]);
         return s;
     };
 
@@ -402,7 +402,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
     var formatStamp = function(secs_nsecs, format) {
       format = format || "%Y-%m-%d %H:%M:%S.%f";
       var result = makeDate(secs_nsecs).strftime(format);
-      return RegExp("((%f)|(%n))$", "i").test(format) ? result.replace(/\\.?0+$/, "") : result;
+      return RegExp("((%f)|(%n))$", "i").test(format) ? result.replace(/\.?0+$/, "") : result;
     };
 
 
@@ -496,13 +496,13 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       self.showSchema = function(type, hash, evt) {
         var elem = document.getElementById("overlay");
         elem.classList.remove("hidden");
-        var text = SCHEMAS[[type, hash]].split("\\n").map(function(line) {
+        var text = SCHEMAS[[type, hash]].split("\n").map(function(line) {
           if (!line.match(/^w?string [^#]*=/))  // String constant lines cannot have comments
             return line.replace(/#.*$/g, '<span class="comment">$&</span>');
           return line;
-        }).join("\\n");
+        }).join("\n");
         text = text.replace(/^(=+)$/gm, '<span class="separator">$1</span>');
-        text = text.replace(/\\n/g, "<br />");
+        text = text.replace(/\n/g, "<br />");
         elem.getElementsByClassName("title")[0].innerText = "{0}:".format(type);
         elem.getElementsByClassName("content")[0].innerHTML = text;
         evt && evt.stopPropagation && evt.stopPropagation();
@@ -616,7 +616,7 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       /** Shows or hides topic message rows. */
       self.enableTopic = function(topic, type, hash, elem_cb) {
         var toggler = elem_cb.checked ? "remove" : "add";
-        var selectors = [topic, type, hash].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\\$&"); });
+        var selectors = [topic, type, hash].filter(Boolean).map(function(x) { return x.replace(/[^\w\-]/g, "\\$&"); });
         var rows = document.querySelectorAll("#messages tbody tr.meta");
         for (var i = 0; i < rows.length; i++) {
           var elem_tr = rows[i];

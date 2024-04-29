@@ -2,7 +2,13 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.2.0 (2024-04-23)
+1.2.1 (2024-04-29)
+-------------------
+* fix match highlighting regression in HTML output
+* fix stripping trailing zeroes from timestamps
+  and highlighting message definition comments in HTML output
+
+1.2.0 (2024-04-22)
 -------------------
 * add --expression option to give pattern as a logical expression
   like `this AND (this2 OR NOT "skip this")`
