@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    21.04.2024
+@modified    29.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.html
@@ -100,7 +100,6 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
         self._tag_repls = {}
         self._tag_rgx = None
 
-        self._format_repls.clear()  # TextSinkMixin member
         atexit.register(self.close)
 
     def emit(self, topic, msg, stamp=None, match=None, index=None):
@@ -147,6 +146,7 @@ class HtmlSink(Sink, RolloverSinkMixin, TextSinkMixin):
                                ConsolePrinter.STYLE_LOWLIGHT: '<span class="lowlight">',
                                ConsolePrinter.STYLE_RESET:    '</span>'}
             self._tag_rgx = re.compile("(%s)" % "|".join(map(re.escape, self._tag_repls)))
+            self._format_repls.clear()  # TextSinkMixin member
 
         return self.valid
 

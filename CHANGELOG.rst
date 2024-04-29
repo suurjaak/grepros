@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.1 (2024-04-29)
+-------------------
+* fix match highlighting regression in HTML output
+
 1.2.0 (2024-04-22)
 -------------------
 * add --expression option to give pattern as a logical expression
