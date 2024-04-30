@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.2 (2024-04-30)
+-------------------
+* handle deserialization error when grepping live topics in ROS1
+
 1.2.1 (2024-04-29)
 -------------------
 * fix match highlighting regression in HTML output
