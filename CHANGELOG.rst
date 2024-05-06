@@ -7,6 +7,7 @@ Changelog for package grepros
 * fix recursing into subdirectories when looking for bagfiles
 * fix ROS2Bag creating blank file when opening a non-existent file for reading
 * handle deserialization error when grepping live topics in ROS1
+* tweak word wrap in HTML output
 
 1.2.1 (2024-04-29)
 -------------------
