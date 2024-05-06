@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    21.04.2024
+@modified    06.05.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -463,7 +463,10 @@ PRAGMA synchronous=NORMAL;
     def _ensure_open(self, populate=False):
         """Opens bag database if not open, populates schema if specified."""
         if not self._db:
-            if "w" == self._mode and os.path.exists(self._filename):
+            exists = os.path.isfile(self._filename)
+            if "r" == self._mode and not exists:
+                raise IOError("No such file: %r" % self._filename)
+            if "w" == self._mode and exists:
                 os.remove(self._filename)
             self._db = sqlite3.connect(self._filename, detect_types=sqlite3.PARSE_DECLTYPES,
                                        isolation_level=None, check_same_thread=False)
