@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    22.04.2024
+@modified    06.05.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.common
@@ -936,7 +936,7 @@ def find_files(names=(), paths=(), suffixes=(), skip_suffixes=(), recurse=False)
                             continue  # for f
                         namesfound.add(n)
                         yield f
-                for f in () if names else (os.path.join(root, f) for f in sorted(files) if ok(f)):
+                for f in () if names else (os.path.join(path, f) for f in sorted(files) if ok(f)):
                     yield f
                 if not recurse:
                     break  # for root

@@ -14,7 +14,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     06.11.2021
-@modified    29.04.2023
+@modified    06.05.2023
 ------------------------------------------------------------------------------
 """
 import datetime, os, re
@@ -37,11 +37,17 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
       position:               relative;
     }
     #header #meta {
+      padding-right:          200px;
       white-space:            pre-wrap;
     }
     #header #meta #result_count:empty::after {
       content:                "Loading..";
       color:                  gray;
+    }
+    #header #meta > div {
+      display:                inline-block;
+      padding-left:           15px;
+      text-indent:            -15px;
     }
     #footer {
       color:                  gray;
@@ -989,11 +995,11 @@ subtitle = os.path.basename(sourcemeta["file"]) if "file" in sourcemeta else "li
 
 <div id="header">
 %if source.format_meta().strip() or isdef("args") and args:
-  <div id="meta">{{ source.format_meta().strip() }}
+  <div id="meta"><div>{{ source.format_meta().strip() }}</div>
     %if isdef("args") and args:
-Command: {{ __title__ }} {{ " ".join(args) }}
+<div>Command: {{ __title__ }} {{ " ".join(args) }}</div>
     %endif
-Messages in result: <span id="result_count"></span>
+<div>Messages in result: <span id="result_count"></span></div>
 %endif
   </div>
   <div id="topics">

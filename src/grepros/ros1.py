@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    19.04.2024
+@modified    30.04.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -551,7 +551,11 @@ def create_subscriber(topic, typename, handler, queue_size):
             for name, cls in generate_message_classes(typename, typedef).items():
                 TYPECLASSES.setdefault((name, cls._md5sum), cls)
         if isinstance(msg, rospy.AnyMsg):  # /clock can yield already deserialized messages
-            msg = TYPECLASSES[typekey]().deserialize(msg._buff)
+            try: msg = TYPECLASSES[typekey]().deserialize(msg._buff)
+            except Exception as e:
+                ConsolePrinter.error("Error deserializing message in topic %r (%s): %s",
+                                     topic, typename, e)
+                return
         handler(msg)
 
     sub = rospy.Subscriber(topic, rospy.AnyMsg, myhandler, queue_size=queue_size)
