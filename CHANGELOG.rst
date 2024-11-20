@@ -2,6 +2,10 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.3 (2024-11-20)
+-------------------
+* fix assembling message type definition full text for definitions with leading whitespace in ROS2
+
 1.2.2 (2024-05-06)
 -------------------
 * fix recursing into subdirectories when looking for bagfiles
