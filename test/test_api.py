@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    22.02.2024
+@modified    20.11.2024
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -160,6 +160,10 @@ class TestAPI(testbase.TestBase):
             self.assertIsInstance(received, dict, ERR(func))
             self.assertEqual(received, api.get_message_fields(msg), ERR(func))
 
+            msgdef = " string data\npkg/Cls nested\n======\nMSG: pkg/Cls\n  string nested_data"
+            self.assertEqual(func("myname", msgdef), {"data": "string", "nested": "pkg/Cls"},
+                             ERR(func, msgdef))
+
         func = api.parse_definition_subtypes
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
@@ -172,6 +176,9 @@ class TestAPI(testbase.TestBase):
                 self.assertEqual(typedef.strip(), api.get_message_definition(typename).strip(), ERR(func))
             for typename in sum([[k] + v for k, v in nesteds.items()], []):
                 self.assertIn(typename, defs, ERR(func))
+
+            msgdef = "pkg/Cls nested\n======\nMSG: pkg/Cls\n  string data"
+            self.assertEqual(func(msgdef), {"pkg/Cls": "  string data"}, ERR(func, msgdef))
 
         func = api.dict_to_message
         with self.subTest(NAME(func)):
