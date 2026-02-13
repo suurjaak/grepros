@@ -5,6 +5,7 @@ Changelog for package grepros
 1.3.0 (2026-02-13)
 -------------------
 * fix using ROS1 duration fields as uint32 instead of int32
+* fix api.to_decimal() result for negative durations
 * fix assembling message type definition full text for definitions with leading whitespace in ROS2
 
 1.2.2 (2024-05-06)

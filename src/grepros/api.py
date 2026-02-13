@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    22.04.2024
+@modified    13.02.2026
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.api
@@ -1156,7 +1156,11 @@ def to_datetime(val):
 def to_decimal(val):
     """Returns value as decimal.Decimal if value is ROS time/duration, else value."""
     if realapi.is_ros_time(val):
-        return decimal.Decimal("%d.%09d" % realapi.to_sec_nsec(val))
+        secs, nsecs = realapi.to_sec_nsec(val)
+        if nsecs < 0: secs, nsecs = secs - 1, 10**9 + nsecs # Proper form is secs<0 nsecs>0
+        if secs < 0 and nsecs:
+            return decimal.Decimal("-%d.%09d" % (abs(secs) - 1, 10**9 - nsecs))
+        return decimal.Decimal("%d.%09d" % (secs, nsecs))
     return val
 
 
