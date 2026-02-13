@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    20.11.2024
+@modified    13.02.2026
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -66,7 +66,11 @@ class TestAPI(testbase.TestBase):
             dct = {"seq": "uint32", "stamp": "time", "frame_id": "string"} if api.ROS1 else \
                   {"stamp": "builtin_interfaces/Time", "frame_id": "string"}
             self.assertEqual(func(std_msgs.msg.Header), dct, ERR(func))
-            self.assertEqual(func(None),                {},  ERR(func))
+            if api.ROS1:
+                self.assertEqual(func(api.make_time()),     {"secs": "uint32", "nsecs": "uint32"},
+                                 ERR(func))
+                self.assertEqual(func(api.make_duration()), {"secs": "int32",  "nsecs":  "int32"},
+                                 ERR(func))
 
         func = api.get_message_type
         with self.subTest(NAME(func)):
@@ -343,6 +347,9 @@ class TestAPI(testbase.TestBase):
             self.assertEqual(func(tval), expected, ERR(func))
             self.assertEqual(func(dval), expected, ERR(func))
             self.assertEqual(func(666),       666, ERR(func))
+            dval = api.make_duration(-123456789, 987654321)
+            expected = decimal.Decimal("-123456788.012345679")
+            self.assertEqual(func(dval), expected, ERR(func))
 
         func = api.to_duration
         with self.subTest(NAME(func)):
