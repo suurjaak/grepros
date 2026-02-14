@@ -106,7 +106,7 @@ Installation
 grepros is written in Python, supporting both Python 2 and Python 3.
 
 Developed and tested under ROS1 Noetic and ROS2 Foxy,
-works in later ROS2 versions (Galactic, Humble, Iron, and likewise Rolling);
+works in later ROS2 versions (Galactic, Humble, Iron, Jazzy, Kilted, and likewise Rolling);
 also works in the earlier ROS1 version Melodic (lacking MCAP and Parquet support).
 
 

@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    13.02.2026
+@modified    14.02.2026
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -210,12 +210,16 @@ class TestAPI(testbase.TestBase):
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
             expected = b"\x01" if api.ROS1 else b"\x00\x01\x00\x00\x01"
+            if api.ROS2 and os.getenv("ROS_DISTRO") not in ("galactic", "humble", "iron"):
+                expected = b"\x00\x01\x00\x00\x01\x00\x00\x00"
             self.assertEqual(func(std_msgs.msg.Bool(data=True)), expected, ERR(func))
 
         func = api.deserialize_message
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
             binary = b"\x01" if api.ROS1 else b"\x00\x01\x00\x00\x01"
+            if api.ROS2 and os.getenv("ROS_DISTRO") not in ("galactic", "humble", "iron"):
+                binary = b"\x00\x01\x00\x00\x01\x00\x00\x00"
             expected = std_msgs.msg.Bool(data=True)
             self.assertEqual(func(binary, "std_msgs/Bool"),     expected, ERR(func))
             self.assertEqual(func(binary, std_msgs.msg.Bool),   expected, ERR(func))

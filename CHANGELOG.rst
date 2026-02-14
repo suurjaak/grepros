@@ -2,7 +2,7 @@
 Changelog for package grepros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.3.0 (2026-02-13)
+1.3.0 (2026-02-14)
 -------------------
 * fix using ROS1 duration fields as uint32 instead of int32
 * fix api.to_decimal() result for negative durations
