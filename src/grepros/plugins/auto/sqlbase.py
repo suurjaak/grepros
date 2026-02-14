@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.01.2022
-@modified    21.04.2024
+@modified    13.02.2026
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlbase
@@ -364,7 +364,13 @@ class SqlMixin(object):
         if adapter:
             try: is_int = issubclass(adapter, int)
             except Exception: is_int = False
-            v = api.to_sec(value) if is_int else "%d.%09d" % api.to_sec_nsec(value)
+            if is_int: v = api.to_sec(value)
+            else:
+                secs, nsecs = api.to_sec_nsec(value)
+                if nsecs < 0: secs, nsecs = secs - 1, 10**9 + nsecs # Proper form is secs<0 nsecs>0
+                if secs < 0 and nsecs:
+                    v = "-%d.%09d" % (abs(secs) - 1, 10**9 - nsecs)
+                else: v = "%d.%09d" % (secs, nsecs)
             result = adapter(v)
         else:
             result = api.to_decimal(value)

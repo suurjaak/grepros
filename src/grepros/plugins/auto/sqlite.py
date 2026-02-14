@@ -8,11 +8,12 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     03.12.2021
-@modified    21.04.2024
+@modified    14.02.2026
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.plugins.auto.sqlite
 import collections
+import datetime
 import json
 import os
 import sqlite3
@@ -139,6 +140,7 @@ class SqliteSink(BaseDataSink, RolloverSinkMixin):
 
     def _init_db(self):
         """Opens the database file and populates schema if not already existing."""
+        sqlite3.register_adapter(datetime.datetime, datetime.datetime.isoformat)
         for t in (dict, list, tuple): sqlite3.register_adapter(t, json.dumps)
         for t in six.integer_types:
             sqlite3.register_adapter(t, lambda x: str(x) if abs(x) > self.MAX_INT else x)

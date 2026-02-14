@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     02.11.2021
-@modified    06.05.2024
+@modified    20.11.2024
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros2
@@ -717,6 +717,7 @@ def _get_message_definition(typename):
         except Exception:  # .msg file unavailable: parse IDL
             texts[typename] = get_message_definition_idl(typename)
         for line in texts[typename].splitlines():
+            line = line.strip()
             if not line or not line[0].isalpha():
                 continue  # for line
             linetype = scalar(canonical(re.sub(r"^([a-zA-Z][^\s]+)(.+)", r"\1", line)))

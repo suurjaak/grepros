@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     23.10.2021
-@modified    24.03.2024
+@modified    13.02.2026
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.main
@@ -437,7 +437,7 @@ def run():
     """Parses command-line arguments and runs search."""
     global CLI_ARGS
     CLI_ARGS = sys.argv[1:]
-    MatchMarkers.populate("%08x" % random.randint(1, 1E9))
+    MatchMarkers.populate("%08x" % random.randint(1, 10**9))
     preload_plugins(CLI_ARGS)
     argparser = ArgumentUtil.make_parser(ARGUMENTS)
     if not CLI_ARGS:

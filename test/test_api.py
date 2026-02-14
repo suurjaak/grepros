@@ -9,7 +9,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     22.12.2022
-@modified    22.02.2024
+@modified    14.02.2026
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -66,7 +66,11 @@ class TestAPI(testbase.TestBase):
             dct = {"seq": "uint32", "stamp": "time", "frame_id": "string"} if api.ROS1 else \
                   {"stamp": "builtin_interfaces/Time", "frame_id": "string"}
             self.assertEqual(func(std_msgs.msg.Header), dct, ERR(func))
-            self.assertEqual(func(None),                {},  ERR(func))
+            if api.ROS1:
+                self.assertEqual(func(api.make_time()),     {"secs": "uint32", "nsecs": "uint32"},
+                                 ERR(func))
+                self.assertEqual(func(api.make_duration()), {"secs": "int32",  "nsecs":  "int32"},
+                                 ERR(func))
 
         func = api.get_message_type
         with self.subTest(NAME(func)):
@@ -160,6 +164,10 @@ class TestAPI(testbase.TestBase):
             self.assertIsInstance(received, dict, ERR(func))
             self.assertEqual(received, api.get_message_fields(msg), ERR(func))
 
+            msgdef = " string data\npkg/Cls nested\n======\nMSG: pkg/Cls\n  string nested_data"
+            self.assertEqual(func("myname", msgdef), {"data": "string", "nested": "pkg/Cls"},
+                             ERR(func, msgdef))
+
         func = api.parse_definition_subtypes
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
@@ -172,6 +180,9 @@ class TestAPI(testbase.TestBase):
                 self.assertEqual(typedef.strip(), api.get_message_definition(typename).strip(), ERR(func))
             for typename in sum([[k] + v for k, v in nesteds.items()], []):
                 self.assertIn(typename, defs, ERR(func))
+
+            msgdef = "pkg/Cls nested\n======\nMSG: pkg/Cls\n  string data"
+            self.assertEqual(func(msgdef), {"pkg/Cls": "  string data"}, ERR(func, msgdef))
 
         func = api.dict_to_message
         with self.subTest(NAME(func)):
@@ -199,12 +210,16 @@ class TestAPI(testbase.TestBase):
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
             expected = b"\x01" if api.ROS1 else b"\x00\x01\x00\x00\x01"
+            if api.ROS2 and os.getenv("ROS_DISTRO") not in ("galactic", "humble", "iron"):
+                expected = b"\x00\x01\x00\x00\x01\x00\x00\x00"
             self.assertEqual(func(std_msgs.msg.Bool(data=True)), expected, ERR(func))
 
         func = api.deserialize_message
         with self.subTest(NAME(func)):
             logger.info("Testing %s.", NAME(func))
             binary = b"\x01" if api.ROS1 else b"\x00\x01\x00\x00\x01"
+            if api.ROS2 and os.getenv("ROS_DISTRO") not in ("galactic", "humble", "iron"):
+                binary = b"\x00\x01\x00\x00\x01\x00\x00\x00"
             expected = std_msgs.msg.Bool(data=True)
             self.assertEqual(func(binary, "std_msgs/Bool"),     expected, ERR(func))
             self.assertEqual(func(binary, std_msgs.msg.Bool),   expected, ERR(func))
@@ -336,6 +351,9 @@ class TestAPI(testbase.TestBase):
             self.assertEqual(func(tval), expected, ERR(func))
             self.assertEqual(func(dval), expected, ERR(func))
             self.assertEqual(func(666),       666, ERR(func))
+            dval = api.make_duration(-123456789, 987654321)
+            expected = decimal.Decimal("-123456788.012345679")
+            self.assertEqual(func(dval), expected, ERR(func))
 
         func = api.to_duration
         with self.subTest(NAME(func)):

@@ -8,7 +8,7 @@ Released under the BSD License.
 
 @author      Erki Suurjaak
 @created     01.11.2021
-@modified    30.04.2024
+@modified    13.02.2026
 ------------------------------------------------------------------------------
 """
 ## @namespace grepros.ros1
@@ -634,8 +634,9 @@ def get_message_fields(val):
     @param   val  ROS1 message class or instance
     """
     names, types = (getattr(val, k, []) for k in ("__slots__", "_slot_types"))
+    if isinstance(val, genpy.TVal): names = genpy.TVal.__slots__ # Empty slots on rospy time classes
     # Bug in genpy: class slot types defined as "int32", but everywhere else types use "uint32"
-    if isinstance(val, genpy.TVal): names, types = genpy.TVal.__slots__, ["uint32", "uint32"]
+    if isinstance(val, genpy.Time): types = ["uint32", "uint32"]
     return collections.OrderedDict(zip(names, types))
 
 
