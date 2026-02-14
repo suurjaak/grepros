@@ -157,13 +157,6 @@ var menudata={children:[
 {text:"u",url:"functions_vars_u.html#index_u"},
 {text:"v",url:"functions_vars_v.html#index_v"},
 {text:"w",url:"functions_vars_w.html#index_w"},
-{text:"z",url:"functions_vars_z.html#index_z"}]},
-{text:"Properties",url:"functions_prop.html",children:[
-{text:"c",url:"functions_prop.html#index_c"},
-{text:"d",url:"functions_prop.html#index_d"},
-{text:"f",url:"functions_prop.html#index_f"},
-{text:"m",url:"functions_prop.html#index_m"},
-{text:"s",url:"functions_prop.html#index_s"},
-{text:"t",url:"functions_prop.html#index_t"}]}]}]},
+{text:"z",url:"functions_vars_z.html#index_z"}]}]}]},
 {text:"Files",url:"files.html",children:[
 {text:"File List",url:"files.html"}]}]}

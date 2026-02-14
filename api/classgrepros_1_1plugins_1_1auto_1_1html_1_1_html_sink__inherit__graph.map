@@ -1,9 +1,13 @@
 <map id="HtmlSink" name="HtmlSink">
-<area shape="rect" id="Node000001" title="Writes messages to an HTML file." alt="" coords="109,79,192,104"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,35,132,76,130,81,61,40"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="81,5,221,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="153,44,153,79,148,79,148,44"/>
-<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="245,5,358,31"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="266,39,176,81,174,76,264,34"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="109,152,192,177"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title=" " alt="" coords="5,79,56,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,109,132,149,130,154,61,113"/>
+<area shape="rect" id="Node000003" href="$classobject.html" title=" " alt="" coords="119,5,182,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="121,40,52,81,49,76,118,35"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title=" " alt="" coords="81,79,221,104"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="153,44,153,79,148,79,148,44"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title=" " alt="" coords="245,79,358,104"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="188,34,278,76,276,81,186,39"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="153,118,153,152,148,152,148,118"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="266,112,176,154,174,149,264,107"/>
 </map>

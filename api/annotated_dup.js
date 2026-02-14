@@ -84,5 +84,6 @@ var annotated_dup =
         [ "Scanner", "classgrepros_1_1search_1_1_scanner.html", "classgrepros_1_1search_1_1_scanner" ]
       ] ]
     ] ],
-    [ "Exception", "class_exception.html", null ]
+    [ "Exception", "class_exception.html", null ],
+    [ "object", "classobject.html", null ]
 ];

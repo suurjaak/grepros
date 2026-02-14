@@ -6,5 +6,6 @@ var searchData=
   ['unsigned_5fints_3',['UNSIGNED_INTS',['../classgrepros_1_1common_1_1_argument_util.html#ab34dcebd4d5ca2d7d888864c35ed37fa',1,'grepros::common::ArgumentUtil']]],
   ['unsigned_5fwhen_4',['UNSIGNED_WHEN',['../classgrepros_1_1common_1_1_argument_util.html#a17e4819c6b2f8d50f9b353f7052cc947',1,'grepros::common::ArgumentUtil']]],
   ['update_5',['update',['../classgrepros_1_1common_1_1_progress_bar.html#a0b94b95d3fec21c5af220d2d571e38d2',1,'grepros::common::ProgressBar']]],
-  ['update_5fprogress_6',['update_progress',['../classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b',1,'grepros.inputs.Source.update_progress()'],['../classgrepros_1_1inputs_1_1_live_source.html#a4b35fa0bec0fd68085e692524def4c5b',1,'grepros.inputs.LiveSource.update_progress()']]]
+  ['update_5fprogress_6',['update_progress',['../classgrepros_1_1inputs_1_1_source.html#a4b35fa0bec0fd68085e692524def4c5b',1,'grepros.inputs.Source.update_progress()'],['../classgrepros_1_1inputs_1_1_live_source.html#a4b35fa0bec0fd68085e692524def4c5b',1,'grepros.inputs.LiveSource.update_progress()']]],
+  ['usage_7',['Example usage',['../index.html#autotoc_md4',1,'']]]
 ];

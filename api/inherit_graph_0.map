@@ -1,3 +1,104 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="Node000000" href="$classgrepros_1_1common_1_1_argument_util.html" title="Namespace for program argument handling." alt="" coords="5,5,115,31"/>
+<area shape="rect" id="Node000000" title=" " alt="" coords="184,5,231,31"/>
+<area shape="rect" id="Node000001" href="$classgrepros_1_1ros1_1_1_r_o_s1_bag.html" title=" " alt="" coords="362,80,445,105"/>
+<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="245,23,300,40,380,77,378,82,298,44,243,28"/>
+<area shape="rect" id="Node000007" href="$classobject.html" title=" " alt="" coords="5,597,68,623"/>
+<area shape="rect" id="Node000008" href="$classgenerate__msgs_1_1generator.html" title=" " alt="" coords="165,203,250,228"/>
+<area shape="poly" id="edge2_Node000007_Node000008" title=" " alt="" coords="37,583,45,504,60,401,82,303,97,264,114,237,137,222,164,215,165,220,140,227,118,241,102,267,88,304,65,402,51,505,43,584"/>
+<area shape="rect" id="Node000009" href="$classgenerate__msgs_1_1rosapi.html" title=" " alt="" coords="176,252,239,277"/>
+<area shape="poly" id="edge3_Node000007_Node000009" title=" " alt="" coords="38,583,48,514,63,426,85,342,99,309,114,287,128,276,144,269,175,263,176,268,145,274,130,281,118,290,104,312,90,344,69,427,53,515,44,584"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1api_1_1_base_bag.html" title=" " alt="" coords="168,301,247,327"/>
+<area shape="poly" id="edge4_Node000007_Node000002" title=" " alt="" coords="35,583,38,531,49,465,59,430,72,396,91,364,114,336,139,320,167,313,168,318,141,325,118,340,95,367,77,398,64,432,54,466,43,532,40,584"/>
+<area shape="rect" id="Node000010" href="$classgrepros_1_1api_1_1_type_meta.html" title=" " alt="" coords="165,351,250,376"/>
+<area shape="poly" id="edge10_Node000007_Node000010" title=" " alt="" coords="37,583,43,540,55,487,78,432,94,407,114,385,138,371,164,363,165,369,140,376,118,389,99,411,83,435,60,489,48,541,42,584"/>
+<area shape="rect" id="Node000011" href="$classgrepros_1_1common_1_1_argument_util.html" title=" " alt="" coords="153,400,262,425"/>
+<area shape="poly" id="edge11_Node000007_Node000011" title=" " alt="" coords="40,583,48,550,63,509,84,469,114,435,132,423,151,416,153,421,134,428,118,439,89,472,68,512,53,551,45,585"/>
+<area shape="rect" id="Node000012" href="$classgrepros_1_1common_1_1_console_printer.html" title=" " alt="" coords="149,449,266,475"/>
+<area shape="poly" id="edge12_Node000007_Node000012" title=" " alt="" coords="45,583,71,533,91,506,114,484,147,468,150,473,118,488,95,510,76,535,50,586"/>
+<area shape="rect" id="Node000013" href="$classgrepros_1_1common_1_1_decompressor.html" title=" " alt="" coords="149,499,265,524"/>
+<area shape="poly" id="edge13_Node000007_Node000013" title=" " alt="" coords="55,584,82,557,115,533,148,519,150,524,117,538,85,561,59,588"/>
+<area shape="rect" id="Node000014" href="$classgrepros_1_1common_1_1_len_iterable.html" title=" " alt="" coords="160,548,255,573"/>
+<area shape="poly" id="edge14_Node000007_Node000014" title=" " alt="" coords="80,593,115,582,159,570,160,575,117,587,82,598"/>
+<area shape="rect" id="Node000015" href="$classgrepros_1_1common_1_1_match_markers.html" title=" " alt="" coords="150,597,265,623"/>
+<area shape="poly" id="edge15_Node000007_Node000015" title=" " alt="" coords="82,607,150,607,150,613,82,613"/>
+<area shape="rect" id="Node000016" href="$classgrepros_1_1common_1_1_text_wrapper.html" title=" " alt="" coords="155,647,259,672"/>
+<area shape="poly" id="edge16_Node000007_Node000016" title=" " alt="" coords="82,621,117,631,161,644,159,649,115,637,80,626"/>
+<area shape="rect" id="Node000017" href="$classgrepros_1_1inputs_1_1_condition_mixin.html" title=" " alt="" coords="147,696,267,721"/>
+<area shape="poly" id="edge17_Node000007_Node000017" title=" " alt="" coords="59,631,85,657,117,681,148,694,146,699,115,686,82,662,55,635"/>
+<area shape="rect" id="Node000022" href="$classgrepros_1_1inputs_1_1_condition_mixin_1_1_empty.html" title=" " alt="" coords="124,745,291,771"/>
+<area shape="poly" id="edge21_Node000007_Node000022" title=" " alt="" coords="50,634,76,684,95,709,118,731,140,743,138,748,114,735,91,713,71,687,45,637"/>
+<area shape="rect" id="Node000023" href="$classgrepros_1_1inputs_1_1_condition_mixin_1_1_message.html" title=" " alt="" coords="116,795,299,820"/>
+<area shape="poly" id="edge22_Node000007_Node000023" title=" " alt="" coords="45,636,54,669,68,708,89,747,118,780,138,792,135,797,114,784,85,750,63,710,49,670,40,637"/>
+<area shape="rect" id="Node000024" href="$classgrepros_1_1inputs_1_1_condition_mixin_1_1_topic.html" title=" " alt="" coords="129,844,286,869"/>
+<area shape="poly" id="edge23_Node000007_Node000024" title=" " alt="" coords="42,637,48,679,61,731,83,784,99,808,118,829,136,842,133,846,114,833,95,811,79,787,56,733,43,680,37,637"/>
+<area shape="rect" id="Node000019" href="$classgrepros_1_1inputs_1_1_source.html" title=" " alt="" coords="174,893,241,919"/>
+<area shape="poly" id="edge24_Node000007_Node000019" title=" " alt="" coords="40,636,43,687,54,753,64,787,78,820,95,851,118,879,144,895,174,902,173,907,142,900,114,883,91,854,73,823,59,789,49,754,38,688,35,637"/>
+<area shape="rect" id="Node000025" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title=" " alt="" coords="137,943,277,968"/>
+<area shape="poly" id="edge28_Node000007_Node000025" title=" " alt="" coords="44,636,53,705,69,793,91,875,104,907,118,928,139,942,136,947,114,932,99,909,86,877,64,794,48,706,38,637"/>
+<area shape="rect" id="Node000027" href="$classgrepros_1_1outputs_1_1_sink.html" title=" " alt="" coords="182,1091,233,1116"/>
+<area shape="poly" id="edge33_Node000007_Node000027" title=" " alt="" coords="40,636,40,708,50,809,59,864,73,921,93,976,118,1027,132,1046,149,1063,184,1088,181,1093,146,1067,128,1050,114,1030,88,978,68,922,54,866,44,809,35,708,34,636"/>
+<area shape="rect" id="Node000030" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title=" " alt="" coords="151,992,264,1017"/>
+<area shape="poly" id="edge47_Node000007_Node000030" title=" " alt="" coords="43,636,51,715,65,817,88,915,102,952,118,978,133,989,151,996,149,1001,130,994,114,981,97,954,83,916,60,818,45,716,37,637"/>
+<area shape="rect" id="Node000042" href="$classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_writer.html" title=" " alt="" coords="164,1140,251,1165"/>
+<area shape="poly" id="edge50_Node000007_Node000042" title=" " alt="" coords="41,637,45,743,56,890,66,964,79,1032,96,1088,118,1126,139,1140,164,1148,163,1153,137,1145,114,1129,92,1090,74,1033,61,965,51,890,39,743,36,637"/>
+<area shape="rect" id="Node000038" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title=" " alt="" coords="168,1337,247,1363"/>
+<area shape="poly" id="edge51_Node000007_Node000038" title=" " alt="" coords="41,636,45,727,57,862,80,1019,97,1098,119,1176,137,1224,160,1269,200,1336,195,1339,155,1272,132,1226,113,1178,92,1100,75,1019,51,862,40,727,36,636"/>
+<area shape="rect" id="Node000043" href="$classgrepros_1_1search_1_1_boolean_result.html" title=" " alt="" coords="149,55,265,80"/>
+<area shape="poly" id="edge54_Node000007_Node000043" title=" " alt="" coords="36,583,39,476,50,329,60,254,74,185,91,129,114,90,130,77,148,70,150,75,132,82,118,93,96,131,79,187,65,255,56,329,44,477,41,583"/>
+<area shape="rect" id="Node000044" href="$classgrepros_1_1search_1_1_expression_tree.html" title=" " alt="" coords="147,104,267,129"/>
+<area shape="poly" id="edge55_Node000007_Node000044" title=" " alt="" coords="36,583,41,486,53,353,63,286,77,224,93,174,114,139,129,127,146,120,148,125,132,132,118,142,98,176,82,226,69,287,59,354,46,486,41,584"/>
+<area shape="rect" id="Node000045" href="$classgrepros_1_1search_1_1_scanner.html" title=" " alt="" coords="170,153,245,179"/>
+<area shape="poly" id="edge56_Node000007_Node000045" title=" " alt="" coords="37,583,43,495,57,377,79,264,95,219,114,188,140,171,169,164,170,169,142,176,118,192,100,221,85,265,62,378,48,496,42,584"/>
+<area shape="poly" id="edge8_Node000002_Node000001" title=" " alt="" coords="259,305,279,297,297,287,316,259,343,207,393,105,398,107,348,209,320,262,301,291,282,302,261,310"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1api_1_1_bag.html" title=" " alt="" coords="380,228,427,253"/>
+<area shape="poly" id="edge5_Node000002_Node000003" title=" " alt="" coords="259,299,298,286,346,262,379,248,381,252,348,267,300,291,261,304"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1embag_1_1_embag_reader.html" title=" " alt="" coords="347,277,460,303"/>
+<area shape="poly" id="edge6_Node000002_Node000004" title=" " alt="" coords="260,305,346,294,347,300,260,310"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_bag.html" title=" " alt="" coords="362,327,445,352"/>
+<area shape="poly" id="edge7_Node000002_Node000005" title=" " alt="" coords="261,318,362,331,362,337,260,323"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1ros2_1_1_r_o_s2_bag.html" title=" " alt="" coords="362,376,445,401"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="261,323,300,336,324,348,348,361,374,373,372,378,345,366,322,352,298,340,259,328"/>
+<area shape="rect" id="Node000018" href="$classgrepros_1_1inputs_1_1_app_source.html" title=" " alt="" coords="358,693,449,719"/>
+<area shape="poly" id="edge18_Node000017_Node000018" title=" " alt="" coords="281,705,357,704,357,709,281,710"/>
+<area shape="rect" id="Node000020" href="$classgrepros_1_1inputs_1_1_bag_source.html" title=" " alt="" coords="358,743,449,768"/>
+<area shape="poly" id="edge19_Node000017_Node000020" title=" " alt="" coords="275,722,358,742,357,747,274,727"/>
+<area shape="rect" id="Node000021" href="$classgrepros_1_1inputs_1_1_live_source.html" title=" " alt="" coords="357,792,450,817"/>
+<area shape="poly" id="edge20_Node000017_Node000021" title=" " alt="" coords="282,722,300,730,315,742,325,754,334,765,348,777,371,790,368,794,345,782,331,769,321,757,312,746,297,735,279,727"/>
+<area shape="poly" id="edge25_Node000019_Node000018" title=" " alt="" coords="253,899,277,892,297,879,311,861,318,843,321,806,324,768,331,748,345,728,360,717,363,721,349,732,336,751,329,769,327,807,323,844,316,864,300,883,279,897,255,905"/>
+<area shape="poly" id="edge26_Node000019_Node000020" title=" " alt="" coords="253,898,276,891,297,879,308,867,315,855,321,830,327,804,345,777,361,766,364,770,349,781,332,806,326,832,320,857,312,870,300,883,279,896,255,904"/>
+<area shape="poly" id="edge27_Node000019_Node000021" title=" " alt="" coords="253,895,297,878,312,868,321,858,345,835,376,815,378,820,348,839,325,862,315,872,300,883,255,900"/>
+<area shape="rect" id="Node000026" href="$classgrepros_1_1outputs_1_1_bag_sink.html" title=" " alt="" coords="366,893,441,919"/>
+<area shape="poly" id="edge29_Node000025_Node000026" title=" " alt="" coords="271,937,365,913,366,918,272,942"/>
+<area shape="rect" id="Node000031" href="$classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html" title=" " alt="" coords="362,943,445,968"/>
+<area shape="poly" id="edge30_Node000025_Node000031" title=" " alt="" coords="291,953,362,953,362,958,291,958"/>
+<area shape="rect" id="Node000037" href="$classgrepros_1_1plugins_1_1auto_1_1sqlite_1_1_sqlite_sink.html" title=" " alt="" coords="518,1065,605,1091"/>
+<area shape="poly" id="edge31_Node000025_Node000037" title=" " alt="" coords="282,935,297,928,311,916,320,902,329,889,345,878,377,866,405,861,431,864,461,878,486,897,506,921,535,974,552,1026,561,1065,556,1066,547,1028,530,976,501,924,482,901,459,883,430,869,405,866,379,871,348,883,333,893,324,905,315,919,300,932,284,940"/>
+<area shape="rect" id="Node000040" href="$classgrepros_1_1plugins_1_1mcap_1_1_mcap_sink.html" title=" " alt="" coords="361,992,446,1017"/>
+<area shape="poly" id="edge32_Node000025_Node000040" title=" " alt="" coords="272,969,361,991,360,997,271,974"/>
+<area shape="poly" id="edge35_Node000027_Node000026" title=" " alt="" coords="238,1081,268,1057,297,1027,311,1001,318,977,326,953,345,928,364,915,367,920,348,932,331,955,323,978,316,1003,301,1030,272,1060,241,1085"/>
+<area shape="poly" id="edge43_Node000027_Node000031" title=" " alt="" coords="234,1080,297,1027,320,1001,345,977,366,966,368,970,348,981,324,1005,301,1031,237,1084"/>
+<area shape="poly" id="edge44_Node000027_Node000040" title=" " alt="" coords="241,1082,345,1026,370,1015,372,1020,348,1031,244,1086"/>
+<area shape="rect" id="Node000028" href="$classgrepros_1_1outputs_1_1_app_sink.html" title=" " alt="" coords="366,1091,441,1116"/>
+<area shape="poly" id="edge34_Node000027_Node000028" title=" " alt="" coords="246,1101,366,1101,366,1106,246,1106"/>
+<area shape="rect" id="Node000029" href="$classgrepros_1_1outputs_1_1_console_sink.html" title=" " alt="" coords="352,1041,455,1067"/>
+<area shape="poly" id="edge36_Node000027_Node000029" title=" " alt="" coords="245,1091,352,1064,353,1069,246,1096"/>
+<area shape="rect" id="Node000032" href="$classgrepros_1_1outputs_1_1_live_sink.html" title=" " alt="" coords="365,1140,442,1165"/>
+<area shape="poly" id="edge37_Node000027_Node000032" title=" " alt="" coords="247,1110,365,1141,364,1146,245,1115"/>
+<area shape="rect" id="Node000033" href="$classgrepros_1_1outputs_1_1_multi_sink.html" title=" " alt="" coords="362,1189,445,1215"/>
+<area shape="poly" id="edge38_Node000027_Node000033" title=" " alt="" coords="247,1106,274,1113,300,1125,316,1137,325,1150,334,1162,348,1175,370,1187,367,1191,345,1179,330,1165,321,1153,312,1141,297,1130,272,1118,246,1111"/>
+<area shape="rect" id="Node000034" href="$classgrepros_1_1plugins_1_1auto_1_1csv_1_1_csv_sink.html" title=" " alt="" coords="366,1239,441,1264"/>
+<area shape="poly" id="edge39_Node000027_Node000034" title=" " alt="" coords="247,1104,275,1111,300,1125,320,1150,326,1175,332,1200,349,1224,367,1237,364,1241,345,1228,327,1202,321,1176,315,1152,297,1129,273,1116,246,1109"/>
+<area shape="rect" id="Node000035" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html" title=" " alt="" coords="347,1337,460,1363"/>
+<area shape="poly" id="edge40_Node000027_Node000035" title=" " alt="" coords="247,1102,275,1109,300,1125,319,1150,327,1175,329,1200,327,1225,326,1274,333,1299,349,1324,362,1335,359,1339,345,1328,328,1301,321,1275,322,1225,324,1200,322,1177,314,1153,297,1129,273,1114,246,1107"/>
+<area shape="rect" id="Node000041" href="$classgrepros_1_1plugins_1_1parquet_1_1_parquet_sink.html" title=" " alt="" coords="354,1288,453,1313"/>
+<area shape="poly" id="edge45_Node000027_Node000041" title=" " alt="" coords="247,1103,275,1110,300,1125,316,1144,323,1163,327,1200,329,1237,336,1255,349,1273,365,1286,361,1290,345,1277,331,1257,324,1238,322,1200,318,1164,311,1147,297,1129,273,1115,246,1108"/>
+<area shape="rect" id="Node000039" href="$classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html" title=" " alt="" coords="368,1387,439,1412"/>
+<area shape="poly" id="edge46_Node000027_Node000039" title=" " alt="" coords="247,1102,275,1109,301,1125,322,1157,331,1188,332,1219,328,1250,323,1280,323,1311,330,1342,349,1374,369,1388,366,1393,345,1377,325,1344,318,1311,318,1280,322,1249,326,1219,326,1189,317,1159,297,1129,273,1114,246,1107"/>
+<area shape="poly" id="edge42_Node000035_Node000037" title=" " alt="" coords="454,1328,458,1324,482,1296,501,1264,530,1196,547,1134,556,1091,561,1092,553,1136,535,1198,506,1266,486,1299,462,1328,458,1332"/>
+<area shape="rect" id="Node000036" href="$classgrepros_1_1plugins_1_1auto_1_1postgres_1_1_postgres_sink.html" title=" " alt="" coords="508,1337,615,1363"/>
+<area shape="poly" id="edge41_Node000035_Node000036" title=" " alt="" coords="474,1347,508,1347,508,1353,474,1353"/>
+<area shape="poly" id="edge49_Node000030_Node000031" title=" " alt="" coords="271,986,361,963,362,968,272,991"/>
+<area shape="poly" id="edge48_Node000030_Node000029" title=" " alt="" coords="272,1018,353,1039,351,1044,271,1023"/>
+<area shape="poly" id="edge52_Node000038_Node000035" title=" " alt="" coords="261,1347,346,1347,346,1353,261,1353"/>
+<area shape="poly" id="edge53_Node000038_Node000039" title=" " alt="" coords="261,1360,368,1388,367,1393,259,1366"/>
 </map>

@@ -1,7 +1,10 @@
 <map id="ConsoleSink" name="ConsoleSink">
-<area shape="rect" id="Node000001" title="Prints messages to console." alt="" coords="33,79,135,104"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="50,40,77,77,73,80,45,43"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title="Provides message formatting as text." alt="" coords="81,5,194,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="123,43,95,80,91,77,118,40"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="33,152,135,177"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title=" " alt="" coords="5,79,56,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="50,113,77,150,73,153,45,117"/>
+<area shape="rect" id="Node000003" href="$classobject.html" title=" " alt="" coords="53,5,115,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="69,43,41,80,37,77,65,40"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_text_sink_mixin.html" title=" " alt="" coords="81,79,194,104"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="103,40,131,77,127,80,99,43"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="123,117,95,153,91,150,118,113"/>
 </map>

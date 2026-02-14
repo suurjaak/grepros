@@ -50,8 +50,7 @@ var NAVTREE =
       [ "Class Members", "functions.html", [
         [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", "functions_func" ],
-        [ "Variables", "functions_vars.html", "functions_vars" ],
-        [ "Properties", "functions_prop.html", null ]
+        [ "Variables", "functions_vars.html", "functions_vars" ]
       ] ]
     ] ],
     [ "Files", "files.html", [
@@ -63,14 +62,14 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "____init_____8py.html",
-"classgrepros_1_1common_1_1_argument_util.html#a40ce0e5de248d93396cb9bd0760578ff",
-"classgrepros_1_1inputs_1_1_bag_source.html#a06f854d86bd993084b79f35d7e7b8132",
-"classgrepros_1_1outputs_1_1_bag_sink.html#a82bf0578fc8d502e231e8121b6574300",
-"classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#ad62bdb21ba69608ccdb6dcbde9a765ef",
-"classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#ad0d00892c1440deb68f2bca93d7b8789",
-"functions_func.html",
-"namespacegrepros_1_1plugins_1_1auto_1_1html.html#a9c895904b73fc5a3ad1227c41e661f01",
-"sqlbase_8py.html"
+"classgrepros_1_1common_1_1_argument_util.html#a0702162d53ecb8d8c6dfcdc8d0952298",
+"classgrepros_1_1inputs_1_1_app_source.html#ad0d00892c1440deb68f2bca93d7b8789",
+"classgrepros_1_1outputs_1_1_bag_sink.html#a4fd663486e785970b7c4dc09f08b9649",
+"classgrepros_1_1plugins_1_1auto_1_1html_1_1_html_sink.html#a82bf0578fc8d502e231e8121b6574300",
+"classgrepros_1_1plugins_1_1sql_1_1_sql_sink.html#a82bf0578fc8d502e231e8121b6574300",
+"functions.html",
+"namespacegrepros_1_1plugins_1_1auto.html",
+"ros2_8py_source.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

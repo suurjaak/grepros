@@ -1,11 +1,15 @@
 <map id="SqliteSink" name="SqliteSink">
-<area shape="rect" id="Node000001" title="Writes messages to an SQLite database." alt="" coords="106,152,193,177"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html" title="Base class for writing messages to a database." alt="" coords="18,79,131,104"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,111,139,150,135,154,95,115"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="47,41,70,77,65,80,43,44"/>
-<area shape="rect" id="Node000004" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title="Base class for producing SQL for topics and messages." alt="" coords="81,5,159,31"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="107,44,84,80,80,77,103,41"/>
-<area shape="rect" id="Node000005" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="155,79,295,104"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="205,115,164,154,160,150,201,111"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="93,225,180,251"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1plugins_1_1auto_1_1dbbase_1_1_base_data_sink.html" title=" " alt="" coords="5,152,119,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,185,126,223,123,227,82,189"/>
+<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_sink.html" title=" " alt="" coords="21,79,71,104"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="54,117,62,151,57,152,49,118"/>
+<area shape="rect" id="Node000004" href="$classobject.html" title=" " alt="" coords="104,5,167,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="112,41,62,81,59,76,109,37"/>
+<area shape="rect" id="Node000005" href="$classgrepros_1_1plugins_1_1auto_1_1sqlbase_1_1_sql_mixin.html" title=" " alt="" coords="96,79,175,104"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="138,44,138,79,133,79,133,44"/>
+<area shape="rect" id="Node000006" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title=" " alt="" coords="143,152,283,177"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="159,39,188,77,205,117,213,151,208,152,200,119,184,80,155,42"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="115,116,76,154,72,150,112,112"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="192,189,151,227,147,223,189,185"/>
 </map>

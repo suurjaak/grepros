@@ -1,7 +1,10 @@
 <map id="LiveSource" name="LiveSource">
-<area shape="rect" id="Node000001" title="Produces messages from live ROS topics." alt="" coords="51,79,144,104"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1inputs_1_1_source.html" title="Message producer base class." alt="" coords="5,5,72,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,40,90,77,86,80,55,43"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1inputs_1_1_condition_mixin.html" title="Provides topic conditions evaluation." alt="" coords="96,5,216,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="140,43,109,80,105,77,136,40"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="51,152,144,177"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1inputs_1_1_source.html" title=" " alt="" coords="5,79,72,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,113,90,150,86,154,55,116"/>
+<area shape="rect" id="Node000003" href="$classobject.html" title=" " alt="" coords="66,5,129,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,43,50,80,46,77,77,40"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1inputs_1_1_condition_mixin.html" title=" " alt="" coords="96,79,216,104"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="118,40,149,77,144,80,114,43"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,116,109,154,105,150,136,113"/>
 </map>

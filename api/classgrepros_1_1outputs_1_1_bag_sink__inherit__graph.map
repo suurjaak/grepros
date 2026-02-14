@@ -1,7 +1,10 @@
 <map id="BagSink" name="BagSink">
-<area shape="rect" id="Node000001" title="Writes messages to bagfile." alt="" coords="53,79,128,104"/>
-<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title="Output base class." alt="" coords="5,5,56,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="51,40,83,77,79,80,47,43"/>
-<area shape="rect" id="Node000003" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title="Provides output file rollover by size, duration, or message count." alt="" coords="81,5,221,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="134,43,102,80,98,77,130,40"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="53,152,128,177"/>
+<area shape="rect" id="Node000002" href="$classgrepros_1_1outputs_1_1_sink.html" title=" " alt="" coords="5,79,56,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="51,113,83,150,79,154,47,116"/>
+<area shape="rect" id="Node000003" href="$classobject.html" title=" " alt="" coords="59,5,122,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="74,43,42,80,38,77,70,40"/>
+<area shape="rect" id="Node000004" href="$classgrepros_1_1outputs_1_1_rollover_sink_mixin.html" title=" " alt="" coords="81,79,221,104"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="111,40,143,77,139,80,107,43"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="134,116,102,154,98,150,130,113"/>
 </map>

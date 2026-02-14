@@ -1,5 +1,12 @@
 var NAVTREEINDEX6 =
 {
+"functions.html":[2,3,0,0],
+"functions_a.html":[2,3,0,1],
+"functions_b.html":[2,3,0,2],
+"functions_c.html":[2,3,0,3],
+"functions_d.html":[2,3,0,4],
+"functions_e.html":[2,3,0,5],
+"functions_f.html":[2,3,0,6],
 "functions_func.html":[2,3,1,0],
 "functions_func.html":[2,3,1],
 "functions_func_a.html":[2,3,1,1],
@@ -31,15 +38,14 @@ var NAVTREEINDEX6 =
 "functions_n.html":[2,3,0,13],
 "functions_o.html":[2,3,0,14],
 "functions_p.html":[2,3,0,15],
-"functions_prop.html":[2,3,3],
 "functions_q.html":[2,3,0,16],
 "functions_r.html":[2,3,0,17],
 "functions_s.html":[2,3,0,18],
 "functions_t.html":[2,3,0,19],
 "functions_u.html":[2,3,0,20],
 "functions_v.html":[2,3,0,21],
-"functions_vars.html":[2,3,2],
 "functions_vars.html":[2,3,2,0],
+"functions_vars.html":[2,3,2],
 "functions_vars_b.html":[2,3,2,1],
 "functions_vars_c.html":[2,3,2,2],
 "functions_vars_d.html":[2,3,2,3],
@@ -243,11 +249,5 @@ var NAVTREEINDEX6 =
 "namespacegrepros_1_1plugins.html#ad0d00892c1440deb68f2bca93d7b8789":[1,0,1,6,14],
 "namespacegrepros_1_1plugins.html#ae5532bbc712adc7c1b9cd5e2fdd44492":[1,0,1,6,11],
 "namespacegrepros_1_1plugins.html#ae7d297022e41d07afc00296b1f0e339d":[1,0,1,6,17],
-"namespacegrepros_1_1plugins.html#aedb4963c668ffd4dc2c3e59297bc658c":[1,0,1,6,6],
-"namespacegrepros_1_1plugins_1_1auto.html":[1,0,1,6,0],
-"namespacegrepros_1_1plugins_1_1auto_1_1csv.html":[1,0,1,6,0,0],
-"namespacegrepros_1_1plugins_1_1auto_1_1csv.html#a9c895904b73fc5a3ad1227c41e661f01":[1,0,1,6,0,0,2],
-"namespacegrepros_1_1plugins_1_1auto_1_1dbbase.html":[1,0,1,6,0,1],
-"namespacegrepros_1_1plugins_1_1auto_1_1html.html":[1,0,1,6,0,2],
-"namespacegrepros_1_1plugins_1_1auto_1_1html.html#a03736543668a6ba24d688bcc63506646":[1,0,1,6,0,2,1]
+"namespacegrepros_1_1plugins.html#aedb4963c668ffd4dc2c3e59297bc658c":[1,0,1,6,6]
 };
